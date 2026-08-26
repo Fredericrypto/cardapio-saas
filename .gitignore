@@ -1,0 +1,31 @@
+# Segredos de verdade nunca vão pro Git — só o .env.example (sem
+# valores reais) fica versionado. Cada dev/ambiente tem seu próprio
+# .env local.
+.env
+.env.local
+.env.*.local
+
+# Dependências — reinstaladas via package-lock.json, nunca versionadas.
+node_modules/
+
+# Saída de build — regenerada a cada deploy, não é código-fonte.
+dist/
+build/
+
+# Capacitor (frontend-cardapio/android) — o projeto Android em si fica
+# versionado (tem customização real), mas o cache/output de build do
+# Gradle é local de cada máquina e pesado demais pra Git.
+frontend-cardapio/android/app/build/
+frontend-cardapio/android/build/
+frontend-cardapio/android/.gradle/
+frontend-cardapio/android/local.properties
+frontend-cardapio/android/capacitor-cordova-android-plugins/build/
+
+# Editor/OS
+.vscode/
+.idea/
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*

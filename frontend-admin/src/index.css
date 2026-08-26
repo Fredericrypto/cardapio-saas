@@ -1,0 +1,87 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+:root {
+  --tenant-primary: #E63946;
+  --tenant-secondary: #1D3557;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+h1, h2, h3, .font-display {
+  font-family: 'Poppins', sans-serif;
+}
+
+/* Ao imprimir, mostra só o conteúdo do cupom (#receipt-print-area),
+   escondendo o resto da interface do painel (sidebar, botões, overlay).
+   @page força o tamanho de papel térmico (80mm) — a impressora física
+   precisa estar selecionada no diálogo de impressão do navegador (não
+   "Salvar como PDF"); a maioria das impressoras térmicas de recibo
+   aparece como impressora normal do sistema operacional. */
+@media print {
+  @page {
+    size: 80mm auto;
+    margin: 4mm;
+  }
+  body * {
+    visibility: hidden;
+  }
+  #receipt-print-area,
+  #receipt-print-area * {
+    visibility: visible;
+  }
+  #receipt-print-area {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+  }
+}
+
+/* Pisca a cada 1s pra chamar atenção do admin quando o garçom é chamado
+   ou o cliente solicita o fechamento da conta — casos em que a mesa
+   precisa de atenção imediata e o admin pode estar distraído. Anima o
+   fundo e a borda (não a opacidade do card inteiro), pra continuar
+   legível durante toda a animação. */
+@keyframes attention-blink {
+  0%, 49% {
+    background-color: var(--blink-bg-on, #fef3c7);
+    border-color: var(--blink-border-on, #f59e0b);
+  }
+  50%, 100% {
+    background-color: var(--blink-bg-off, #ffffff);
+    border-color: var(--blink-border-off, #e5e7eb);
+  }
+}
+
+.attention-blink {
+  animation: attention-blink 1s step-end infinite;
+}
+
+/* Variante do blink pra usar no item "Painel" do menu lateral — o card
+   original assume fundo branco no estado "off", que não faz sentido num
+   item de nav (fundo normalmente transparente). Aqui só o fundo/texto
+   pulsam em tom âmbar, sem borda. */
+@keyframes nav-attention-blink {
+  0%, 49% {
+    background-color: var(--nav-blink-bg-on, #fef3c7);
+    color: var(--nav-blink-text-on, #92400e);
+  }
+  50%, 100% {
+    background-color: transparent;
+    color: inherit;
+  }
+}
+
+.nav-attention-blink {
+  animation: nav-attention-blink 1s step-end infinite;
+}
