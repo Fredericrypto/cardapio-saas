@@ -10,10 +10,13 @@ import {
 import { SkipThrottle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
+import { CurrentAdminUser } from '../../common/decorators/current-admin-user.decorator';
+import type { RequestAdminUser } from '../../common/decorators/current-admin-user.decorator';
 import { TablesService } from './tables.service';
 import { CreateTableDto } from './dto/create-table.dto';
 import { RequestClosingDto } from './dto/request-closing.dto';
 import { CloseSessionDto } from './dto/close-session.dto';
+import { ForceResetSessionDto } from './dto/force-reset-session.dto';
 
 @Controller()
 export class TablesController {
@@ -111,9 +114,14 @@ export class TablesController {
   @Post('table-sessions/:id/force-reset')
   async forceResetSession(
     @CurrentTenant() tenantId: string,
+    @CurrentAdminUser() adminUser: RequestAdminUser,
     @Param('id') id: string,
+    @Body() dto: ForceResetSessionDto,
   ) {
-    return this.tablesService.forceResetSession(tenantId, id);
+    return this.tablesService.forceResetSession(tenantId, id, dto.reason, {
+      userId: adminUser.userId,
+      email: adminUser.email,
+    });
   }
 
   // ---------- Fluxo público: cliente escaneando o QR code ----------

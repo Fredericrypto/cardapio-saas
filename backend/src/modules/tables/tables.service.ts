@@ -450,16 +450,29 @@ export class TablesService {
     return savedSession;
   }
 
-  // Encerramento forçado, sem exigir pagamento — usado pelo garçom/admin
-  // pra corrigir situações confusas (sessão presa, teste, engano), sem
-  // precisar passar pelo fluxo normal de cobrança. Os pedidos continuam
-  // no histórico normalmente, só a sessão é marcada como encerrada, e a
-  // mesa fica livre pra uma sessão nova no próximo QR code escaneado.
-  async forceResetSession(tenantId: string, sessionId: string): Promise<TableSession> {
+  // Encerramento forçado, sem exigir pagamento — escape-hatch
+  // administrativo, pensado pra corrigir sessão travada/de teste, nunca
+  // pra fechar conta de cliente de verdade sem cobrar. Exige motivo por
+  // escrito (não é só um "OK" de confirmação) e fica auditado: quem fez
+  // e quando, gravado na própria sessão (forceClosedReason/
+  // forceClosedByUserId/forceClosedByEmail — NULL em toda sessão
+  // fechada normalmente, então já funciona como filtro de auditoria
+  // sozinho). Os pedidos continuam no histórico normalmente, só a
+  // sessão é marcada como encerrada, e a mesa fica livre pra uma sessão
+  // nova no próximo QR code escaneado.
+  async forceResetSession(
+    tenantId: string,
+    sessionId: string,
+    reason: string,
+    performedBy: { userId: string; email: string },
+  ): Promise<TableSession> {
     const session = await this.findSession(tenantId, sessionId);
     session.status = 'fechada';
     session.closedAt = new Date();
     session.paymentMethod = session.paymentMethod ?? 'nao_informado';
+    session.forceClosedReason = reason;
+    session.forceClosedByUserId = performedBy.userId;
+    session.forceClosedByEmail = performedBy.email;
     const savedSession = await this.sessionRepo.save(session);
 
     await this.orderRepo

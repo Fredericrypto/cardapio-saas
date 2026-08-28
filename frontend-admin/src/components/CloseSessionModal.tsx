@@ -33,6 +33,14 @@ export function CloseSessionModal({ session, onClose, onClosed }: CloseSessionMo
   // pedir a via impressa, sem precisar de outra tela.
   const [closedSummary, setClosedSummary] = useState<SessionSummary | null>(null);
   const refreshIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Escape-hatch administrativo (encerrar sem cobrar) — fica escondido
+  // atrás de um segundo clique de propósito: primeiro só revela o campo
+  // de motivo, nunca executa a ação direto. Motivo é obrigatório e vai
+  // pra auditoria (ver TablesService.forceResetSession) — nunca mais um
+  // simples confirm() do navegador, que não registra nada.
+  const [showForceReset, setShowForceReset] = useState(false);
+  const [forceResetReason, setForceResetReason] = useState('');
+  const [forceResetError, setForceResetError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchSessionSummary(session.id).then(setSummary);
@@ -88,16 +96,14 @@ export function CloseSessionModal({ session, onClose, onClosed }: CloseSessionMo
     summary?.orders.filter((o) => o.status === 'pendente' || o.status === 'preparando').length ?? 0;
 
   async function handleForceReset() {
-    if (
-      !confirm(
-        'Encerrar esta mesa SEM registrar pagamento? Use só pra corrigir uma sessão presa ou de teste — os pedidos ficam marcados como cancelados no histórico.',
-      )
-    ) {
+    if (forceResetReason.trim().length < 5) {
+      setForceResetError('Descreva o motivo (mínimo 5 caracteres) antes de encerrar sem cobrar.');
       return;
     }
+    setForceResetError(null);
     setIsSubmitting(true);
     try {
-      await forceResetSession(session.id);
+      await forceResetSession(session.id, forceResetReason.trim());
       onClosed();
     } catch (err) {
       setError('Não foi possível encerrar a mesa.');
@@ -287,12 +293,50 @@ export function CloseSessionModal({ session, onClose, onClosed }: CloseSessionMo
         </div>
 
         <button
-          onClick={handleForceReset}
+          onClick={() => setShowForceReset(true)}
           disabled={isSubmitting}
-          className="text-xs text-gray-400 underline text-center disabled:opacity-60"
+          className={`text-xs text-gray-400 underline text-center disabled:opacity-60 ${showForceReset ? 'hidden' : ''}`}
         >
           Encerrar mesa sem cobrar (corrigir sessão)
         </button>
+
+        {showForceReset && (
+          <div className="border border-amber-200 bg-amber-50 rounded-lg p-3 flex flex-col gap-2">
+            <p className="text-xs text-amber-700 font-semibold">
+              Isso encerra a mesa SEM registrar pagamento. Use só pra corrigir uma sessão
+              presa ou de teste — os pedidos ficam marcados como cancelados no histórico.
+              Motivo e responsável ficam registrados na auditoria.
+            </p>
+            <textarea
+              value={forceResetReason}
+              onChange={(e) => setForceResetReason(e.target.value)}
+              placeholder="Descreva o motivo (obrigatório)..."
+              rows={2}
+              className="border border-amber-300 rounded-lg px-2.5 py-2 text-xs outline-none w-full resize-none"
+            />
+            {forceResetError && <p className="text-xs text-red-500">{forceResetError}</p>}
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setShowForceReset(false);
+                  setForceResetReason('');
+                  setForceResetError(null);
+                }}
+                disabled={isSubmitting}
+                className="flex-1 py-2 rounded-lg border border-gray-200 text-xs font-semibold text-gray-600"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleForceReset}
+                disabled={isSubmitting}
+                className="flex-1 py-2 rounded-lg bg-amber-600 text-white text-xs font-semibold disabled:opacity-60"
+              >
+                {isSubmitting ? 'Encerrando...' : 'Confirmar encerramento sem cobrança'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

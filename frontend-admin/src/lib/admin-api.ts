@@ -251,8 +251,8 @@ export async function fetchSessionSummary(sessionId: string): Promise<SessionSum
   return data;
 }
 
-export async function forceResetSession(sessionId: string) {
-  const { data } = await api.post(`/table-sessions/${sessionId}/force-reset`);
+export async function forceResetSession(sessionId: string, reason: string) {
+  const { data } = await api.post(`/table-sessions/${sessionId}/force-reset`, { reason });
   return data;
 }
 

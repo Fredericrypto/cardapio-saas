@@ -58,6 +58,24 @@ export class TableSession {
   @Column({ name: 'change_given', type: 'numeric', precision: 10, scale: 2, nullable: true, transformer: numericTransformer })
   changeGiven: number | null;
 
+  // Preenchidos SÓ quando a sessão é encerrada pelo escape-hatch
+  // administrativo (sem pagamento, pra sessão travada/de teste) — nunca
+  // no fechamento normal (que sempre exige forma de pagamento). Ficam
+  // NULL em toda sessão fechada normalmente, o que já serve de filtro
+  // pra auditoria: "toda sessão com forceClosedReason preenchido foi
+  // fechada sem pagamento, alguém precisa revisar por quê".
+  @Column({ name: 'force_closed_reason', type: 'text', nullable: true })
+  forceClosedReason: string | null;
+
+  @Column({ name: 'force_closed_by_user_id', type: 'uuid', nullable: true })
+  forceClosedByUserId: string | null;
+
+  // Snapshot do e-mail no momento — nunca depende de o AdminUser ainda
+  // existir depois (conta pode ser removida da equipe no futuro; a
+  // auditoria não pode desaparecer junto).
+  @Column({ name: 'force_closed_by_email', type: 'varchar', length: 255, nullable: true })
+  forceClosedByEmail: string | null;
+
   // Soft-delete usado pelo histórico (expiração de 7 dias). Ver HistoryService.
   @DeleteDateColumn({ name: 'deleted_at', type: 'timestamptz' })
   deletedAt: Date | null;
