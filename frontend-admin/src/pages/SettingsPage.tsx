@@ -19,6 +19,10 @@ export function SettingsPage() {
   const [pixEnabled, setPixEnabled] = useState(tenant?.pixEnabled ?? false);
   const [mercadoPagoAccessToken, setMercadoPagoAccessToken] = useState('');
   const [showMercadoPagoField, setShowMercadoPagoField] = useState(!tenant?.mercadoPagoConfigured);
+  const [mercadoPagoWebhookSecret, setMercadoPagoWebhookSecret] = useState('');
+  const [showWebhookSecretField, setShowWebhookSecretField] = useState(
+    !tenant?.mercadoPagoWebhookSecretConfigured,
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [savedMessage, setSavedMessage] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
@@ -89,9 +93,12 @@ export function SettingsPage() {
         pixMerchantCity: pixMerchantCity || undefined,
         pixEnabled,
         mercadoPagoAccessToken: mercadoPagoAccessToken.trim() || undefined,
+        mercadoPagoWebhookSecret: mercadoPagoWebhookSecret.trim() || undefined,
       });
       setMercadoPagoAccessToken('');
       setShowMercadoPagoField(!updated.mercadoPagoConfigured);
+      setMercadoPagoWebhookSecret('');
+      setShowWebhookSecretField(!updated.mercadoPagoWebhookSecretConfigured);
       updateTenant(updated);
       setSavedMessage(true);
       setTimeout(() => setSavedMessage(false), 3000);
@@ -311,6 +318,53 @@ export function SettingsPage() {
                 placeholder="Cole aqui o Access Token (TEST-... ou APP_USR-...)"
                 className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none w-full"
               />
+            )}
+
+            {/* Sem isso configurado, todo webhook de pagamento chega SEM
+                verificação de assinatura — o backend agora recusa
+                confirmar pagamento nesse caso (correção de segurança:
+                antes aceitava sem assinatura, o que deixava a porta
+                aberta pra qualquer POST forjado nessa URL). Só
+                aparece depois que o Access Token já foi configurado —
+                não faz sentido pedir antes. */}
+            {tenant?.mercadoPagoConfigured && (
+              <div className="mt-3">
+                <p className="text-xs font-semibold text-gray-500 mb-1.5">
+                  Segredo do webhook (Assinatura secreta)
+                </p>
+                <p className="text-xs text-gray-400 mb-2">
+                  No painel do Mercado Pago: Suas integrações → sua aplicação → Webhooks →
+                  Assinatura secreta. Sem isso, a confirmação automática de pagamento fica
+                  bloqueada por segurança.
+                </p>
+                {tenant?.mercadoPagoWebhookSecretConfigured && !showWebhookSecretField ? (
+                  <div className="flex items-center justify-between bg-green-50 border border-green-100 rounded-lg px-3 py-2.5">
+                    <span className="text-xs font-semibold text-green-700">✓ Configurado</span>
+                    <button
+                      onClick={() => setShowWebhookSecretField(true)}
+                      className="text-xs font-semibold text-gray-500 underline"
+                    >
+                      Substituir
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <input
+                      type="password"
+                      value={mercadoPagoWebhookSecret}
+                      onChange={(e) => setMercadoPagoWebhookSecret(e.target.value)}
+                      placeholder="Cole aqui a assinatura secreta do webhook"
+                      className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none w-full"
+                    />
+                    {!tenant?.mercadoPagoWebhookSecretConfigured && (
+                      <p className="text-xs text-amber-600 bg-amber-50 rounded-lg p-2.5 mt-2">
+                        Ainda não configurado — pagamentos via Mercado Pago não confirmam
+                        sozinhos até isso ser preenchido.
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
             )}
           </div>
         </div>

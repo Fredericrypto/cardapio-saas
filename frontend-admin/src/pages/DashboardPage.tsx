@@ -514,13 +514,24 @@ function OrderRow({ order, actions }: { order: Order; actions: OrderActions }) {
                 </option>
               ))}
             </select>
-            <button
-              onClick={() => actions.onConclude(order)}
-              title="Concluir pedido"
-              className="w-7 h-7 rounded-lg bg-green-100 text-green-700 flex items-center justify-center"
-            >
-              <Check size={14} />
-            </button>
+            {/* "Concluir pedido" registra PAGAMENTO — nunca aparece pra
+                pedido de mesa. Mesa paga uma vez só, pela conta
+                inteira, no botão "Fechar conta" do card da mesa (ver
+                ActiveTableCard) — nunca pedido por pedido. Bug real que
+                isso corrige: esse botão aparecia aqui também pros
+                pedidos dentro de uma mesa ativa, e clicar nele marcava
+                aquele pedido como pago por fora do fechamento de conta
+                de verdade, sem bater com o total cobrado quando a mesa
+                fechava. */}
+            {order.orderType !== 'mesa' && (
+              <button
+                onClick={() => actions.onConclude(order)}
+                title="Concluir pedido"
+                className="w-7 h-7 rounded-lg bg-green-100 text-green-700 flex items-center justify-center"
+              >
+                <Check size={14} />
+              </button>
+            )}
             <button
               onClick={() => actions.onCancel(order)}
               title="Cancelar pedido"

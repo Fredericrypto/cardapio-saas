@@ -384,7 +384,7 @@ export class TablesService {
         await this.pushService.sendToCustomer(tenantId, order.customerId, {
           title: 'Como foi seu pedido?',
           body: 'Sua opinião ajuda outros clientes e o restaurante a melhorar. Toque pra avaliar.',
-          url: `/${tenantForNotify.slug}/conta-cliente/pedidos/mesa/${sessionId}`,
+          url: `/${tenantForNotify.slug}/conta-cliente/pedidos/mesa/${sessionId}?avaliar=${order.id}`,
           tag: 'review_prompt',
           icon: tenantForNotify.logoUrl ?? undefined,
         });

@@ -110,7 +110,16 @@ export class MercadoPagoService {
     xRequestIdHeader: string | undefined;
     dataId: string;
   }): boolean {
-    if (!params.webhookSecret) return true; // sem segredo configurado ainda — ver comentário acima
+    // CRÍTICO: sem segredo configurado, o webhook é REJEITADO — nunca
+    // aceito como "válido por padrão". Bug de segurança real que isso
+    // corrige: antes, tenant sem `mercadoPagoWebhookSecretEncrypted`
+    // configurado tinha a verificação de assinatura pulada por inteiro
+    // (`return true` incondicional), aceitando QUALQUER POST nessa URL
+    // como se fosse o Mercado Pago de verdade. A única coisa que ainda
+    // protegia era reconfirmar o status direto na API deles depois — mas
+    // segurança em camadas não pode depender só disso; a assinatura
+    // existe justamente pra ser a primeira barreira, não uma opcional.
+    if (!params.webhookSecret) return false;
     if (!params.xSignatureHeader || !params.xRequestIdHeader) return false;
 
     const parts = Object.fromEntries(

@@ -163,10 +163,19 @@ export class OrdersService {
     if (!order.customerId) return;
     const tenant = await this.getTenantForNotify(order.tenantId);
     if (!tenant) return;
+    // `?avaliar=<id>` é o que faz o modal de avaliação aparecer — ver
+    // ReviewPromptProvider no frontend. Só essa notificação carrega
+    // esse parâmetro; qualquer outra URL de notificação nunca dispara
+    // o modal, mesmo que exista um pedido elegível por aí. Antes disso,
+    // o modal reaparecia em QUALQUER navegação enquanto existisse
+    // pedido elegível — clicar em qualquer outra notificação (ex:
+    // "pagamento confirmado") acabava mostrando o modal de avaliação
+    // de um pedido completamente diferente, sem relação com o que foi
+    // clicado.
     await this.pushService.sendToCustomer(order.tenantId, order.customerId, {
       title: 'Como foi seu pedido?',
       body: 'Sua opinião ajuda outros clientes e o restaurante a melhorar. Toque pra avaliar.',
-      url: `/${tenant.slug}/conta-cliente/pedidos/avulso/${order.id}`,
+      url: `/${tenant.slug}/conta-cliente/pedidos/avulso/${order.id}?avaliar=${order.id}`,
       tag: 'review_prompt',
       icon: tenant.logoUrl ?? undefined,
     });
@@ -1045,6 +1054,21 @@ export class OrdersService {
     amountReceived?: number,
   ): Promise<Order> {
     const order = await this.findOne(tenantId, id);
+
+    // Pedido de mesa nunca conclui pagamento individualmente por aqui —
+    // bug real que isso corrige: o botão "Concluir pedido" (usado no
+    // fluxo avulso/balcão/entrega) também aparecia nos pedidos DENTRO
+    // de uma mesa ativa no painel, e nada aqui impedia isso. Clicar
+    // nele marcava aquele pedido como pago e entregue por fora do
+    // fechamento de conta de verdade — sem pedir forma de pagamento da
+    // MESA, e sem bater com o total real cobrado quando a mesa fechava
+    // de verdade (TablesService.closeSession). Pagamento de mesa é
+    // sempre UMA VEZ, pra conta inteira, nunca pedido por pedido.
+    if (order.orderType === 'mesa') {
+      throw new BadRequestException(
+        'Pedido de mesa não conclui pagamento individualmente — feche a conta da mesa inteira.',
+      );
+    }
 
     if (paymentMethod === 'dinheiro') {
       const totalDueCents = toCents(order.total) + toCents(order.tipAmount);

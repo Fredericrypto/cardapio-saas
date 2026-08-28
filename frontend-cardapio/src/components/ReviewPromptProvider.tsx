@@ -1,36 +1,10 @@
 import { useEffect, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { fetchEligibleOrdersForReview } from '../lib/customer-api';
 import type { EligibleOrderForReview, MyReview } from '../lib/customer-api';
 import { useTenant } from '../contexts/TenantContext';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { ReviewModal } from './ReviewModal';
-
-// "Dispensei, não pergunta mais esse aqui" — de propósito em
-// localStorage, não sessionStorage. Antes era por sessão (fechou a
-// aba/deslogou, esquecia a dispensa e voltava a perguntar); isso é
-// mais fiel ao padrão do iFood (repergunta em toda abertura do app até
-// avaliar), mas na prática incomodava demais durante teste — qualquer
-// logout/login novo reabria o mesmo pedido de teste em TODA página.
-// Com localStorage, "Agora não" vale de verdade até o pedido ser
-// avaliado (ou o navegador limpar os dados do site). O cliente ainda
-// consegue achar e avaliar depois por conta própria em "Meus Pedidos".
-const DISMISSED_KEY = 'reviewPrompt.dismissedOrderIds';
-
-function getDismissedIds(): Set<string> {
-  try {
-    const raw = localStorage.getItem(DISMISSED_KEY);
-    return new Set(raw ? (JSON.parse(raw) as string[]) : []);
-  } catch {
-    return new Set();
-  }
-}
-
-function addDismissedId(id: string) {
-  const ids = getDismissedIds();
-  ids.add(id);
-  localStorage.setItem(DISMISSED_KEY, JSON.stringify([...ids]));
-}
 
 const ORDER_TYPE_LABEL: Record<EligibleOrderForReview['orderType'], string> = {
   balcao: 'Balcão',
@@ -38,41 +12,45 @@ const ORDER_TYPE_LABEL: Record<EligibleOrderForReview['orderType'], string> = {
   mesa: 'Mesa',
 };
 
-// Notificação "como foi o seu pedido?" — aparece como um modal por cima
-// de qualquer tela do app assim que existe um pedido concluído ainda
-// não avaliado (nem apagado depois de avaliado uma vez). Fica montado
-// uma vez só, direto dentro do Router (usa `useLocation` pra descobrir
-// em qual restaurante — :slug — o cliente está navegando, sem precisar
-// que toda rota passe isso explicitamente).
+// Notificação "como foi o seu pedido?" — modal por cima da tela.
+// Montado uma vez, direto dentro do Router.
 //
-// "Lembrar o cliente" funciona assim: se ele fechar com "Agora não",
-// esse pedido específico fica marcado como dispensado só PRA ESSA ABA/
-// SESSÃO do navegador (sessionStorage) — abrindo de novo depois (nova
-// aba, ou depois de fechar o navegador), a notificação volta, até ele
-// avaliar de verdade ou o pedido sair da lista de elegíveis por algum
-// outro motivo.
+// SÓ dispara a partir do parâmetro `?avaliar=<orderId>` na URL — que
+// SÓ a própria notificação de avaliação carrega (ver notifyReviewPrompt
+// no backend). Nenhuma outra navegação, nenhum outro clique, nenhuma
+// outra notificação abre esse modal.
+//
+// Bug real que isso corrige: antes, isso reconsultava e reabria o modal
+// em QUALQUER navegação enquanto existisse algum pedido elegível não
+// avaliado — clicar em QUALQUER notificação (pagamento confirmado,
+// cashback, status do pedido) acabava mostrando o modal de avaliação de
+// um pedido diferente, sem relação nenhuma com o que foi clicado. E
+// como o modal cobria a tela de destino real da notificação, parecia
+// que "a notificação não levava pra onde deveria".
 export function ReviewPromptProvider() {
   const location = useLocation();
-  // Nunca mostra nada por cima da tela de entrar/criar conta — evita
-  // qualquer confusão de "por que vejo um modal de outra sessão
-  // enquanto tento logar", que foi exatamente o bug relatado.
-  const isOnAuthPage = location.pathname.includes('/conta-cliente/entrar');
-
+  const navigate = useNavigate();
   const { tenant } = useTenant();
   const { token: customerToken } = useCustomerAuth();
   const [eligibleOrder, setEligibleOrder] = useState<EligibleOrderForReview | null>(null);
 
+  const params = new URLSearchParams(location.search);
+  const avaliarOrderId = params.get('avaliar');
+
   useEffect(() => {
-    if (isOnAuthPage || !tenant || !customerToken) {
+    if (!avaliarOrderId || !tenant || !customerToken) {
       setEligibleOrder(null);
       return;
     }
     let cancelled = false;
+    // Confere no servidor que esse pedido REALMENTE está elegível (não
+    // foi avaliado nesse meio-tempo, é de verdade desse cliente) antes
+    // de abrir o modal — nunca confia cegamente no parâmetro da URL,
+    // que pode vir de uma notificação antiga já resolvida.
     fetchEligibleOrdersForReview(tenant.id, customerToken)
       .then((orders) => {
         if (cancelled) return;
-        const dismissed = getDismissedIds();
-        setEligibleOrder(orders.find((o) => !dismissed.has(o.id)) ?? null);
+        setEligibleOrder(orders.find((o) => o.id === avaliarOrderId) ?? null);
       })
       .catch(() => {
         if (!cancelled) setEligibleOrder(null);
@@ -80,22 +58,28 @@ export function ReviewPromptProvider() {
     return () => {
       cancelled = true;
     };
-    // Reconsulta a cada navegação — é o "polling" mais barato possível
-    // (sem setInterval rodando pra sempre em segundo plano): qualquer
-    // troca de tela já é uma chance natural de reavaliar se apareceu
-    // pedido novo elegível.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tenant, customerToken, location.pathname, isOnAuthPage]);
+  }, [avaliarOrderId, tenant, customerToken]);
 
-  if (isOnAuthPage || !eligibleOrder || !tenant || !customerToken) return null;
+  if (!eligibleOrder || !tenant || !customerToken) return null;
+
+  // Tira o `?avaliar=` da URL ao fechar/enviar — sem isso, um F5 na
+  // mesma página reabriria o modal de novo, e voltar por essa URL no
+  // histórico do navegador também.
+  function clearAvaliarParam() {
+    const next = new URLSearchParams(location.search);
+    next.delete('avaliar');
+    const query = next.toString();
+    navigate({ pathname: location.pathname, search: query ? `?${query}` : '' }, { replace: true });
+  }
 
   function handleClose() {
-    addDismissedId(eligibleOrder!.id);
     setEligibleOrder(null);
+    clearAvaliarParam();
   }
 
   function handleSubmitted(_review: MyReview) {
     setEligibleOrder(null);
+    clearAvaliarParam();
   }
 
   return (

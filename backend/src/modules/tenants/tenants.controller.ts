@@ -27,6 +27,7 @@ function toSafeTenant(tenant: Tenant) {
   return {
     ...safeTenant,
     mercadoPagoConfigured: Boolean(mercadoPagoAccessTokenEncrypted),
+    mercadoPagoWebhookSecretConfigured: Boolean(mercadoPagoWebhookSecretEncrypted),
   };
 }
 
