@@ -5,7 +5,7 @@ import { fetchActivePromotions, fetchCategories, fetchProducts, fetchLocationByI
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { useTenant } from '../contexts/TenantContext';
 import { useCart } from '../contexts/CartContext';
-import { useTableSession } from '../hooks/useTableSession';
+import { useTableSessionContext } from '../contexts/TableSessionContext';
 import { useSelectedLocation } from '../hooks/useSelectedLocation';
 import { computePromotionEligibility } from '../lib/promotionEligibility';
 import type { Promotion, Category, Product, Location } from '../types';
@@ -45,9 +45,8 @@ export function PromotionDetailPage() {
   // lojas específicas (ver PromotionsService.isValidAtLocation), então
   // sem mandar a locationId certa pro backend a promoção some da lista
   // e essa tela mostra "não está mais disponível" mesmo ela existindo.
-  const { session: tableSession, isLoading: isTableSessionLoading } = useTableSession(
-    isTableFlow ? qrCodeToken : undefined,
-  );
+  const tableSessionCtx = useTableSessionContext();
+  const tableSession = tableSessionCtx?.session ?? null;
   const { location: selectedLocation, isLoading: isSelectedLocationLoading } = useSelectedLocation(
     !isTableFlow ? tenant?.id : undefined,
   );
@@ -65,8 +64,7 @@ export function PromotionDetailPage() {
   // uma renderização no meio do caminho em que o fetch da location já
   // devia ter começado mas o estado "loading" ainda não foi setado.
   const isLocationReady = isTableFlow
-    ? !isTableSessionLoading &&
-      (!tableSession?.table?.locationId || tableLocation?.id === tableSession.table.locationId)
+    ? !tableSession?.table?.locationId || tableLocation?.id === tableSession.table.locationId
     : Boolean(tenant) && !isSelectedLocationLoading;
 
   useEffect(() => {

@@ -10,7 +10,7 @@ import {
   getWaiterCallStatus,
 } from '../lib/menu-api';
 import type { Location, Category, Product, Promotion } from '../types';
-import { useTableSession } from '../hooks/useTableSession';
+import { useTableSessionContext } from '../contexts/TableSessionContext';
 import { useSelectedLocation } from '../hooks/useSelectedLocation';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { useTenant } from '../contexts/TenantContext';
@@ -36,11 +36,8 @@ export function MenuPage() {
   const navigate = useNavigate();
   const isTableFlow = Boolean(qrCodeToken);
 
-  const {
-    session,
-    isLoading: isSessionLoading,
-    error: sessionError,
-  } = useTableSession(qrCodeToken);
+  const tableSessionCtx = useTableSessionContext();
+  const session = tableSessionCtx?.session ?? null;
 
   const { tenant } = useTenant();
   const [categories, setCategories] = useState<Category[]>([]);
@@ -219,14 +216,6 @@ export function MenuPage() {
     isTableFlow ? `/${slug}/mesa/${qrCodeToken}/promocao/${promotionId}` : `/${slug}/promocao/${promotionId}`;
   const cartHref = isTableFlow ? `/${slug}/mesa/${qrCodeToken}/carrinho` : `/${slug}/carrinho`;
 
-  if (isTableFlow && sessionError) {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen px-6 text-center">
-        <p className="text-gray-500">{sessionError}</p>
-      </div>
-    );
-  }
-
   // Segurança extra: a mesa escaneada (pelo token) precisa pertencer ao
   // MESMO tenant identificado pela URL (pelo slug). Isso nunca deveria
   // divergir na prática (o link do QR sempre tem os dois corretos), mas
@@ -260,9 +249,7 @@ export function MenuPage() {
 
   if (
     isLoadingMenu ||
-    (isTableFlow && isSessionLoading) ||
     !tenant ||
-    (isTableFlow && !session) ||
     (!isTableFlow && isLoadingLocations) ||
     isWaitingForLocationChoice
   ) {

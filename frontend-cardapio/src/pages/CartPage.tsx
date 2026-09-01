@@ -7,7 +7,7 @@ import type { Location, DeliveryQuote, CreatedOrder, Promotion } from '../types'
 import { PixWaitingPanel } from '../components/PixWaitingPanel';
 import { useCart } from '../contexts/CartContext';
 import { useTenant } from '../contexts/TenantContext';
-import { useTableSession } from '../hooks/useTableSession';
+import { useTableSessionContext } from '../contexts/TableSessionContext';
 import { useSelectedLocation } from '../hooks/useSelectedLocation';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { fetchMyCashbackBalance, fetchActiveCashbackSettings } from '../lib/customer-api';
@@ -70,7 +70,8 @@ export function CartPage() {
     selectedPromotionIds,
     togglePromotion,
   } = useCart();
-  const { session } = useTableSession(qrCodeToken);
+  const tableSessionCtx = useTableSessionContext();
+  const session = tableSessionCtx?.session ?? null;
   const isTableFlow = Boolean(qrCodeToken);
 
   const [promotions, setPromotions] = useState<Promotion[]>([]);

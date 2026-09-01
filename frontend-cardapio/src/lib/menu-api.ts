@@ -141,6 +141,16 @@ export async function scanTableQrCode(qrCodeToken: string): Promise<TableSession
   return data;
 }
 
+// SÓ LEITURA — nunca cria sessão nova. Usado ao carregar/recarregar uma
+// página de mesa pra saber se já existe sessão ativa, sem correr o risco
+// de reabrir a mesa sozinha só por causa de um reload.
+export async function getCurrentTableSession(qrCodeToken: string): Promise<TableSession | null> {
+  const { data } = await api.get<TableSession | null>(
+    `/table-sessions/public/current/${qrCodeToken}`,
+  );
+  return data;
+}
+
 export async function fetchSessionSummary(
   tenantId: string,
   sessionId: string,

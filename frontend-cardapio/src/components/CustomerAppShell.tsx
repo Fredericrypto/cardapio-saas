@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom';
 import { TenantProvider } from '../contexts/TenantContext';
 import { CustomerAuthProvider } from '../contexts/CustomerAuthContext';
 import { ReviewPromptProvider } from './ReviewPromptProvider';
+import { QrScanButton } from './QrScanButton';
 
 // Layout raiz de todas as rotas `/:slug/*` — monta a busca do tenant e
 // a sessão do cliente UMA VEZ, compartilhada por toda a árvore de rotas
@@ -18,6 +19,7 @@ export function CustomerAppShell() {
       <CustomerAuthProvider>
         <Outlet />
         <ReviewPromptProvider />
+        <QrScanButton />
       </CustomerAuthProvider>
     </TenantProvider>
   );

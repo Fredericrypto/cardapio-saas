@@ -21,6 +21,7 @@ import { PublicReviewsPage } from './pages/PublicReviewsPage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { RequireCustomerAuth } from './components/RequireCustomerAuth';
 import { CustomerAppShell } from './components/CustomerAppShell';
+import { TableSessionGate } from './components/TableSessionGate';
 
 function App() {
   return (
@@ -31,12 +32,16 @@ function App() {
             {/* Fluxo de mesa (QR code físico na mesa) — mesmo MenuPage do
                 fluxo geral, só com qrCodeToken presente na URL. Continua
                 exigindo login: cardápio inteiro é área logada agora, ver
-                RequireCustomerAuth. */}
+                RequireCustomerAuth. TableSessionGate vem DEPOIS do login
+                de propósito — resolver "existe sessão ativa nessa mesa?"
+                só faz sentido depois de saber quem está perguntando. */}
             <Route
               path="mesa/:qrCodeToken"
               element={
                 <RequireCustomerAuth>
-                  <MenuPage />
+                  <TableSessionGate>
+                    <MenuPage />
+                  </TableSessionGate>
                 </RequireCustomerAuth>
               }
             />
@@ -44,7 +49,9 @@ function App() {
               path="mesa/:qrCodeToken/conta"
               element={
                 <RequireCustomerAuth>
-                  <MyAccountPage />
+                  <TableSessionGate>
+                    <MyAccountPage />
+                  </TableSessionGate>
                 </RequireCustomerAuth>
               }
             />
@@ -52,7 +59,9 @@ function App() {
               path="mesa/:qrCodeToken/produto/:productId"
               element={
                 <RequireCustomerAuth>
-                  <ProductDetailPage />
+                  <TableSessionGate>
+                    <ProductDetailPage />
+                  </TableSessionGate>
                 </RequireCustomerAuth>
               }
             />
@@ -60,7 +69,9 @@ function App() {
               path="mesa/:qrCodeToken/promocao/:promotionId"
               element={
                 <RequireCustomerAuth>
-                  <PromotionDetailPage />
+                  <TableSessionGate>
+                    <PromotionDetailPage />
+                  </TableSessionGate>
                 </RequireCustomerAuth>
               }
             />
@@ -68,7 +79,9 @@ function App() {
               path="mesa/:qrCodeToken/carrinho"
               element={
                 <RequireCustomerAuth>
-                  <CartPage />
+                  <TableSessionGate>
+                    <CartPage />
+                  </TableSessionGate>
                 </RequireCustomerAuth>
               }
             />

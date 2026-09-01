@@ -206,7 +206,7 @@ export interface TableSession {
   id: string;
   tenantId: string;
   tableId: string;
-  status: 'aberta' | 'fechamento_solicitado' | 'fechada';
+  status: 'aberta' | 'fechamento_solicitado' | 'fechada' | 'expirada';
   openedAt: string;
   closedAt: string | null;
   tipAmount: number;
@@ -214,6 +214,14 @@ export interface TableSession {
   amountReceived: number | null;
   changeGiven: number | null;
   table?: { number: string; locationId: string } | null;
+  // Calculados na hora (nunca gravados no banco) — só presentes na
+  // resposta do scan/consulta de sessão de mesa, pra o timer visual no
+  // frontend não precisar de uma chamada extra só pra saber isso.
+  hasOrder?: boolean;
+  // Presente só quando: sessão ainda sem pedido nenhum + restaurante tem
+  // prazo configurado. `null`/ausente = sem prazo correndo (ou porque já
+  // tem pedido, ou porque o restaurante desativou o prazo).
+  expiresAt?: string | null;
 }
 
 export interface SessionSummary {

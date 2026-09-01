@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, Bell } from 'lucide-react';
 import { fetchSessionSummary, requestSessionClosing } from '../lib/menu-api';
 import type { SessionSummary } from '../types';
-import { useTableSession } from '../hooks/useTableSession';
+import { useTableSessionContext } from '../contexts/TableSessionContext';
 import { useTenant } from '../contexts/TenantContext';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -17,9 +17,8 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export function MyAccountPage() {
-  const { qrCodeToken } = useParams<{ slug: string; qrCodeToken: string }>();
   const navigate = useNavigate();
-  const { session } = useTableSession(qrCodeToken);
+  const { session } = useTableSessionContext()!;
   const { tenant } = useTenant();
 
   const [summary, setSummary] = useState<SessionSummary | null>(null);
