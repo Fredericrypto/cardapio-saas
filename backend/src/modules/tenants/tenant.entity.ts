@@ -75,6 +75,16 @@ export class Tenant {
   @Column({ name: 'mercado_pago_webhook_secret_encrypted', type: 'text', nullable: true })
   mercadoPagoWebhookSecretEncrypted: string | null;
 
+  // Tempo (em minutos) que o cliente tem, depois de escanear o QR da
+  // mesa, pra fazer o PRIMEIRO pedido antes da sessão expirar sozinha.
+  // NULL = desativado (sessão nunca expira automaticamente — era o
+  // comportamento antigo, antes dessa feature existir). Só conta
+  // enquanto não existe nenhum pedido na sessão — assim que o primeiro
+  // pedido é feito, o prazo deixa de valer pra sempre nessa sessão (ver
+  // TablesService.expireStaleSessionIfNeeded).
+  @Column({ name: 'table_session_timeout_minutes', type: 'int', nullable: true })
+  tableSessionTimeoutMinutes: number | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 

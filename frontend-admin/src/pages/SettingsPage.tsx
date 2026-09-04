@@ -23,6 +23,9 @@ export function SettingsPage() {
   const [showWebhookSecretField, setShowWebhookSecretField] = useState(
     !tenant?.mercadoPagoWebhookSecretConfigured,
   );
+  const [tableSessionTimeoutMinutes, setTableSessionTimeoutMinutes] = useState<number | null>(
+    tenant?.tableSessionTimeoutMinutes ?? null,
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [savedMessage, setSavedMessage] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
@@ -94,6 +97,7 @@ export function SettingsPage() {
         pixEnabled,
         mercadoPagoAccessToken: mercadoPagoAccessToken.trim() || undefined,
         mercadoPagoWebhookSecret: mercadoPagoWebhookSecret.trim() || undefined,
+        tableSessionTimeoutMinutes,
       });
       setMercadoPagoAccessToken('');
       setShowMercadoPagoField(!updated.mercadoPagoConfigured);
@@ -367,6 +371,33 @@ export function SettingsPage() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Prazo pra fazer o primeiro pedido depois de escanear o QR da
+            mesa — passou do prazo sem NENHUM pedido, a sessão expira
+            sozinha (o cliente precisa escanear de novo). Um único pedido
+            já cancela o prazo pra sempre naquela sessão específica. */}
+        <div className="bg-white rounded-2xl p-5 border border-gray-100 flex flex-col gap-3">
+          <p className="text-sm font-bold text-gray-900">Prazo pra pedir na mesa</p>
+          <p className="text-xs text-gray-400">
+            Se o cliente escanear o QR e não fizer nenhum pedido dentro desse tempo, a mesa
+            libera sozinha e ele precisa escanear de novo. Depois do primeiro pedido, esse
+            prazo deixa de valer.
+          </p>
+          <select
+            value={tableSessionTimeoutMinutes ?? ''}
+            onChange={(e) =>
+              setTableSessionTimeoutMinutes(e.target.value ? Number(e.target.value) : null)
+            }
+            className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none w-full bg-white"
+          >
+            <option value="">Desativado (nunca expira sozinho)</option>
+            <option value="10">10 minutos</option>
+            <option value="15">15 minutos</option>
+            <option value="30">30 minutos</option>
+            <option value="60">1 hora</option>
+            <option value="120">2 horas</option>
+          </select>
         </div>
 
         {savedMessage && (

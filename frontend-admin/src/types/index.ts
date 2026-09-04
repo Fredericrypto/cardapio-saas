@@ -20,6 +20,7 @@ export interface Tenant {
   pixEnabled: boolean;
   mercadoPagoConfigured: boolean;
   mercadoPagoWebhookSecretConfigured: boolean;
+  tableSessionTimeoutMinutes: number | null;
 }
 
 // Uma loja física (filial) — endereço/horário/entrega são por Location

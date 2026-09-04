@@ -2,6 +2,8 @@ import {
   IsString,
   IsOptional,
   IsBoolean,
+  IsInt,
+  Min,
   Matches,
   IsIn,
 } from 'class-validator';
@@ -61,4 +63,15 @@ export class UpdateTenantDto {
   @IsOptional()
   @IsString()
   mercadoPagoWebhookSecret?: string;
+
+  // Minutos que o cliente tem pra fazer o primeiro pedido depois de
+  // escanear o QR da mesa, antes da sessão expirar sozinha. `null`
+  // desativa (sessão nunca expira automaticamente). Nunca aceita 0 ou
+  // negativo — isso expiraria a sessão instantaneamente, o que não faz
+  // sentido como configuração (equivalente a "desativado" deveria ser
+  // null, não zero).
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  tableSessionTimeoutMinutes?: number | null;
 }

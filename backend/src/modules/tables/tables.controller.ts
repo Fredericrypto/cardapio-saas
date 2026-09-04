@@ -126,11 +126,25 @@ export class TablesController {
 
   // ---------- Fluxo público: cliente escaneando o QR code ----------
 
-  // O cliente acessa algo como /mesa/:qrCodeToken no frontend, que chama
-  // essa rota pra abrir (ou entrar n)a sessão da mesa, sem precisar de login.
+  // AÇÃO EXPLÍCITA — cria/entra na sessão de verdade. Só deve ser chamada
+  // no exato momento de um scan real (câmera decodificou o QR agora), NUNCA
+  // como efeito colateral de só carregar uma página. Ver getCurrentSession
+  // logo abaixo pra o caso de "só estou revisitando uma mesa que já
+  // escaneei".
   @Post('table-sessions/public/scan/:qrCodeToken')
   async scanQrCode(@Param('qrCodeToken') qrCodeToken: string) {
-    return this.tablesService.openOrJoinSession(qrCodeToken);
+    const session = await this.tablesService.openOrJoinSession(qrCodeToken);
+    return this.tablesService.withTimerInfo(session);
+  }
+
+  // SÓ LEITURA — nunca cria sessão nova, nunca conta como "escaneei agora".
+  // O frontend usa isso ao carregar/recarregar uma página de mesa: se
+  // devolver uma sessão, mostra o cardápio normal; se devolver null, mostra
+  // a tela de "confirmar entrada" (que aí sim chama scanQrCode acima).
+  @Get('table-sessions/public/current/:qrCodeToken')
+  async getCurrentSession(@Param('qrCodeToken') qrCodeToken: string) {
+    const session = await this.tablesService.getCurrentSession(qrCodeToken);
+    return session ? this.tablesService.withTimerInfo(session) : null;
   }
 
   // "Minha Conta": tenantId vem resolvido no frontend a partir da própria

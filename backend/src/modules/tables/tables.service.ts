@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, IsNull } from 'typeorm';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { randomBytes } from 'crypto';
 import { RestaurantTable } from './restaurant-table.entity';
 import { TableSession } from './table-session.entity';
@@ -78,6 +79,28 @@ export class TablesService {
   // Chamado quando o cliente escaneia o QR code. Se já existe uma sessão
   // "aberta" pra essa mesa, reaproveita (várias pessoas na mesma mesa
   // caem na mesma conta). Senão, abre uma nova.
+  // Anexa `hasOrder`/`expiresAt` calculados na hora — nunca gravados no
+  // banco, só pra o frontend desenhar o timer sem precisar de outra
+  // chamada. Reaproveitado tanto por quem acabou de entrar (scan) quanto
+  // por quem só está revisitando (getCurrentSession).
+  async withTimerInfo(
+    session: TableSession,
+  ): Promise<TableSession & { hasOrder: boolean; expiresAt: string | null }> {
+    const hasOrder = await this.orderRepo.exists({ where: { tableSessionId: session.id } });
+    let expiresAt: string | null = null;
+    if (!hasOrder && session.status === 'aberta') {
+      const tenant = await this.tableRepo.manager
+        .getRepository(Tenant)
+        .findOne({ where: { id: session.tenantId }, select: { tableSessionTimeoutMinutes: true } });
+      if (tenant?.tableSessionTimeoutMinutes) {
+        expiresAt = new Date(
+          session.openedAt.getTime() + tenant.tableSessionTimeoutMinutes * 60_000,
+        ).toISOString();
+      }
+    }
+    return { ...session, hasOrder, expiresAt };
+  }
+
   async openOrJoinSession(qrCodeToken: string): Promise<TableSession> {
     const table = await this.tableRepo.findOne({
       where: { qrCodeToken, isActive: true },
@@ -92,7 +115,8 @@ export class TablesService {
     // fechamento e voltasse a escanear o QR (ou desse refresh) abriria uma
     // SEGUNDA sessão "por baixo" pra mesma mesa, deixando o garçom sem ver
     // pedidos novos que ficariam fora da conta que ele acha que vai fechar.
-    // Só quando a sessão está "fechada" de fato é que uma nova é criada.
+    // Só quando a sessão está "fechada"/"expirada" de fato é que uma nova é
+    // criada.
     const existingSession = await this.sessionRepo.findOne({
       where: [
         { tableId: table.id, status: 'aberta' },
@@ -134,6 +158,78 @@ export class TablesService {
         }
       }
       throw err;
+    }
+  }
+
+  // Consulta SÓ LEITURA — nunca cria sessão nova. Bug real que isso
+  // corrige: antes, a única forma de saber "essa mesa tem sessão aberta?"
+  // era `openOrJoinSession`, que CRIA uma sessão nova silenciosamente
+  // quando não encontra nenhuma. Isso rodava toda vez que o frontend só
+  // CARREGAVA a página da mesa (efeito de montagem de componente) — uma
+  // aba esquecida aberta, um refresh, o histórico do navegador, qualquer
+  // coisa que recarregasse a URL depois da conta já ter sido paga reabria
+  // a mesa sozinha, sem ninguém escanear nada de verdade. Agora, entrar
+  // numa mesa de fato (criar/juntar sessão) só acontece por uma ação
+  // explícita do cliente — ver joinSession no controller.
+  async getCurrentSession(qrCodeToken: string): Promise<TableSession | null> {
+    const table = await this.tableRepo.findOne({ where: { qrCodeToken, isActive: true } });
+    if (!table) {
+      throw new NotFoundException('Mesa não encontrada ou QR code inválido.');
+    }
+    const session = await this.sessionRepo.findOne({
+      where: [
+        { tableId: table.id, status: 'aberta' },
+        { tableId: table.id, status: 'fechamento_solicitado' },
+      ],
+      relations: { table: true },
+      order: { openedAt: 'DESC' },
+    });
+    if (!session) return null;
+    const expired = await this.expireIfStale(session);
+    return expired ? null : session;
+  }
+
+  // Devolve `true` se a sessão FOI expirada agora (chamador deve tratar
+  // como "não existe mais"). Só expira quando: status ainda é 'aberta'
+  // (nunca expira 'fechamento_solicitado' — cliente já está ativamente
+  // fechando a conta, não faz sentido cortar isso no meio), o tenant tem
+  // um prazo configurado, o prazo já passou, E — o mais importante —
+  // NENHUM pedido foi feito nessa sessão ainda. Um único pedido já
+  // confirmado cancela o prazo pra sempre nessa sessão, não importa
+  // quanto tempo passe depois.
+  private async expireIfStale(session: TableSession): Promise<boolean> {
+    if (session.status !== 'aberta') return false;
+
+    const tenant = await this.tableRepo.manager
+      .getRepository(Tenant)
+      .findOne({ where: { id: session.tenantId }, select: { tableSessionTimeoutMinutes: true } });
+    const timeoutMinutes = tenant?.tableSessionTimeoutMinutes;
+    if (!timeoutMinutes) return false;
+
+    const deadline = new Date(session.openedAt.getTime() + timeoutMinutes * 60_000);
+    if (new Date() < deadline) return false;
+
+    const hasOrder = await this.orderRepo.exists({ where: { tableSessionId: session.id } });
+    if (hasOrder) return false;
+
+    session.status = 'expirada';
+    session.closedAt = new Date();
+    await this.sessionRepo.save(session);
+    return true;
+  }
+
+  // Varredura periódica — pega sessões que passaram do prazo mesmo que
+  // NINGUÉM tenha revisitado a página (ex: cliente escaneou, nunca mais
+  // voltou nem no app nem fisicamente) — sem isso, o painel do admin
+  // mostraria essa mesa como "aberta há 3 horas" indefinidamente, mesmo
+  // já tendo estourado o prazo configurado há muito tempo.
+  @Cron(CronExpression.EVERY_5_MINUTES)
+  async sweepExpiredSessions(): Promise<void> {
+    const openSessions = await this.sessionRepo.find({
+      where: { status: 'aberta', closedAt: IsNull() },
+    });
+    for (const session of openSessions) {
+      await this.expireIfStale(session);
     }
   }
 
