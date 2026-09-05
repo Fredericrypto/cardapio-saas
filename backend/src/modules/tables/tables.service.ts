@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull } from 'typeorm';
+import { Repository, IsNull, Not } from 'typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { randomBytes } from 'crypto';
 import { RestaurantTable } from './restaurant-table.entity';
@@ -129,6 +129,25 @@ export class TablesService {
       return existingSession;
     }
 
+    // BUG REAL CORRIGIDO: uma sessão "expirada" (ver expireIfStale/cron
+    // acima) continua ocupando a mesa pro índice único do banco — só
+    // status 'fechada' fica isento dele (ver migration
+    // AddUniqueActiveSessionPerTable). Sem isso, depois que o timer
+    // estoura, escanear essa mesa de NOVO (pelo ícone ou pela câmera,
+    // tanto faz) sempre esbarra na unique constraint ao tentar criar a
+    // sessão nova, quebra com um erro 500 não tratado, e o cliente fica
+    // preso num loop reescaneando pra sempre sem nunca conseguir entrar
+    // de novo na mesa. Uma sessão expirada não vale mais nada pro
+    // cliente — fecha ela definitivamente antes de abrir a próxima.
+    const staleSession = await this.sessionRepo.findOne({
+      where: { tableId: table.id, status: 'expirada' },
+    });
+    if (staleSession) {
+      staleSession.status = 'fechada';
+      staleSession.closedAt = staleSession.closedAt ?? new Date();
+      await this.sessionRepo.save(staleSession);
+    }
+
     // ANTI "PULAR DE MESA" — a mesma checagem que já existia só na hora
     // de criar um PEDIDO (ver OrdersService) agora também vale pra abrir
     // uma sessão NOVA numa mesa diferente: se esse cliente logado tem um
@@ -174,11 +193,14 @@ export class TablesService {
       // segunda gravação (código 23505 do Postgres) — em vez de estourar
       // erro pro cliente, buscamos e devolvemos a sessão que "venceu".
       if (err?.code === '23505') {
+        // Mesmo raciocínio do bloco acima: a sessão "vencedora" da
+        // corrida pode estar em QUALQUER status que o índice único
+        // considera ocupado (tudo exceto 'fechada'), não só
+        // aberta/fechamento_solicitado — nunca estreitar esse filtro,
+        // ou volta a cair no mesmo 500 não tratado quando a vencedora
+        // for uma sessão 'expirada' que ainda não foi fechada.
         const winningSession = await this.sessionRepo.findOne({
-          where: [
-            { tableId: table.id, status: 'aberta' },
-            { tableId: table.id, status: 'fechamento_solicitado' },
-          ],
+          where: { tableId: table.id, status: Not('fechada') },
           relations: { table: true },
           order: { openedAt: 'DESC' },
         });

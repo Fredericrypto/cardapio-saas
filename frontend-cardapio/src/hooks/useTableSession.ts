@@ -11,13 +11,24 @@ import type { TableSession } from '../types';
 // que revisitasse a URL depois da conta já paga reabria a mesa sozinha,
 // sem ninguém escanear nada fisicamente.
 //
-// Agora: primeiro só CONSULTA (getCurrentTableSession, nunca cria nada).
-// Se já existe sessão ativa, segue direto pro cardápio, sem fricção
-// nenhuma — é o caso comum (cliente navegando dentro da própria sessão
-// que já escaneou). Se NÃO existe, expõe `needsConfirmation: true` — o
-// componente que usa esse hook mostra uma tela pedindo confirmação
-// explícita ("Você está nessa mesa agora?"), e só quando o cliente
-// confirma é que `confirmJoin()` chama o scan de verdade.
+// Mas pedir confirmação ("Você está nessa mesa agora?") TODA vez que não
+// há sessão ativa também está errado — no scan de verdade (primeira vez
+// que ESSA aba visita essa mesa; cobre tanto abrir pela câmera nativa
+// quanto pelo scanner de dentro do app, já que os dois só fazem
+// `navigate()` pra essa mesma URL) isso é fricção sem motivo: a pessoa
+// acabou de apontar o celular pro QR físico da mesa, não tem "outro
+// motivo" pra suspeitar. A confirmação só faz sentido quando essa MESMA
+// aba já tinha entrado nessa mesa antes e está voltando (ex: notificação
+// reabrindo uma aba antiga, app saindo/voltando de segundo plano) — aí
+// sim pode ser um retorno indevido, não um scan novo.
+//
+// `sessionStorage` (por aba, some ao fechar) marca "essa aba já entrou
+// nessa mesa alguma vez": ausente = trata como scan de verdade, entra
+// direto; presente = pede confirmação antes de entrar de novo.
+function visitedKey(qrCodeToken: string) {
+  return `mesa_visitada_${qrCodeToken}`;
+}
+
 export function useTableSession(qrCodeToken: string | undefined) {
   const { token: customerToken } = useCustomerAuth();
   const [session, setSession] = useState<TableSession | null>(null);
@@ -25,6 +36,17 @@ export function useTableSession(qrCodeToken: string | undefined) {
   const [error, setError] = useState<string | null>(null);
   const [needsConfirmation, setNeedsConfirmation] = useState(false);
   const [expired, setExpired] = useState(false);
+
+  const doJoin = useCallback(
+    async (token: string) => {
+      const freshSession = await scanTableQrCode(token, customerToken);
+      sessionStorage.setItem(visitedKey(token), '1');
+      setSession(freshSession);
+      setNeedsConfirmation(false);
+      setExpired(false);
+    },
+    [customerToken],
+  );
 
   const checkCurrent = useCallback(async () => {
     if (!qrCodeToken) {
@@ -36,12 +58,20 @@ export function useTableSession(qrCodeToken: string | undefined) {
     try {
       const current = await getCurrentTableSession(qrCodeToken);
       if (current) {
+        sessionStorage.setItem(visitedKey(qrCodeToken), '1');
         setSession(current);
         setNeedsConfirmation(false);
         setExpired(false);
-      } else {
+      } else if (sessionStorage.getItem(visitedKey(qrCodeToken))) {
+        // Essa aba já esteve nessa mesa antes e não há sessão ativa
+        // agora — pode ser retorno indevido (notificação reabrindo aba
+        // velha, app voltando de segundo plano). Só aqui vale confirmar.
         setSession(null);
         setNeedsConfirmation(true);
+      } else {
+        // Primeira vez que essa aba visita essa mesa — trata como scan
+        // de verdade, entra direto, sem perguntar nada.
+        await doJoin(qrCodeToken);
       }
     } catch (err) {
       const backendMessage = extractBackendMessage(err);
@@ -49,31 +79,27 @@ export function useTableSession(qrCodeToken: string | undefined) {
     } finally {
       setIsLoading(false);
     }
-  }, [qrCodeToken]);
+  }, [qrCodeToken, doJoin]);
 
   useEffect(() => {
     checkCurrent();
   }, [checkCurrent]);
 
   // AÇÃO EXPLÍCITA — só deve ser chamada a partir de um gesto real do
-  // cliente (botão "Sim, estou nessa mesa" / scan de verdade dentro do
-  // app), nunca automaticamente.
+  // cliente (botão "Sim, estou nessa mesa"), nunca automaticamente.
   const confirmJoin = useCallback(async () => {
     if (!qrCodeToken) return;
     setIsLoading(true);
     setError(null);
     try {
-      const freshSession = await scanTableQrCode(qrCodeToken, customerToken);
-      setSession(freshSession);
-      setNeedsConfirmation(false);
-      setExpired(false);
+      await doJoin(qrCodeToken);
     } catch (err) {
       const backendMessage = extractBackendMessage(err);
       setError(backendMessage ?? 'Não foi possível abrir esta mesa. Peça ajuda a um garçom.');
     } finally {
       setIsLoading(false);
     }
-  }, [qrCodeToken, customerToken]);
+  }, [qrCodeToken, doJoin]);
 
   // Chamado pelo componente do timer quando o prazo estoura no relógio
   // do CLIENTE — ainda assim reconsulta o backend (fonte da verdade,
@@ -84,6 +110,11 @@ export function useTableSession(qrCodeToken: string | undefined) {
     if (!qrCodeToken) return;
     const current = await getCurrentTableSession(qrCodeToken).catch(() => null);
     if (!current) {
+      // A sessão realmente acabou (fechada/expirada) — libera essa mesa
+      // pra ser tratada como "scan de verdade" de novo na próxima vez
+      // (ex: mesmo celular testando de novo, ou próximo cliente sentando
+      // e usando o mesmo navegador/aba compartilhado do estabelecimento).
+      sessionStorage.removeItem(visitedKey(qrCodeToken));
       setSession(null);
       setExpired(true);
     } else {
