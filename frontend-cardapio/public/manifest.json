@@ -1,0 +1,21 @@
+{
+  "name": "Cardápio SaaS (placeholder)",
+  "short_name": "Cardápio",
+  "description": "Cardápio digital e pedidos — nome e ícone definitivos ainda por vir.",
+  "start_url": "/restaurante-teste",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f9fafb",
+  "theme_color": "#2a1252",
+  "icons": [
+    { "src": "/icons-pwa/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons-pwa/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    {
+      "src": "/icons-pwa/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

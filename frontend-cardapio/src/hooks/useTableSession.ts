@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { getCurrentTableSession, scanTableQrCode } from '../lib/menu-api';
+import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import type { TableSession } from '../types';
 
 // Bug real que essa reescrita corrige: antes, `useTableSession` chamava
@@ -18,6 +19,7 @@ import type { TableSession } from '../types';
 // explícita ("Você está nessa mesa agora?"), e só quando o cliente
 // confirma é que `confirmJoin()` chama o scan de verdade.
 export function useTableSession(qrCodeToken: string | undefined) {
+  const { token: customerToken } = useCustomerAuth();
   const [session, setSession] = useState<TableSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -61,7 +63,7 @@ export function useTableSession(qrCodeToken: string | undefined) {
     setIsLoading(true);
     setError(null);
     try {
-      const freshSession = await scanTableQrCode(qrCodeToken);
+      const freshSession = await scanTableQrCode(qrCodeToken, customerToken);
       setSession(freshSession);
       setNeedsConfirmation(false);
       setExpired(false);
@@ -71,7 +73,7 @@ export function useTableSession(qrCodeToken: string | undefined) {
     } finally {
       setIsLoading(false);
     }
-  }, [qrCodeToken]);
+  }, [qrCodeToken, customerToken]);
 
   // Chamado pelo componente do timer quando o prazo estoura no relógio
   // do CLIENTE — ainda assim reconsulta o backend (fonte da verdade,
@@ -88,6 +90,24 @@ export function useTableSession(qrCodeToken: string | undefined) {
       setSession(current);
     }
   }, [qrCodeToken]);
+
+  // Checagem de fundo, independente de qual tela o cliente está vendo —
+  // antes, o prazo só era reconferido quando o componente visual do
+  // timer estava montado e chegava a zero (ou seja, só na página do
+  // cardápio). Isso deixava passar o caso de o cliente ficar minutos no
+  // carrinho ou numa tela de produto: a sessão expirava de verdade no
+  // backend, mas o app só percebia quando ele voltasse pro cardápio. A
+  // cada 20s, enquanto existir um prazo (`session.expiresAt`) e a sessão
+  // ainda não tiver pedido nenhum, reconsulta o backend (fonte da
+  // verdade) direto daqui, funcionando em qualquer página do fluxo de
+  // mesa.
+  useEffect(() => {
+    if (!session?.expiresAt) return;
+    const interval = setInterval(() => {
+      recheckExpiry();
+    }, 20_000);
+    return () => clearInterval(interval);
+  }, [session?.expiresAt, recheckExpiry]);
 
   return { session, isLoading, error, needsConfirmation, expired, confirmJoin, recheckExpiry };
 }

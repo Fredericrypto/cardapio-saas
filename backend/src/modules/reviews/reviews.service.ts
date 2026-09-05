@@ -25,6 +25,10 @@ export interface PublicReviewDto {
   rating: number;
   comment: string | null;
   customerDisplayName: string;
+  // Nunca preenchido quando `isAnonymous` — mesma regra do nome: review
+  // anônima não vaza NENHUM dado que identifique o cliente, avatar
+  // incluso.
+  customerAvatarUrl: string | null;
   isAnonymous: boolean;
   createdAt: Date;
   response: { responseText: string; createdAt: Date } | null;
@@ -209,7 +213,11 @@ export class ReviewsService {
   }
 
   // Nunca expõe o Customer completo (email, telefone...) pro público —
-  // só o nome já formatado, ou "Anônimo" se a review foi marcada assim.
+  // só o nome já formatado (ou "Anônimo"), e o avatar só quando a
+  // review NÃO é anônima. Bug real que isso corrige: o avatar nunca
+  // era incluído aqui, mesmo já vindo carregado na query (`relations:
+  // { customer: true }`) — o frontend sempre caía no ícone genérico
+  // porque o campo simplesmente não existia na resposta.
   private toPublicDto(review: Review, response: ReviewResponse | null): PublicReviewDto {
     return {
       id: review.id,
@@ -218,6 +226,7 @@ export class ReviewsService {
       customerDisplayName: review.isAnonymous
         ? 'Anônimo'
         : formatPublicDisplayName(review.customer?.name ?? 'Cliente'),
+      customerAvatarUrl: review.isAnonymous ? null : (review.customer?.avatarUrl ?? null),
       isAnonymous: review.isAnonymous,
       createdAt: review.createdAt,
       response: response

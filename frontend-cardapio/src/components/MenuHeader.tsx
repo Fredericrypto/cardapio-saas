@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import type { Tenant, Location } from '../types';
 import { getTodayHoursLabel } from '../lib/openingHours';
 import { RestaurantInfoPanel } from './RestaurantInfoPanel';
+import { QrScanButton } from './QrScanButton';
 import { fetchReviewsSummary } from '../lib/customer-api';
 
 interface MenuHeaderProps {
@@ -109,9 +110,15 @@ export function MenuHeader({ tenant, location, onBack }: MenuHeaderProps) {
             )}
           </div>
 
-          <h1 className="font-display text-lg font-bold leading-tight text-gray-900 mt-1.5">
-            {tenant.name}
-          </h1>
+          <div className="w-full flex items-center justify-center gap-2 mt-1.5 px-1">
+            <div className="flex-1" />
+            <h1 className="font-display text-lg font-bold leading-tight text-gray-900 shrink-0 truncate max-w-[70%] text-center">
+              {tenant.name}
+            </h1>
+            <div className="flex-1 flex justify-start min-w-0">
+              <QrScanButton />
+            </div>
+          </div>
           {location && <p className="text-xs text-gray-400 mt-0.5">{location.name}</p>}
           {reviewSummary && (
             <button

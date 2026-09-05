@@ -5,6 +5,10 @@ import type { TableSession } from '../types';
 interface TableSessionTimerProps {
   session: TableSession;
   onExpiryTick: () => void;
+  // 'fixed' (padrão): badge flutuante de canto, posição absoluta.
+  // 'inline': só o conteúdo, sem posicionamento — pra encaixar dentro de
+  // outro layout (ex: ao lado do nome do restaurante no header).
+  variant?: 'fixed' | 'inline';
 }
 
 // Badge minimalista de canto, só aparece quando existe um prazo correndo
@@ -15,7 +19,11 @@ interface TableSessionTimerProps {
 // fonte da verdade — antes de mostrar a tela de expirado, evitando
 // mostrar "expirado" só por causa de o relógio do celular estar um
 // pouco adiantado).
-export function TableSessionTimer({ session, onExpiryTick }: TableSessionTimerProps) {
+export function TableSessionTimer({
+  session,
+  onExpiryTick,
+  variant = 'fixed',
+}: TableSessionTimerProps) {
   const [remainingMs, setRemainingMs] = useState<number | null>(null);
 
   useEffect(() => {
@@ -48,15 +56,17 @@ export function TableSessionTimer({ session, onExpiryTick }: TableSessionTimerPr
   // só decorativo, de que o prazo está acabando de verdade.
   const isUrgent = remainingMs < 120_000;
 
+  const positionClass = variant === 'fixed' ? 'fixed top-3 right-3 z-40 shadow-sm' : '';
+
   return (
     <div
-      className={`fixed top-3 right-3 z-40 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold shadow-sm ${
-        isUrgent ? 'bg-red-50 text-red-600' : 'bg-white/90 text-gray-600'
+      className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${positionClass} ${
+        isUrgent ? 'bg-red-50 text-red-600' : 'bg-gray-50 text-gray-500'
       }`}
     >
-      <Clock size={13} />
+      <Clock size={12} />
       <span>
-        {minutes}:{seconds.toString().padStart(2, '0')} pra pedir
+        {minutes}:{seconds.toString().padStart(2, '0')}
       </span>
     </div>
   );

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull } from 'typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
@@ -101,7 +101,7 @@ export class TablesService {
     return { ...session, hasOrder, expiresAt };
   }
 
-  async openOrJoinSession(qrCodeToken: string): Promise<TableSession> {
+  async openOrJoinSession(qrCodeToken: string, customerId?: string | null): Promise<TableSession> {
     const table = await this.tableRepo.findOne({
       where: { qrCodeToken, isActive: true },
     });
@@ -127,6 +127,35 @@ export class TablesService {
     });
     if (existingSession) {
       return existingSession;
+    }
+
+    // ANTI "PULAR DE MESA" — a mesma checagem que já existia só na hora
+    // de criar um PEDIDO (ver OrdersService) agora também vale pra abrir
+    // uma sessão NOVA numa mesa diferente: se esse cliente logado tem um
+    // pedido em outra sessão ainda ativa (aberta ou com fechamento
+    // solicitado) nesse mesmo tenant, ele precisa fechar/pagar aquela
+    // conta antes de escanear outra mesa. Só se aplica quando já existe
+    // PEDIDO — se o cliente só abriu uma sessão vazia (nunca pediu nada)
+    // em outra mesa, trocar de mesa livremente é permitido (a sessão
+    // vazia expira sozinha depois, via o prazo configurado/varredura).
+    // Cliente convidado (sem login) nunca passa por essa checagem — não
+    // tem como saber se é "a mesma pessoa" sem conta.
+    if (customerId) {
+      const otherActiveOrder = await this.orderRepo
+        .createQueryBuilder('order')
+        .innerJoin(TableSession, 'otherSession', 'otherSession.id = order.table_session_id')
+        .where('order.tenant_id = :tenantId', { tenantId: table.tenantId })
+        .andWhere('order.customer_id = :customerId', { customerId })
+        .andWhere('otherSession.table_id != :tableId', { tableId: table.id })
+        .andWhere('otherSession.status IN (:...openStatuses)', {
+          openStatuses: ['aberta', 'fechamento_solicitado'],
+        })
+        .getOne();
+      if (otherActiveOrder) {
+        throw new ConflictException(
+          'Você tem uma conta em aberto em outra mesa. Peça pro garçom fechar/pagar essa conta antes de abrir outra mesa.',
+        );
+      }
     }
 
     const session = this.sessionRepo.create({
@@ -463,6 +492,21 @@ export class TablesService {
     const tenantForNotify = await this.orderRepo.manager
       .getRepository(Tenant)
       .findOne({ where: { id: tenantId }, select: { slug: true, logoUrl: true } });
+
+    // BUG CORRIGIDO: antes, cada PEDIDO da sessão disparava 3
+    // notificações (avaliação + pagamento + cashback) na hora — uma
+    // mesa com 3 pedidos virava 9 notificações de uma vez só (e
+    // multiplicado de novo por cada navegador/dispositivo em que o
+    // cliente tem push cadastrado). Agora o crédito de cashback
+    // continua acontecendo POR PEDIDO (cada um precisa do próprio
+    // registro de auditoria), mas a notificação é consolidada: no
+    // máximo 3 avisos por CLIENTE ao fim de toda a mesa, cobrindo o
+    // total de todos os pedidos dele nessa sessão — não um por pedido.
+    const perCustomer = new Map<
+      string,
+      { totalCents: number; cashbackCents: number; lastOrderId: string }
+    >();
+
     for (const order of sessionOrders) {
       if (order.status === 'cancelado' || !order.customerId) continue;
       // Trava definitiva já aqui, ANTES do `continue` de elegibilidade
@@ -471,65 +515,73 @@ export class TablesService {
       // sem volta pra ele também (comida já servida). Sempre salva,
       // mesmo quando não há crédito a dar.
       order.cashbackLocked = true;
-      // Notifica "avalie seu pedido" pra CADA pedido dessa sessão do
-      // cliente logado — independente de ter gerado cashback ou não,
-      // avaliar não depende disso. "Melhor esforço": PushService nunca
-      // lança erro, então uma falha de envio nunca derruba o
-      // fechamento da mesa.
-      if (tenantForNotify) {
-        await this.pushService.sendToCustomer(tenantId, order.customerId, {
-          title: 'Como foi seu pedido?',
-          body: 'Sua opinião ajuda outros clientes e o restaurante a melhorar. Toque pra avaliar.',
-          url: `/${tenantForNotify.slug}/conta-cliente/pedidos/mesa/${sessionId}?avaliar=${order.id}`,
-          tag: 'review_prompt',
-          icon: tenantForNotify.logoUrl ?? undefined,
-        });
-        // Pagamento da mesa é por PEDIDO aqui de propósito (mesmo que a
-        // conta feche de uma vez só) — cada pessoa na mesa pode ter
-        // logado com sua própria conta, então cada uma recebe a
-        // confirmação do que É DELA, não o total da mesa inteira.
-        await this.pushService.sendToCustomer(tenantId, order.customerId, {
-          title: 'Pagamento confirmado',
-          body: `Recebemos o pagamento de R$ ${Number(order.total).toFixed(2).replace('.', ',')} do seu pedido.`,
-          url: `/${tenantForNotify.slug}/conta-cliente/pedidos/mesa/${sessionId}`,
-          tag: 'payment_completed',
-          groupTag: `payment-${order.id}`,
-          icon: tenantForNotify.logoUrl ?? undefined,
-        });
-      }
+
+      const bucket = perCustomer.get(order.customerId) ?? {
+        totalCents: 0,
+        cashbackCents: 0,
+        lastOrderId: order.id,
+      };
+      bucket.totalCents += toCents(order.total);
+      bucket.lastOrderId = order.id;
+
       // Mesmo raciocínio de OrdersService.creditCashbackForPaidOrder:
       // `order.total` já está líquido de cashback usado, então NUNCA
       // somar `cashbackUsed` de volta aqui — só tirar a entrega (que
       // pra mesa é sempre 0, mas mantido pela mesma fórmula por
       // consistência).
       const eligibleCents = toCents(order.total) - toCents(order.deliveryFee);
-      if (eligibleCents <= 0) {
-        await this.orderRepo.save(order);
-        continue;
+      if (eligibleCents > 0) {
+        const result = await this.cashbackService.credit(
+          this.orderRepo.manager,
+          tenantId,
+          order.customerId,
+          order.locationId,
+          eligibleCents,
+          'order',
+          order.id,
+        );
+        if (result.creditedCents > 0) {
+          order.cashbackEarned = fromCents(result.creditedCents);
+          bucket.cashbackCents += result.creditedCents;
+        }
       }
-      const result = await this.cashbackService.credit(
-        this.orderRepo.manager,
-        tenantId,
-        order.customerId,
-        order.locationId,
-        eligibleCents,
-        'order',
-        order.id,
-      );
-      if (result.creditedCents > 0) {
-        order.cashbackEarned = fromCents(result.creditedCents);
-        if (tenantForNotify) {
-          const amount = fromCents(result.creditedCents).toFixed(2).replace('.', ',');
-          await this.pushService.sendToCustomer(tenantId, order.customerId, {
+      perCustomer.set(order.customerId, bucket);
+      await this.orderRepo.save(order);
+    }
+
+    if (tenantForNotify) {
+      for (const [customerId, bucket] of perCustomer) {
+        await this.pushService.sendToCustomer(tenantId, customerId, {
+          title: 'Pagamento confirmado',
+          body: `Recebemos o pagamento de R$ ${fromCents(bucket.totalCents).toFixed(2).replace('.', ',')} da sua conta.`,
+          url: `/${tenantForNotify.slug}/conta-cliente/pedidos/mesa/${sessionId}`,
+          tag: 'payment_completed',
+          groupTag: `payment-session-${sessionId}-${customerId}`,
+          icon: tenantForNotify.logoUrl ?? undefined,
+        });
+        if (bucket.cashbackCents > 0) {
+          await this.pushService.sendToCustomer(tenantId, customerId, {
             title: 'Você ganhou cashback',
-            body: `R$ ${amount} caíram na sua carteira desse restaurante. Toque pra ver o saldo.`,
+            body: `R$ ${fromCents(bucket.cashbackCents).toFixed(2).replace('.', ',')} caíram na sua carteira desse restaurante. Toque pra ver o saldo.`,
             url: `/${tenantForNotify.slug}/conta-cliente/cashback`,
             tag: 'cashback',
+            groupTag: `cashback-session-${sessionId}-${customerId}`,
             icon: tenantForNotify.logoUrl ?? undefined,
           });
         }
+        // Um único pedido "leva" o convite pra avaliar (o mais recente
+        // da sessão) — não um por pedido. Avaliar cada item de uma
+        // mesma visita separadamente não compensa o excesso de
+        // notificações que isso gerava antes.
+        await this.pushService.sendToCustomer(tenantId, customerId, {
+          title: 'Como foi seu pedido?',
+          body: 'Sua opinião ajuda outros clientes e o restaurante a melhorar. Toque pra avaliar.',
+          url: `/${tenantForNotify.slug}/conta-cliente/pedidos/mesa/${sessionId}?avaliar=${bucket.lastOrderId}`,
+          tag: 'review_prompt',
+          groupTag: `review-session-${sessionId}-${customerId}`,
+          icon: tenantForNotify.logoUrl ?? undefined,
+        });
       }
-      await this.orderRepo.save(order);
     }
 
     // Chamado de garçom pendente dessa mesa não faz mais sentido depois

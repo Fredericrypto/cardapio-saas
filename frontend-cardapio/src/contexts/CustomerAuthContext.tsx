@@ -63,7 +63,7 @@ const CustomerAuthContext = createContext<CustomerAuthContextValue | null>(null)
 export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   const { tenant } = useTenant();
   const tenantId = tenant?.id;
-  const { clearCart } = useCart();
+  const { clearCart, setCartOwner } = useCart();
   const clearCartRef = useRef(clearCart);
   clearCartRef.current = clearCart;
 
@@ -87,6 +87,15 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       window.removeEventListener('storage', resync);
     };
   }, [tenantId]);
+
+  // Único gatilho de "de quem é o carrinho agora" — dispara toda vez
+  // que tenant OU cliente confirmado mudam (login, logout, troca de
+  // conta, token confirmado depois de um reload). Nunca é o inverso
+  // (CartContext nunca lê tenant/cliente sozinho) — ver comentário
+  // grande em CartContext.setCartOwner pro motivo de ser só um sentido.
+  useEffect(() => {
+    setCartOwner(tenantId ?? null, customer?.id ?? null);
+  }, [tenantId, customer?.id, setCartOwner]);
 
   useEffect(() => {
     if (!tenantId || !token) {

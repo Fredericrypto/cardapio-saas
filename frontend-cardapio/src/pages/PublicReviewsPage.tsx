@@ -25,18 +25,35 @@ function Stars({ rating, size = 14 }: { rating: number; size?: number }) {
   );
 }
 
-// Avatar genérico (sem foto de perfil no sistema hoje) — anônimo ganha
-// um ícone neutro cinza igual qualquer rede social usa como placeholder;
-// nome real ganha um círculo colorido com a inicial, determinístico
-// (mesmo nome sempre cai na mesma cor) só pra dar um pouco de
-// identidade visual sem precisar de upload de foto nenhum.
+// Cliente tem avatar (predefinido, escolhido no perfil) — mostra a foto
+// de verdade quando a review não é anônima e o cliente tem uma
+// escolhida; cai pro círculo colorido com a inicial só quando não tem
+// avatar definido. Anônimo sempre ganha o ícone neutro cinza, nunca a
+// foto real — mesma regra de privacidade de sempre.
 const AVATAR_COLORS = ['#F59E0B', '#EF4444', '#8B5CF6', '#10B981', '#3B82F6', '#EC4899'];
-function ReviewerAvatar({ name, isAnonymous }: { name: string; isAnonymous: boolean }) {
+function ReviewerAvatar({
+  name,
+  avatarUrl,
+  isAnonymous,
+}: {
+  name: string;
+  avatarUrl: string | null;
+  isAnonymous: boolean;
+}) {
   if (isAnonymous) {
     return (
       <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center shrink-0">
         <User size={16} className="text-gray-400" />
       </div>
+    );
+  }
+  if (avatarUrl) {
+    return (
+      <img
+        src={avatarUrl}
+        alt=""
+        className="w-8 h-8 rounded-full object-cover shrink-0 bg-gray-100"
+      />
     );
   }
   const initial = name.trim().charAt(0).toUpperCase() || '?';
@@ -138,7 +155,11 @@ export function PublicReviewsPage() {
           <div key={review.id} className="bg-white rounded-2xl p-4 border border-gray-100">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <ReviewerAvatar name={review.customerDisplayName} isAnonymous={review.isAnonymous} />
+                <ReviewerAvatar
+                  name={review.customerDisplayName}
+                  avatarUrl={review.customerAvatarUrl}
+                  isAnonymous={review.isAnonymous}
+                />
                 <p className="text-sm font-semibold text-gray-900">{review.customerDisplayName}</p>
               </div>
               <Stars rating={review.rating} />

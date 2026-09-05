@@ -272,6 +272,8 @@ export function MenuPage() {
           onCallWaiter={handleCallWaiter}
           onOpenAccount={() => navigate(`/${slug}/mesa/${qrCodeToken}/conta`)}
           isCallingWaiter={isCallingWaiter}
+          session={session}
+          onExpiryTick={tableSessionCtx?.recheckExpiry}
         />
       ) : (
         <MenuHeader

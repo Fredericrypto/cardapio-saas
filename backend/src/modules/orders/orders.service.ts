@@ -594,6 +594,37 @@ export class OrdersService {
         // cliente está, sem precisar perguntar nada (ver Location).
         resolvedLocationId = session.table.locationId;
 
+        // SEGURANÇA — nunca deixa o mesmo cliente logado ter pedido em
+        // DUAS mesas ativas ao mesmo tempo nesse restaurante. Sem isso,
+        // dava pra "pular de mesa": pedir numa mesa, escanear o QR de
+        // outra antes de pagar a primeira, pedir de novo, e ir
+        // empurrando a conta antiga pra trás indefinidamente — ninguém
+        // seria impedido de fechar SEM pagar a mesa anterior, porque ela
+        // simplesmente ficaria esquecida, aberta, sem ligação nenhuma
+        // com o que o cliente está fazendo agora. Isso fecha essa
+        // brecha: pedido novo numa mesa diferente é recusado enquanto
+        // existir pedido desse MESMO cliente numa sessão ainda ativa
+        // (aberta ou com fechamento solicitado) em outra mesa.
+        if (customerId) {
+          const otherActiveOrder = await manager
+            .createQueryBuilder(Order, 'order')
+            .innerJoin(TableSession, 'otherSession', 'otherSession.id = order.table_session_id')
+            .where('order.tenant_id = :tenantId', { tenantId })
+            .andWhere('order.customer_id = :customerId', { customerId })
+            .andWhere('otherSession.id != :currentSessionId', {
+              currentSessionId: trustedTableSessionId,
+            })
+            .andWhere('otherSession.status IN (:...openStatuses)', {
+              openStatuses: ['aberta', 'fechamento_solicitado'],
+            })
+            .getOne();
+          if (otherActiveOrder) {
+            throw new BadRequestException(
+              'Você já tem uma conta em aberto em outra mesa. Feche e pague essa conta antes de pedir em uma mesa diferente.',
+            );
+          }
+        }
+
         // Se o cliente já tinha solicitado fechamento e pediu mais alguma
         // coisa antes do garçom vir, a solicitação anterior fica obsoleta:
         // volta pra "aberta" pra não passar despercebido no painel do

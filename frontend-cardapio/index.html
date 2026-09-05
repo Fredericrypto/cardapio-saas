@@ -1,10 +1,16 @@
 <!doctype html>
-<html lang="en">
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend-cardapio</title>
+    <!-- Sem isso, o Chrome/Android nunca oferece "Instalar app" — o
+         manifest é o que diz nome, ícones e "abre em tela cheia, sem
+         barra de navegador" (display: standalone). -->
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="/icons-pwa/icon-192.png" />
+    <meta name="theme-color" content="#2a1252" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Cardápio (placeholder)</title>
   </head>
   <body>
     <div id="root"></div>

@@ -1,6 +1,8 @@
 import { Bell, Receipt } from 'lucide-react';
-import type { Tenant, Location } from '../types';
+import type { Tenant, Location, TableSession } from '../types';
 import { RestaurantInfoPanel } from './RestaurantInfoPanel';
+import { TableSessionTimer } from './TableSessionTimer';
+import { QrScanButton } from './QrScanButton';
 
 interface TableMenuHeaderProps {
   tenant: Tenant;
@@ -9,6 +11,8 @@ interface TableMenuHeaderProps {
   onCallWaiter: () => void;
   onOpenAccount: () => void;
   isCallingWaiter: boolean;
+  session?: TableSession | null;
+  onExpiryTick?: () => void;
 }
 
 // Mesmo esqueleto visual do MenuHeader (banner + sheet branco flutuante)
@@ -22,6 +26,8 @@ export function TableMenuHeader({
   onCallWaiter,
   onOpenAccount,
   isCallingWaiter,
+  session,
+  onExpiryTick,
 }: TableMenuHeaderProps) {
   return (
     <div>
@@ -53,9 +59,19 @@ export function TableMenuHeader({
             )}
           </div>
 
-          <h1 className="font-display text-lg font-bold leading-tight text-gray-900 mt-1.5">
-            {tenant.name}
-          </h1>
+          <div className="w-full flex items-center justify-center gap-2 mt-1.5 px-1">
+            <div className="flex-1 flex justify-end min-w-0">
+              {session?.expiresAt && onExpiryTick && (
+                <TableSessionTimer session={session} onExpiryTick={onExpiryTick} variant="inline" />
+              )}
+            </div>
+            <h1 className="font-display text-lg font-bold leading-tight text-gray-900 shrink-0 truncate max-w-[60%]">
+              {tenant.name}
+            </h1>
+            <div className="flex-1 flex justify-start min-w-0">
+              <QrScanButton />
+            </div>
+          </div>
           <p className="text-xs text-gray-400 mt-0.5">
             {tableNumber ? `Mesa ${tableNumber}` : 'Consumo no local'}
           </p>

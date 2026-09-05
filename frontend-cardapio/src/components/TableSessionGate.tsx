@@ -3,7 +3,6 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useTableSession } from '../hooks/useTableSession';
 import { TableSessionProvider } from '../contexts/TableSessionContext';
 import { QrScannerModal } from './QrScannerModal';
-import { TableSessionTimer } from './TableSessionTimer';
 import { QrCode } from 'lucide-react';
 
 // Porta de entrada de TODAS as rotas `/mesa/:qrCodeToken/*`. Decide entre
@@ -113,10 +112,13 @@ export function TableSessionGate({ children }: { children: ReactNode }) {
 
   if (!session) return null;
 
+  // O badge visual do timer não mora mais aqui como overlay fixo em
+  // toda página do fluxo de mesa — agora fica inline no header do
+  // cardápio (TableMenuHeader), ao lado do nome do restaurante. A
+  // checagem de expiração em si continua funcionando em qualquer tela,
+  // via o polling de fundo dentro de useTableSession — não depende mais
+  // do componente visual estar montado.
   return (
-    <TableSessionProvider value={{ session, recheckExpiry }}>
-      <TableSessionTimer session={session} onExpiryTick={recheckExpiry} />
-      {children}
-    </TableSessionProvider>
+    <TableSessionProvider value={{ session, recheckExpiry }}>{children}</TableSessionProvider>
   );
 }

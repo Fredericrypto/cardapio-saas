@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useMemo, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useMemo, useCallback, useRef, useEffect, type ReactNode } from 'react';
 import type { CartItem, Product, SelectedCartOption } from '../types';
 
 // Chave que identifica uma linha do carrinho de forma única — o mesmo
@@ -9,6 +9,33 @@ import type { CartItem, Product, SelectedCartOption } from '../types';
 function buildLineKey(productId: string, selectedOptions: SelectedCartOption[]): string {
   const sortedIds = selectedOptions.map((o) => o.valueId).sort().join(',');
   return `${productId}::${sortedIds}`;
+}
+
+interface PersistedCart {
+  items: CartItem[];
+  selectedPromotionIds: string[];
+}
+
+// Chave do localStorage é SEMPRE tenant+cliente juntos, nunca um sozinho
+// — é isso que impede o carrinho de vazar entre restaurantes diferentes
+// OU entre contas diferentes no mesmo aparelho (irmãos usando o mesmo
+// celular, por exemplo). Sem cliente logado (owner null), não existe
+// chave — nada é persistido, carrinho fica só em memória, igual sempre
+// foi.
+function cartStorageKey(tenantId: string, customerId: string): string {
+  return `cardapio_cart_${tenantId}_${customerId}`;
+}
+
+function loadPersistedCart(key: string): PersistedCart | null {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as PersistedCart;
+    if (!Array.isArray(parsed.items) || !Array.isArray(parsed.selectedPromotionIds)) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
 }
 
 interface CartContextValue {
@@ -30,6 +57,12 @@ interface CartContextValue {
   selectedPromotionIds: string[];
   togglePromotion: (id: string) => void;
   clearSelectedPromotions: () => void;
+  // Chamado de dentro de CustomerAuthContext toda vez que tenant/cliente
+  // logado mudam (login, logout, troca de conta, troca de restaurante).
+  // NUNCA chamar isso de qualquer outro lugar — é o que garante que
+  // persistência de carrinho nunca cruza fronteira de identidade. Ver
+  // comentário grande logo abaixo, dentro do Provider.
+  setCartOwner: (tenantId: string | null, customerId: string | null) => void;
 }
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -37,6 +70,10 @@ const CartContext = createContext<CartContextValue | null>(null);
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [selectedPromotionIds, setSelectedPromotionIds] = useState<string[]>([]);
+  // Dono atual do carrinho (chave de storage já montada, ou null se
+  // ninguém logado ainda) — em ref porque só é lido dentro de
+  // callbacks/efeitos, nunca precisa disparar re-render sozinho.
+  const ownerKeyRef = useRef<string | null>(null);
 
   // IMPORTANTE: todas as funções aqui embaixo são `useCallback` com
   // array de dependências vazio de propósito — nunca tirar isso.
@@ -94,7 +131,62 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const clearCart = useCallback(() => {
     setItems([]);
     setSelectedPromotionIds([]);
+    // Limpa também o que estava salvo pro dono ATUAL (antes de trocar
+    // de identidade) — sem isso, deslogar e logar com OUTRA conta no
+    // mesmo aparelho reidratraria o carrinho da conta anterior, que é
+    // exatamente o vazamento entre contas que isso existe pra evitar.
+    if (ownerKeyRef.current) {
+      try {
+        localStorage.removeItem(ownerKeyRef.current);
+      } catch {
+        // localStorage indisponível (modo privado etc) — sem
+        // problema, não tinha nada persistido mesmo.
+      }
+    }
   }, []);
+
+  // Único ponto de entrada pra dizer "o carrinho agora pertence a ESSE
+  // tenant+cliente" — chamado de dentro de CustomerAuthContext toda vez
+  // que a identidade muda (login, logout, token confirmado depois de um
+  // reload, troca de restaurante). Nunca lido/escrito em resposta a
+  // nada além disso.
+  //
+  // Efeito de trocar de dono: primeiro esquece o carrinho em memória
+  // (nunca deixa o carrinho de UM dono aparecer, nem por um instante,
+  // associado a outro), depois — só se o novo dono é uma identidade
+  // completa (tenant E cliente, os dois) — carrega o que esse dono
+  // específico tinha salvo antes (ex: o cliente recarregou a página com
+  // conexão ruim, ou fechou e abriu o navegador de novo, mas continua
+  // logado como ele mesmo).
+  const setCartOwner = useCallback((tenantId: string | null, customerId: string | null) => {
+    const nextKey = tenantId && customerId ? cartStorageKey(tenantId, customerId) : null;
+    if (nextKey === ownerKeyRef.current) return;
+    ownerKeyRef.current = nextKey;
+    if (!nextKey) {
+      setItems([]);
+      setSelectedPromotionIds([]);
+      return;
+    }
+    const persisted = loadPersistedCart(nextKey);
+    setItems(persisted?.items ?? []);
+    setSelectedPromotionIds(persisted?.selectedPromotionIds ?? []);
+  }, []);
+
+  // Salva a cada mudança, só enquanto existe um dono definido (tenant +
+  // cliente logado, os dois). Sem dono — ex: enquanto o login ainda
+  // está resolvendo — carrinho fica só em memória, nunca grava nada.
+  useEffect(() => {
+    if (!ownerKeyRef.current) return;
+    try {
+      localStorage.setItem(
+        ownerKeyRef.current,
+        JSON.stringify({ items, selectedPromotionIds } satisfies PersistedCart),
+      );
+    } catch {
+      // Sem espaço/localStorage bloqueado — carrinho continua
+      // funcionando normalmente, só não sobrevive a um reload.
+    }
+  }, [items, selectedPromotionIds]);
 
   // Liga/desliga uma promoção na seleção — várias podem estar ligadas
   // ao mesmo tempo. A validação de verdade (se elas realmente cabem sem
@@ -140,6 +232,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       selectedPromotionIds,
       togglePromotion,
       clearSelectedPromotions,
+      setCartOwner,
     }),
     [
       items,
@@ -153,6 +246,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       selectedPromotionIds,
       togglePromotion,
       clearSelectedPromotions,
+      setCartOwner,
     ],
   );
 

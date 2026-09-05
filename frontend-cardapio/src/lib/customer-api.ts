@@ -320,6 +320,7 @@ export interface PublicReview {
   rating: number;
   comment: string | null;
   customerDisplayName: string;
+  customerAvatarUrl: string | null;
   isAnonymous: boolean;
   createdAt: string;
   response: { responseText: string; createdAt: string } | null;

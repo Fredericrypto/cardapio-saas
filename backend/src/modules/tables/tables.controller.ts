@@ -12,6 +12,9 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 import { CurrentAdminUser } from '../../common/decorators/current-admin-user.decorator';
 import type { RequestAdminUser } from '../../common/decorators/current-admin-user.decorator';
+import { CurrentCustomer } from '../../common/decorators/current-customer.decorator';
+import type { RequestCustomer } from '../../common/decorators/current-customer.decorator';
+import { OptionalCustomerJwtAuthGuard } from '../customers/optional-customer-jwt-auth.guard';
 import { TablesService } from './tables.service';
 import { CreateTableDto } from './dto/create-table.dto';
 import { RequestClosingDto } from './dto/request-closing.dto';
@@ -131,9 +134,20 @@ export class TablesController {
   // como efeito colateral de só carregar uma página. Ver getCurrentSession
   // logo abaixo pra o caso de "só estou revisitando uma mesa que já
   // escaneei".
+  // Guard OPCIONAL: nunca bloqueia convidado sem conta (token ausente
+  // segue com `customer = null`), mas identifica o cliente QUANDO ele
+  // está logado — necessário pra checagem de "pular de mesa" dentro de
+  // openOrJoinSession (ver comentário lá).
+  @UseGuards(OptionalCustomerJwtAuthGuard)
   @Post('table-sessions/public/scan/:qrCodeToken')
-  async scanQrCode(@Param('qrCodeToken') qrCodeToken: string) {
-    const session = await this.tablesService.openOrJoinSession(qrCodeToken);
+  async scanQrCode(
+    @Param('qrCodeToken') qrCodeToken: string,
+    @CurrentCustomer() customer: RequestCustomer | null,
+  ) {
+    const session = await this.tablesService.openOrJoinSession(
+      qrCodeToken,
+      customer?.customerId ?? null,
+    );
     return this.tablesService.withTimerInfo(session);
   }
 

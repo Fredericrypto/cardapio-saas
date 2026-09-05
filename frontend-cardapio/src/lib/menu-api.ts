@@ -134,9 +134,17 @@ export async function quoteDeliveryFee(
 
 // Abre (ou entra em) a sessão da mesa. Idempotente: se já existe uma
 // sessão aberta pra essa mesa, o backend devolve a mesma sessão.
-export async function scanTableQrCode(qrCodeToken: string): Promise<TableSession> {
+// customerToken é opcional (convidado sem conta continua funcionando
+// normalmente) — quando presente, o backend usa a identidade do cliente
+// só pra checagem extra de "pular de mesa" (ver TablesService.openOrJoinSession).
+export async function scanTableQrCode(
+  qrCodeToken: string,
+  customerToken?: string | null,
+): Promise<TableSession> {
   const { data } = await api.post<TableSession>(
     `/table-sessions/public/scan/${qrCodeToken}`,
+    undefined,
+    customerToken ? { headers: { Authorization: `Bearer ${customerToken}` } } : undefined,
   );
   return data;
 }

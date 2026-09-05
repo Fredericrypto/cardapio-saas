@@ -1149,11 +1149,19 @@ export function CartPage() {
                     : [...selectedPromotions, promo];
                   const preview = computeSelectedPromotionsEligibility(previewOrder, items, totalPrice);
                   const result = preview.perPromo.get(promo.id);
+                  // Só pode SELECIONAR um cupom não elegível pra esse
+                  // carrinho (ex: nenhum item que o cupom cobre está no
+                  // carrinho) — desmarcar continua sempre liberado, senão
+                  // um cupom que deixasse de ser elegível DEPOIS de
+                  // selecionado (ex: cliente removeu o item) ficaria
+                  // preso sem forma de tirar.
+                  const canToggle = isSelected || Boolean(result?.isEligible);
                   return (
                     <button
                       key={promo.id}
-                      onClick={() => togglePromotion(promo.id)}
-                      className="flex items-center justify-between px-3 py-2.5 rounded-lg border text-left"
+                      onClick={() => canToggle && togglePromotion(promo.id)}
+                      disabled={!canToggle}
+                      className="flex items-center justify-between px-3 py-2.5 rounded-lg border text-left disabled:opacity-50 disabled:cursor-not-allowed"
                       style={
                         isSelected
                           ? { borderColor: tenant.primaryColor, backgroundColor: `${tenant.primaryColor}0D` }
