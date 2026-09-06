@@ -512,10 +512,23 @@ export function CartPage() {
     isValidBrazilPhone(customerPhone) &&
     (orderType !== 'entrega' || Boolean(quote));
 
+  // Pedido do Felipe: fluxo de convidado (sem conta) na mesa continua
+  // sem exigir NADA além disso — mas o nome passa a ser obrigatório
+  // (facilita o garçom chamar quem pediu, já que várias pessoas podem
+  // estar na mesma mesa sem conta nenhuma). Telefone continua não
+  // pedido na mesa — só faz sentido pra balcão/entrega, onde pode ser
+  // usado pra contato.
+  const canProceedMesa = hasSavedName || customerName.trim().length > 0;
+
   // Mesa não tem etapa de pagamento/revisão — vai direto pro envio, igual
   // sempre foi (o pagamento acontece depois, em pessoa, com o admin).
   function handlePrimaryAction() {
     if (orderType === 'mesa') {
+      if (!canProceedMesa) {
+        setErrorMessage('Digite seu nome pra continuar.');
+        return;
+      }
+      setErrorMessage(null);
       handleSubmit();
       return;
     }
@@ -1224,7 +1237,7 @@ export function CartPage() {
                 type="text"
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
-                placeholder={orderType === 'mesa' ? 'Seu nome (opcional)' : 'Seu nome'}
+                placeholder="Seu nome"
                 className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none"
               />
             )}
@@ -1670,6 +1683,7 @@ export function CartPage() {
             isSubmitting ||
             !activeLocation?.isOpenNow ||
             (checkoutStep === 'form' && orderType !== 'mesa' && !canProceedFromForm) ||
+            (checkoutStep === 'form' && orderType === 'mesa' && !canProceedMesa) ||
             (checkoutStep === 'review' && !canSubmit)
           }
           className="w-full py-3.5 rounded-xl text-white font-semibold flex justify-between items-center px-5 disabled:opacity-60"

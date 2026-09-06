@@ -141,7 +141,12 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   async function login(email: string, password: string) {
     if (!tenantId) return;
     const result = await loginCustomer(tenantId, { email, password });
-    clearCart();
+    // NUNCA limpar o carrinho aqui — ver o comentário grande em
+    // CartContext.setCartOwner. Um convidado que já tinha item no
+    // carrinho e decide logar no meio da visita continua com o pedido
+    // dele; só quem troca de identidade ativamente (logout) precisa
+    // dessa limpeza, pra não vazar carrinho entre contas no mesmo
+    // aparelho.
     localStorage.setItem(storageKeyFor(tenantId), result.accessToken);
     setToken(result.accessToken);
     setCustomer(result.customer);
@@ -151,7 +156,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   async function register(data: { email: string; password: string; name: string; phone?: string }) {
     if (!tenantId) return;
     const result = await registerCustomer(tenantId, data);
-    clearCart();
+    // Mesmo raciocínio de `login` acima — nunca limpar aqui.
     localStorage.setItem(storageKeyFor(tenantId), result.accessToken);
     setToken(result.accessToken);
     setCustomer(result.customer);

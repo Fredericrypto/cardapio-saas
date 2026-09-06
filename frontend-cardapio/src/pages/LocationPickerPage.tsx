@@ -35,6 +35,22 @@ export function LocationPickerPage() {
   const { selectLocation } = useSelectedLocation(tenant?.id);
   const [reviewSummaries, setReviewSummaries] = useState<Record<string, ReviewSummary>>({});
 
+  // BUG GRAVE CORRIGIDO: antes, dava pra escolher uma unidade DIFERENTE
+  // aqui mesmo estando com uma mesa ativa em OUTRA unidade — e a
+  // escolha valia, deixando "pedir" numa loja em que o cliente não está
+  // fisicamente. Uma mesa é physicamente amarrada a UMA unidade (o QR
+  // está colado numa mesa real, num lugar real) — não faz sentido nunca
+  // trocar de unidade enquanto se está numa mesa. Em vez de só corrigir
+  // depois da escolha, a tela inteira nem deixa chegar aqui: manda de
+  // volta pra mesa direto, ANTES de qualquer seleção ser possível.
+  useEffect(() => {
+    if (!slug) return;
+    const activeMesaToken = getActiveMesaToken(slug);
+    if (activeMesaToken) {
+      navigate(`/${slug}/mesa/${activeMesaToken}`, { replace: true });
+    }
+  }, [slug, navigate]);
+
   useEffect(() => {
     if (!tenant) return;
     fetchLocations(tenant.id).then((locs) => {

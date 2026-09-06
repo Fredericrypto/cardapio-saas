@@ -20,6 +20,7 @@ import { MyReviewsPage } from './pages/MyReviewsPage';
 import { PublicReviewsPage } from './pages/PublicReviewsPage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { RequireCustomerAuth } from './components/RequireCustomerAuth';
+import { OptionalCustomerAuth } from './components/OptionalCustomerAuth';
 import { CustomerAppShell } from './components/CustomerAppShell';
 import { TableSessionGate } from './components/TableSessionGate';
 
@@ -30,59 +31,63 @@ function App() {
         <Routes>
           <Route path="/:slug" element={<CustomerAppShell />}>
             {/* Fluxo de mesa (QR code físico na mesa) — mesmo MenuPage do
-                fluxo geral, só com qrCodeToken presente na URL. Continua
-                exigindo login: cardápio inteiro é área logada agora, ver
-                RequireCustomerAuth. TableSessionGate vem DEPOIS do login
-                de propósito — resolver "existe sessão ativa nessa mesa?"
-                só faz sentido depois de saber quem está perguntando. */}
+                fluxo geral, só com qrCodeToken presente na URL.
+                DECISÃO DE PRODUTO (revista): NÃO exige mais login — o
+                cliente já está fisicamente no restaurante ao escanear a
+                mesa, pedir conta antes disso só afasta quem quer só um
+                lanche rápido. Ver OptionalCustomerAuth pro raciocínio
+                completo. Login continua liberando cashback/avaliação/
+                histórico pra quem quiser, só deixou de ser obrigatório
+                pra pedir. TableSessionGate continua resolvendo "existe
+                sessão ativa nessa mesa?" independente de login. */}
             <Route
               path="mesa/:qrCodeToken"
               element={
-                <RequireCustomerAuth>
+                <OptionalCustomerAuth>
                   <TableSessionGate>
                     <MenuPage />
                   </TableSessionGate>
-                </RequireCustomerAuth>
+                </OptionalCustomerAuth>
               }
             />
             <Route
               path="mesa/:qrCodeToken/conta"
               element={
-                <RequireCustomerAuth>
+                <OptionalCustomerAuth>
                   <TableSessionGate>
                     <MyAccountPage />
                   </TableSessionGate>
-                </RequireCustomerAuth>
+                </OptionalCustomerAuth>
               }
             />
             <Route
               path="mesa/:qrCodeToken/produto/:productId"
               element={
-                <RequireCustomerAuth>
+                <OptionalCustomerAuth>
                   <TableSessionGate>
                     <ProductDetailPage />
                   </TableSessionGate>
-                </RequireCustomerAuth>
+                </OptionalCustomerAuth>
               }
             />
             <Route
               path="mesa/:qrCodeToken/promocao/:promotionId"
               element={
-                <RequireCustomerAuth>
+                <OptionalCustomerAuth>
                   <TableSessionGate>
                     <PromotionDetailPage />
                   </TableSessionGate>
-                </RequireCustomerAuth>
+                </OptionalCustomerAuth>
               }
             />
             <Route
               path="mesa/:qrCodeToken/carrinho"
               element={
-                <RequireCustomerAuth>
+                <OptionalCustomerAuth>
                   <TableSessionGate>
                     <CartPage />
                   </TableSessionGate>
-                </RequireCustomerAuth>
+                </OptionalCustomerAuth>
               }
             />
 

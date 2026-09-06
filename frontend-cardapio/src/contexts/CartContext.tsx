@@ -69,6 +69,14 @@ const CartContext = createContext<CartContextValue | null>(null);
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
+  // Espelha `items` em ref pra `setCartOwner` (useCallback([]), sem
+  // `items` nas deps de propósito — ver comentário grande logo abaixo)
+  // conseguir ler o carrinho ATUAL na hora de decidir se carrega o que
+  // tinha salvo ou mantém o que já está em mãos.
+  const itemsRef = useRef<CartItem[]>([]);
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
   const [selectedPromotionIds, setSelectedPromotionIds] = useState<string[]>([]);
   // Dono atual do carrinho (chave de storage já montada, ou null se
   // ninguém logado ainda) — em ref porque só é lido dentro de
@@ -161,12 +169,30 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const setCartOwner = useCallback((tenantId: string | null, customerId: string | null) => {
     const nextKey = tenantId && customerId ? cartStorageKey(tenantId, customerId) : null;
     if (nextKey === ownerKeyRef.current) return;
+
+    // Cliente estava pedindo como CONVIDADO (sem dono definido ainda) e
+    // já tinha item no carrinho quando decidiu logar/criar conta no meio
+    // da visita — bug real que isso corrige: sem essa checagem, o app
+    // sempre substituía o carrinho atual pelo que já estava salvo pra
+    // essa conta (geralmente nada, no primeiro login) e o cliente
+    // perdia o pedido bem na hora que mais se engajou com o app. O
+    // carrinho que ele já montou é dele — continua com ele, só passa a
+    // ser salvo sob a identidade nova a partir de agora (o efeito de
+    // persistência abaixo cuida disso sozinho).
+    const wasGuestWithItems = ownerKeyRef.current === null && itemsRef.current.length > 0;
+
     ownerKeyRef.current = nextKey;
+
     if (!nextKey) {
       setItems([]);
       setSelectedPromotionIds([]);
       return;
     }
+
+    if (wasGuestWithItems) {
+      return;
+    }
+
     const persisted = loadPersistedCart(nextKey);
     setItems(persisted?.items ?? []);
     setSelectedPromotionIds(persisted?.selectedPromotionIds ?? []);
