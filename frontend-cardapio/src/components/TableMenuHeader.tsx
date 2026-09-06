@@ -73,7 +73,15 @@ export function TableMenuHeader({
             </div>
           </div>
           <p className="text-xs text-gray-400 mt-0.5">
-            {tableNumber ? `Mesa ${tableNumber}` : 'Consumo no local'}
+            {/* O admin já pode nomear a mesa como "Mesa 1" (o campo é
+                livre) — prefixar "Mesa" de novo aqui sempre virava
+                "Mesa Mesa 1". Só prefixa quando o nome ainda não
+                começa com "mesa" sozinho. */}
+            {tableNumber
+              ? /^mesa\b/i.test(tableNumber.trim())
+                ? tableNumber
+                : `Mesa ${tableNumber}`
+              : 'Consumo no local'}
           </p>
         </div>
 

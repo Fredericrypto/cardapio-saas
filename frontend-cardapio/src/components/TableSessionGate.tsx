@@ -1,8 +1,9 @@
 import { useState, type ReactNode } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { useTableSession } from '../hooks/useTableSession';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useTableSession, clearActiveMesaTokenForSlug } from '../hooks/useTableSession';
 import { TableSessionProvider } from '../contexts/TableSessionContext';
 import { QrScannerModal } from './QrScannerModal';
+import { TableSessionTimer } from './TableSessionTimer';
 import { QrCode } from 'lucide-react';
 
 // Porta de entrada de TODAS as rotas `/mesa/:qrCodeToken/*`. Decide entre
@@ -19,9 +20,10 @@ import { QrCode } from 'lucide-react';
 //    avisa e oferece escanear de novo.
 export function TableSessionGate({ children }: { children: ReactNode }) {
   const { slug, qrCodeToken } = useParams<{ slug: string; qrCodeToken: string }>();
+  const location = useLocation();
   const navigate = useNavigate();
   const { session, isLoading, error, needsConfirmation, expired, confirmJoin, recheckExpiry } =
-    useTableSession(qrCodeToken);
+    useTableSession(slug, qrCodeToken);
   const [showScanner, setShowScanner] = useState(false);
 
   if (isLoading) {
@@ -68,7 +70,10 @@ export function TableSessionGate({ children }: { children: ReactNode }) {
               Escanear QR code de novo
             </button>
             <button
-              onClick={() => navigate(`/${slug}`)}
+              onClick={() => {
+                if (slug) clearActiveMesaTokenForSlug(slug);
+                navigate(`/${slug}`);
+              }}
               className="py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600"
             >
               Cancelar
@@ -100,7 +105,10 @@ export function TableSessionGate({ children }: { children: ReactNode }) {
             Sim, estou nessa mesa
           </button>
           <button
-            onClick={() => navigate(`/${slug}`)}
+            onClick={() => {
+              if (slug) clearActiveMesaTokenForSlug(slug);
+              navigate(`/${slug}`);
+            }}
             className="py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600"
           >
             Não, ver cardápio geral
@@ -112,13 +120,22 @@ export function TableSessionGate({ children }: { children: ReactNode }) {
 
   if (!session) return null;
 
-  // O badge visual do timer não mora mais aqui como overlay fixo em
-  // toda página do fluxo de mesa — agora fica inline no header do
-  // cardápio (TableMenuHeader), ao lado do nome do restaurante. A
-  // checagem de expiração em si continua funcionando em qualquer tela,
-  // via o polling de fundo dentro de useTableSession — não depende mais
-  // do componente visual estar montado.
+  // O timer só fica embutido no header (ao lado do nome) na tela
+  // principal do cardápio — nas outras páginas do fluxo de mesa
+  // (carrinho, produto, "minha conta") não tem esse header, então sem
+  // isso aqui o relógio simplesmente sumia ao navegar pra qualquer uma
+  // delas, mesmo o pedido ainda não tendo sido feito. Continua sumindo
+  // de verdade só quando `expiresAt` vem null (ou seja, quando já tem
+  // pedido — ver TablesService.withTimerInfo) ou quando não há prazo
+  // configurado.
+  const isMainMenuPage = location.pathname === `/${slug}/mesa/${qrCodeToken}`;
+
   return (
-    <TableSessionProvider value={{ session, recheckExpiry }}>{children}</TableSessionProvider>
+    <TableSessionProvider value={{ session, recheckExpiry }}>
+      {!isMainMenuPage && session.expiresAt && (
+        <TableSessionTimer session={session} onExpiryTick={recheckExpiry} variant="fixed" />
+      )}
+      {children}
+    </TableSessionProvider>
   );
 }

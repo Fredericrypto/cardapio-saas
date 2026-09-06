@@ -5,6 +5,7 @@ import { fetchLocations } from '../lib/menu-api';
 import { fetchReviewsSummaryByLocation } from '../lib/customer-api';
 import type { ReviewSummary } from '../lib/customer-api';
 import { useSelectedLocation } from '../hooks/useSelectedLocation';
+import { getActiveMesaToken } from '../hooks/useTableSession';
 import { useTenant } from '../contexts/TenantContext';
 import type { Location } from '../types';
 
@@ -73,7 +74,15 @@ export function LocationPickerPage() {
 
   function handleSelect(location: Location) {
     selectLocation(location);
-    navigate(`/${slug}`);
+    // Se o cliente tem uma mesa com sessão ainda ativa nesse restaurante
+    // (ex: acabou caindo aqui sem querer, saindo do fluxo de mesa —
+    // "cardápio geral"/erro/expirado oferecem esse caminho), escolher
+    // uma unidade aqui não deveria jogar ele pro modo entrega/retirada
+    // "como se estivesse em casa" — a loja da mesa já está fixa pela
+    // própria mesa. Volta pra ela, timer e tudo, em vez do cardápio
+    // geral.
+    const activeMesaToken = slug ? getActiveMesaToken(slug) : null;
+    navigate(activeMesaToken ? `/${slug}/mesa/${activeMesaToken}` : `/${slug}`);
   }
 
   if (!tenant || !locations) {

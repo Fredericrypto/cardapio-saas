@@ -41,6 +41,14 @@ export class TableSession {
   @Column({ name: 'opened_at', type: 'timestamptz', default: () => 'now()' })
   openedAt: Date;
 
+  // Qual cliente LOGADO abriu essa sessão (nulo pra convidado). Só serve
+  // pra fechar sozinha uma mesa VAZIA (sem pedido nenhum) que esse mesmo
+  // cliente tinha deixado aberta em outra mesa, quando ele abre uma
+  // mesa nova — nunca usado como "dono" da mesa pra mais nada, já que
+  // várias pessoas podem usar a mesma sessão.
+  @Column({ name: 'opened_by_customer_id', type: 'uuid', nullable: true })
+  openedByCustomerId: string | null;
+
   @Column({ name: 'closed_at', type: 'timestamptz', nullable: true })
   closedAt: Date | null;
 

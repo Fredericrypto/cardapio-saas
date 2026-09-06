@@ -29,7 +29,27 @@ function visitedKey(qrCodeToken: string) {
   return `mesa_visitada_${qrCodeToken}`;
 }
 
-export function useTableSession(qrCodeToken: string | undefined) {
+// `localStorage` (sobrevive a navegação completa, ao contrário de
+// sessionStorage) guarda qual foi a ÚLTIMA mesa com sessão ativa nesse
+// restaurante — usado só pra devolver o cliente pra ela se ele se
+// afastar do fluxo de mesa sem querer (ex: cai no fluxo geral de
+// entrega/retirada e passa pela troca de unidade) enquanto a sessão
+// ainda está viva. Nunca cria nem decide nada sozinho — só um "voltar
+// pra onde eu estava" pra outras telas oferecerem.
+function activeMesaKey(slug: string) {
+  return `mesa_ativa_${slug}`;
+}
+export function getActiveMesaToken(slug: string): string | null {
+  return localStorage.getItem(activeMesaKey(slug));
+}
+function setActiveMesaToken(slug: string, qrCodeToken: string) {
+  localStorage.setItem(activeMesaKey(slug), qrCodeToken);
+}
+export function clearActiveMesaTokenForSlug(slug: string) {
+  localStorage.removeItem(activeMesaKey(slug));
+}
+
+export function useTableSession(slug: string | undefined, qrCodeToken: string | undefined) {
   const { token: customerToken } = useCustomerAuth();
   const [session, setSession] = useState<TableSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -41,11 +61,12 @@ export function useTableSession(qrCodeToken: string | undefined) {
     async (token: string) => {
       const freshSession = await scanTableQrCode(token, customerToken);
       sessionStorage.setItem(visitedKey(token), '1');
+      if (slug) setActiveMesaToken(slug, token);
       setSession(freshSession);
       setNeedsConfirmation(false);
       setExpired(false);
     },
-    [customerToken],
+    [customerToken, slug],
   );
 
   const checkCurrent = useCallback(async () => {
@@ -59,6 +80,7 @@ export function useTableSession(qrCodeToken: string | undefined) {
       const current = await getCurrentTableSession(qrCodeToken);
       if (current) {
         sessionStorage.setItem(visitedKey(qrCodeToken), '1');
+        if (slug) setActiveMesaToken(slug, qrCodeToken);
         setSession(current);
         setNeedsConfirmation(false);
         setExpired(false);
@@ -79,7 +101,7 @@ export function useTableSession(qrCodeToken: string | undefined) {
     } finally {
       setIsLoading(false);
     }
-  }, [qrCodeToken, doJoin]);
+  }, [qrCodeToken, doJoin, slug]);
 
   useEffect(() => {
     checkCurrent();
@@ -115,12 +137,13 @@ export function useTableSession(qrCodeToken: string | undefined) {
       // (ex: mesmo celular testando de novo, ou próximo cliente sentando
       // e usando o mesmo navegador/aba compartilhado do estabelecimento).
       sessionStorage.removeItem(visitedKey(qrCodeToken));
+      if (slug) clearActiveMesaTokenForSlug(slug);
       setSession(null);
       setExpired(true);
     } else {
       setSession(current);
     }
-  }, [qrCodeToken]);
+  }, [qrCodeToken, slug]);
 
   // Checagem de fundo, independente de qual tela o cliente está vendo —
   // antes, o prazo só era reconferido quando o componente visual do

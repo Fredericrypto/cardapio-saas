@@ -181,8 +181,33 @@ export class TablesService {
       tenantId: table.tenantId,
       tableId: table.id,
       status: 'aberta',
+      openedByCustomerId: customerId ?? null,
     });
     session.table = table;
+
+    // Mesa vazia (sem pedido nenhum) que ESSE MESMO cliente logado tinha
+    // deixado aberta em outra mesa fica pendurada pra sempre no painel
+    // do garçom até o timer configurado estourar (se houver um) — o
+    // cliente já foi embora dali, então fecha ela agora, na hora de
+    // abrir a nova. Só toca em sessões que ESSE cliente especificamente
+    // abriu (openedByCustomerId) e que continuam sem nenhum pedido —
+    // nunca em mesas de outros clientes, nunca em mesas com conta em
+    // andamento (essas já foram bloqueadas antes, no `if (customerId)`
+    // acima, que barra o scan inteiro se houver pedido pendente).
+    if (customerId) {
+      const staleOwnSessions = await this.sessionRepo.find({
+        where: { tenantId: table.tenantId, openedByCustomerId: customerId, status: 'aberta' },
+      });
+      for (const stale of staleOwnSessions) {
+        if (stale.tableId === table.id) continue;
+        const hasAnyOrder = await this.orderRepo.exists({ where: { tableSessionId: stale.id } });
+        if (!hasAnyOrder) {
+          stale.status = 'fechada';
+          stale.closedAt = new Date();
+          await this.sessionRepo.save(stale);
+        }
+      }
+    }
 
     try {
       return await this.sessionRepo.save(session);
