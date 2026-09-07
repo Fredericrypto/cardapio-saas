@@ -57,6 +57,10 @@ interface ActiveTableGroup {
   // Quem já pediu nessa mesa — com conta usa nome/foto atuais do
   // perfil, sem conta usa o nome digitado no checkout (obrigatório).
   customers: Array<{ name: string; avatarUrl: string | null; hasAccount: boolean }>;
+  // Quantas vezes o garçom foi chamado NESSA sessão em aberto — zera
+  // sozinho quando a mesa fecha e abre de novo (é por sessão, não por
+  // mesa física).
+  waiterCallCount: number;
   // Pisca o card pra chamar atenção do admin: garçom chamado, cliente
   // solicitou fechamento, ou tem pedido novo (pendente) ainda não visto.
   needsAttention: boolean;
@@ -195,6 +199,7 @@ export function DashboardPage() {
       openedAt: item.openedAt,
       orders: tableOrders,
       customers: item.customers,
+      waiterCallCount: item.waiterCallCount,
       needsAttention: hasAttentionReason && dismissedAttention[item.session.id] !== attentionSignature,
       attentionSignature,
     });
@@ -684,31 +689,43 @@ function ActiveTableCard({
         </div>
       </div>
 
-      <p className="text-xs text-gray-400 -mt-2">
-        Aberta há {elapsedSince(group.openedAt)} · Total R${' '}
-        {group.total.toFixed(2).replace('.', ',')}
-        {group.session.tipAmount > 0 &&
-          ` + R$ ${Number(group.session.tipAmount).toFixed(2).replace('.', ',')} gorjeta`}
-      </p>
+      <div className="flex items-center gap-2 -mt-2 flex-wrap">
+        <p className="text-xs text-gray-400">
+          Aberta há {elapsedSince(group.openedAt)} · Total R${' '}
+          {group.total.toFixed(2).replace('.', ',')}
+          {group.session.tipAmount > 0 &&
+            ` + R$ ${Number(group.session.tipAmount).toFixed(2).replace('.', ',')} gorjeta`}
+        </p>
+        {group.waiterCallCount > 0 && (
+          <span className="flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-50 rounded-full px-2 py-0.5">
+            <Bell size={11} />
+            Chamou o garçom {group.waiterCallCount}x
+          </span>
+        )}
+      </div>
 
       {group.customers.length > 0 && (
-        <div className="flex items-center gap-1.5 flex-wrap -mt-1">
+        <div className="flex items-center gap-3 flex-wrap -mt-1">
           {group.customers.map((c, i) => (
-            <span
-              key={`${c.name}-${i}`}
-              className="flex items-center gap-1 text-xs text-gray-500 bg-gray-50 rounded-full pl-1 pr-2 py-0.5"
-            >
-              <span className="w-4 h-4 rounded-full overflow-hidden shrink-0 flex items-center justify-center bg-gray-200">
+            <div key={`${c.name}-${i}`} className="flex items-center gap-2">
+              <span
+                className="w-9 h-9 rounded-full overflow-hidden shrink-0 flex items-center justify-center bg-gray-100"
+                style={
+                  c.hasAccount
+                    ? { boxShadow: '0 0 0 2px #fff, 0 0 0 3.5px #111827' }
+                    : { boxShadow: '0 0 0 2px #fff, 0 0 0 3.5px #E5E7EB' }
+                }
+              >
                 {c.avatarUrl ? (
                   <img src={c.avatarUrl} alt="" className="w-full h-full object-cover" />
                 ) : (
-                  <span className="text-[9px] font-bold text-gray-500">
+                  <span className="text-xs font-bold text-gray-500">
                     {c.name[0]?.toUpperCase()}
                   </span>
                 )}
               </span>
-              {c.name}
-            </span>
+              <span className="text-sm font-medium text-gray-700">{c.name}</span>
+            </div>
           ))}
         </div>
       )}

@@ -252,7 +252,18 @@ export function ProductDetailPage() {
         )}
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto p-4 bg-white border-t border-gray-100">
+      <div
+        className="fixed bottom-0 left-0 right-0 max-w-md mx-auto p-4 bg-white border-t border-gray-100"
+        // BUG CORRIGIDO: em alguns navegadores/WebViews Android, uma
+        // barra fixa cujo conteúdo muda de cor via `style` dinâmico (não
+        // uma classe CSS estática) às vezes só é pintada de verdade
+        // depois de QUALQUER interação na tela (um toque, um scroll) —
+        // até lá, o botão existe e funciona (o clique passava normal),
+        // só não aparece visualmente. `translateZ(0)` força esse bloco
+        // pra sua própria camada de composição, contornando o bug —
+        // truque padrão e bem documentado pra esse exato sintoma.
+        style={{ transform: 'translateZ(0)' }}
+      >
         <button
           onClick={handleAddToCart}
           className="w-full py-3.5 rounded-xl text-white font-semibold flex justify-between items-center px-5"

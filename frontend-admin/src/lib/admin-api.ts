@@ -236,6 +236,7 @@ export async function fetchActiveOverview(): Promise<
     total: number;
     openedAt: string;
     customers: Array<{ name: string; avatarUrl: string | null; hasAccount: boolean }>;
+    waiterCallCount: number;
   }>
 > {
   const { data } = await api.get('/table-sessions/active-overview');

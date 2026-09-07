@@ -14,7 +14,7 @@ export function CartBar({ primaryColor, onClick }: CartBarProps) {
     <button
       onClick={onClick}
       className="fixed bottom-20 left-4 right-4 max-w-md mx-auto rounded-xl px-4 py-3.5 flex justify-between items-center text-white font-semibold shadow-lg z-50"
-      style={{ backgroundColor: primaryColor }}
+      style={{ backgroundColor: primaryColor, transform: 'translateZ(0)' }}
     >
       <span className="text-sm">
         {totalItems} {totalItems === 1 ? 'item' : 'itens'} no carrinho

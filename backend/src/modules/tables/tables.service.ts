@@ -449,6 +449,7 @@ export class TablesService {
       total: number;
       openedAt: Date;
       customers: Array<{ name: string; avatarUrl: string | null; hasAccount: boolean }>;
+      waiterCallCount: number;
     }> = [];
 
     // Busca os clientes de conta (com foto/nome oficiais do perfil) de
@@ -473,6 +474,42 @@ export class TablesService {
         : [];
     const accountCustomerById = new Map(accountCustomers.map((c) => [c.id, c]));
 
+    // Quantas vezes o garçom foi chamado NESSA sessão em aberto — conta
+    // TODAS as chamadas já feitas (atendidas, canceladas ou pendentes),
+    // não só a pendente atual, porque o pedido do Felipe é "quantas
+    // vezes o cliente chamou", não "quantas ainda faltam atender". Zera
+    // sozinho porque é por `tableSessionId` — assim que a mesa fecha e
+    // uma sessão NOVA é aberta depois, o contador começa do zero de
+    // novo.
+    const waiterCallCounts =
+      sessions.length > 0
+        ? await this.waiterCallRepo
+            .createQueryBuilder('call')
+            .select('call.table_session_id', 'sessionId')
+            .addSelect('COUNT(*)', 'count')
+            .where('call.table_session_id IN (:...ids)', { ids: sessions.map((s) => s.id) })
+            .groupBy('call.table_session_id')
+            .getRawMany<{ sessionId: string; count: string }>()
+        : [];
+    const waiterCallCountBySession = new Map(
+      waiterCallCounts.map((row) => [row.sessionId, Number(row.count)]),
+    );
+
+    // Avatares predefinidos são gravados como CAMINHO RELATIVO (ex:
+    // "/avatars/male-3.svg") — resolvido pelo próprio frontend-cardapio,
+    // que serve esses arquivos na raiz dele. Isso funciona certo dentro
+    // do app do cliente, mas quebra silenciosamente aqui: o painel admin
+    // é um domínio DIFERENTE, então um `<img>` com esse caminho relativo
+    // tentava carregar do domínio do ADMIN, onde o arquivo não existe —
+    // por isso o avatar não aparecia. Fotos enviadas de verdade (upload
+    // no Supabase) já são absolutas e não passam por aqui.
+    const customerAppUrl = (process.env.CUSTOMER_APP_URL ?? '').replace(/\/$/, '');
+    function resolveAvatarUrl(avatarUrl: string | null): string | null {
+      if (!avatarUrl) return null;
+      if (!avatarUrl.startsWith('/')) return avatarUrl;
+      return customerAppUrl ? `${customerAppUrl}${avatarUrl}` : null;
+    }
+
     for (const session of sessions) {
       const orders = sessionOrdersMap.get(session.id) ?? [];
       const totalCents = orders
@@ -483,27 +520,37 @@ export class TablesService {
       // com conta, usa nome/foto ATUAIS do perfil (não o que ficou
       // gravado no pedido, que pode ficar desatualizado se a pessoa
       // trocar de nome/foto depois); sem conta, usa o nome digitado no
-      // checkout (agora obrigatório). Deduplicado — a mesma pessoa
-      // pedindo de novo não aparece repetida.
-      const seenAccountIds = new Set<string>();
-      const seenGuestNames = new Set<string>();
+      // checkout (agora obrigatório).
+      //
+      // BUG CORRIGIDO: o mesmo cliente podia aparecer DUAS vezes — uma
+      // vez com o nome digitado no primeiro pedido (ainda sem login) e
+      // outra com o nome da conta, depois de logar no meio da mesma
+      // visita. Deduplica por NOME (comparando sem diferença de
+      // maiúsculas/espaço) através das duas categorias, não só dentro
+      // de cada uma — e sempre que uma entrada de CONTA aparece pra um
+      // nome que já tinha entrado como convidado, ela SUBSTITUI a
+      // anterior (nunca o contrário — convidado nunca rebaixa conta).
       const customers: Array<{ name: string; avatarUrl: string | null; hasAccount: boolean }> = [];
+      function upsertCustomer(entry: { name: string; avatarUrl: string | null; hasAccount: boolean }) {
+        const key = entry.name.trim().toLowerCase();
+        const idx = customers.findIndex((c) => c.name.trim().toLowerCase() === key);
+        if (idx === -1) {
+          customers.push(entry);
+        } else if (entry.hasAccount && !customers[idx].hasAccount) {
+          customers[idx] = entry;
+        }
+      }
       for (const order of orders) {
         if (order.status === 'cancelado') continue;
         if (order.customerId) {
-          if (seenAccountIds.has(order.customerId)) continue;
-          seenAccountIds.add(order.customerId);
           const account = accountCustomerById.get(order.customerId);
-          customers.push({
+          upsertCustomer({
             name: account?.name ?? order.customerName ?? 'Cliente',
-            avatarUrl: account?.avatarUrl ?? null,
+            avatarUrl: resolveAvatarUrl(account?.avatarUrl ?? null),
             hasAccount: true,
           });
         } else if (order.customerName) {
-          const key = order.customerName.trim().toLowerCase();
-          if (seenGuestNames.has(key)) continue;
-          seenGuestNames.add(key);
-          customers.push({ name: order.customerName, avatarUrl: null, hasAccount: false });
+          upsertCustomer({ name: order.customerName, avatarUrl: null, hasAccount: false });
         }
       }
 
@@ -513,6 +560,7 @@ export class TablesService {
         total: fromCents(totalCents),
         openedAt: session.openedAt,
         customers,
+        waiterCallCount: waiterCallCountBySession.get(session.id) ?? 0,
       });
     }
     return overview;
