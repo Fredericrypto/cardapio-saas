@@ -22,7 +22,16 @@ export function BottomNav({ slug, qrCodeToken, primaryColor = '#111827' }: Botto
   const base = qrCodeToken ? `/${slug}/mesa/${qrCodeToken}` : `/${slug}`;
   const menuHref = base;
   const cartHref = `${base}/carrinho`;
-  const accountHref = customer ? `/${slug}/conta-cliente/perfil` : `/${slug}/conta-cliente/entrar`;
+  // BUG CORRIGIDO: sem o `?redirect=`, logar/criar conta a partir da
+  // mesa sempre devolvia o cliente pro cardápio GERAL (delivery/
+  // retirada) em vez de de volta pra própria mesa — aí ele perdia o
+  // timer/chamar garçom/pedir conta bem na hora que só queria acessar a
+  // conta, e podia acabar tendo que reescanear o QR ou passar pela tela
+  // de "você ainda está nessa mesa?" à toa. `menuHref` aqui já é a
+  // própria página da mesa quando `qrCodeToken` existe.
+  const accountHref = customer
+    ? `/${slug}/conta-cliente/perfil`
+    : `/${slug}/conta-cliente/entrar?redirect=${encodeURIComponent(menuHref)}`;
   const accountActive = location.pathname.startsWith(`/${slug}/conta-cliente`);
 
   return (

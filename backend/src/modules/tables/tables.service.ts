@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull, Not } from 'typeorm';
+import { Repository, IsNull, Not, In } from 'typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { randomBytes } from 'crypto';
 import { RestaurantTable } from './restaurant-table.entity';
@@ -9,6 +9,7 @@ import { WaiterCall } from './waiter-call.entity';
 import { Order } from '../orders/order.entity';
 import { Location } from '../locations/location.entity';
 import { Tenant } from '../tenants/tenant.entity';
+import { Customer } from '../customers/customer.entity';
 import { CreateTableDto } from './dto/create-table.dto';
 import { CashbackService } from '../cashback/cashback.service';
 import { PushService } from '../push/push.service';
@@ -447,19 +448,71 @@ export class TablesService {
       session: TableSession;
       total: number;
       openedAt: Date;
+      customers: Array<{ name: string; avatarUrl: string | null; hasAccount: boolean }>;
     }> = [];
+
+    // Busca os clientes de conta (com foto/nome oficiais do perfil) de
+    // TODAS as mesas de uma vez, em vez de uma query por mesa — o
+    // painel do garçom pode ter várias mesas abertas ao mesmo tempo.
+    const sessionOrdersMap = new Map<string, Order[]>();
+    const accountCustomerIds = new Set<string>();
     for (const session of sessions) {
-      const orders = await this.orderRepo.find({
-        where: { tableSessionId: session.id },
-      });
+      const orders = await this.orderRepo.find({ where: { tableSessionId: session.id } });
+      sessionOrdersMap.set(session.id, orders);
+      for (const order of orders) {
+        if (order.status !== 'cancelado' && order.customerId) {
+          accountCustomerIds.add(order.customerId);
+        }
+      }
+    }
+    const accountCustomers =
+      accountCustomerIds.size > 0
+        ? await this.orderRepo.manager
+            .getRepository(Customer)
+            .find({ where: { id: In([...accountCustomerIds]) } })
+        : [];
+    const accountCustomerById = new Map(accountCustomers.map((c) => [c.id, c]));
+
+    for (const session of sessions) {
+      const orders = sessionOrdersMap.get(session.id) ?? [];
       const totalCents = orders
         .filter((o) => o.status !== 'cancelado')
         .reduce((sum, o) => sum + toCents(o.total), 0);
+
+      // Identifica quem está na mesa a partir dos próprios pedidos —
+      // com conta, usa nome/foto ATUAIS do perfil (não o que ficou
+      // gravado no pedido, que pode ficar desatualizado se a pessoa
+      // trocar de nome/foto depois); sem conta, usa o nome digitado no
+      // checkout (agora obrigatório). Deduplicado — a mesma pessoa
+      // pedindo de novo não aparece repetida.
+      const seenAccountIds = new Set<string>();
+      const seenGuestNames = new Set<string>();
+      const customers: Array<{ name: string; avatarUrl: string | null; hasAccount: boolean }> = [];
+      for (const order of orders) {
+        if (order.status === 'cancelado') continue;
+        if (order.customerId) {
+          if (seenAccountIds.has(order.customerId)) continue;
+          seenAccountIds.add(order.customerId);
+          const account = accountCustomerById.get(order.customerId);
+          customers.push({
+            name: account?.name ?? order.customerName ?? 'Cliente',
+            avatarUrl: account?.avatarUrl ?? null,
+            hasAccount: true,
+          });
+        } else if (order.customerName) {
+          const key = order.customerName.trim().toLowerCase();
+          if (seenGuestNames.has(key)) continue;
+          seenGuestNames.add(key);
+          customers.push({ name: order.customerName, avatarUrl: null, hasAccount: false });
+        }
+      }
+
       overview.push({
         table: session.table,
         session,
         total: fromCents(totalCents),
         openedAt: session.openedAt,
+        customers,
       });
     }
     return overview;

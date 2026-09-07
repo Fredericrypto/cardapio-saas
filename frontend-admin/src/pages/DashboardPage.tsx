@@ -54,6 +54,9 @@ interface ActiveTableGroup {
   total: number;
   openedAt: string;
   orders: Order[];
+  // Quem já pediu nessa mesa — com conta usa nome/foto atuais do
+  // perfil, sem conta usa o nome digitado no checkout (obrigatório).
+  customers: Array<{ name: string; avatarUrl: string | null; hasAccount: boolean }>;
   // Pisca o card pra chamar atenção do admin: garçom chamado, cliente
   // solicitou fechamento, ou tem pedido novo (pendente) ainda não visto.
   needsAttention: boolean;
@@ -191,6 +194,7 @@ export function DashboardPage() {
       total: item.total,
       openedAt: item.openedAt,
       orders: tableOrders,
+      customers: item.customers,
       needsAttention: hasAttentionReason && dismissedAttention[item.session.id] !== attentionSignature,
       attentionSignature,
     });
@@ -686,6 +690,28 @@ function ActiveTableCard({
         {group.session.tipAmount > 0 &&
           ` + R$ ${Number(group.session.tipAmount).toFixed(2).replace('.', ',')} gorjeta`}
       </p>
+
+      {group.customers.length > 0 && (
+        <div className="flex items-center gap-1.5 flex-wrap -mt-1">
+          {group.customers.map((c, i) => (
+            <span
+              key={`${c.name}-${i}`}
+              className="flex items-center gap-1 text-xs text-gray-500 bg-gray-50 rounded-full pl-1 pr-2 py-0.5"
+            >
+              <span className="w-4 h-4 rounded-full overflow-hidden shrink-0 flex items-center justify-center bg-gray-200">
+                {c.avatarUrl ? (
+                  <img src={c.avatarUrl} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-[9px] font-bold text-gray-500">
+                    {c.name[0]?.toUpperCase()}
+                  </span>
+                )}
+              </span>
+              {c.name}
+            </span>
+          ))}
+        </div>
+      )}
 
       {group.orders.length === 0 ? (
         <p className="text-xs text-gray-400 italic">Nenhum pedido em preparo agora.</p>

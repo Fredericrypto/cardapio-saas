@@ -87,7 +87,11 @@ export function CartPage() {
 
   const { token: customerToken, customer } = useCustomerAuth();
   const [customerName, setCustomerName] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
+  // Feedback mínimo de "nome obrigatório" no fluxo de mesa sem conta —
+  // só liga depois de uma tentativa real de continuar sem nome (nunca
+  // de cara, isso seria irritante); soma sozinho assim que o cliente
+  // digita alguma coisa.
+  const [showNameRequired, setShowNameRequired] = useState(false);  const [customerPhone, setCustomerPhone] = useState('');
   const [notes, setNotes] = useState('');
 
   // Se o cliente já tem conta e já salvou nome/telefone, usa esses dados
@@ -403,6 +407,18 @@ export function CartPage() {
         err && typeof err === 'object' && 'response' in err
           ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
           : undefined;
+      // BUG CORRIGIDO: quando o pedido falha porque a mesa já foi
+      // fechada (garçom fechou a conta, ou expirou) pelo lado de lá
+      // enquanto o cliente ainda estava com a página aberta, o header
+      // continuava mostrando "Mesa X" normalmente até a próxima
+      // varredura de fundo (até 20s depois) ou até o cliente navegar de
+      // novo — dava a impressão de "a mesa não fechou direito". Rechecar
+      // na hora, a cada falha de pedido de mesa (qualquer motivo — mais
+      // simples e mais confiável que tentar reconhecer a mensagem exata
+      // do backend), atualiza a tela pro estado real imediatamente.
+      if (orderType === 'mesa') {
+        tableSessionCtx?.recheckExpiry();
+      }
       setErrorMessage(
         backendMessage ?? 'Não foi possível enviar o pedido. Tente novamente.',
       );
@@ -525,9 +541,11 @@ export function CartPage() {
   function handlePrimaryAction() {
     if (orderType === 'mesa') {
       if (!canProceedMesa) {
-        setErrorMessage('Digite seu nome pra continuar.');
+        setShowNameRequired(true);
+        setErrorMessage(null);
         return;
       }
+      setShowNameRequired(false);
       setErrorMessage(null);
       handleSubmit();
       return;
@@ -1233,13 +1251,26 @@ export function CartPage() {
             </div>
 
             {!hasSavedName && (
-              <input
-                type="text"
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                placeholder="Seu nome"
-                className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none"
-              />
+              <div className="flex flex-col gap-1">
+                <input
+                  type="text"
+                  value={customerName}
+                  onChange={(e) => {
+                    setCustomerName(e.target.value);
+                    if (e.target.value.trim()) setShowNameRequired(false);
+                  }}
+                  placeholder="Seu nome"
+                  className="border rounded-lg px-3 py-2.5 text-sm outline-none"
+                  style={
+                    showNameRequired
+                      ? { borderColor: '#EF4444' }
+                      : { borderColor: '#e5e5e5', color: '#666' }
+                  }
+                />
+                {showNameRequired && (
+                  <p className="text-xs text-red-500 px-0.5">Nome obrigatório</p>
+                )}
+              </div>
             )}
             {orderType !== 'mesa' && !hasSavedPhone && (
               <PhoneInput
@@ -1683,7 +1714,6 @@ export function CartPage() {
             isSubmitting ||
             !activeLocation?.isOpenNow ||
             (checkoutStep === 'form' && orderType !== 'mesa' && !canProceedFromForm) ||
-            (checkoutStep === 'form' && orderType === 'mesa' && !canProceedMesa) ||
             (checkoutStep === 'review' && !canSubmit)
           }
           className="w-full py-3.5 rounded-xl text-white font-semibold flex justify-between items-center px-5 disabled:opacity-60"
