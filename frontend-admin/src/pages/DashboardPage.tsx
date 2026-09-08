@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { Bell, Clock, Table2, Receipt, Check, X, ShoppingBag, Bike, Copy, MessageSquare, Tag, Coins } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import {
@@ -393,18 +393,28 @@ export function DashboardPage() {
   );
 }
 
-function OrderRow({ order, actions }: { order: Order; actions: OrderActions }) {
+function OrderRow({
+  order,
+  actions,
+  dark = false,
+}: {
+  order: Order;
+  actions: OrderActions;
+  dark?: boolean;
+}) {
   return (
-    <div className="border-t border-gray-100 pt-2.5 first:border-t-0 first:pt-0">
+    <div
+      className={`border-t pt-2.5 first:border-t-0 first:pt-0 ${dark ? 'border-white/10' : 'border-gray-100'}`}
+    >
       {order.items && order.items.length > 0 && (
         <div className="mb-1.5 flex flex-col gap-0.5">
           {order.items.map((item) => (
             <div key={item.id}>
-              <p className="text-xs text-gray-500">
+              <p className={`text-xs ${dark ? 'text-gray-300' : 'text-gray-500'}`}>
                 {item.quantity}x {item.productName}
               </p>
               {item.selectedOptions && item.selectedOptions.length > 0 && (
-                <p className="text-[11px] text-gray-400 pl-3">
+                <p className={`text-[11px] pl-3 ${dark ? 'text-gray-500' : 'text-gray-400'}`}>
                   {item.selectedOptions.map((o) => o.label).join(', ')}
                 </p>
               )}
@@ -414,27 +424,46 @@ function OrderRow({ order, actions }: { order: Order; actions: OrderActions }) {
       )}
 
       {order.flagged && (
-        <div className="mb-1.5 bg-orange-50 border border-orange-100 rounded-lg px-2 py-1.5 flex items-center gap-1.5">
-          <Bell size={13} className="text-orange-600 shrink-0" />
-          <p className="text-xs text-orange-800 font-medium">Cliente chamou o atendente</p>
+        <div
+          className={`mb-1.5 rounded-lg px-2 py-1.5 flex items-center gap-1.5 ${
+            dark ? 'bg-white/5 border border-white/10' : 'bg-orange-50 border border-orange-100'
+          }`}
+        >
+          <Bell size={13} className={`shrink-0 ${dark ? 'text-orange-400' : 'text-orange-600'}`} />
+          <p className={`text-xs font-medium ${dark ? 'text-orange-300' : 'text-orange-800'}`}>
+            Cliente chamou o atendente
+          </p>
         </div>
       )}
 
       {order.notes && (
-        <div className="mb-1.5 bg-amber-50 border border-amber-100 rounded-lg px-2 py-1.5 flex gap-1.5">
-          <MessageSquare size={13} className="text-amber-600 shrink-0 mt-0.5" />
-          <p className="text-xs text-amber-800">{order.notes}</p>
+        <div
+          className={`mb-1.5 rounded-lg px-2 py-1.5 flex gap-1.5 ${
+            dark ? 'bg-white/5 border border-white/10' : 'bg-amber-50 border border-amber-100'
+          }`}
+        >
+          <MessageSquare
+            size={13}
+            className={`shrink-0 mt-0.5 ${dark ? 'text-amber-400' : 'text-amber-600'}`}
+          />
+          <p className={`text-xs ${dark ? 'text-amber-200' : 'text-amber-800'}`}>{order.notes}</p>
         </div>
       )}
 
       {order.orderType === 'entrega' && order.deliveryAddress && (
-        <div className="mb-1.5 bg-gray-50 rounded-lg p-2 flex flex-col gap-0.5">
-          <p className="text-xs text-gray-600 font-medium">{order.deliveryAddress}</p>
+        <div
+          className={`mb-1.5 rounded-lg p-2 flex flex-col gap-0.5 ${dark ? 'bg-white/5' : 'bg-gray-50'}`}
+        >
+          <p className={`text-xs font-medium ${dark ? 'text-gray-200' : 'text-gray-600'}`}>
+            {order.deliveryAddress}
+          </p>
           {order.deliveryReferencePoint && (
-            <p className="text-xs text-gray-400">Ref: {order.deliveryReferencePoint}</p>
+            <p className={`text-xs ${dark ? 'text-gray-500' : 'text-gray-400'}`}>
+              Ref: {order.deliveryReferencePoint}
+            </p>
           )}
           {(order.deliveryDistanceKm != null || order.deliveryFee) && (
-            <p className="text-xs text-gray-400">
+            <p className={`text-xs ${dark ? 'text-gray-500' : 'text-gray-400'}`}>
               {order.deliveryDistanceKm != null && `${order.deliveryDistanceKm.toFixed(1)} km`}
               {order.deliveryDistanceKm != null && order.deliveryFee ? ' · ' : ''}
               {order.deliveryFee
@@ -443,7 +472,7 @@ function OrderRow({ order, actions }: { order: Order; actions: OrderActions }) {
             </p>
           )}
           {order.deliveryAddressPrecise === false && (
-            <p className="text-xs text-amber-600 font-medium">
+            <p className={`text-xs font-medium ${dark ? 'text-amber-400' : 'text-amber-600'}`}>
               ⚠ Endereço não confirmado com exatidão — confira com o cliente
             </p>
           )}
@@ -451,9 +480,13 @@ function OrderRow({ order, actions }: { order: Order; actions: OrderActions }) {
       )}
 
       {(order.discountAmount ?? 0) > 0 && (
-        <div className="mb-1.5 bg-red-50 border border-red-100 rounded-lg px-2 py-1.5 flex items-center gap-1.5">
-          <Tag size={13} className="text-red-500 shrink-0" />
-          <p className="text-xs text-red-700">
+        <div
+          className={`mb-1.5 rounded-lg px-2 py-1.5 flex items-center gap-1.5 ${
+            dark ? 'bg-white/5 border border-white/10' : 'bg-red-50 border border-red-100'
+          }`}
+        >
+          <Tag size={13} className={`shrink-0 ${dark ? 'text-red-400' : 'text-red-500'}`} />
+          <p className={`text-xs ${dark ? 'text-red-300' : 'text-red-700'}`}>
             {(() => {
               const titles = order.promotionTitlesSnapshot?.length
                 ? order.promotionTitlesSnapshot
@@ -469,9 +502,13 @@ function OrderRow({ order, actions }: { order: Order; actions: OrderActions }) {
       )}
 
       {(order.cashbackUsed ?? 0) > 0 && (
-        <div className="mb-1.5 bg-amber-50 border border-amber-100 rounded-lg px-2 py-1.5 flex items-center gap-1.5">
-          <Coins size={13} className="text-amber-600 shrink-0" />
-          <p className="text-xs text-amber-800">
+        <div
+          className={`mb-1.5 rounded-lg px-2 py-1.5 flex items-center gap-1.5 ${
+            dark ? 'bg-white/5 border border-white/10' : 'bg-amber-50 border border-amber-100'
+          }`}
+        >
+          <Coins size={13} className={`shrink-0 ${dark ? 'text-amber-400' : 'text-amber-600'}`} />
+          <p className={`text-xs ${dark ? 'text-amber-200' : 'text-amber-800'}`}>
             Pago com cashback: R${' '}
             {(Number(order.total) + Number(order.cashbackUsed)).toFixed(2).replace('.', ',')}
             {' → -R$ '}
@@ -483,16 +520,20 @@ function OrderRow({ order, actions }: { order: Order; actions: OrderActions }) {
       )}
 
       {(order.cashbackEarned ?? 0) > 0 && (
-        <div className="mb-1.5 bg-green-50 border border-green-100 rounded-lg px-2 py-1.5 flex items-center gap-1.5">
-          <Coins size={13} className="text-green-600 shrink-0" />
-          <p className="text-xs text-green-700">
+        <div
+          className={`mb-1.5 rounded-lg px-2 py-1.5 flex items-center gap-1.5 ${
+            dark ? 'bg-white/5 border border-white/10' : 'bg-green-50 border border-green-100'
+          }`}
+        >
+          <Coins size={13} className={`shrink-0 ${dark ? 'text-green-400' : 'text-green-600'}`} />
+          <p className={`text-xs ${dark ? 'text-green-300' : 'text-green-700'}`}>
             Cashback dado ao cliente: +R$ {Number(order.cashbackEarned).toFixed(2).replace('.', ',')}
           </p>
         </div>
       )}
 
       {order.paymentMethod && (
-        <p className="text-xs text-gray-400 mb-1.5">
+        <p className={`text-xs mb-1.5 ${dark ? 'text-gray-500' : 'text-gray-400'}`}>
           Pagamento: {PAYMENT_METHOD_LABELS[order.paymentMethod] ?? order.paymentMethod}
         </p>
       )}
@@ -501,10 +542,10 @@ function OrderRow({ order, actions }: { order: Order; actions: OrderActions }) {
         <PixWaitingPanel order={order} actions={actions} />
       ) : (
         <div className="flex items-center justify-between">
-          <p className="text-sm font-bold text-gray-900">
+          <p className={`text-sm font-bold ${dark ? 'text-white' : 'text-gray-900'}`}>
             R$ {Number(order.total).toFixed(2).replace('.', ',')}
             {order.tipAmount > 0 && (
-              <span className="text-xs font-medium text-gray-400">
+              <span className={`text-xs font-medium ${dark ? 'text-gray-400' : 'text-gray-400'}`}>
                 {' '}
                 + R$ {Number(order.tipAmount).toFixed(2).replace('.', ',')} gorjeta
               </span>
@@ -515,7 +556,11 @@ function OrderRow({ order, actions }: { order: Order; actions: OrderActions }) {
             <select
               value={order.status}
               onChange={(e) => actions.onStatusChange(order, e.target.value as Order['status'])}
-              className="text-xs font-medium border border-gray-200 rounded-lg px-2 py-1.5 outline-none"
+              className={`text-xs font-medium rounded-lg px-2 py-1.5 outline-none ${
+                dark
+                  ? 'bg-white/10 border border-white/10 text-white [color-scheme:dark]'
+                  : 'border border-gray-200'
+              }`}
             >
               {STATUS_OPTIONS.map((status) => (
                 <option key={status} value={status}>
@@ -536,7 +581,9 @@ function OrderRow({ order, actions }: { order: Order; actions: OrderActions }) {
               <button
                 onClick={() => actions.onConclude(order)}
                 title="Concluir pedido"
-                className="w-7 h-7 rounded-lg bg-green-100 text-green-700 flex items-center justify-center"
+                className={`w-7 h-7 rounded-lg flex items-center justify-center ${
+                  dark ? 'bg-green-400/20 text-green-400' : 'bg-green-100 text-green-700'
+                }`}
               >
                 <Check size={14} />
               </button>
@@ -544,7 +591,9 @@ function OrderRow({ order, actions }: { order: Order; actions: OrderActions }) {
             <button
               onClick={() => actions.onCancel(order)}
               title="Cancelar pedido"
-              className="w-7 h-7 rounded-lg bg-red-100 text-red-600 flex items-center justify-center"
+              className={`w-7 h-7 rounded-lg flex items-center justify-center ${
+                dark ? 'bg-red-400/20 text-red-400' : 'bg-red-100 text-red-600'
+              }`}
             >
               <X size={14} />
             </button>
@@ -653,89 +702,133 @@ function ActiveTableCard({
 }) {
   const isAwaitingClosing = group.session.status === 'fechamento_solicitado';
 
+  // Pedido do Felipe: a mesa INTEIRA vira o "perfil" agora — não só um
+  // bloco dentro do card. Paleta trocada de propósito pra tons de
+  // cinza/preto/branco (nada de cor "fofa") — like um cartão de perfil
+  // verificado de rede social de verdade (referência dele: Twitter/X).
+  // O selo de verificado usa o azul clássico do Twitter (#1D9BF0) —
+  // única cor de destaque em todo o cartão, de propósito, pra não
+  // competir com o resto.
   return (
     <div
       onClick={group.needsAttention ? onDismissAttention : undefined}
-      className={`border rounded-xl p-4 flex flex-col gap-3 ${
-        group.needsAttention
-          ? 'attention-blink cursor-pointer'
-          : isAwaitingClosing
-            ? 'bg-blue-50 border-blue-200'
-            : 'bg-white border-gray-100'
-      }`}
+      className={`rounded-2xl p-4 flex flex-col gap-3 text-white ${
+        group.needsAttention ? 'attention-blink cursor-pointer' : ''
+      } ${isAwaitingClosing ? 'ring-2 ring-blue-400' : ''}`}
+      style={{
+        background: 'linear-gradient(160deg, #27272A 0%, #18181B 55%, #0A0A0B 100%)',
+        ...(group.needsAttention
+          ? ({
+              '--blink-bg-off': '#18181B',
+              '--blink-border-off': '#27272A',
+              '--blink-bg-on': '#3F3F1E',
+              '--blink-border-on': '#EAB308',
+            } as CSSProperties)
+          : {}),
+      }}
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
           <Table2 size={15} className="text-gray-400" />
-          <p className="text-sm font-semibold text-gray-900">{group.table?.number ?? 'Mesa'}</p>
+          <p className="text-sm font-semibold text-white">{group.table?.number ?? 'Mesa'}</p>
           {isAwaitingClosing && (
-            <span className="text-xs font-semibold text-blue-600">aguardando fechamento</span>
+            <span className="text-xs font-semibold text-blue-300">aguardando fechamento</span>
           )}
         </div>
         <div className="flex gap-1.5 shrink-0">
           <button
             onClick={onViewReceipt}
-            className="text-xs font-semibold bg-gray-100 text-gray-600 px-2.5 py-1.5 rounded-lg flex items-center gap-1"
+            className="text-xs font-semibold bg-white/10 text-gray-200 px-2.5 py-1.5 rounded-lg flex items-center gap-1"
           >
             <Receipt size={13} />
             Cupom
           </button>
           <button
             onClick={onCloseAccount}
-            className="text-xs font-semibold bg-gray-900 text-white px-2.5 py-1.5 rounded-lg"
+            className="text-xs font-semibold bg-white text-gray-900 px-2.5 py-1.5 rounded-lg"
           >
             Fechar conta
           </button>
         </div>
       </div>
 
-      <div className="flex items-center gap-2 -mt-2 flex-wrap">
-        <p className="text-xs text-gray-400">
-          Aberta há {elapsedSince(group.openedAt)} · Total R${' '}
-          {group.total.toFixed(2).replace('.', ',')}
-          {group.session.tipAmount > 0 &&
-            ` + R$ ${Number(group.session.tipAmount).toFixed(2).replace('.', ',')} gorjeta`}
-        </p>
-        {group.waiterCallCount > 0 && (
-          <span className="flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-50 rounded-full px-2 py-0.5">
-            <Bell size={11} />
-            Chamou o garçom {group.waiterCallCount}x
-          </span>
-        )}
-      </div>
-
-      {group.customers.length > 0 && (
-        <div className="flex items-center gap-3 flex-wrap -mt-1">
-          {group.customers.map((c, i) => (
-            <div key={`${c.name}-${i}`} className="flex items-center gap-2">
-              <span
-                className="w-9 h-9 rounded-full overflow-hidden shrink-0 flex items-center justify-center bg-gray-100"
-                style={
-                  c.hasAccount
-                    ? { boxShadow: '0 0 0 2px #fff, 0 0 0 3.5px #111827' }
-                    : { boxShadow: '0 0 0 2px #fff, 0 0 0 3.5px #E5E7EB' }
-                }
-              >
-                {c.avatarUrl ? (
-                  <img src={c.avatarUrl} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-xs font-bold text-gray-500">
-                    {c.name[0]?.toUpperCase()}
+      {/* Perfil da mesa — pedido explícito do Felipe: "mini perfil de
+          social media" por mesa (referência: card de perfil estilo
+          Roblox/Twitter — avatar em destaque, emblema de verificado).
+          Segunda rodada: ele pediu pra envolver a mesa INTEIRA nesse
+          tratamento (não só esse bloco) e trocar a paleta colorida por
+          tons de cinza/preto/branco, com o selo no azul clássico do
+          Twitter. */}
+      <div className="rounded-xl bg-white/5 p-3.5 flex flex-col gap-2.5">
+        {group.customers.length > 0 ? (
+          group.customers.map((c, i) => (
+            <div key={`${c.name}-${i}`} className="flex items-center gap-3">
+              <div className="relative shrink-0">
+                <span className="block w-14 h-14 rounded-full overflow-hidden ring-[3px] ring-white/20 shadow-md bg-white/10 flex items-center justify-center">
+                  {c.avatarUrl ? (
+                    <img src={c.avatarUrl} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-lg font-bold text-gray-400">
+                      {c.name[0]?.toUpperCase()}
+                    </span>
+                  )}
+                </span>
+                {c.hasAccount && (
+                  <span
+                    className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full ring-2 flex items-center justify-center"
+                    style={{ backgroundColor: '#1D9BF0', ['--tw-ring-color' as any]: '#18181B' }}
+                    title="Cliente verificado"
+                  >
+                    <Check size={11} className="text-white" strokeWidth={3.5} />
                   </span>
                 )}
-              </span>
-              <span className="text-sm font-medium text-gray-700">{c.name}</span>
+              </div>
+              <div className="min-w-0">
+                <p className="font-bold text-[15px] text-white leading-tight truncate">
+                  {c.name}
+                </p>
+                <p
+                  className={`text-[11px] font-semibold mt-0.5 flex items-center gap-1 ${
+                    c.hasAccount ? '' : 'text-gray-500'
+                  }`}
+                  style={c.hasAccount ? { color: '#1D9BF0' } : undefined}
+                >
+                  {c.hasAccount && <Check size={11} strokeWidth={3.5} />}
+                  {c.hasAccount ? 'Cliente verificado' : 'Visitante'}
+                </p>
+              </div>
             </div>
-          ))}
+          ))
+        ) : (
+          <p className="text-xs text-gray-500 italic">Ninguém identificado ainda.</p>
+        )}
+
+        <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-white/10">
+          <span className="flex items-center gap-1 text-xs text-gray-400">
+            <Clock size={12} />
+            Aberta há {elapsedSince(group.openedAt)}
+          </span>
+          <span className="text-xs text-gray-600">·</span>
+          <span className="text-xs text-gray-400">
+            Total R$ {group.total.toFixed(2).replace('.', ',')}
+            {group.session.tipAmount > 0 &&
+              ` + R$ ${Number(group.session.tipAmount).toFixed(2).replace('.', ',')} gorjeta`}
+          </span>
+          {group.waiterCallCount > 0 && (
+            <span className="flex items-center gap-1 text-[11px] font-semibold text-gray-200 bg-white/10 rounded-full px-2 py-0.5 ml-auto">
+              <Bell size={11} />
+              Chamou o garçom {group.waiterCallCount}x
+            </span>
+          )}
         </div>
-      )}
+      </div>
 
       {group.orders.length === 0 ? (
-        <p className="text-xs text-gray-400 italic">Nenhum pedido em preparo agora.</p>
+        <p className="text-xs text-gray-500 italic">Nenhum pedido em preparo agora.</p>
       ) : (
         <div className="flex flex-col gap-2.5">
           {group.orders.map((order) => (
-            <OrderRow key={order.id} order={order} actions={actions} />
+            <OrderRow key={order.id} order={order} actions={actions} dark />
           ))}
         </div>
       )}
