@@ -56,7 +56,7 @@ interface ActiveTableGroup {
   orders: Order[];
   // Quem já pediu nessa mesa — com conta usa nome/foto atuais do
   // perfil, sem conta usa o nome digitado no checkout (obrigatório).
-  customers: Array<{ name: string; avatarUrl: string | null; hasAccount: boolean }>;
+  customers: Array<{ name: string; avatarUrl: string | null; hasAccount: boolean; isVerified: boolean }>;
   // Quantas vezes o garçom foi chamado NESSA sessão em aberto — zera
   // sozinho quando a mesa fecha e abre de novo (é por sessão, não por
   // mesa física).
@@ -773,7 +773,7 @@ function ActiveTableCard({
                     </span>
                   )}
                 </span>
-                {c.hasAccount && (
+                {c.isVerified && (
                   <span
                     className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full ring-2 flex items-center justify-center"
                     style={{ backgroundColor: '#1D9BF0', ['--tw-ring-color' as any]: '#18181B' }}
@@ -789,12 +789,12 @@ function ActiveTableCard({
                 </p>
                 <p
                   className={`text-[11px] font-semibold mt-0.5 flex items-center gap-1 ${
-                    c.hasAccount ? '' : 'text-gray-500'
+                    c.isVerified ? '' : 'text-gray-500'
                   }`}
-                  style={c.hasAccount ? { color: '#1D9BF0' } : undefined}
+                  style={c.isVerified ? { color: '#1D9BF0' } : undefined}
                 >
-                  {c.hasAccount && <Check size={11} strokeWidth={3.5} />}
-                  {c.hasAccount ? 'Cliente verificado' : 'Visitante'}
+                  {c.isVerified && <Check size={11} strokeWidth={3.5} />}
+                  {c.isVerified ? 'Cliente verificado' : c.hasAccount ? 'Cliente' : 'Visitante'}
                 </p>
               </div>
             </div>

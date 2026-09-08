@@ -242,6 +242,15 @@ export class CustomersAuthService {
       avatarUrl: customer.avatarUrl,
       pixKeyType: customer.pixKeyType,
       pixKey: customer.pixKey,
+      // Verificação de identidade — `isVerified` é o único campo que
+      // deve decidir se o selo aparece em qualquer lugar do app (nunca
+      // `verificationStatus` sozinho). Os demais só importam pra
+      // desenhar a tela de perfil (status atual, motivo se recusado,
+      // aviso de "parabéns" pendente).
+      isVerified: customer.isVerified,
+      verificationStatus: customer.verificationStatus,
+      verificationRejectionReason: customer.verificationRejectionReason,
+      verificationCongratsPending: customer.verificationCongratsPending,
       address: hasAddress
         ? {
             street: customer.addressStreet,

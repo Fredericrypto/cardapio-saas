@@ -235,7 +235,7 @@ export async function fetchActiveOverview(): Promise<
     session: TableSession;
     total: number;
     openedAt: string;
-    customers: Array<{ name: string; avatarUrl: string | null; hasAccount: boolean }>;
+    customers: Array<{ name: string; avatarUrl: string | null; hasAccount: boolean; isVerified: boolean }>;
     waiterCallCount: number;
   }>
 > {
@@ -549,4 +549,44 @@ export async function fetchReviewsSummary(): Promise<ReviewSummary> {
 // permanece sempre, boa ou ruim).
 export async function respondToReview(id: string, responseText: string): Promise<void> {
   await api.post(`/reviews/admin/${id}/respond`, { responseText });
+}
+
+// ---------- Verificação de Cliente ----------
+
+export interface PendingVerification {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  gender: string | null;
+  avatarUrl: string | null;
+  verificationPhotoUrl: string | null;
+  verificationRequestedAt: string;
+  reviewDeadline: string | null;
+  photoDeleteAt: string | null;
+}
+
+export async function fetchPendingVerifications(): Promise<PendingVerification[]> {
+  const { data } = await api.get('/verifications/pending');
+  return data;
+}
+
+export async function fetchVerificationStats(): Promise<{ verifiedCount: number; pendingCount: number }> {
+  const { data } = await api.get('/verifications/stats');
+  return data;
+}
+
+export async function approveVerification(
+  customerId: string,
+): Promise<{ verificationStatus: string; isVerified: boolean; photoDeleted: boolean }> {
+  const { data } = await api.post(`/verifications/${customerId}/approve`);
+  return data;
+}
+
+export async function rejectVerification(
+  customerId: string,
+  reason: string,
+): Promise<{ verificationStatus: string; verificationRejectionReason: string; photoDeleted: boolean }> {
+  const { data } = await api.post(`/verifications/${customerId}/reject`, { reason });
+  return data;
 }

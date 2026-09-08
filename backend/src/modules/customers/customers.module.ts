@@ -7,8 +7,11 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Customer } from './customer.entity';
 import { CustomersAuthService } from './customers-auth.service';
 import { CustomersController } from './customers.controller';
+import { CustomerVerificationService } from './customer-verification.service';
+import { CustomerVerificationAdminController } from './customer-verification-admin.controller';
 import { CustomerJwtStrategy } from './customer-jwt.strategy';
 import { GeocodingModule } from '../geocoding/geocoding.module';
+import { PushModule } from '../push/push.module';
 import { StorageService } from '../../common/services/storage.service';
 
 // Módulo do cliente final, isolado do AuthModule (admin) — ver o
@@ -23,6 +26,7 @@ import { StorageService } from '../../common/services/storage.service';
     TypeOrmModule.forFeature([Customer]),
     PassportModule,
     GeocodingModule,
+    PushModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -34,8 +38,8 @@ import { StorageService } from '../../common/services/storage.service';
       }),
     }),
   ],
-  controllers: [CustomersController],
-  providers: [CustomersAuthService, CustomerJwtStrategy, StorageService],
+  controllers: [CustomersController, CustomerVerificationAdminController],
+  providers: [CustomersAuthService, CustomerVerificationService, CustomerJwtStrategy, StorageService],
   exports: [CustomersAuthService],
 })
 export class CustomersModule {}

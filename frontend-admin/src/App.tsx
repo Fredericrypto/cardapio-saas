@@ -14,6 +14,7 @@ import { LoyaltySettingsPage } from './pages/LoyaltySettingsPage';
 import { CashbackSettingsPage } from './pages/CashbackSettingsPage';
 import { ReviewsPage } from './pages/ReviewsPage';
 import { VerifyReceiptPage } from './pages/VerifyReceiptPage';
+import { VerificationsPage } from './pages/VerificationsPage';
 
 function App() {
   return (
@@ -39,6 +40,7 @@ function App() {
             <Route path="/avaliacoes" element={<ReviewsPage />} />
             <Route path="/historico" element={<HistoryPage />} />
             <Route path="/verificar-cupom" element={<VerifyReceiptPage />} />
+            <Route path="/verificacoes" element={<VerificationsPage />} />
             <Route path="/configuracoes" element={<SettingsPage />} />
           </Route>
 

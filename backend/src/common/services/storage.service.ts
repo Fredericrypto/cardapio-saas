@@ -132,6 +132,39 @@ export class StorageService {
     return this.uploadBuffer(path, file.buffer, realMime);
   }
 
+  // Foto de verificação de identidade — nunca fica pública por padrão
+  // feed/avatar: só o admin do restaurante (painel, autenticado) e o
+  // próprio cliente dono dela deveriam ter motivo de ver. O bucket é o
+  // mesmo dos outros uploads (nenhuma infra nova pra manter), mas o
+  // caminho isola isso numa pasta própria fácil de auditar/purgar.
+  async uploadVerificationPhoto(
+    tenantId: string,
+    customerId: string,
+    file: Express.Multer.File,
+  ): Promise<string> {
+    const realMime = assertValidImage(file, MAX_AVATAR_SIZE_BYTES);
+    const extension = realMime.split('/')[1];
+    const path = `${tenantId}/customers/${customerId}/verification-${randomUUID()}.${extension}`;
+    return this.uploadBuffer(path, file.buffer, realMime);
+  }
+
+  // Exclusão garantida da foto de verificação depois do prazo (10 dias)
+  // — chamada pelo cron em CustomersAuthService. "Melhor esforço": se o
+  // Supabase estiver fora do ar num momento pontual, não trava o resto
+  // da varredura — o cron tenta de novo na próxima passada, já que só
+  // limpamos o campo `verificationPhotoUrl` no banco DEPOIS de confirmar
+  // que o arquivo foi removido (ver chamador).
+  async deleteByPublicUrl(publicUrl: string): Promise<void> {
+    const marker = `/object/public/${this.bucket}/`;
+    const idx = publicUrl.indexOf(marker);
+    if (idx === -1) return; // URL de formato inesperado — não quebra o cron por causa disso
+    const path = publicUrl.slice(idx + marker.length);
+    const { error } = await this.supabase.storage.from(this.bucket).remove([path]);
+    if (error) {
+      throw new Error(`Falha ao excluir arquivo de verificação: ${error.message}`);
+    }
+  }
+
   private async uploadBuffer(path: string, buffer: Buffer, contentType: string): Promise<string> {
     const { error } = await this.supabase.storage
       .from(this.bucket)

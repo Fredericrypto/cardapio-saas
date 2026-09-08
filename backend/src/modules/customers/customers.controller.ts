@@ -26,6 +26,7 @@ import { CustomerJwtAuthGuard } from './customer-jwt-auth.guard';
 import { CurrentCustomer } from '../../common/decorators/current-customer.decorator';
 import type { RequestCustomer } from '../../common/decorators/current-customer.decorator';
 import { StorageService } from '../../common/services/storage.service';
+import { CustomerVerificationService } from './customer-verification.service';
 
 // Rotas do CLIENTE FINAL, sempre por restaurante (/:tenantId na URL) —
 // prefixo próprio ('customers'), totalmente separado do controller de
@@ -36,6 +37,7 @@ export class CustomersController {
   constructor(
     private readonly customersAuthService: CustomersAuthService,
     private readonly storageService: StorageService,
+    private readonly verificationService: CustomerVerificationService,
   ) {}
 
   // Limite mais apertado que o padrão global (60/min) — login e cadastro
@@ -124,6 +126,34 @@ export class CustomersController {
   ) {
     this.assertSameTenant(tenantId, customer);
     return this.customersAuthService.removePixKey(tenantId, customer.customerId);
+  }
+
+  // --- Verificação de identidade ("Cliente Verificado") ---
+  // Reenvio só é aceito quando não há verificação em andamento nem já
+  // concedida — o serviço barra os dois casos, essa checagem aqui é só
+  // pra retornar um erro sem nem gastar tempo com o upload nesses casos
+  // óbvios (o serviço confere de novo de qualquer forma, nunca confia
+  // só nessa checagem prévia).
+  @UseGuards(CustomerJwtAuthGuard)
+  @Post('me/verification/submit')
+  @UseInterceptors(FileInterceptor('file'))
+  async submitVerification(
+    @Param('tenantId') tenantId: string,
+    @CurrentCustomer() customer: RequestCustomer,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    this.assertSameTenant(tenantId, customer);
+    return this.verificationService.submit(tenantId, customer.customerId, file);
+  }
+
+  @UseGuards(CustomerJwtAuthGuard)
+  @Post('me/verification/congrats-seen')
+  async markVerificationCongratsSeen(
+    @Param('tenantId') tenantId: string,
+    @CurrentCustomer() customer: RequestCustomer,
+  ) {
+    this.assertSameTenant(tenantId, customer);
+    return this.verificationService.markCongratsSeen(tenantId, customer.customerId);
   }
 
   // Upload separado do resto do perfil — o cliente escolhe/tira a foto,

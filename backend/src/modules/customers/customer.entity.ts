@@ -114,6 +114,56 @@ export class Customer {
   @Column({ name: 'pix_key', type: 'varchar', length: 150, nullable: true })
   pixKey: string | null;
 
+  // --- Verificação de identidade ("Cliente Verificado") ---
+  // `isVerified` é o ÚNICO campo que decide se o selo aparece em
+  // QUALQUER lugar do app (avaliações, "Aí na Mesa", perfil, etc.) —
+  // nunca lido junto de `verificationStatus`, de propósito: uma vez
+  // true, permanece true INDEPENDENTE do que aconteça depois com o
+  // fluxo de verificação (nova troca de foto de perfil, nova tentativa
+  // de verificação que venha a ser recusada por engano, etc. nunca
+  // tocam nesse campo — só uma exclusão de conta o apaga, junto de tudo
+  // o resto).
+  @Column({ name: 'is_verified', type: 'boolean', default: false })
+  isVerified: boolean;
+
+  // 'none' | 'pending' | 'approved' | 'rejected' — estado do FLUXO de
+  // pedido de verificação (não confundir com `isVerified` acima). Uma
+  // recusa permite pedir de novo, o que volta esse campo pra 'pending'
+  // com uma foto nova, sobrescrevendo a tentativa anterior.
+  @Column({ name: 'verification_status', type: 'varchar', length: 20, default: 'none' })
+  verificationStatus: 'none' | 'pending' | 'approved' | 'rejected';
+
+  // Guardada só enquanto a análise está em aberto — apagada automaticamente
+  // depois de 10 dias corridos (ver TablesService... na verdade
+  // CustomersVerificationService/cron), independente do resultado da
+  // análise. Nunca usada de novo depois de decidido.
+  @Column({ name: 'verification_photo_url', type: 'text', nullable: true })
+  verificationPhotoUrl: string | null;
+
+  @Column({ name: 'verification_photo_delete_at', type: 'timestamptz', nullable: true })
+  verificationPhotoDeleteAt: Date | null;
+
+  @Column({ name: 'verification_requested_at', type: 'timestamptz', nullable: true })
+  verificationRequestedAt: Date | null;
+
+  @Column({ name: 'verification_decided_at', type: 'timestamptz', nullable: true })
+  verificationDecidedAt: Date | null;
+
+  @Column({ name: 'verification_rejection_reason', type: 'text', nullable: true })
+  verificationRejectionReason: string | null;
+
+  // Auditoria — qual admin decidiu (nunca exposto pro cliente, só uso
+  // interno/histórico).
+  @Column({ name: 'verification_reviewed_by_admin_id', type: 'uuid', nullable: true })
+  verificationReviewedByAdminId: string | null;
+
+  // true logo após uma aprovação, até o cliente ver o modal de
+  // parabéns UMA vez (ver endpoint .../verification/congrats-seen) —
+  // depois disso fica false pra sempre, mesmo que o app seja reaberto
+  // de novo.
+  @Column({ name: 'verification_congrats_pending', type: 'boolean', default: false })
+  verificationCongratsPending: boolean;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 

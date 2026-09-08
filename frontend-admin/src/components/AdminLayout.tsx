@@ -13,11 +13,12 @@ import {
   ScanLine,
   Settings,
   LogOut,
+  BadgeCheck,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchMyTenant } from '../lib/admin-api';
 import { useAttentionStatus } from '../hooks/useAttentionStatus';
-import { DashboardDataProvider } from '../contexts/DashboardDataContext';
+import { DashboardDataProvider, useDashboardData } from '../contexts/DashboardDataContext';
 
 const NAV_ITEMS = [
   { to: '/', label: 'Painel', icon: LayoutDashboard, end: true },
@@ -28,6 +29,7 @@ const NAV_ITEMS = [
   { to: '/fidelidade', label: 'Fidelidade', icon: Gift },
   { to: '/cashback', label: 'Cashback', icon: Wallet },
   { to: '/avaliacoes', label: 'Avaliações', icon: Star },
+  { to: '/verificacoes', label: 'Verificações', icon: BadgeCheck },
   { to: '/historico', label: 'Histórico', icon: History },
   { to: '/verificar-cupom', label: 'Verificar cupom', icon: ScanLine },
   { to: '/configuracoes', label: 'Configurações', icon: Settings },
@@ -69,6 +71,24 @@ function AdminLayoutContent() {
 
   const shouldBlinkPainel = hasAny && signature !== dismissedSignature;
 
+  // Mesmo mecanismo, trilha própria: pisca "Verificações" quando existe
+  // uma solicitação pendente nova, independente do que está acontecendo
+  // no Painel — os dois nunca compartilham a mesma assinatura, senão uma
+  // verificação nova faria "Painel" piscar à toa (e vice-versa).
+  const { pendingVerifications } = useDashboardData();
+  const verificationSignature = (pendingVerifications ?? [])
+    .map((v) => v.id)
+    .sort()
+    .join(',');
+  const [dismissedVerificationSignature, setDismissedVerificationSignature] = useState('');
+  useEffect(() => {
+    if (location.pathname === '/verificacoes') {
+      setDismissedVerificationSignature(verificationSignature);
+    }
+  }, [location.pathname, verificationSignature]);
+  const shouldBlinkVerifications =
+    Boolean(verificationSignature) && verificationSignature !== dismissedVerificationSignature;
+
   // BUG CORRIGIDO: sessões antigas (de antes do login passar a devolver o
   // tenant inteiro) tinham só {id, name, slug} salvos no localStorage —
   // todo o resto (isOpen, deliveryFee, horários...) ficava undefined até
@@ -107,7 +127,10 @@ function AdminLayoutContent() {
                   isActive
                     ? 'bg-gray-900 text-white'
                     : `text-gray-600 hover:bg-gray-100 ${
-                        label === 'Painel' && shouldBlinkPainel ? 'nav-attention-blink' : ''
+                        (label === 'Painel' && shouldBlinkPainel) ||
+                        (label === 'Verificações' && shouldBlinkVerifications)
+                          ? 'nav-attention-blink'
+                          : ''
                       }`
                 }`
               }

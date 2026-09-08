@@ -448,7 +448,7 @@ export class TablesService {
       session: TableSession;
       total: number;
       openedAt: Date;
-      customers: Array<{ name: string; avatarUrl: string | null; hasAccount: boolean }>;
+      customers: Array<{ name: string; avatarUrl: string | null; hasAccount: boolean; isVerified: boolean }>;
       waiterCallCount: number;
     }> = [];
 
@@ -530,8 +530,23 @@ export class TablesService {
       // de cada uma — e sempre que uma entrada de CONTA aparece pra um
       // nome que já tinha entrado como convidado, ela SUBSTITUI a
       // anterior (nunca o contrário — convidado nunca rebaixa conta).
-      const customers: Array<{ name: string; avatarUrl: string | null; hasAccount: boolean }> = [];
-      function upsertCustomer(entry: { name: string; avatarUrl: string | null; hasAccount: boolean }) {
+      //
+      // `isVerified` é o selo de verdade (sistema de Cliente
+      // Verificado — foto + aprovação do admin), bem diferente de
+      // `hasAccount` (só significa "estava logado ao pedir"). NUNCA usa
+      // hasAccount como substituto de verificação real.
+      const customers: Array<{
+        name: string;
+        avatarUrl: string | null;
+        hasAccount: boolean;
+        isVerified: boolean;
+      }> = [];
+      function upsertCustomer(entry: {
+        name: string;
+        avatarUrl: string | null;
+        hasAccount: boolean;
+        isVerified: boolean;
+      }) {
         const key = entry.name.trim().toLowerCase();
         const idx = customers.findIndex((c) => c.name.trim().toLowerCase() === key);
         if (idx === -1) {
@@ -548,9 +563,15 @@ export class TablesService {
             name: account?.name ?? order.customerName ?? 'Cliente',
             avatarUrl: resolveAvatarUrl(account?.avatarUrl ?? null),
             hasAccount: true,
+            isVerified: account?.isVerified ?? false,
           });
         } else if (order.customerName) {
-          upsertCustomer({ name: order.customerName, avatarUrl: null, hasAccount: false });
+          upsertCustomer({
+            name: order.customerName,
+            avatarUrl: null,
+            hasAccount: false,
+            isVerified: false,
+          });
         }
       }
 
