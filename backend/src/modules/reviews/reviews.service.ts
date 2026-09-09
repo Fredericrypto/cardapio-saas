@@ -29,6 +29,12 @@ export interface PublicReviewDto {
   // anônima não vaza NENHUM dado que identifique o cliente, avatar
   // incluso.
   customerAvatarUrl: string | null;
+  // Mesma regra do avatar: nunca preenchido quando `isAnonymous`, senão
+  // um review anônimo "verificado" ainda deixaria escapar uma pista de
+  // identidade (poucas contas verificadas = mais fácil de deduzir quem
+  // é). O selo de verificado só aparece de fato quando a pessoa optou
+  // por não ser anônima.
+  customerIsVerified: boolean;
   isAnonymous: boolean;
   createdAt: Date;
   response: { responseText: string; createdAt: Date } | null;
@@ -39,6 +45,7 @@ export interface AdminReviewDto {
   rating: number;
   comment: string | null;
   customerName: string;
+  customerIsVerified: boolean;
   isAnonymous: boolean;
   locationName: string | null;
   orderId: string;
@@ -227,6 +234,7 @@ export class ReviewsService {
         ? 'Anônimo'
         : formatPublicDisplayName(review.customer?.name ?? 'Cliente'),
       customerAvatarUrl: review.isAnonymous ? null : (review.customer?.avatarUrl ?? null),
+      customerIsVerified: review.isAnonymous ? false : (review.customer?.isVerified ?? false),
       isAnonymous: review.isAnonymous,
       createdAt: review.createdAt,
       response: response
@@ -327,6 +335,7 @@ export class ReviewsService {
         // é o dono do negócio, precisa poder identificar se precisar dar
         // suporte a esse cliente. Só a vitrine PÚBLICA anonimiza.
         customerName: review.customer?.name ?? 'Cliente',
+        customerIsVerified: review.customer?.isVerified ?? false,
         isAnonymous: review.isAnonymous,
         locationName: review.location?.name ?? null,
         orderId: review.orderId,

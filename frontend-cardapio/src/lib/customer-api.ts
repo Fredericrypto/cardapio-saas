@@ -31,6 +31,13 @@ export interface CustomerProfile {
   avatarUrl: string | null;
   pixKeyType: string | null;
   pixKey: string | null;
+  // Verificação de identidade — `isVerified` é o único campo que deve
+  // decidir se o selo aparece em algum lugar (nunca `verificationStatus`
+  // sozinho, que só serve pra desenhar a tela de status/botão).
+  isVerified: boolean;
+  verificationStatus: 'none' | 'pending' | 'approved' | 'rejected';
+  verificationRejectionReason: string | null;
+  verificationCongratsPending: boolean;
   address: CustomerAddress | null;
 }
 
@@ -170,6 +177,29 @@ export async function setMyCustomerAvatarPreset(
     { headers: { Authorization: `Bearer ${token}` } },
   );
   return data;
+}
+
+// --- Verificação de identidade ("Cliente Verificado") ---
+
+export async function submitMyVerification(
+  tenantId: string,
+  token: string,
+  photoBlob: Blob,
+): Promise<{ verificationStatus: string }> {
+  const formData = new FormData();
+  formData.append('file', photoBlob, 'verificacao.jpg');
+  const { data } = await api.post(`/customers/${tenantId}/auth/me/verification/submit`, formData, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return data;
+}
+
+export async function markVerificationCongratsSeen(tenantId: string, token: string): Promise<void> {
+  await api.post(
+    `/customers/${tenantId}/auth/me/verification/congrats-seen`,
+    undefined,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
 }
 
 // Reflete o Order inteiro que o backend já devolve (não é um DTO
@@ -321,6 +351,7 @@ export interface PublicReview {
   comment: string | null;
   customerDisplayName: string;
   customerAvatarUrl: string | null;
+  customerIsVerified: boolean;
   isAnonymous: boolean;
   createdAt: string;
   response: { responseText: string; createdAt: string } | null;

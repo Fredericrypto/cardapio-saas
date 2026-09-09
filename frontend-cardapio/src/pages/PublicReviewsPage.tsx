@@ -5,6 +5,7 @@ import { fetchPublicReviews, fetchReviewsSummary } from '../lib/customer-api';
 import type { PublicReview, ReviewSummary } from '../lib/customer-api';
 import { useSelectedLocation } from '../hooks/useSelectedLocation';
 import { useTenant } from '../contexts/TenantContext';
+import { VerifiedBadge } from '../components/VerifiedBadge';
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -35,10 +36,12 @@ function ReviewerAvatar({
   name,
   avatarUrl,
   isAnonymous,
+  isVerified,
 }: {
   name: string;
   avatarUrl: string | null;
   isAnonymous: boolean;
+  isVerified: boolean;
 }) {
   if (isAnonymous) {
     return (
@@ -47,23 +50,25 @@ function ReviewerAvatar({
       </div>
     );
   }
-  if (avatarUrl) {
-    return (
-      <img
-        src={avatarUrl}
-        alt=""
-        className="w-8 h-8 rounded-full object-cover shrink-0 bg-gray-100"
-      />
-    );
-  }
   const initial = name.trim().charAt(0).toUpperCase() || '?';
   const colorIndex = name.charCodeAt(0) % AVATAR_COLORS.length;
   return (
-    <div
-      className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-white text-xs font-bold"
-      style={{ backgroundColor: AVATAR_COLORS[colorIndex] }}
-    >
-      {initial}
+    <div className="relative shrink-0">
+      {avatarUrl ? (
+        <img src={avatarUrl} alt="" className="w-8 h-8 rounded-full object-cover bg-gray-100" />
+      ) : (
+        <div
+          className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold"
+          style={{ backgroundColor: AVATAR_COLORS[colorIndex] }}
+        >
+          {initial}
+        </div>
+      )}
+      {isVerified && (
+        <span className="absolute -bottom-0.5 -right-0.5 ring-2 ring-white rounded-full">
+          <VerifiedBadge size={12} />
+        </span>
+      )}
     </div>
   );
 }
@@ -159,8 +164,12 @@ export function PublicReviewsPage() {
                   name={review.customerDisplayName}
                   avatarUrl={review.customerAvatarUrl}
                   isAnonymous={review.isAnonymous}
+                  isVerified={review.customerIsVerified}
                 />
-                <p className="text-sm font-semibold text-gray-900">{review.customerDisplayName}</p>
+                <p className="text-sm font-semibold text-gray-900 flex items-center gap-1">
+                  {review.customerDisplayName}
+                  {review.customerIsVerified && <VerifiedBadge size={13} />}
+                </p>
               </div>
               <Stars rating={review.rating} />
             </div>

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Star, MessageSquare, Send, User } from 'lucide-react';
+import { Star, MessageSquare, Send, User, Check } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { fetchAdminReviews, fetchReviewsSummary, respondToReview, fetchLocations } from '../lib/admin-api';
 import type { AdminReview, ReviewSummary, Location } from '../types';
@@ -172,6 +172,15 @@ function ReviewCard({ review, onChanged }: { review: AdminReview; onChanged: () 
             <p className="text-sm font-semibold text-gray-900 truncate flex items-center gap-1">
               {review.isAnonymous && <User size={12} className="text-gray-400" />}
               {review.customerName}
+              {review.customerIsVerified && (
+                <span
+                  className="inline-flex items-center justify-center rounded-full shrink-0"
+                  style={{ backgroundColor: '#1D9BF0', width: 13, height: 13 }}
+                  title="Cliente verificado"
+                >
+                  <Check size={8} className="text-white" strokeWidth={4} />
+                </span>
+              )}
               {review.isAnonymous && (
                 <span className="text-[10px] font-normal text-gray-400">(publicou anônimo)</span>
               )}

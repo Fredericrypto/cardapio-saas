@@ -410,6 +410,7 @@ export interface AdminReview {
   rating: number;
   comment: string | null;
   customerName: string;
+  customerIsVerified: boolean;
   isAnonymous: boolean;
   locationName: string | null;
   orderId: string;

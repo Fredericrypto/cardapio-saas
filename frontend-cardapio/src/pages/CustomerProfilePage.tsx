@@ -1,10 +1,16 @@
+import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ChevronRight, Receipt, MapPin, Wallet, Coins, Star, Bell, BellOff, LogOut, User } from 'lucide-react';
+import { ChevronRight, Receipt, MapPin, Wallet, Coins, Star, Bell, BellOff, LogOut, User, BadgeCheck, Clock3 } from 'lucide-react';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { useTenant } from '../contexts/TenantContext';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import { IconBadge } from '../components/IconBadge';
 import { BottomNav } from '../components/BottomNav';
+import { VerifiedBadge } from '../components/VerifiedBadge';
+import { VerificationExplainerModal } from '../components/VerificationExplainerModal';
+import { VerificationCameraCapture } from '../components/VerificationCameraCapture';
+import { VerificationCongratsModal } from '../components/VerificationCongratsModal';
+import { submitMyVerification, markVerificationCongratsSeen, fetchMyCustomerProfile } from '../lib/customer-api';
 
 // Hub da conta do cliente — igual ao iFood: um cabeçalho com quem é a
 // pessoa, e uma lista organizada de opções (cada uma sua própria tela),
@@ -14,8 +20,48 @@ export function CustomerProfilePage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { tenant } = useTenant();
-  const { customer, token, isLoading, logout } = useCustomerAuth();
+  const { customer, token, isLoading, logout, setCustomer } = useCustomerAuth();
   const push = usePushNotifications(tenant?.id, token);
+
+  // Fluxo de verificação — explicação → câmera → envio. Cada etapa é
+  // sua própria tela cheia (nunca as três juntas), fechando a anterior
+  // antes de abrir a próxima.
+  const [verificationStep, setVerificationStep] = useState<'explainer' | 'camera' | null>(null);
+  const [isSubmittingVerification, setIsSubmittingVerification] = useState(false);
+  const [verificationError, setVerificationError] = useState<string | null>(null);
+
+  async function handleCapturePhoto(photoBlob: Blob) {
+    if (!tenant || !token) return;
+    setIsSubmittingVerification(true);
+    setVerificationError(null);
+    try {
+      await submitMyVerification(tenant.id, token, photoBlob);
+      setVerificationStep(null);
+      // Recarrega o perfil pra pegar o novo `verificationStatus: 'pending'`
+      // vindo do backend — nunca assume esse valor localmente aqui.
+      const fresh = await fetchMyCustomerProfile(tenant.id, token);
+      setCustomer(fresh);
+    } catch (err) {
+      const message =
+        err && typeof err === 'object' && 'response' in err
+          ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+          : undefined;
+      setVerificationError(message ?? 'Não foi possível enviar sua foto agora. Tenta de novo.');
+      setVerificationStep(null);
+    } finally {
+      setIsSubmittingVerification(false);
+    }
+  }
+
+  async function handleCloseCongrats() {
+    if (!tenant || !token || !customer) return;
+    // Fecha na hora (não espera a resposta do servidor) — é só uma
+    // marcação de "já vi", não precisa travar a UI por causa disso; se a
+    // chamada falhar, o pior caso é o modal aparecer de novo na próxima
+    // abertura, o que não é grave.
+    setCustomer({ ...customer, verificationCongratsPending: false });
+    markVerificationCongratsSeen(tenant.id, token).catch(() => {});
+  }
 
   if (!tenant || isLoading) {
     return (
@@ -44,18 +90,31 @@ export function CustomerProfilePage() {
   return (
     <div className="min-h-screen bg-gray-50 pb-24 max-w-md mx-auto">
       <div className="bg-white px-6 pt-8 pb-6 flex items-center gap-3">
-        <div
-          className="w-14 h-14 rounded-full flex items-center justify-center text-white text-xl font-bold shrink-0 overflow-hidden"
-          style={{ backgroundColor: tenant.primaryColor }}
-        >
-          {customer.avatarUrl ? (
-            <img src={customer.avatarUrl} alt={customer.name} className="w-full h-full object-cover" />
-          ) : (
-            customer.name[0]?.toUpperCase()
+        <div className="relative shrink-0">
+          <div
+            className="w-14 h-14 rounded-full flex items-center justify-center text-white text-xl font-bold overflow-hidden"
+            style={{ backgroundColor: tenant.primaryColor }}
+          >
+            {customer.avatarUrl ? (
+              <img src={customer.avatarUrl} alt={customer.name} className="w-full h-full object-cover" />
+            ) : (
+              customer.name[0]?.toUpperCase()
+            )}
+          </div>
+          {customer.isVerified && (
+            <span className="absolute -bottom-0.5 -right-0.5 ring-2 ring-white rounded-full">
+              <VerifiedBadge size={18} />
+            </span>
           )}
         </div>
         <div className="min-w-0">
-          <p className="font-display font-bold text-gray-900 truncate">{customer.name}</p>
+          <div className="flex items-center gap-1.5">
+            <p className="font-display font-bold text-gray-900 truncate">{customer.name}</p>
+          </div>
+          {/* "Cliente Verificado" por extenso só aparece aqui e no "Aí na
+              Mesa" do admin, por decisão explícita do Felipe — em
+              qualquer outro lugar do app é só o selinho, sem o texto. */}
+          {customer.isVerified && <VerifiedBadge variant="inline" size={12} />}
           <p className="text-xs text-gray-500 truncate">{customer.email}</p>
           <p className="text-[11px] text-gray-400 mt-0.5">{tenant.name}</p>
         </div>
@@ -70,6 +129,28 @@ export function CustomerProfilePage() {
             label="Meus dados"
             onClick={() => navigate(`/${slug}/conta-cliente/dados`)}
           />
+          {/* Verificação — pedido explícito do Felipe: o botão SOME por
+              completo (não reaparece de jeito nenhum) assim que
+              `isVerified` vira true. Enquanto pendente, fica visível
+              mas travado. Recusado volta a ficar ativo pra tentar de
+              novo, mostrando o motivo. */}
+          {!customer.isVerified && (
+            <MenuRow
+              icon={customer.verificationStatus === 'pending' ? Clock3 : BadgeCheck}
+              iconBg={customer.verificationStatus === 'pending' ? '#FFF7ED' : '#EFF6FF'}
+              iconColor={customer.verificationStatus === 'pending' ? '#F59E0B' : '#1D9BF0'}
+              label={
+                customer.verificationStatus === 'pending'
+                  ? 'Verificação pendente'
+                  : customer.verificationStatus === 'rejected'
+                    ? 'Verificação recusada — tentar de novo'
+                    : 'Verificar minha conta'
+              }
+              disabled={customer.verificationStatus === 'pending'}
+              disabledSuffix={false}
+              onClick={() => setVerificationStep('explainer')}
+            />
+          )}
           <MenuRow
             icon={Receipt}
             iconBg="#FEE2E2"
@@ -106,6 +187,18 @@ export function CustomerProfilePage() {
             onClick={() => navigate(`/${slug}/conta-cliente/avaliacoes`)}
           />
         </div>
+
+        {customer.verificationStatus === 'rejected' && customer.verificationRejectionReason && (
+          <div className="bg-red-50 border border-red-100 rounded-xl px-3.5 py-3 mt-3">
+            <p className="text-xs font-semibold text-red-700 mb-0.5">Sua verificação foi recusada</p>
+            <p className="text-xs text-red-600">{customer.verificationRejectionReason}</p>
+          </div>
+        )}
+        {verificationError && (
+          <div className="bg-red-50 border border-red-100 rounded-xl px-3.5 py-3 mt-3">
+            <p className="text-xs text-red-600">{verificationError}</p>
+          </div>
+        )}
 
         {push.isSupported && (
           <div className="bg-white rounded-2xl overflow-hidden mt-3">
@@ -161,6 +254,32 @@ export function CustomerProfilePage() {
       </div>
 
       <BottomNav slug={slug!} tenantId={tenant.id} primaryColor={tenant.primaryColor} />
+
+      {verificationStep === 'explainer' && (
+        <VerificationExplainerModal
+          primaryColor={tenant.primaryColor}
+          onCancel={() => setVerificationStep(null)}
+          onContinue={() => setVerificationStep('camera')}
+        />
+      )}
+      {verificationStep === 'camera' && (
+        <VerificationCameraCapture
+          primaryColor={tenant.primaryColor}
+          onCancel={() => setVerificationStep(null)}
+          onCapture={handleCapturePhoto}
+        />
+      )}
+      {isSubmittingVerification && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl px-6 py-5 flex items-center gap-3">
+            <div className="w-5 h-5 border-2 border-gray-200 border-t-gray-500 rounded-full animate-spin" />
+            <p className="text-sm text-gray-600">Enviando sua foto...</p>
+          </div>
+        </div>
+      )}
+      {customer.verificationCongratsPending && (
+        <VerificationCongratsModal primaryColor={tenant.primaryColor} onClose={handleCloseCongrats} />
+      )}
     </div>
   );
 }
@@ -173,9 +292,23 @@ interface MenuRowProps {
   labelColor?: string;
   onClick?: () => void;
   disabled?: boolean;
+  // Por padrão, `disabled` também cola "· em breve" no rótulo (usado
+  // pelas linhas "isso ainda não existe"). A linha de verificação usa
+  // `disabled` só pra travar o clique enquanto "pendente" — já tem seu
+  // próprio texto, então não deve ganhar esse sufixo.
+  disabledSuffix?: boolean;
 }
 
-function MenuRow({ icon, iconBg, iconColor, label, labelColor, onClick, disabled }: MenuRowProps) {
+function MenuRow({
+  icon,
+  iconBg,
+  iconColor,
+  label,
+  labelColor,
+  onClick,
+  disabled,
+  disabledSuffix = true,
+}: MenuRowProps) {
   return (
     <button
       onClick={onClick}
@@ -188,7 +321,7 @@ function MenuRow({ icon, iconBg, iconColor, label, labelColor, onClick, disabled
         style={{ color: labelColor ?? '#1F2937' }}
       >
         {label}
-        {disabled && <span className="text-xs text-gray-400 font-normal"> · em breve</span>}
+        {disabled && disabledSuffix && <span className="text-xs text-gray-400 font-normal"> · em breve</span>}
       </span>
       {!disabled && <ChevronRight size={18} className="text-gray-300" />}
     </button>
