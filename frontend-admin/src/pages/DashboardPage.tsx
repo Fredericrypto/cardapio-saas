@@ -873,48 +873,91 @@ function StandaloneOrderCard({
 }) {
   const Icon = order.orderType === 'entrega' ? Bike : ShoppingBag;
   const label = order.orderType === 'entrega' ? 'Entrega' : 'Balcão';
+  // Mesmo raciocínio do "Cliente"/"Visitante"/"Cliente verificado" da
+  // mesa: com conta usa nome/foto/selo ATUAIS do perfil; sem conta usa
+  // só o nome digitado no pedido (convidado nunca tem selo — não tem
+  // como verificar quem não tem conta).
+  const displayName = order.customer?.name ?? order.customerName ?? null;
 
   return (
     <div
       onClick={needsAttention ? onDismissAttention : undefined}
-      className={`border rounded-xl p-4 flex flex-col gap-2.5 ${
-        needsAttention ? 'attention-blink cursor-pointer' : 'bg-white border-gray-100'
+      className={`rounded-2xl p-4 flex flex-col gap-3 text-white ${
+        needsAttention ? 'attention-blink cursor-pointer' : ''
       }`}
+      style={{
+        background: 'linear-gradient(160deg, #27272A 0%, #18181B 55%, #0A0A0B 100%)',
+        ...(needsAttention
+          ? ({
+              '--blink-bg-off': '#18181B',
+              '--blink-border-off': '#27272A',
+              '--blink-bg-on': '#3F3F1E',
+              '--blink-border-on': '#EAB308',
+            } as CSSProperties)
+          : {}),
+      }}
     >
-      <div className="flex flex-col gap-0.5">
-        <div className="flex items-center justify-between gap-1.5">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <Icon size={15} className="text-gray-400 shrink-0" />
-            {order.customer?.avatarUrl && (
-              <img
-                src={order.customer.avatarUrl}
-                alt=""
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                }}
-                className="w-4 h-4 rounded-full object-cover shrink-0"
-              />
-            )}
-            <p className="text-sm font-semibold text-gray-900 truncate">{label}</p>
-          </div>
-          <span
-            className={`text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 ${STATUS_COLORS[order.status]}`}
-          >
-            {STATUS_LABELS[order.status]}
-          </span>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <Icon size={15} className="text-gray-400" />
+          <p className="text-sm font-semibold text-white">{label}</p>
         </div>
-        <p className="text-xs text-gray-400 truncate">
-          {new Date(order.createdAt).toLocaleString('pt-BR', {
-            day: '2-digit',
-            month: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-          })}
-          {order.customerName ? ` · ${order.customerName}` : ''}
-          {order.customerPhone ? ` · ${order.customerPhone}` : ''}
-        </p>
+        <span
+          className={`text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 ${STATUS_COLORS[order.status]}`}
+        >
+          {STATUS_LABELS[order.status]}
+        </span>
       </div>
-      <OrderRow order={order} actions={actions} />
+
+      {displayName && (
+        <div className="rounded-xl bg-white/5 p-3.5 flex items-center gap-3">
+          <div className="relative shrink-0">
+            <span className="block w-11 h-11 rounded-full overflow-hidden ring-[3px] ring-white/20 bg-white/10 flex items-center justify-center">
+              {order.customer?.avatarUrl ? (
+                <img src={order.customer.avatarUrl} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-sm font-bold text-gray-400">
+                  {displayName[0]?.toUpperCase()}
+                </span>
+              )}
+            </span>
+            {order.customer?.isVerified && (
+              <span className="absolute -bottom-0.5 -right-0.5">
+                <VerifiedBadgeAdmin />
+              </span>
+            )}
+          </div>
+          <div className="min-w-0">
+            <p className="font-bold text-sm text-white leading-tight truncate">{displayName}</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">
+              {new Date(order.createdAt).toLocaleString('pt-BR', {
+                day: '2-digit',
+                month: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+              })}
+              {order.customerPhone ? ` · ${order.customerPhone}` : ''}
+            </p>
+          </div>
+        </div>
+      )}
+
+      <OrderRow order={order} actions={actions} dark />
     </div>
+  );
+}
+
+// Mesmo selo azul (#1D9BF0) do resto do painel — versão mínima aqui
+// porque o Felipe pediu explicitamente pra tirar qualquer div/anel
+// extra ao redor: só o selinho, sem embrulho.
+function VerifiedBadgeAdmin() {
+  return (
+    <span
+      className="w-5 h-5 rounded-full ring-2 flex items-center justify-center"
+      style={{ backgroundColor: '#1D9BF0', ['--tw-ring-color' as any]: '#18181B' }}
+      title="Cliente verificado"
+    >
+      <Check size={11} className="text-white" strokeWidth={3.5} />
+    </span>
   );
 }

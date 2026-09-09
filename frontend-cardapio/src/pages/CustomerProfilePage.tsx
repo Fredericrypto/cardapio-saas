@@ -102,7 +102,7 @@ export function CustomerProfilePage() {
             )}
           </div>
           {customer.isVerified && (
-            <span className="absolute -bottom-0.5 -right-0.5 ring-2 ring-white rounded-full">
+            <span className="absolute -bottom-0.5 -right-0.5">
               <VerifiedBadge size={18} />
             </span>
           )}

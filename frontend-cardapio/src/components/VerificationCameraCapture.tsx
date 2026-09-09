@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { X, RotateCcw, Check } from 'lucide-react';
+import { X, RotateCcw, Check, Timer } from 'lucide-react';
 
 interface VerificationCameraCaptureProps {
   primaryColor: string;
@@ -13,10 +13,11 @@ interface VerificationCameraCaptureProps {
 // navegador — pesado, e principalmente algo que eu não teria como
 // TESTAR de verdade aqui (sem câmera real neste ambiente) antes de
 // entregar pra você. Em vez de arriscar te entregar uma "detecção de
-// rosto" quebrada, construí uma abordagem honesta e robusta que
-// entrega a mesma experiência final (nunca precisa apertar um botão no
-// momento exato): guia oval + contagem regressiva de 3 segundos assim
-// que a câmera liga, com preview antes de confirmar de vez.
+// rosto" quebrada, construí algo honesto: guia OVAL vertical (padrão
+// de apps de verificação de documento/rosto) + um botão que o próprio
+// cliente aperta pra ligar a contagem regressiva, dando tempo de se
+// ajustar antes do disparo — em vez de disparar sozinho assim que a
+// câmera liga.
 export function VerificationCameraCapture({
   primaryColor,
   onCancel,
@@ -25,11 +26,20 @@ export function VerificationCameraCapture({
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [phase, setPhase] = useState<'starting' | 'live' | 'error' | 'preview'>('starting');
+  const [phase, setPhase] = useState<'starting' | 'live' | 'counting' | 'error' | 'preview'>(
+    'starting',
+  );
   const [countdown, setCountdown] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [capturedUrl, setCapturedUrl] = useState<string | null>(null);
   const capturedBlobRef = useRef<Blob | null>(null);
+
+  function openCamera() {
+    return navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 720 }, height: { ideal: 960 } },
+      audio: false,
+    });
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -43,10 +53,7 @@ export function VerificationCameraCapture({
         return;
       }
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'user', width: { ideal: 720 }, height: { ideal: 720 } },
-          audio: false,
-        });
+        const stream = await openCamera();
         if (cancelled) {
           stream.getTracks().forEach((t) => t.stop());
           return;
@@ -75,11 +82,11 @@ export function VerificationCameraCapture({
     };
   }, []);
 
-  // Assim que o vídeo está de fato rodando, dispara a contagem
-  // regressiva de captura automática — 3, 2, 1, foto. Dá tempo da
-  // pessoa se ajustar dentro da guia oval sem precisar apertar nada.
-  useEffect(() => {
-    if (phase !== 'live') return;
+  // Só dispara quando o CLIENTE aperta o botão (handleStartCountdown) —
+  // nunca sozinho ao vivo. 3 segundos dá tempo de ajeitar a postura
+  // depois de já ter apertado.
+  function handleStartCountdown() {
+    setPhase('counting');
     setCountdown(3);
     const interval = setInterval(() => {
       setCountdown((c) => {
@@ -92,27 +99,22 @@ export function VerificationCameraCapture({
         return c - 1;
       });
     }, 1000);
-    return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase]);
+  }
 
   function captureFrame() {
     const video = videoRef.current;
     if (!video) return;
     const canvas = document.createElement('canvas');
-    const size = Math.min(video.videoWidth, video.videoHeight);
-    canvas.width = size;
-    canvas.height = size;
+    const width = video.videoWidth;
+    const height = Math.min(video.videoHeight, width * 1.3);
+    canvas.width = width;
+    canvas.height = height;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    // Espelha horizontalmente — o preview da câmera frontal já aparece
-    // espelhado (como um espelho de verdade), então a foto capturada
-    // precisa acompanhar, senão sai com o lado errado.
-    ctx.translate(size, 0);
+    ctx.translate(width, 0);
     ctx.scale(-1, 1);
-    const offsetX = (video.videoWidth - size) / 2;
-    const offsetY = (video.videoHeight - size) / 2;
-    ctx.drawImage(video, offsetX, offsetY, size, size, 0, 0, size, size);
+    const offsetY = (video.videoHeight - height) / 2;
+    ctx.drawImage(video, 0, offsetY, width, height, 0, 0, width, height);
     canvas.toBlob(
       (blob) => {
         if (!blob) return;
@@ -131,8 +133,7 @@ export function VerificationCameraCapture({
     setCapturedUrl(null);
     capturedBlobRef.current = null;
     setPhase('starting');
-    navigator.mediaDevices
-      ?.getUserMedia({ video: { facingMode: 'user', width: { ideal: 720 }, height: { ideal: 720 } } })
+    openCamera()
       .then((stream) => {
         streamRef.current = stream;
         if (videoRef.current) videoRef.current.srcObject = stream;
@@ -157,6 +158,8 @@ export function VerificationCameraCapture({
     setCapturedUrl(URL.createObjectURL(file));
     setPhase('preview');
   }
+
+  const showLiveGuide = phase === 'live' || phase === 'counting' || phase === 'starting';
 
   return (
     <div className="fixed inset-0 bg-black z-50 flex flex-col">
@@ -194,7 +197,7 @@ export function VerificationCameraCapture({
             <img
               src={capturedUrl}
               alt="Prévia da sua foto"
-              className="w-64 h-64 rounded-full object-cover ring-4 ring-white/20"
+              className="w-56 h-72 rounded-[9999px] object-cover ring-4 ring-white/20"
             />
             <p className="text-white/70 text-sm text-center max-w-xs">
               Ficou boa? Seu rosto precisa estar visível e bem iluminado.
@@ -218,17 +221,22 @@ export function VerificationCameraCapture({
             </div>
           </div>
         ) : (
-          <div className="relative w-72 h-72">
+          <div className="relative w-60 h-80">
             <video
               ref={videoRef}
               autoPlay
               playsInline
               muted
-              className="w-full h-full object-cover rounded-full"
-              style={{ transform: 'scaleX(-1)' }}
+              className="w-full h-full object-cover"
+              style={{ transform: 'scaleX(-1)', borderRadius: '9999px' }}
             />
-            <div className="absolute inset-0 rounded-full ring-4 ring-white/40 pointer-events-none" />
-            {phase === 'live' && countdown !== null && (
+            {showLiveGuide && (
+              <div
+                className="absolute inset-0 ring-4 ring-white/40 pointer-events-none"
+                style={{ borderRadius: '9999px' }}
+              />
+            )}
+            {phase === 'counting' && countdown !== null && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <span className="text-white text-6xl font-bold drop-shadow-lg">{countdown}</span>
               </div>
@@ -243,11 +251,29 @@ export function VerificationCameraCapture({
 
         {phase === 'live' && (
           <p className="text-white/60 text-xs text-center mt-6 max-w-xs">
-            Posicione seu rosto dentro do círculo, num local bem iluminado. A foto é tirada
-            sozinha em instantes.
+            Posicione seu rosto dentro da guia, num local bem iluminado. Quando estiver pronto,
+            toque no botão abaixo.
+          </p>
+        )}
+        {phase === 'counting' && (
+          <p className="text-white/60 text-xs text-center mt-6 max-w-xs">
+            Se ajeite — a foto é tirada sozinha ao fim da contagem.
           </p>
         )}
       </div>
+
+      {phase === 'live' && (
+        <div className="flex justify-center pb-10">
+          <button
+            onClick={handleStartCountdown}
+            aria-label="Iniciar contagem pra tirar a foto"
+            className="w-16 h-16 rounded-full flex items-center justify-center"
+            style={{ backgroundColor: primaryColor }}
+          >
+            <Timer size={24} className="text-white" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -192,7 +192,7 @@ export interface Order {
   // Presente só quando o pedido foi feito por um cliente logado — nunca
   // inclui dados sensíveis (senha etc.), só o necessário pra exibir no
   // painel. Ver select explícito em OrdersService.findAllForAdmin.
-  customer?: { id: string; name: string; avatarUrl: string | null } | null;
+  customer?: { id: string; name: string; avatarUrl: string | null; isVerified: boolean } | null;
   createdAt: string;
   items?: OrderItem[];
 }

@@ -306,7 +306,7 @@ export class OrdersService {
       order: { createdAt: 'DESC' },
       relations: { items: true, customer: true },
       select: {
-        customer: { id: true, name: true, avatarUrl: true },
+        customer: { id: true, name: true, avatarUrl: true, isVerified: true },
       },
     });
 
