@@ -26,6 +26,7 @@ import { PromotionsService } from '../promotions/promotions.service';
 import type { CartLine } from '../promotions/promotions.service';
 import { CashbackService } from '../cashback/cashback.service';
 import { PushService } from '../push/push.service';
+import { CustomerVerificationService } from '../customers/customer-verification.service';
 
 // Janela pro cliente pagar o Pix antes do pedido expirar sozinho — mesmo
 // tempo que o iFood usa (6 min). Com Mercado Pago configurado, a
@@ -52,6 +53,7 @@ export class OrdersService {
     private readonly promotionsService: PromotionsService,
     private readonly cashbackService: CashbackService,
     private readonly pushService: PushService,
+    private readonly verificationService: CustomerVerificationService,
   ) {}
 
   // Ponto ÚNICO por onde um pedido vira 'cancelado' — usado nos 4
@@ -306,9 +308,28 @@ export class OrdersService {
       order: { createdAt: 'DESC' },
       relations: { items: true, customer: true },
       select: {
-        customer: { id: true, name: true, avatarUrl: true, isVerified: true },
+        customer: {
+          id: true,
+          name: true,
+          avatarUrl: true,
+          isVerified: true,
+          tenantId: true,
+          verificationDecidedAt: true,
+          verificationReviewedByAdminId: true,
+          verificationIntegritySignature: true,
+        },
       },
     });
+
+    // Nunca confia no `isVerified` cru vindo do banco pro card do
+    // admin — recalcula a prova de integridade (ver
+    // verification-signature.ts) antes de expor. Ver mesmo raciocínio
+    // em TablesService.findActiveOverview.
+    for (const order of orders) {
+      if (order.customer) {
+        order.customer.isVerified = this.verificationService.verifyIntegritySync(order.customer);
+      }
+    }
 
     // Consulta o Mercado Pago pros pedidos ainda aguardando confirmação —
     // assim o painel do admin reflete "pagamento confirmado" sozinho, a

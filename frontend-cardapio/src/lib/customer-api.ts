@@ -339,10 +339,19 @@ export interface MyReview {
   createdAt: string;
 }
 
-export interface EligibleOrderForReview {
+export interface MyItemReview {
   id: string;
-  orderType: 'balcao' | 'mesa' | 'entrega';
+  rating: number;
+  productId: string;
+  productName: string;
+  productImageUrl: string | null;
+  orderId: string;
   createdAt: string;
+}
+
+export interface ReviewPromptInfo {
+  canReviewRestaurant: boolean;
+  items: Array<{ productId: string; productName: string; productImageUrl: string | null }>;
 }
 
 export interface PublicReview {
@@ -363,31 +372,40 @@ export interface ReviewSummary {
   distribution: { 1: number; 2: number; 3: number; 4: number; 5: number };
 }
 
-// Pedidos concluídos do cliente que ainda não foram avaliados — usado
-// pra decidir se mostra o prompt "Avalie seu pedido". Um pedido cuja
-// review foi APAGADA nunca volta pra essa lista (ver
-// ReviewsService.findEligibleOrders no backend) — só uma compra nova
-// libera uma avaliação nova.
-export async function fetchEligibleOrdersForReview(
+// O que ainda dá pra avaliar a partir de UM pedido específico — usado
+// pelo fluxo sequencial de prompt (restaurante, depois cada item, um de
+// cada vez). Só retorna o que realmente está elegível — nunca inclui
+// algo que o cliente já avaliou (ativo) ou que esse pedido específico já
+// tenha sido usado pra avaliar antes.
+export async function fetchReviewPromptInfo(
   tenantId: string,
   token: string,
-): Promise<EligibleOrderForReview[]> {
-  const { data } = await api.get<EligibleOrderForReview[]>(
-    `/reviews/public/${tenantId}/eligible-orders`,
+  orderId: string,
+): Promise<ReviewPromptInfo> {
+  const { data } = await api.get<ReviewPromptInfo>(
+    `/reviews/public/${tenantId}/prompt-info/${orderId}`,
     { headers: { Authorization: `Bearer ${token}` } },
   );
   return data;
 }
 
-export async function fetchMyReviews(tenantId: string, token: string): Promise<MyReview[]> {
-  const { data } = await api.get<MyReview[]>(`/reviews/public/${tenantId}/me`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+// Separado por categoria — Restaurante (0 ou 1) e Itens (pedido/produto
+// avaliados individualmente).
+export async function fetchMyReviews(
+  tenantId: string,
+  token: string,
+): Promise<{ restaurant: PublicReview | null; items: MyItemReview[] }> {
+  const { data } = await api.get<{ restaurant: PublicReview | null; items: MyItemReview[] }>(
+    `/reviews/public/${tenantId}/me`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
   return data;
 }
 
 // Mapa orderId -> review, pra pintar a nota (★ 1-5) ao lado de cada
 // pedido no histórico (uma chamada só pra todos os pedidos da lista).
+// Sempre a avaliação de RESTAURANTE de cada pedido — é a única com
+// sentido de "nota geral desse pedido" pro histórico.
 export async function fetchMyReviewsByOrderIds(
   tenantId: string,
   token: string,
@@ -407,7 +425,14 @@ export async function fetchMyReviewsByOrderIds(
 export async function createReview(
   tenantId: string,
   token: string,
-  payload: { orderId: string; rating: number; comment?: string; isAnonymous?: boolean },
+  payload: {
+    orderId: string;
+    targetType: 'restaurant' | 'item';
+    productId?: string;
+    rating: number;
+    comment?: string;
+    isAnonymous?: boolean;
+  },
 ): Promise<MyReview> {
   const { data } = await api.post<MyReview>(`/reviews/public/${tenantId}`, payload, {
     headers: { Authorization: `Bearer ${token}` },
@@ -449,6 +474,28 @@ export async function fetchReviewsSummaryByLocation(
 ): Promise<Record<string, ReviewSummary>> {
   const { data } = await api.get<Record<string, ReviewSummary>>(
     `/reviews/public/${tenantId}/summary-by-location`,
+  );
+  return data;
+}
+
+// ---------- Avaliações de ITEM (público) ----------
+// Mesma forma das duas funções acima, escopadas a um produto — pedido
+// explícito do Felipe: exibir "da mesma forma que aparecem no header do
+// restaurante", só que na página do item.
+
+export async function fetchItemReviewsSummary(tenantId: string, productId: string): Promise<ReviewSummary> {
+  const { data } = await api.get<ReviewSummary>(`/reviews/public/${tenantId}/item/${productId}/summary`);
+  return data;
+}
+
+export async function fetchItemReviews(
+  tenantId: string,
+  productId: string,
+  page = 1,
+): Promise<{ items: PublicReview[]; total: number }> {
+  const { data } = await api.get<{ items: PublicReview[]; total: number }>(
+    `/reviews/public/${tenantId}/item/${productId}`,
+    { params: { page } },
   );
   return data;
 }

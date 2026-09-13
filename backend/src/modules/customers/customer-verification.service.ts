@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThanOrEqual } from 'typeorm';
+import { Repository, LessThanOrEqual, IsNull } from 'typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
 import { Customer } from './customer.entity';
@@ -9,6 +9,7 @@ import { StorageService } from '../../common/services/storage.service';
 import { PushService } from '../push/push.service';
 import type { VerificationRejectionReason } from './verification-rejection-reasons';
 import { VERIFICATION_REJECTION_REASON_LABELS } from './verification-rejection-reasons';
+import { signVerification, verifyVerificationSignature } from '../../common/utils/verification-signature';
 
 // Janela de análise: o admin tem esse prazo pra decidir depois que o
 // cliente manda a foto. Passado isso sem decisão, a solicitação é
@@ -37,6 +38,113 @@ export class CustomerVerificationService {
     private readonly storageService: StorageService,
     private readonly pushService: PushService,
   ) {}
+
+  // ---------- Integridade (a garantia real, não visual) ----------
+  //
+  // Resposta direta à preocupação do Felipe: "isVerified" sozinho no
+  // banco não prova nada — qualquer acesso direto ao banco (falha de
+  // segurança em outra camada, alguém mal-intencionado com acesso de
+  // infra) poderia virar esse campo pra true sem passar pela aprovação
+  // de verdade. Essa função PURA (sem escrever no banco, rápida,
+  // síncrona) é o que TODO lugar do sistema que for MOSTRAR o selo
+  // (perfil, "Aí na Mesa", avaliações) precisa chamar — nunca ler
+  // `customer.isVerified` cru direto.
+  //
+  // Recalcula a assinatura HMAC esperada a partir dos campos de
+  // auditoria já gravados (quando decidido + qual admin decidiu) e
+  // compara com a que foi salva no momento exato da aprovação. Só as
+  // duas coisas batendo prova que esse `true` passou pela aprovação de
+  // verdade — forjar isso exigiria saber a chave secreta do servidor
+  // (VERIFICATION_SIGNING_SECRET), que nunca sai do backend.
+  verifyIntegritySync(customer: Customer): boolean {
+    if (!customer.isVerified) return false;
+    return (
+      customer.verificationDecidedAt !== null &&
+      customer.verificationReviewedByAdminId !== null &&
+      verifyVerificationSignature(
+        customer.id,
+        customer.tenantId,
+        customer.verificationDecidedAt.toISOString(),
+        customer.verificationReviewedByAdminId,
+        customer.verificationIntegritySignature,
+      )
+    );
+  }
+
+  // Mesma checagem acima, mas com efeito colateral: marca
+  // `verificationTamperFlaggedAt` no banco na primeira vez que encontra
+  // uma violação (idempotente depois disso) — usada pelo cron de
+  // varredura (flagTamperedVerifications) e pela ferramenta de consulta
+  // do admin (checkIntegrity), nunca nos caminhos de LEITURA comuns
+  // (perfil, mesa, avaliações — esses usam a versão pura acima, pra não
+  // precisar de uma escrita no banco só pra MOSTRAR uma tela).
+  private async isGenuinelyVerified(customer: Customer): Promise<boolean> {
+    const valid = this.verifyIntegritySync(customer);
+    if (!valid && customer.isVerified && !customer.verificationTamperFlaggedAt) {
+      const flaggedAt = new Date();
+      await this.customerRepo.update(customer.id, { verificationTamperFlaggedAt: flaggedAt });
+      // Reflete no objeto em memória também — sem isso, quem chamou
+      // essa função (ex: checkIntegrity) continuaria vendo o valor
+      // antigo (null) mesmo tendo acabado de gravar o novo no banco,
+      // já que `.update()` não muda o objeto já carregado.
+      customer.verificationTamperFlaggedAt = flaggedAt;
+    }
+    return valid;
+  }
+
+  // Roda junto do cron de hora em hora (ver runMaintenanceSweep) —
+  // varre TODOS os clientes com `isVerified=true` e flagra qualquer um
+  // cuja assinatura não bate, mesmo que ninguém tenha ido conferir
+  // manualmente ainda. Detecção automática, não só sob demanda.
+  private async flagTamperedVerifications() {
+    const verifiedCustomers = await this.customerRepo.find({
+      where: { isVerified: true, verificationTamperFlaggedAt: IsNull() },
+    });
+    for (const customer of verifiedCustomers) {
+      await this.isGenuinelyVerified(customer);
+    }
+  }
+
+  // Ferramenta de consulta pro admin — "esse cliente é REALMENTE
+  // verificado ou não?", com o motivo técnico por trás da resposta,
+  // nunca só um selinho bonito. Pedido explícito do Felipe: "deve ter
+  // algo que se o estabelecimento precisar ir verificar eles vão
+  // realmente saber". Aceita id, e-mail ou telefone.
+  async checkIntegrity(tenantId: string, query: string) {
+    const customer = await this.customerRepo
+      .createQueryBuilder('c')
+      .where('c.tenantId = :tenantId', { tenantId })
+      .andWhere('(c.id::text = :query OR c.email ILIKE :query OR c.phone = :query)', { query })
+      .getOne();
+    if (!customer) throw new NotFoundException('Cliente não encontrado.');
+
+    const genuinelyVerified = await this.isGenuinelyVerified(customer);
+    return {
+      customerId: customer.id,
+      name: customer.name,
+      email: customer.email,
+      // Três respostas possíveis, nunca só um true/false genérico:
+      // - 'legitimate': isVerified=true E a assinatura bate — selo real.
+      // - 'tampered': isVerified=true mas a assinatura NÃO bate — sinal
+      //   de adulteração, recomendação de revogar.
+      // - 'not_verified': isVerified=false — nunca foi verificado (ou já
+      //   foi revogado), nada de suspeito nisso.
+      verdict: customer.isVerified
+        ? genuinelyVerified
+          ? 'legitimate'
+          : 'tampered'
+        : 'not_verified',
+      isVerified: customer.isVerified,
+      verificationStatus: customer.verificationStatus,
+      verificationDecidedAt: customer.verificationDecidedAt,
+      reviewedByAdminId: customer.verificationReviewedByAdminId,
+      tamperFlaggedAt: customer.verificationTamperFlaggedAt,
+      revokedAt: customer.verificationRevokedAt,
+      revokedReason: customer.verificationRevokedReason,
+      isSuspended: customer.isSuspended,
+      suspendedReason: customer.suspendedReason,
+    };
+  }
 
   private async findCustomer(tenantId: string, customerId: string): Promise<Customer> {
     const customer = await this.customerRepo.findOne({ where: { id: customerId, tenantId } });
@@ -134,13 +242,25 @@ export class CustomerVerificationService {
 
     // Regra final do Felipe: a decisão não pode ser desfeita. Aprovar
     // NUNCA reverte pra 'pending'/'rejected' de novo por essa função —
-    // só existe o caminho pra frente.
+    // só existe o caminho pra frente (a única saída depois é REVOGAR,
+    // ver revoke() abaixo — ação manual e auditada, não um "desfazer").
+    const decidedAt = new Date();
     customer.isVerified = true;
     customer.verificationStatus = 'approved';
-    customer.verificationDecidedAt = new Date();
+    customer.verificationDecidedAt = decidedAt;
     customer.verificationRejectionReason = null;
     customer.verificationReviewedByAdminId = adminUserId;
     customer.verificationCongratsPending = true;
+    // Prova criptográfica de que ESSA aprovação passou por aqui de
+    // verdade — ver verification-signature.ts. Gravada nesse exato
+    // instante, nunca recalculável depois sem os mesmos dados exatos.
+    customer.verificationIntegritySignature = signVerification(
+      customer.id,
+      customer.tenantId,
+      decidedAt.toISOString(),
+      adminUserId,
+    );
+    customer.verificationTamperFlaggedAt = null;
 
     // Foto excluída AGORA, não só depois dos 10 dias — pedido explícito
     // do Felipe pra manter o ambiente limpo assim que a decisão sai. O
@@ -197,6 +317,71 @@ export class CustomerVerificationService {
     };
   }
 
+  // A ÚNICA forma de tirar o selo de alguém já aprovado, além de
+  // excluir a conta inteira — pedido explícito do Felipe: "remover a
+  // verificação e puni-lo" quando o estabelecimento descobrir que
+  // alguém burlou o sistema. Sempre ação manual (nunca automática),
+  // sempre com motivo obrigatório, sempre auditada (quem revogou e
+  // quando). Some com a assinatura de integridade — se alguém tentasse
+  // reverter isso direto no banco, a checagem de isGenuinelyVerified
+  // pegaria de novo (voltaria a aparecer como violação).
+  async revoke(tenantId: string, customerId: string, adminUserId: string, reason: string) {
+    const customer = await this.findCustomer(tenantId, customerId);
+    if (!customer.isVerified) {
+      throw new ConflictException('Esse cliente não está verificado no momento.');
+    }
+    if (!reason.trim()) {
+      throw new BadRequestException('Informe o motivo da revogação.');
+    }
+
+    customer.isVerified = false;
+    customer.verificationStatus = 'revoked';
+    customer.verificationIntegritySignature = null;
+    customer.verificationRevokedAt = new Date();
+    customer.verificationRevokedReason = reason.trim();
+    customer.verificationRevokedByAdminId = adminUserId;
+    await this.customerRepo.save(customer);
+
+    const { slug, logoUrl } = await this.tenantSlugAndLogo(tenantId);
+    await this.pushService.sendToCustomer(tenantId, customer.id, {
+      title: 'Sua verificação foi revogada',
+      body: `O estabelecimento revogou seu selo de verificado. Motivo: ${reason.trim()}`,
+      url: `/${slug}/conta-cliente/perfil`,
+      tag: 'verification_revoked',
+      icon: logoUrl ?? undefined,
+    });
+
+    return { verificationStatus: customer.verificationStatus, isVerified: customer.isVerified };
+  }
+
+  // "Puni-lo" (pedido do Felipe) além de tirar o selo — bloqueia login
+  // enquanto ativo (ver CustomersAuthService.login), sem apagar conta
+  // nem histórico. Independente de revogar verificação — o admin pode
+  // fazer um sem o outro (ex: suspender por outro motivo qualquer, não
+  // só fraude de verificação).
+  async suspend(tenantId: string, customerId: string, adminUserId: string, reason: string) {
+    const customer = await this.findCustomer(tenantId, customerId);
+    if (!reason.trim()) {
+      throw new BadRequestException('Informe o motivo da suspensão.');
+    }
+    customer.isSuspended = true;
+    customer.suspendedAt = new Date();
+    customer.suspendedReason = reason.trim();
+    customer.suspendedByAdminId = adminUserId;
+    await this.customerRepo.save(customer);
+    return { isSuspended: true };
+  }
+
+  async unsuspend(tenantId: string, customerId: string) {
+    const customer = await this.findCustomer(tenantId, customerId);
+    customer.isSuspended = false;
+    customer.suspendedAt = null;
+    customer.suspendedReason = null;
+    customer.suspendedByAdminId = null;
+    await this.customerRepo.save(customer);
+    return { isSuspended: false };
+  }
+
   // Usado tanto por approve() quanto reject() (decisão manual) quanto
   // pela recusa automática por prazo — sempre que o status deixa de ser
   // 'pending', a foto não tem mais motivo de existir. "Melhor esforço":
@@ -228,6 +413,7 @@ export class CustomerVerificationService {
   async runMaintenanceSweep() {
     await this.autoRejectExpiredReviews();
     await this.purgeExpiredPhotos();
+    await this.flagTamperedVerifications();
   }
 
   private async autoRejectExpiredReviews() {

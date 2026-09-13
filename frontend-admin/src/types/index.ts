@@ -412,6 +412,8 @@ export interface AdminReview {
   customerName: string;
   customerIsVerified: boolean;
   isAnonymous: boolean;
+  targetType: 'restaurant' | 'item';
+  productName: string | null;
   locationName: string | null;
   orderId: string;
   createdAt: string;

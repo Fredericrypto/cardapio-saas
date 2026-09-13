@@ -40,6 +40,6 @@ import { StorageService } from '../../common/services/storage.service';
   ],
   controllers: [CustomersController, CustomerVerificationAdminController],
   providers: [CustomersAuthService, CustomerVerificationService, CustomerJwtStrategy, StorageService],
-  exports: [CustomersAuthService],
+  exports: [CustomersAuthService, CustomerVerificationService],
 })
 export class CustomersModule {}

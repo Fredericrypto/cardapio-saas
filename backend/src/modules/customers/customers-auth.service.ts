@@ -15,6 +15,7 @@ import { LoginCustomerDto } from './dto/login-customer.dto';
 import { UpdateCustomerProfileDto } from './dto/update-customer-profile.dto';
 import { ConfirmCustomerAddressDto } from './dto/confirm-customer-address.dto';
 import { GeocodingService } from '../geocoding/geocoding.service';
+import { CustomerVerificationService } from './customer-verification.service';
 import { presetAvatarPath } from './preset-avatars';
 import type { PresetAvatarId } from './preset-avatars';
 
@@ -40,6 +41,7 @@ export class CustomersAuthService {
     // Ver customers.module.ts.
     private readonly jwtService: JwtService,
     private readonly geocodingService: GeocodingService,
+    private readonly verificationService: CustomerVerificationService,
   ) {}
 
   async register(tenantId: string, dto: RegisterCustomerDto) {
@@ -94,11 +96,29 @@ export class CustomersAuthService {
       throw new UnauthorizedException('E-mail ou senha inválidos.');
     }
 
+    // "Puni-lo" (pedido do Felipe) — conta suspensa pelo admin (ex: por
+    // fraude confirmada na verificação) não consegue logar, mesmo com
+    // senha certa. Nunca revela o motivo aqui (mensagem genérica, só o
+    // admin vê o motivo no painel) — evita dar munição pra quem está
+    // tentando burlar o sistema entender o que foi detectado.
+    if (customer.isSuspended) {
+      throw new UnauthorizedException(
+        'Essa conta está suspensa. Entre em contato com o estabelecimento.',
+      );
+    }
+
     return this.buildAuthResponse(customer);
   }
 
   async findById(tenantId: string, customerId: string) {
     const customer = await this.findEntity(tenantId, customerId);
+    // Mesma trava do login — se a conta foi suspensa DEPOIS que o
+    // cliente já tinha um token válido em mãos, essa checagem (chamada
+    // em toda requisição de "/me") derruba a sessão dele na próxima vez
+    // que o app consultar o perfil, sem esperar o token expirar sozinho.
+    if (customer.isSuspended) {
+      throw new UnauthorizedException('Essa conta está suspensa.');
+    }
     return this.toProfileDto(customer);
   }
 
@@ -247,7 +267,13 @@ export class CustomersAuthService {
       // `verificationStatus` sozinho). Os demais só importam pra
       // desenhar a tela de perfil (status atual, motivo se recusado,
       // aviso de "parabéns" pendente).
-      isVerified: customer.isVerified,
+      // Verificação de identidade — NUNCA lê `customer.isVerified` cru
+      // aqui. `verifyIntegritySync` recalcula a prova criptográfica
+      // (ver verification-signature.ts) e só devolve true se ela bater
+      // — um `isVerified=true` adulterado por fora do fluxo normal
+      // (ex: escrito direto no banco) nunca aparece pro próprio
+      // cliente nem pra ninguém.
+      isVerified: this.verificationService.verifyIntegritySync(customer),
       verificationStatus: customer.verificationStatus,
       verificationRejectionReason: customer.verificationRejectionReason,
       verificationCongratsPending: customer.verificationCongratsPending,

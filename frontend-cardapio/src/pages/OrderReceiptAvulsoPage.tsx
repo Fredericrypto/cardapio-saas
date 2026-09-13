@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Download } from 'lucide-react';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { useTenant } from '../contexts/TenantContext';
-import { fetchMyOrderById, fetchMyReviews, type CustomerOrderHistoryItem, type MyReview } from '../lib/customer-api';
+import { fetchMyOrderById, fetchMyReviewsByOrderIds, type CustomerOrderHistoryItem, type MyReview } from '../lib/customer-api';
 import { ReceiptContentStandalone } from '../components/ReceiptContentStandalone';
 import { ReviewDisplay } from '../components/ReviewDisplay';
 import { saveElementAsPng } from '../lib/saveAsPng';
@@ -35,8 +35,8 @@ export function OrderReceiptAvulsoPage() {
 
   useEffect(() => {
     if (!tenant || !token || !orderId) return;
-    fetchMyReviews(tenant.id, token).then((reviews) => {
-      setMyReview(reviews.find((r) => r.orderId === orderId) ?? null);
+    fetchMyReviewsByOrderIds(tenant.id, token, [orderId]).then((byOrder) => {
+      setMyReview(byOrder[orderId] ?? null);
     });
   }, [tenant, token, orderId]);
 

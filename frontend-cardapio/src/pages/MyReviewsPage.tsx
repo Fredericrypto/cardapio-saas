@@ -4,21 +4,28 @@ import { ArrowLeft } from 'lucide-react';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { useTenant } from '../contexts/TenantContext';
 import { fetchMyReviews } from '../lib/customer-api';
-import type { MyReview } from '../lib/customer-api';
+import type { PublicReview, MyItemReview } from '../lib/customer-api';
 import { ReviewDisplay } from '../components/ReviewDisplay';
+import { ItemReviewDisplay } from '../components/ItemReviewDisplay';
 
+// Pedido explícito do Felipe: separado por categoria — Restaurante e
+// Pedido (itens) — cada avaliação mostrando a data e os detalhes do que
+// foi avaliado (já embutido nos dois componentes de exibição).
 export function MyReviewsPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { tenant } = useTenant();
-  const [reviews, setReviews] = useState<MyReview[] | null>(null);
-
+  const [restaurantReview, setRestaurantReview] = useState<PublicReview | null | undefined>(undefined);
+  const [itemReviews, setItemReviews] = useState<MyItemReview[] | null>(null);
 
   const { customer, token, isLoading } = useCustomerAuth();
 
   useEffect(() => {
     if (!tenant || !token) return;
-    fetchMyReviews(tenant.id, token).then(setReviews);
+    fetchMyReviews(tenant.id, token).then(({ restaurant, items }) => {
+      setRestaurantReview(restaurant);
+      setItemReviews(items);
+    });
   }, [tenant, token]);
 
   if (!tenant || isLoading || !customer) {
@@ -29,6 +36,9 @@ export function MyReviewsPage() {
     );
   }
 
+  const isLoadingReviews = restaurantReview === undefined || itemReviews === null;
+  const hasNothing = !isLoadingReviews && !restaurantReview && itemReviews!.length === 0;
+
   return (
     <div className="min-h-screen bg-gray-50 pb-10 max-w-md mx-auto">
       <div className="flex items-center gap-3 px-4 py-4 bg-white border-b border-gray-100">
@@ -38,25 +48,55 @@ export function MyReviewsPage() {
         <h1 className="font-display font-bold text-lg">Minhas Avaliações</h1>
       </div>
 
-      <div className="px-4 mt-4 flex flex-col gap-3">
-        {reviews == null && <p className="text-sm text-gray-400 text-center py-8">Carregando...</p>}
+      <div className="px-4 mt-4 flex flex-col gap-5">
+        {isLoadingReviews && <p className="text-sm text-gray-400 text-center py-8">Carregando...</p>}
 
-        {reviews != null && reviews.length === 0 && (
+        {hasNothing && (
           <p className="text-sm text-gray-400 text-center py-12 px-4">
-            Você ainda não avaliou nenhum pedido. Depois que um pedido for concluído, você recebe
-            uma notificação pra avaliar.
+            Você ainda não avaliou nada. Depois que um pedido for concluído, você recebe uma
+            notificação pra avaliar o restaurante e os itens que pediu.
           </p>
         )}
 
-        {(reviews ?? []).map((review) => (
-          <ReviewDisplay
-            key={review.id}
-            tenantId={tenant.id}
-            token={token!}
-            review={review}
-            onDeleted={() => setReviews((prev) => (prev ?? []).filter((r) => r.id !== review.id))}
-          />
-        ))}
+        {restaurantReview && (
+          <div className="flex flex-col gap-2">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-1">
+              Restaurante
+            </p>
+            <ReviewDisplay
+              tenantId={tenant.id}
+              token={token!}
+              review={{
+                id: restaurantReview.id,
+                orderId: '',
+                rating: restaurantReview.rating,
+                comment: restaurantReview.comment,
+                isAnonymous: restaurantReview.isAnonymous,
+                createdAt: restaurantReview.createdAt,
+              }}
+              onDeleted={() => setRestaurantReview(null)}
+            />
+          </div>
+        )}
+
+        {itemReviews && itemReviews.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-1">Pedido</p>
+            <div className="flex flex-col gap-2.5">
+              {itemReviews.map((review) => (
+                <ItemReviewDisplay
+                  key={review.id}
+                  tenantId={tenant.id}
+                  token={token!}
+                  review={review}
+                  onDeleted={() =>
+                    setItemReviews((prev) => (prev ?? []).filter((r) => r.id !== review.id))
+                  }
+                />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

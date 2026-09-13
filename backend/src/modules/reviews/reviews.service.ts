@@ -4,7 +4,9 @@ import { Repository, QueryFailedError, In } from 'typeorm';
 import { Review } from './review.entity';
 import { ReviewResponse } from './review-response.entity';
 import { Order } from '../orders/order.entity';
+import { OrderItem } from '../orders/order-item.entity';
 import { CreateReviewDto } from './dto/create-review.dto';
+import { CustomerVerificationService } from '../customers/customer-verification.service';
 
 export interface RatingDistribution {
   1: number;
@@ -25,15 +27,7 @@ export interface PublicReviewDto {
   rating: number;
   comment: string | null;
   customerDisplayName: string;
-  // Nunca preenchido quando `isAnonymous` — mesma regra do nome: review
-  // anônima não vaza NENHUM dado que identifique o cliente, avatar
-  // incluso.
   customerAvatarUrl: string | null;
-  // Mesma regra do avatar: nunca preenchido quando `isAnonymous`, senão
-  // um review anônimo "verificado" ainda deixaria escapar uma pista de
-  // identidade (poucas contas verificadas = mais fácil de deduzir quem
-  // é). O selo de verificado só aparece de fato quando a pessoa optou
-  // por não ser anônima.
   customerIsVerified: boolean;
   isAnonymous: boolean;
   createdAt: Date;
@@ -47,10 +41,27 @@ export interface AdminReviewDto {
   customerName: string;
   customerIsVerified: boolean;
   isAnonymous: boolean;
+  targetType: 'restaurant' | 'item';
+  productName: string | null;
   locationName: string | null;
   orderId: string;
   createdAt: Date;
   response: { responseText: string; staffName: string; createdAt: Date } | null;
+}
+
+export interface ReviewPromptInfo {
+  canReviewRestaurant: boolean;
+  items: Array<{ productId: string; productName: string; productImageUrl: string | null }>;
+}
+
+export interface MyItemReviewDto {
+  id: string;
+  rating: number;
+  productId: string;
+  productName: string;
+  productImageUrl: string | null;
+  orderId: string;
+  createdAt: Date;
 }
 
 // "Felipe Santos" -> "Felipe S." — primeiro nome inteiro + inicial do
@@ -72,6 +83,8 @@ export class ReviewsService {
     @InjectRepository(Review) private readonly reviewRepo: Repository<Review>,
     @InjectRepository(ReviewResponse) private readonly responseRepo: Repository<ReviewResponse>,
     @InjectRepository(Order) private readonly orderRepo: Repository<Order>,
+    @InjectRepository(OrderItem) private readonly orderItemRepo: Repository<OrderItem>,
+    private readonly verificationService: CustomerVerificationService,
   ) {}
 
   // ---------- Elegibilidade (compra verificada) ----------
@@ -79,18 +92,8 @@ export class ReviewsService {
   // "Pedido concluído de verdade": balcão/entrega vira definitivo quando
   // `status` chega em 'entregue'; mesa vira definitivo quando a SESSÃO
   // fecha (o pedido individual pode nunca ter passado por 'entregue'
-  // formalmente — quem fecha a conta é a sessão).
-  //
-  // Bug real corrigido aqui: pra pedido de mesa, a checagem olhava só
-  // o status da SESSÃO ('fechada'), nunca o status do PEDIDO
-  // individual dentro dela. Uma sessão fecha com todos os pedidos que
-  // passaram por ela — inclusive um que o cliente cancelou no meio do
-  // caminho. Sem essa linha, um pedido cancelado (que o cliente nunca
-  // recebeu e não considera ter existido de verdade) aparecia como
-  // "elegível pra avaliar" assim que a mesa fechava a conta — é
-  // exatamente o relato de "pedir pra avaliar um pedido que nem
-  // existe". Balcão/entrega já não tinham esse problema, porque
-  // `status === 'entregue'` já exclui 'cancelado' por construção.
+  // formalmente — quem fecha a conta é a sessão). Pedido cancelado
+  // nunca conta, mesmo dentro de uma sessão já fechada.
   private isOrderCompleted(order: Order): boolean {
     if (order.status === 'cancelado') return false;
     if (order.tableSessionId) {
@@ -99,26 +102,100 @@ export class ReviewsService {
     return order.status === 'entregue';
   }
 
-  async findEligibleOrders(tenantId: string, customerId: string): Promise<Order[]> {
-    const orders = await this.orderRepo.find({
-      where: { tenantId, customerId },
-      relations: { tableSession: true },
-      order: { createdAt: 'DESC' },
-      take: 50,
+  // Só uma avaliação de RESTAURANTE ativa por cliente por tenant, a
+  // qualquer momento — estilo Play Store (um app, uma nota). Isso NÃO
+  // vem do índice único do banco (que é por order_id) — é essa checagem
+  // aqui que garante o "só uma por vez", independente de qual pedido
+  // tentar usar pra criar outra.
+  private async hasActiveRestaurantReview(tenantId: string, customerId: string): Promise<boolean> {
+    const count = await this.reviewRepo.count({
+      where: { tenantId, customerId, targetType: 'restaurant' },
     });
-    const completed = orders.filter((o) => this.isOrderCompleted(o));
-    if (completed.length === 0) return [];
+    return count > 0;
+  }
 
-    // `withDeleted` de propósito: um pedido cuja review foi APAGADA
-    // continua contando como "já usado" — nunca reaparece como
-    // elegível. Só uma compra NOVA libera uma avaliação nova.
-    const reviewed = await this.reviewRepo.find({
-      where: { orderId: In(completed.map((o) => o.id)) },
-      select: { orderId: true },
+  private async hasActiveItemReview(
+    tenantId: string,
+    customerId: string,
+    productId: string,
+  ): Promise<boolean> {
+    const count = await this.reviewRepo.count({
+      where: { tenantId, customerId, targetType: 'item', productId },
+    });
+    return count > 0;
+  }
+
+  // `withDeleted: true` de propósito nos dois métodos abaixo — um
+  // pedido cuja review foi APAGADA continua contando como "já usado"
+  // pra aquele alvo específico. Só uma compra NOVA (ainda não usada)
+  // libera uma avaliação nova pro mesmo alvo.
+  private async isOrderUsedForRestaurant(orderId: string): Promise<boolean> {
+    const count = await this.reviewRepo.count({
+      where: { orderId, targetType: 'restaurant' },
       withDeleted: true,
     });
-    const reviewedOrderIds = new Set(reviewed.map((r) => r.orderId));
-    return completed.filter((o) => !reviewedOrderIds.has(o.id));
+    return count > 0;
+  }
+
+  private async isOrderProductUsed(orderId: string, productId: string): Promise<boolean> {
+    const count = await this.reviewRepo.count({
+      where: { orderId, targetType: 'item', productId },
+      withDeleted: true,
+    });
+    return count > 0;
+  }
+
+  // O que mostrar no fluxo de prompt sequencial pra ESSE pedido
+  // específico (disparado pela notificação "como foi seu pedido?" —
+  // ver comentário em ReviewPromptProvider no frontend). Nunca inclui
+  // um item/restaurante que já não seja elegível (já tem review ativa,
+  // ou esse pedido específico já foi usado pra esse alvo) — o
+  // frontend não precisa filtrar nada, só iterar o que vier aqui.
+  async getReviewPromptInfo(
+    tenantId: string,
+    customerId: string,
+    orderId: string,
+  ): Promise<ReviewPromptInfo> {
+    const order = await this.orderRepo.findOne({
+      where: { id: orderId, tenantId, customerId },
+      relations: { tableSession: true },
+    });
+    if (!order || !this.isOrderCompleted(order)) {
+      return { canReviewRestaurant: false, items: [] };
+    }
+
+    const [alreadyActiveRestaurant, orderAlreadyUsedForRestaurant] = await Promise.all([
+      this.hasActiveRestaurantReview(tenantId, customerId),
+      this.isOrderUsedForRestaurant(orderId),
+    ]);
+    const canReviewRestaurant = !alreadyActiveRestaurant && !orderAlreadyUsedForRestaurant;
+
+    const orderItems = await this.orderItemRepo.find({
+      where: { orderId },
+      relations: { product: true },
+    });
+    // Um pedido pode ter o MESMO produto em duas linhas (ex: duas
+    // variações de opções do mesmo Burger) — dedupe por productId, só
+    // uma avaliação por produto faz sentido, não por linha do pedido.
+    const seenProductIds = new Set<string>();
+    const items: ReviewPromptInfo['items'] = [];
+    for (const oi of orderItems) {
+      if (seenProductIds.has(oi.productId)) continue;
+      seenProductIds.add(oi.productId);
+      const [activeItem, orderProductUsed] = await Promise.all([
+        this.hasActiveItemReview(tenantId, customerId, oi.productId),
+        this.isOrderProductUsed(orderId, oi.productId),
+      ]);
+      if (!activeItem && !orderProductUsed) {
+        items.push({
+          productId: oi.productId,
+          productName: oi.productName,
+          productImageUrl: oi.product?.imageUrl ?? null,
+        });
+      }
+    }
+
+    return { canReviewRestaurant, items };
   }
 
   // ---------- Cliente ----------
@@ -136,37 +213,120 @@ export class ReviewsService {
       throw new BadRequestException('Esse pedido ainda não foi concluído — só dá pra avaliar depois.');
     }
 
+    if (dto.targetType === 'restaurant') {
+      if (await this.hasActiveRestaurantReview(tenantId, customerId)) {
+        throw new ConflictException(
+          'Você já avaliou esse restaurante. Pra avaliar de novo, apague a avaliação atual e faça uma nova compra.',
+        );
+      }
+      const review = this.reviewRepo.create({
+        tenantId,
+        customerId,
+        orderId: order.id,
+        targetType: 'restaurant',
+        productId: null,
+        locationId: order.locationId,
+        rating: dto.rating,
+        comment: dto.comment?.trim() || null,
+        isAnonymous: dto.isAnonymous ?? false,
+      });
+      return this.saveOrTranslateConflict(review);
+    }
+
+    // targetType === 'item'
+    if (!dto.productId) {
+      throw new BadRequestException('Informe o produto que está avaliando.');
+    }
+    const belongsToOrder = await this.orderItemRepo.exists({
+      where: { orderId: order.id, productId: dto.productId },
+    });
+    if (!belongsToOrder) {
+      throw new BadRequestException('Esse produto não faz parte desse pedido.');
+    }
+    if (await this.hasActiveItemReview(tenantId, customerId, dto.productId)) {
+      throw new ConflictException(
+        'Você já avaliou esse item. Pra avaliar de novo, apague a avaliação atual e peça esse item de novo.',
+      );
+    }
     const review = this.reviewRepo.create({
       tenantId,
       customerId,
       orderId: order.id,
+      targetType: 'item',
+      productId: dto.productId,
       locationId: order.locationId,
       rating: dto.rating,
-      comment: dto.comment?.trim() || null,
-      isAnonymous: dto.isAnonymous ?? false,
+      // Avaliação de item é SEMPRE só estrela — nunca grava texto aqui,
+      // mesmo que o cliente tenha mandado algo no campo comment (o
+      // frontend nem mostra esse campo nesse fluxo, mas a garantia real
+      // é aqui no backend).
+      comment: null,
+      isAnonymous: false,
     });
+    return this.saveOrTranslateConflict(review);
+  }
 
+  private async saveOrTranslateConflict(review: Review): Promise<Review> {
     try {
       return await this.reviewRepo.save(review);
     } catch (err) {
       if (this.isUniqueViolation(err)) {
         throw new ConflictException(
-          'Esse pedido já foi avaliado antes — mesmo que a avaliação tenha sido apagada, não dá pra avaliar o mesmo pedido de novo. Faça outra compra pra avaliar novamente.',
+          'Esse pedido já foi usado pra avaliar isso antes — mesmo apagada, uma avaliação não libera o mesmo pedido de novo. Faça outra compra pra avaliar de novo.',
         );
       }
       throw err;
     }
   }
 
-  async findMyReviews(tenantId: string, customerId: string): Promise<Review[]> {
-    return this.reviewRepo.find({
+  // Separado por categoria — pedido explícito do Felipe pra tela "Minhas
+  // avaliações". Item vem com nome/foto do produto (snapshot do nome do
+  // pedido, foto atual do produto).
+  async findMyReviews(
+    tenantId: string,
+    customerId: string,
+  ): Promise<{ restaurant: PublicReviewDto | null; items: MyItemReviewDto[] }> {
+    const reviews = await this.reviewRepo.find({
       where: { tenantId, customerId },
       order: { createdAt: 'DESC' },
     });
+    const restaurantReview = reviews.find((r) => r.targetType === 'restaurant') ?? null;
+    const itemReviews = reviews.filter((r) => r.targetType === 'item');
+
+    let restaurant: PublicReviewDto | null = null;
+    if (restaurantReview) {
+      const response = await this.responseRepo.findOne({ where: { reviewId: restaurantReview.id } });
+      restaurant = this.toPublicDto(restaurantReview, response);
+    }
+
+    const items: MyItemReviewDto[] = [];
+    if (itemReviews.length > 0) {
+      const orderItems = await this.orderItemRepo.find({
+        where: itemReviews.map((r) => ({ orderId: r.orderId, productId: r.productId as string })),
+        relations: { product: true },
+      });
+      const byOrderProduct = new Map(orderItems.map((oi) => [`${oi.orderId}:${oi.productId}`, oi]));
+      for (const r of itemReviews) {
+        const oi = byOrderProduct.get(`${r.orderId}:${r.productId}`);
+        items.push({
+          id: r.id,
+          rating: r.rating,
+          productId: r.productId as string,
+          productName: oi?.productName ?? 'Item',
+          productImageUrl: oi?.product?.imageUrl ?? null,
+          orderId: r.orderId,
+          createdAt: r.createdAt,
+        });
+      }
+    }
+
+    return { restaurant, items };
   }
 
-  // Igual usado no cupom (image 4): mapa orderId -> nota, pra pintar
-  // "★ 4" ao lado de cada pedido já avaliado no histórico.
+  // Igual usado no cupom: mapa orderId -> nota, pra pintar "★ 4" ao
+  // lado de cada pedido já avaliado no histórico. Só considera a
+  // avaliação de RESTAURANTE de cada pedido (é a única com sentido de
+  // "nota geral desse pedido" pro histórico).
   async findMyReviewsByOrderIds(
     tenantId: string,
     customerId: string,
@@ -174,15 +334,15 @@ export class ReviewsService {
   ): Promise<Map<string, Review>> {
     if (orderIds.length === 0) return new Map();
     const reviews = await this.reviewRepo.find({
-      where: { tenantId, customerId, orderId: In(orderIds) },
+      where: { tenantId, customerId, orderId: In(orderIds), targetType: 'restaurant' },
     });
     return new Map(reviews.map((r) => [r.orderId, r]));
   }
 
   // Único jeito do cliente "desfazer" uma review — soft delete, nunca
-  // some do banco, e o `orderId` continua ocupado pra sempre (ver
-  // entity Review). Não existe updateReview nessa classe de propósito:
-  // depois de publicada, é apagar ou nada.
+  // some do banco, e o `orderId` continua ocupado pra aquele alvo pra
+  // sempre (ver entity Review). Não existe updateReview nessa classe de
+  // propósito: depois de publicada, é apagar ou nada.
   async deleteReview(tenantId: string, customerId: string, reviewId: string): Promise<void> {
     const review = await this.reviewRepo.findOne({ where: { id: reviewId, tenantId } });
     if (!review) throw new NotFoundException('Avaliação não encontrada.');
@@ -193,14 +353,23 @@ export class ReviewsService {
   }
 
   // ---------- Visão pública (cardápio, sem login) ----------
+  //
+  // `productId` presente = avaliações daquele ITEM (targetType='item');
+  // ausente = avaliações do RESTAURANTE (targetType='restaurant', o
+  // comportamento original). Os dois nunca se misturam numa mesma
+  // consulta — item nunca deveria aparecer numa lista de "o que
+  // acharam do restaurante" e vice-versa.
 
   async findPublicReviews(
     tenantId: string,
     locationId: string | null,
     page: number,
     pageSize: number,
+    productId?: string | null,
   ): Promise<{ items: PublicReviewDto[]; total: number }> {
-    const where: Record<string, unknown> = { tenantId };
+    const where: Record<string, unknown> = productId
+      ? { tenantId, targetType: 'item', productId }
+      : { tenantId, targetType: 'restaurant' };
     if (locationId) where.locationId = locationId;
 
     const [items, total] = await this.reviewRepo.findAndCount({
@@ -221,10 +390,8 @@ export class ReviewsService {
 
   // Nunca expõe o Customer completo (email, telefone...) pro público —
   // só o nome já formatado (ou "Anônimo"), e o avatar só quando a
-  // review NÃO é anônima. Bug real que isso corrige: o avatar nunca
-  // era incluído aqui, mesmo já vindo carregado na query (`relations:
-  // { customer: true }`) — o frontend sempre caía no ícone genérico
-  // porque o campo simplesmente não existia na resposta.
+  // review NÃO é anônima (avaliação de item nunca é anônima, por
+  // enquanto essa opção só existe pra restaurante).
   private toPublicDto(review: Review, response: ReviewResponse | null): PublicReviewDto {
     return {
       id: review.id,
@@ -234,7 +401,11 @@ export class ReviewsService {
         ? 'Anônimo'
         : formatPublicDisplayName(review.customer?.name ?? 'Cliente'),
       customerAvatarUrl: review.isAnonymous ? null : (review.customer?.avatarUrl ?? null),
-      customerIsVerified: review.isAnonymous ? false : (review.customer?.isVerified ?? false),
+      customerIsVerified: review.isAnonymous
+        ? false
+        : review.customer
+          ? this.verificationService.verifyIntegritySync(review.customer)
+          : false,
       isAnonymous: review.isAnonymous,
       createdAt: review.createdAt,
       response: response
@@ -243,12 +414,24 @@ export class ReviewsService {
     };
   }
 
-  async getSummary(tenantId: string, locationId: string | null): Promise<ReviewSummary> {
+  async getSummary(
+    tenantId: string,
+    locationId: string | null,
+    productId?: string | null,
+  ): Promise<ReviewSummary> {
     const qb = this.reviewRepo
       .createQueryBuilder('r')
       .select('r.rating', 'rating')
       .addSelect('COUNT(*)', 'count')
       .where('r.tenantId = :tenantId', { tenantId });
+    if (productId) {
+      qb.andWhere('r.targetType = :targetType', { targetType: 'item' }).andWhere(
+        'r.productId = :productId',
+        { productId },
+      );
+    } else {
+      qb.andWhere('r.targetType = :targetType', { targetType: 'restaurant' });
+    }
     if (locationId) qb.andWhere('r.locationId = :locationId', { locationId });
     const rows = await qb.groupBy('r.rating').getRawMany<{ rating: number; count: string }>();
 
@@ -271,8 +454,8 @@ export class ReviewsService {
   }
 
   // Resumo de TODAS as lojas do tenant de uma vez (pra tela de "escolha
-  // a loja", ver print 3) — uma query só, agrupando por location_id, em
-  // vez de N chamadas de getSummary (uma por loja).
+  // a loja") — uma query só, agrupando por location_id. Sempre de
+  // RESTAURANTE (a tela de escolher loja nunca fala de item específico).
   async getSummaryByLocation(tenantId: string): Promise<Map<string, ReviewSummary>> {
     const rows = await this.reviewRepo
       .createQueryBuilder('r')
@@ -280,6 +463,7 @@ export class ReviewsService {
       .addSelect('r.rating', 'rating')
       .addSelect('COUNT(*)', 'count')
       .where('r.tenantId = :tenantId', { tenantId })
+      .andWhere('r.targetType = :targetType', { targetType: 'restaurant' })
       .andWhere('r.locationId IS NOT NULL')
       .groupBy('r.locationId')
       .addGroupBy('r.rating')
@@ -310,7 +494,9 @@ export class ReviewsService {
   // ---------- Admin ----------
 
   // Sem filtro de status — não existe mais "oculta". Toda review não
-  // apagada aparece aqui, sempre, nota baixa inclusa.
+  // apagada aparece aqui, sempre, nota baixa inclusa. Inclui os dois
+  // tipos juntos (restaurante + item) — o frontend distingue pelo
+  // campo `targetType`/`productName`.
   async findAllForAdmin(tenantId: string, filters: { locationId?: string }): Promise<AdminReviewDto[]> {
     const where: Record<string, unknown> = { tenantId };
     if (filters.locationId) where.locationId = filters.locationId;
@@ -325,6 +511,17 @@ export class ReviewsService {
     });
     const responseByReviewId = new Map(responses.map((r) => [r.reviewId, r]));
 
+    const itemReviews = reviews.filter((r) => r.targetType === 'item');
+    const orderItems =
+      itemReviews.length > 0
+        ? await this.orderItemRepo.find({
+            where: itemReviews.map((r) => ({ orderId: r.orderId, productId: r.productId as string })),
+          })
+        : [];
+    const productNameByOrderProduct = new Map(
+      orderItems.map((oi) => [`${oi.orderId}:${oi.productId}`, oi.productName]),
+    );
+
     return reviews.map((review) => {
       const response = responseByReviewId.get(review.id) ?? null;
       return {
@@ -335,8 +532,15 @@ export class ReviewsService {
         // é o dono do negócio, precisa poder identificar se precisar dar
         // suporte a esse cliente. Só a vitrine PÚBLICA anonimiza.
         customerName: review.customer?.name ?? 'Cliente',
-        customerIsVerified: review.customer?.isVerified ?? false,
+        customerIsVerified: review.customer
+          ? this.verificationService.verifyIntegritySync(review.customer)
+          : false,
         isAnonymous: review.isAnonymous,
+        targetType: review.targetType,
+        productName:
+          review.targetType === 'item'
+            ? (productNameByOrderProduct.get(`${review.orderId}:${review.productId}`) ?? 'Item')
+            : null,
         locationName: review.location?.name ?? null,
         orderId: review.orderId,
         createdAt: review.createdAt,
@@ -352,8 +556,10 @@ export class ReviewsService {
   }
 
   // Responder é sempre um UPSERT: cria na primeira vez, atualiza se já
-  // existia (1 resposta por review). Responder continua permitido —
-  // só ocultar/editar a review do cliente é que foi removido.
+  // existia (1 resposta por review). Só faz sentido responder review de
+  // RESTAURANTE na prática (tem texto pra reagir), mas tecnicamente
+  // nada impede responder uma de item também — não bloqueado de
+  // propósito, pra não adicionar uma regra sem necessidade real.
   async respondToReview(
     tenantId: string,
     reviewId: string,

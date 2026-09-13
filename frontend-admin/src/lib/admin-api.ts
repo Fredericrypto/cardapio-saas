@@ -590,3 +590,38 @@ export async function rejectVerification(
   const { data } = await api.post(`/verifications/${customerId}/reject`, { reason });
   return data;
 }
+
+// ---------- Integridade da Verificação (a garantia real) ----------
+
+export interface VerificationIntegrityCheck {
+  customerId: string;
+  name: string;
+  email: string;
+  verdict: 'legitimate' | 'tampered' | 'not_verified';
+  isVerified: boolean;
+  verificationStatus: string;
+  verificationDecidedAt: string | null;
+  reviewedByAdminId: string | null;
+  tamperFlaggedAt: string | null;
+  revokedAt: string | null;
+  revokedReason: string | null;
+  isSuspended: boolean;
+  suspendedReason: string | null;
+}
+
+export async function checkVerificationIntegrity(query: string): Promise<VerificationIntegrityCheck> {
+  const { data } = await api.get('/verifications/check', { params: { q: query } });
+  return data;
+}
+
+export async function revokeVerification(customerId: string, reason: string): Promise<void> {
+  await api.post(`/verifications/${customerId}/revoke`, { reason });
+}
+
+export async function suspendCustomer(customerId: string, reason: string): Promise<void> {
+  await api.post(`/verifications/${customerId}/suspend`, { reason });
+}
+
+export async function unsuspendCustomer(customerId: string): Promise<void> {
+  await api.post(`/verifications/${customerId}/unsuspend`);
+}

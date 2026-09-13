@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Check } from 'lucide-react';
+import { ArrowLeft, Check, Star, User } from 'lucide-react';
 import { fetchProducts } from '../lib/menu-api';
+import { fetchItemReviewsSummary, fetchItemReviews } from '../lib/customer-api';
+import type { ReviewSummary, PublicReview } from '../lib/customer-api';
 import type { Product, SelectedCartOption } from '../types';
 import { useCart } from '../contexts/CartContext';
 import { useTenant } from '../contexts/TenantContext';
+import { VerifiedBadge } from '../components/VerifiedBadge';
 
 // Texto mínimo necessário pro grupo, no estilo iFood: nada quando é
 // realmente livre (0 a 1), "Escolha até N" quando é opcional com teto,
@@ -17,6 +20,25 @@ function groupHint(minSelect: number, maxSelect: number): string | null {
   return `Escolha de ${minSelect} a ${maxSelect}`;
 }
 
+// Mesma forma que a nota do restaurante aparece no header do cardápio
+// (ver MenuHeader.useReviewSummary) — pedido explícito do Felipe. Item
+// nunca tem texto na avaliação, então a lista abaixo do selo mostra só
+// quem avaliou + nota + data, sem trecho de comentário nenhum.
+function useItemReviews(tenantId: string, productId: string | undefined) {
+  const [summary, setSummary] = useState<ReviewSummary | null>(null);
+  const [reviews, setReviews] = useState<PublicReview[]>([]);
+  useEffect(() => {
+    if (!productId) return;
+    fetchItemReviewsSummary(tenantId, productId)
+      .then(setSummary)
+      .catch(() => setSummary(null));
+    fetchItemReviews(tenantId, productId)
+      .then((r) => setReviews(r.items))
+      .catch(() => setReviews([]));
+  }, [tenantId, productId]);
+  return { summary, reviews };
+}
+
 export function ProductDetailPage() {
   const { slug, productId, qrCodeToken } = useParams<{
     slug: string;
@@ -27,12 +49,12 @@ export function ProductDetailPage() {
   const { addItem } = useCart();
 
   const { tenant } = useTenant();
-  const [product, setProduct] = useState<Product | null>(null);
-  const [quantity, setQuantity] = useState(1);
+  const [product, setProduct] = useState<Product | null>(null);  const [quantity, setQuantity] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   // groupId -> array de valueIds escolhidos nesse grupo
   const [selections, setSelections] = useState<Record<string, string[]>>({});
   const [validationError, setValidationError] = useState<string | null>(null);
+  const { summary: itemReviewSummary, reviews: itemReviews } = useItemReviews(tenant?.id ?? '', productId);
 
   useEffect(() => {
     if (!tenant || !productId) return;
@@ -175,6 +197,24 @@ export function ProductDetailPage() {
           </p>
         )}
 
+        {itemReviewSummary && (
+          <div className="flex items-center gap-1 mt-2">
+            <Star
+              size={13}
+              fill={itemReviewSummary.count > 0 ? '#F59E0B' : 'transparent'}
+              className={itemReviewSummary.count > 0 ? 'text-amber-500' : 'text-gray-300'}
+            />
+            {itemReviewSummary.count > 0 && (
+              <span className="text-xs font-semibold text-gray-700">
+                {itemReviewSummary.average.toFixed(1)}
+              </span>
+            )}
+            <span className="text-xs text-gray-400">
+              ({itemReviewSummary.count} {itemReviewSummary.count === 1 ? 'avaliação' : 'avaliações'})
+            </span>
+          </div>
+        )}
+
         <div className="flex items-center justify-between mt-6">
           <span className="text-2xl font-bold" style={{ color: tenant.primaryColor }}>
             R$ {Number(product.promoPrice ?? product.price).toFixed(2).replace('.', ',')}
@@ -249,6 +289,39 @@ export function ProductDetailPage() {
 
         {validationError && (
           <p className="text-sm text-red-500 mt-4">{validationError}</p>
+        )}
+
+        {itemReviews.length > 0 && (
+          <div className="mt-6 flex flex-col gap-3">
+            <p className="text-sm font-bold text-gray-900">Avaliações desse item</p>
+            {itemReviews.map((review) => (
+              <div key={review.id} className="flex items-start gap-2.5 border-t border-gray-100 pt-3">
+                <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center shrink-0 overflow-hidden">
+                  {review.customerAvatarUrl ? (
+                    <img src={review.customerAvatarUrl} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <User size={13} className="text-gray-400" />
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <p className="text-xs font-semibold text-gray-700">{review.customerDisplayName}</p>
+                    {review.customerIsVerified && <VerifiedBadge size={11} />}
+                  </div>
+                  <div className="flex items-center gap-0.5 mt-0.5">
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <Star
+                        key={n}
+                        size={11}
+                        fill={n <= review.rating ? '#F59E0B' : 'transparent'}
+                        className={n <= review.rating ? 'text-amber-500' : 'text-gray-300'}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
 

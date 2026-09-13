@@ -13,6 +13,8 @@ interface ActiveOverviewItem {
   session: TableSession;
   total: number;
   openedAt: string;
+  customers: Array<{ name: string; avatarUrl: string | null; hasAccount: boolean; isVerified: boolean }>;
+  waiterCallCount: number;
 }
 
 interface PendingVerificationItem {

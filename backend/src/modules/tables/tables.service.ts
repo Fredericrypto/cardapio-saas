@@ -10,6 +10,7 @@ import { Order } from '../orders/order.entity';
 import { Location } from '../locations/location.entity';
 import { Tenant } from '../tenants/tenant.entity';
 import { Customer } from '../customers/customer.entity';
+import { CustomerVerificationService } from '../customers/customer-verification.service';
 import { CreateTableDto } from './dto/create-table.dto';
 import { CashbackService } from '../cashback/cashback.service';
 import { PushService } from '../push/push.service';
@@ -32,6 +33,7 @@ export class TablesService {
     private readonly locationRepo: Repository<Location>,
     private readonly cashbackService: CashbackService,
     private readonly pushService: PushService,
+    private readonly verificationService: CustomerVerificationService,
   ) {}
 
   // Mesma checagem usada na criação de pedido (OrdersService) — chamar
@@ -563,7 +565,7 @@ export class TablesService {
             name: account?.name ?? order.customerName ?? 'Cliente',
             avatarUrl: resolveAvatarUrl(account?.avatarUrl ?? null),
             hasAccount: true,
-            isVerified: account?.isVerified ?? false,
+            isVerified: account ? this.verificationService.verifyIntegritySync(account) : false,
           });
         } else if (order.customerName) {
           upsertCustomer({

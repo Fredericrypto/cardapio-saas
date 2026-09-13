@@ -17,13 +17,14 @@ export class ReviewsController {
   // ---------- Cliente logado ----------
 
   @UseGuards(CustomerJwtAuthGuard)
-  @Get('reviews/public/:tenantId/eligible-orders')
-  async findEligibleOrders(
+  @Get('reviews/public/:tenantId/prompt-info/:orderId')
+  async getReviewPromptInfo(
     @Param('tenantId') tenantId: string,
+    @Param('orderId') orderId: string,
     @CurrentCustomer() customer: RequestCustomer,
   ) {
     this.assertSameTenant(customer, tenantId);
-    return this.reviewsService.findEligibleOrders(tenantId, customer.customerId);
+    return this.reviewsService.getReviewPromptInfo(tenantId, customer.customerId, orderId);
   }
 
   @UseGuards(CustomerJwtAuthGuard)
@@ -97,6 +98,25 @@ export class ReviewsController {
   @Get('reviews/public/:tenantId/summary')
   async getSummary(@Param('tenantId') tenantId: string, @Query('locationId') locationId?: string) {
     return this.reviewsService.getSummary(tenantId, locationId ?? null);
+  }
+
+  // ---------- Público — avaliações de ITEM ----------
+  // Mesma forma dos dois endpoints acima (resumo + lista), só que
+  // escopados a um produto — pedido explícito do Felipe: "a mesma forma
+  // que aparecem no header do restaurante", só que pro item.
+
+  @Get('reviews/public/:tenantId/item/:productId/summary')
+  async getItemSummary(@Param('tenantId') tenantId: string, @Param('productId') productId: string) {
+    return this.reviewsService.getSummary(tenantId, null, productId);
+  }
+
+  @Get('reviews/public/:tenantId/item/:productId')
+  async findItemReviews(
+    @Param('tenantId') tenantId: string,
+    @Param('productId') productId: string,
+    @Query('page') page?: string,
+  ) {
+    return this.reviewsService.findPublicReviews(tenantId, null, Number(page) || 1, 20, productId);
   }
 
   // Resumo de TODAS as lojas de uma vez — pra tela de "escolha a loja"

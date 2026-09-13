@@ -126,12 +126,15 @@ export class Customer {
   @Column({ name: 'is_verified', type: 'boolean', default: false })
   isVerified: boolean;
 
-  // 'none' | 'pending' | 'approved' | 'rejected' — estado do FLUXO de
-  // pedido de verificação (não confundir com `isVerified` acima). Uma
-  // recusa permite pedir de novo, o que volta esse campo pra 'pending'
-  // com uma foto nova, sobrescrevendo a tentativa anterior.
+  // 'none' | 'pending' | 'approved' | 'rejected' | 'revoked' — estado do
+  // FLUXO de pedido de verificação (não confundir com `isVerified`
+  // acima). Uma recusa permite pedir de novo, o que volta esse campo
+  // pra 'pending' com uma foto nova. 'revoked' é diferente de
+  // 'rejected': só acontece depois de já ter sido 'approved', por ação
+  // manual do admin (ver CustomerVerificationService.revoke) — nunca
+  // automático, sempre com motivo registrado.
   @Column({ name: 'verification_status', type: 'varchar', length: 20, default: 'none' })
-  verificationStatus: 'none' | 'pending' | 'approved' | 'rejected';
+  verificationStatus: 'none' | 'pending' | 'approved' | 'rejected' | 'revoked';
 
   // Guardada só enquanto a análise está em aberto — apagada automaticamente
   // depois de 10 dias corridos (ver TablesService... na verdade
@@ -163,6 +166,55 @@ export class Customer {
   // de novo.
   @Column({ name: 'verification_congrats_pending', type: 'boolean', default: false })
   verificationCongratsPending: boolean;
+
+  // --- Integridade da verificação (prova criptográfica) ---
+  // Gravada SÓ no momento da aprovação de verdade (ver
+  // CustomerVerificationService.approve) — nunca editável por nenhuma
+  // outra via. Ver common/utils/verification-signature.ts pro
+  // raciocínio completo de por que isso existe: prova que `isVerified`
+  // não foi forjado por fora do fluxo normal (ex: acesso direto ao
+  // banco). Toda vez que `isVerified` for exibido pra alguém, o
+  // backend recalcula essa assinatura a partir dos campos de auditoria
+  // e compara — ver CustomerVerificationService.isGenuinelyVerified.
+  @Column({ name: 'verification_integrity_signature', type: 'varchar', length: 64, nullable: true })
+  verificationIntegritySignature: string | null;
+
+  // Marcado AUTOMATICAMENTE (nunca pelo admin) na primeira vez que o
+  // sistema encontra `isVerified = true` sem uma assinatura válida —
+  // sinal de adulteração. Uma vez marcado, fica registrado pra sempre
+  // (mesmo que a inconsistência seja corrigida depois), pro
+  // estabelecimento saber que aquela conta já deu esse sinal em algum
+  // momento.
+  @Column({ name: 'verification_tamper_flagged_at', type: 'timestamptz', nullable: true })
+  verificationTamperFlaggedAt: Date | null;
+
+  // --- Revogação (a única forma de tirar o selo de alguém além de
+  // excluir a conta inteira) — sempre ação manual do admin, com motivo
+  // obrigatório, sempre auditada. Ver CustomerVerificationService.revoke.
+  @Column({ name: 'verification_revoked_at', type: 'timestamptz', nullable: true })
+  verificationRevokedAt: Date | null;
+
+  @Column({ name: 'verification_revoked_reason', type: 'text', nullable: true })
+  verificationRevokedReason: string | null;
+
+  @Column({ name: 'verification_revoked_by_admin_id', type: 'uuid', nullable: true })
+  verificationRevokedByAdminId: string | null;
+
+  // --- Suspensão de conta ("puni-lo", pedido explícito do Felipe) ---
+  // Bloqueia login enquanto ativo (ver CustomersAuthService.login) —
+  // nunca apaga a conta nem os dados, só impede acesso. Sempre com
+  // motivo, sempre auditado.
+  @Column({ name: 'is_suspended', type: 'boolean', default: false })
+  isSuspended: boolean;
+
+  @Column({ name: 'suspended_at', type: 'timestamptz', nullable: true })
+  suspendedAt: Date | null;
+
+  @Column({ name: 'suspended_reason', type: 'text', nullable: true })
+  suspendedReason: string | null;
+
+  @Column({ name: 'suspended_by_admin_id', type: 'uuid', nullable: true })
+  suspendedByAdminId: string | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;

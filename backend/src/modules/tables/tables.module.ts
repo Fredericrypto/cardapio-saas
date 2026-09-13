@@ -9,12 +9,14 @@ import { TablesService } from './tables.service';
 import { TablesController } from './tables.controller';
 import { CashbackModule } from '../cashback/cashback.module';
 import { PushModule } from '../push/push.module';
+import { CustomersModule } from '../customers/customers.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([RestaurantTable, TableSession, WaiterCall, Order, Location]),
     CashbackModule,
     PushModule,
+    CustomersModule,
   ],
   controllers: [TablesController],
   providers: [TablesService],

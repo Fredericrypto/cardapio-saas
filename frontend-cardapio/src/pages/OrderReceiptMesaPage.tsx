@@ -8,7 +8,7 @@ import { ReviewDisplay } from '../components/ReviewDisplay';
 import { saveElementAsPng } from '../lib/saveAsPng';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { useTenant } from '../contexts/TenantContext';
-import { fetchMyReviews } from '../lib/customer-api';
+import { fetchMyReviewsByOrderIds } from '../lib/customer-api';
 import type { MyReview } from '../lib/customer-api';
 
 // Cupom de uma visita à mesa (sessão) — mesmo endpoint público de resumo
@@ -41,11 +41,12 @@ export function OrderReceiptMesaPage() {
   const [myReviewsByOrderId, setMyReviewsByOrderId] = useState<Map<string, MyReview>>(new Map());
 
   useEffect(() => {
-    if (!tenant || !customerToken) return;
-    fetchMyReviews(tenant.id, customerToken).then((myReviews) => {
-      setMyReviewsByOrderId(new Map(myReviews.map((r) => [r.orderId, r])));
+    if (!tenant || !customerToken || !summary) return;
+    const orderIds = summary.orders.map((o) => o.id);
+    fetchMyReviewsByOrderIds(tenant.id, customerToken, orderIds).then((byOrder) => {
+      setMyReviewsByOrderId(new Map(Object.entries(byOrder)));
     });
-  }, [tenant, customerToken]);
+  }, [tenant, customerToken, summary]);
 
   const reviewedOrderIds = (summary?.orders ?? [])
     .map((o) => o.id)

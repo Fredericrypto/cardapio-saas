@@ -187,6 +187,9 @@ function ReviewCard({ review, onChanged }: { review: AdminReview; onChanged: () 
             </p>
           </div>
           <p className="text-xs text-gray-400 mt-0.5">
+            {review.targetType === 'item' && review.productName && (
+              <span className="font-medium text-gray-500">Item: {review.productName} · </span>
+            )}
             {review.locationName ? `${review.locationName} · ` : ''}
             {formatDateTime(review.createdAt)}
           </p>
