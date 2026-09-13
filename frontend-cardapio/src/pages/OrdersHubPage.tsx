@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, ChevronRight, Store } from 'lucide-react';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { useTenant } from '../contexts/TenantContext';
+import { getActiveMesaToken } from '../hooks/useTableSession';
 import { fetchMyOrderHistory } from '../lib/customer-api';
 import { groupCustomerOrders } from '../lib/ordersHistory';
 import { BottomNav } from '../components/BottomNav';
@@ -16,6 +17,8 @@ import { BottomNav } from '../components/BottomNav';
 // tela vira naturalmente uma lista de vários cartões.
 export function OrdersHubPage() {
   const { slug } = useParams<{ slug: string }>();
+  // Mesmo bug/correção do CustomerProfilePage — ver comentário lá.
+  const activeMesaToken = slug ? getActiveMesaToken(slug) ?? undefined : undefined;
   const navigate = useNavigate();
   const { tenant } = useTenant();
 
@@ -53,7 +56,7 @@ export function OrdersHubPage() {
         >
           Entrar
         </button>
-        <BottomNav slug={slug!} tenantId={tenant.id} primaryColor={tenant.primaryColor} />
+        <BottomNav slug={slug!} qrCodeToken={activeMesaToken} tenantId={tenant.id} primaryColor={tenant.primaryColor} />
       </div>
     );
   }
@@ -100,7 +103,7 @@ export function OrdersHubPage() {
         </button>
       </div>
 
-      <BottomNav slug={slug!} tenantId={tenant.id} primaryColor={tenant.primaryColor} />
+      <BottomNav slug={slug!} qrCodeToken={activeMesaToken} tenantId={tenant.id} primaryColor={tenant.primaryColor} />
     </div>
   );
 }

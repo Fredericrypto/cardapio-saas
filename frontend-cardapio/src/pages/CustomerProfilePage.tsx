@@ -4,6 +4,7 @@ import { ChevronRight, Receipt, MapPin, Wallet, Coins, Star, Bell, BellOff, LogO
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { useTenant } from '../contexts/TenantContext';
 import { usePushNotifications } from '../hooks/usePushNotifications';
+import { getActiveMesaToken } from '../hooks/useTableSession';
 import { IconBadge } from '../components/IconBadge';
 import { BottomNav } from '../components/BottomNav';
 import { VerifiedBadge } from '../components/VerifiedBadge';
@@ -18,6 +19,16 @@ import { submitMyVerification, markVerificationCongratsSeen, fetchMyCustomerProf
 // pagamento cada um é uma seção própria — aqui é só a porta de entrada.
 export function CustomerProfilePage() {
   const { slug } = useParams<{ slug: string }>();
+  // BUG CORRIGIDO: essa tela nunca soube que o cliente veio de uma mesa
+  // (a rota /conta-cliente/* não carrega qrCodeToken na URL), então o
+  // BottomNav sempre montava os links pro cardápio GERAL — bastava abrir
+  // "Conta" a partir da mesa e navegar de volta pelo menu/carrinho do
+  // rodapé que a sessão da mesa era perdida silenciosamente (o pedido
+  // seguinte virava "Balcão" em vez de "Mesa"). `getActiveMesaToken` lê
+  // a mesa ativa desse restaurante salva no localStorage por
+  // useTableSession, exatamente pra esse cenário de "voltar pra onde eu
+  // estava".
+  const activeMesaToken = slug ? getActiveMesaToken(slug) ?? undefined : undefined;
   const navigate = useNavigate();
   const { tenant } = useTenant();
   const { customer, token, isLoading, logout, setCustomer } = useCustomerAuth();
@@ -82,7 +93,7 @@ export function CustomerProfilePage() {
         >
           Entrar
         </button>
-        <BottomNav slug={slug!} tenantId={tenant.id} primaryColor={tenant.primaryColor} />
+        <BottomNav slug={slug!} qrCodeToken={activeMesaToken} tenantId={tenant.id} primaryColor={tenant.primaryColor} />
       </div>
     );
   }
@@ -253,7 +264,7 @@ export function CustomerProfilePage() {
         </div>
       </div>
 
-      <BottomNav slug={slug!} tenantId={tenant.id} primaryColor={tenant.primaryColor} />
+      <BottomNav slug={slug!} qrCodeToken={activeMesaToken} tenantId={tenant.id} primaryColor={tenant.primaryColor} />
 
       {verificationStep === 'explainer' && (
         <VerificationExplainerModal

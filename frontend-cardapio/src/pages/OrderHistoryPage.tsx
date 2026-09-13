@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Table2, ShoppingBag, Bike, FolderClosed, Star } from 'lucide-react';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { useTenant } from '../contexts/TenantContext';
+import { getActiveMesaToken } from '../hooks/useTableSession';
 import { fetchMyOrderHistory, fetchMyReviewsByOrderIds } from '../lib/customer-api';
 import type { MyReview } from '../lib/customer-api';
 import {
@@ -34,6 +35,8 @@ const STATUS_STYLES: Record<string, { label: string; bg: string; color: string }
 // cada um na sua própria linha, igual ao histórico do painel do admin.
 export function OrderHistoryPage() {
   const { slug } = useParams<{ slug: string }>();
+  // Mesmo bug/correção do CustomerProfilePage — ver comentário lá.
+  const activeMesaToken = slug ? getActiveMesaToken(slug) ?? undefined : undefined;
   const navigate = useNavigate();
   const { tenant } = useTenant();
 
@@ -98,7 +101,7 @@ export function OrderHistoryPage() {
         ))}
       </div>
 
-      <BottomNav slug={slug!} tenantId={tenant.id} primaryColor={tenant.primaryColor} />
+      <BottomNav slug={slug!} qrCodeToken={activeMesaToken} tenantId={tenant.id} primaryColor={tenant.primaryColor} />
     </div>
   );
 }
