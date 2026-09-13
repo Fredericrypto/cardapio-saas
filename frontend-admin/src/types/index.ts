@@ -157,6 +157,10 @@ export interface Order {
   customerName: string | null;
   customerPhone: string | null;
   tableNumber: string | null;
+  // Só vem preenchido quando orderType é 'entrega' E o cliente tinha
+  // uma sessão de mesa ativa aberta nesse mesmo restaurante no momento
+  // do pedido — aviso pro admin, ver OrdersService.create no backend.
+  placedWhileAtTable?: string | null;
   orderType: 'balcao' | 'mesa' | 'entrega';
   status:
     | 'aguardando_pagamento'

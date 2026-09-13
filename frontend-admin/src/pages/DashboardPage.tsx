@@ -922,6 +922,16 @@ function StandaloneOrderCard({
         </span>
       </div>
 
+      {/* Aviso — pedido do Felipe: cliente estava numa mesa ativa e
+          escolheu Entrega mesmo assim. Não é bloqueado (pode ser
+          intencional), só precisa ficar visível pro admin não ficar
+          confuso vendo os dois ao mesmo tempo no painel. */}
+      {order.placedWhileAtTable && (
+        <p className="text-[11px] font-semibold text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg px-2.5 py-1.5">
+          ⚠️ Cliente estava na Mesa {order.placedWhileAtTable} ao pedir esta entrega
+        </p>
+      )}
+
       {/* Mesmo formato do "perfil" da Mesa (ActiveTableCard) — pedido do
           Felipe: Balcão tinha menos informação que a Mesa, agora tem o
           mesmo bloco com foto/nome/selo + a barra de "feito há / total"

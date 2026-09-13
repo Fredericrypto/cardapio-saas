@@ -73,6 +73,13 @@ export class Order {
   @Column({ name: 'table_number', type: 'varchar', length: 20, nullable: true })
   tableNumber: string | null;
 
+  // Preenchido só quando orderType é 'entrega' E o cliente tinha, no
+  // momento do pedido, uma sessão de mesa ativa aberta por ele nesse
+  // mesmo restaurante — guarda o NÚMERO da mesa (snapshot, não FK) só
+  // pra avisar o admin no painel. Ver OrdersService.create.
+  @Column({ name: 'placed_while_at_table', type: 'varchar', length: 20, nullable: true })
+  placedWhileAtTable: string | null;
+
   @Column({ name: 'order_type', length: 20, default: 'balcao' })
   orderType: string; // balcao, mesa, entrega
 

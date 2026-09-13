@@ -655,6 +655,33 @@ export class OrdersService {
         }
       }
 
+      // Pedido de ENTREGA feito por um cliente que, nesse exato momento,
+      // também tem uma sessão de mesa ativa aberta por ele nesse mesmo
+      // restaurante — pedido do Felipe: não é bloqueado (pode ser
+      // intencional, ex: pedir entrega pra alguém de casa enquanto está
+      // no restaurante), mas precisa ficar visível/rastreável tanto pro
+      // admin (evita confusão de "por que ele pediu entrega se está na
+      // mesa 2?") quanto pro próprio cliente (avisa na hora, ver
+      // CartPage). Só verifica pra 'entrega' porque 'balcao' não é mais
+      // uma opção oferecida a quem já escaneou uma mesa (ver
+      // orderTypeOptions no CartPage) — mas o cliente ainda pode digitar
+      // a requisição manualmente ou vir de um cardápio geral enquanto
+      // uma mesa antiga dele ficou esquecida aberta, daí valer conferir
+      // aqui no backend também, não só confiar no frontend.
+      let placedWhileAtTable: string | null = null;
+      if (dto.orderType === 'entrega' && customerId) {
+        const activeTableSession = await manager.findOne(TableSession, {
+          where: [
+            { tenantId, openedByCustomerId: customerId, status: 'aberta' },
+            { tenantId, openedByCustomerId: customerId, status: 'fechamento_solicitado' },
+          ],
+          relations: { table: true },
+        });
+        if (activeTableSession) {
+          placedWhileAtTable = activeTableSession.table.number;
+        }
+      }
+
       const location = resolvedLocationId
         ? await manager.findOne(Location, { where: { id: resolvedLocationId, tenantId } })
         : null;
@@ -743,6 +770,7 @@ export class OrdersService {
         customerPhone: dto.customerPhone,
         tableNumber: resolvedTableNumber,
         orderType: dto.orderType,
+        placedWhileAtTable,
         notes: dto.notes,
         total: fromCents(totalCents),
         discountAmount: fromCents(totalDiscountCents),

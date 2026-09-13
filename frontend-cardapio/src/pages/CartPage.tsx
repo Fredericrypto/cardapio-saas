@@ -971,7 +971,15 @@ export function CartPage() {
       : checkoutStep === 'review' && activeLocation?.isOpenNow && (orderType !== 'entrega' || Boolean(quote));
   const deliveryAvailable = activeLocation?.latitude != null && activeLocation?.longitude != null;
   const orderTypeOptions = (['mesa', 'balcao', 'entrega'] as const).filter(
-    (type) => (type !== 'mesa' || isTableFlow) && (type !== 'entrega' || deliveryAvailable),
+    (type) =>
+      (type !== 'mesa' || isTableFlow) &&
+      // Pedido do Felipe: quem já escaneou o QR da mesa não precisa (e
+      // não deve) ver "Balcão" como opção — é redundante, ele já está
+      // fisicamente identificado numa mesa. Só "Entrega" continua
+      // fazendo sentido como alternativa (ex: pedir pra alguém em casa
+      // enquanto está no restaurante).
+      (type !== 'balcao' || !isTableFlow) &&
+      (type !== 'entrega' || deliveryAvailable),
   );
 
   const showFormStep = orderType === 'mesa' || checkoutStep === 'form';
@@ -1248,6 +1256,18 @@ export function CartPage() {
                   </button>
                 ))}
               </div>
+              {/* Aviso — pedido do Felipe: quem está na mesa e ainda
+                  assim escolhe Entrega precisa entender que isso NÃO
+                  fecha/afeta a conta da mesa, são coisas separadas. O
+                  aviso simétrico pro admin vem do campo
+                  `placedWhileAtTable` setado no backend (ver
+                  OrdersService.create) e mostrado no painel. */}
+              {isTableFlow && orderType === 'entrega' && (
+                <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-2.5 py-2 mt-2">
+                  Você está na Mesa {session?.table?.number} agora. Pedir entrega é separado da
+                  conta da mesa — sua mesa continua aberta normalmente.
+                </p>
+              )}
             </div>
 
             {!hasSavedName && (
