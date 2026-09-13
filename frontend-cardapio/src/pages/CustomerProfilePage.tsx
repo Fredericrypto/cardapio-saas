@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ChevronRight, Receipt, MapPin, Wallet, Coins, Star, Bell, BellOff, LogOut, User, BadgeCheck, Clock3 } from 'lucide-react';
+import { ChevronRight, Receipt, MapPin, Wallet, CircleDollarSign, Star, Bell, BellOff, LogOut, User, BadgeCheck, Clock3 } from 'lucide-react';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { useTenant } from '../contexts/TenantContext';
 import { usePushNotifications } from '../hooks/usePushNotifications';
@@ -184,7 +184,7 @@ export function CustomerProfilePage() {
             onClick={() => navigate(`/${slug}/conta-cliente/carteira-pix`)}
           />
           <MenuRow
-            icon={Coins}
+            icon={CircleDollarSign}
             iconBg="#FEF3C7"
             iconColor="#D97706"
             label="Meu Cashback"
@@ -259,7 +259,11 @@ export function CustomerProfilePage() {
             iconColor="#DC2626"
             label="Sair da conta"
             labelColor="#DC2626"
-            onClick={logout}
+            onClick={() => {
+              if (window.confirm('Tem certeza que deseja sair da sua conta?')) {
+                logout();
+              }
+            }}
           />
         </div>
       </div>

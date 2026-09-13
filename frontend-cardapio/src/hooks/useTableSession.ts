@@ -50,7 +50,7 @@ export function clearActiveMesaTokenForSlug(slug: string) {
 }
 
 export function useTableSession(slug: string | undefined, qrCodeToken: string | undefined) {
-  const { token: customerToken } = useCustomerAuth();
+  const { token: customerToken, isLoading: isAuthLoading } = useCustomerAuth();
   const [session, setSession] = useState<TableSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -104,8 +104,21 @@ export function useTableSession(slug: string | undefined, qrCodeToken: string | 
   }, [qrCodeToken, doJoin, slug]);
 
   useEffect(() => {
+    // BUG REAL CORRIGIDO: essa corrida era a causa raiz do painel do
+    // admin nunca reconhecer o cliente antes do primeiro pedido. Antes,
+    // isso disparava assim que a página montava, sem esperar
+    // `useCustomerAuth` terminar de verificar o token salvo — então a
+    // mesa era criada como CONVIDADO (customerId nulo) no exato momento
+    // em que o login ainda estava carregando. Quando o login terminava
+    // um instante depois, a sessão da mesa JÁ EXISTIA (sessionStorage já
+    // marcado como "visitada"), então a próxima checagem só reaproveita
+    // a sessão-convidado existente — nunca reabre vinculando o cliente
+    // de verdade. Esperar `isAuthLoading` resolver antes do primeiro
+    // join garante que, se o cliente estiver logado, o customerId certo
+    // já vai junto na primeira (e única) chamada que cria a sessão.
+    if (isAuthLoading) return;
     checkCurrent();
-  }, [checkCurrent]);
+  }, [checkCurrent, isAuthLoading]);
 
   // AÇÃO EXPLÍCITA — só deve ser chamada a partir de um gesto real do
   // cliente (botão "Sim, estou nessa mesa"), nunca automaticamente.

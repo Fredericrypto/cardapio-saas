@@ -102,6 +102,7 @@ function AdminLayoutContent() {
   }, []);
 
   function handleLogout() {
+    if (!window.confirm('Tem certeza que deseja sair?')) return;
     logout();
     navigate('/login');
   }
