@@ -406,6 +406,19 @@ function OrderRow({
     <div
       className={`border-t pt-2.5 first:border-t-0 first:pt-0 ${dark ? 'border-white/10' : 'border-gray-100'}`}
     >
+      {/* Horário desse pedido específico — pedido do Felipe: distinto do
+          "Aberta há" da mesa (que é da SESSÃO inteira), aqui é quando
+          ESSE pedido em particular foi feito, pra dar pro admin
+          acompanhar o ritmo dos pedidos dentro de uma mesa longa. */}
+      <p className={`text-[11px] mb-1 flex items-center gap-1 ${dark ? 'text-gray-500' : 'text-gray-400'}`}>
+        <Clock size={11} />
+        Pedido feito às{' '}
+        {new Date(order.createdAt).toLocaleTimeString('pt-BR', {
+          hour: '2-digit',
+          minute: '2-digit',
+        })}
+      </p>
+
       {order.items && order.items.length > 0 && (
         <div className="mb-1.5 flex flex-col gap-0.5">
           {order.items.map((item) => (
@@ -909,38 +922,52 @@ function StandaloneOrderCard({
         </span>
       </div>
 
-      {displayName && (
-        <div className="rounded-xl bg-white/5 p-3.5 flex items-center gap-3">
-          <div className="relative shrink-0">
-            <span className="block w-11 h-11 rounded-full overflow-hidden ring-[3px] ring-white/20 bg-white/10 flex items-center justify-center">
-              {order.customer?.avatarUrl ? (
-                <img src={order.customer.avatarUrl} alt="" className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-sm font-bold text-gray-400">
-                  {displayName[0]?.toUpperCase()}
+      {/* Mesmo formato do "perfil" da Mesa (ActiveTableCard) — pedido do
+          Felipe: Balcão tinha menos informação que a Mesa, agora tem o
+          mesmo bloco com foto/nome/selo + a barra de "feito há / total"
+          equivalente à "Aberta há / Total" da mesa. Sem cliente
+          identificado (nome não veio), mostra só a barra de baixo. */}
+      <div className="rounded-xl bg-white/5 p-3.5 flex flex-col gap-2.5">
+        {displayName ? (
+          <div className="flex items-center gap-3">
+            <div className="relative shrink-0">
+              <span className="block w-11 h-11 rounded-full overflow-hidden ring-[3px] ring-white/20 bg-white/10 flex items-center justify-center">
+                {order.customer?.avatarUrl ? (
+                  <img src={order.customer.avatarUrl} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-sm font-bold text-gray-400">
+                    {displayName[0]?.toUpperCase()}
+                  </span>
+                )}
+              </span>
+              {order.customer?.isVerified && (
+                <span className="absolute -bottom-0.5 -right-0.5">
+                  <VerifiedBadgeAdmin />
                 </span>
               )}
-            </span>
-            {order.customer?.isVerified && (
-              <span className="absolute -bottom-0.5 -right-0.5">
-                <VerifiedBadgeAdmin />
-              </span>
-            )}
+            </div>
+            <div className="min-w-0">
+              <p className="font-bold text-sm text-white leading-tight truncate">{displayName}</p>
+              <p className="text-[11px] text-gray-400 mt-0.5">
+                {order.customerPhone ?? (order.customer?.isVerified ? 'Cliente verificado' : 'Cliente')}
+              </p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <p className="font-bold text-sm text-white leading-tight truncate">{displayName}</p>
-            <p className="text-[11px] text-gray-400 mt-0.5">
-              {new Date(order.createdAt).toLocaleString('pt-BR', {
-                day: '2-digit',
-                month: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
-              {order.customerPhone ? ` · ${order.customerPhone}` : ''}
-            </p>
-          </div>
+        ) : (
+          <p className="text-xs text-gray-500 italic">Cliente não identificado.</p>
+        )}
+
+        <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-white/10">
+          <span className="flex items-center gap-1 text-xs text-gray-400">
+            <Clock size={12} />
+            Feito há {elapsedSince(order.createdAt)}
+          </span>
+          <span className="text-xs text-gray-600">·</span>
+          <span className="text-xs text-gray-400">
+            Total R$ {(Number(order.total) + Number(order.tipAmount ?? 0)).toFixed(2).replace('.', ',')}
+          </span>
         </div>
-      )}
+      </div>
 
       <OrderRow order={order} actions={actions} dark />
     </div>

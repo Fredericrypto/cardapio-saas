@@ -69,6 +69,17 @@ export function ReviewDisplay({
         </p>
       )}
 
+      {/* Resposta do restaurante — pedido do Felipe: antes o cliente não
+          tinha como saber que foi respondido, só o admin via a própria
+          resposta. Mesmo texto/data que já aparece na vitrine pública
+          (ver ReviewDisplay do lado admin/PublicReviewsPage). */}
+      {review.response && (
+        <div className="mt-1 bg-gray-50 border border-gray-100 rounded-xl p-3 flex flex-col gap-1">
+          <p className="text-xs font-semibold text-gray-700">Resposta do restaurante</p>
+          <p className="text-sm text-gray-600">{review.response.responseText}</p>
+        </div>
+      )}
+
       {isConfirmingDelete && (
         <div className="mt-1 bg-red-50 border border-red-100 rounded-xl p-3 flex flex-col gap-2">
           <p className="text-xs text-red-700">

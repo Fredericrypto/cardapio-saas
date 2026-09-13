@@ -17,15 +17,19 @@ export function MyReviewsPage() {
   const { tenant } = useTenant();
   const [restaurantReview, setRestaurantReview] = useState<PublicReview | null | undefined>(undefined);
   const [itemReviews, setItemReviews] = useState<MyItemReview[] | null>(null);
+  const [loadError, setLoadError] = useState(false);
 
   const { customer, token, isLoading } = useCustomerAuth();
 
   useEffect(() => {
     if (!tenant || !token) return;
-    fetchMyReviews(tenant.id, token).then(({ restaurant, items }) => {
-      setRestaurantReview(restaurant);
-      setItemReviews(items);
-    });
+    setLoadError(false);
+    fetchMyReviews(tenant.id, token)
+      .then(({ restaurant, items }) => {
+        setRestaurantReview(restaurant);
+        setItemReviews(items);
+      })
+      .catch(() => setLoadError(true));
   }, [tenant, token]);
 
   if (!tenant || isLoading || !customer) {
@@ -49,9 +53,35 @@ export function MyReviewsPage() {
       </div>
 
       <div className="px-4 mt-4 flex flex-col gap-5">
-        {isLoadingReviews && <p className="text-sm text-gray-400 text-center py-8">Carregando...</p>}
+        {loadError && (
+          <div className="flex flex-col items-center gap-2 py-8 text-center">
+            <p className="text-sm text-gray-500">Não foi possível carregar suas avaliações.</p>
+            <button
+              onClick={() => {
+                setRestaurantReview(undefined);
+                setItemReviews(null);
+                setLoadError(false);
+                if (tenant && token) {
+                  fetchMyReviews(tenant.id, token)
+                    .then(({ restaurant, items }) => {
+                      setRestaurantReview(restaurant);
+                      setItemReviews(items);
+                    })
+                    .catch(() => setLoadError(true));
+                }
+              }}
+              className="text-sm font-semibold text-gray-900 underline"
+            >
+              Tentar de novo
+            </button>
+          </div>
+        )}
 
-        {hasNothing && (
+        {!loadError && isLoadingReviews && (
+          <p className="text-sm text-gray-400 text-center py-8">Carregando...</p>
+        )}
+
+        {!loadError && hasNothing && (
           <p className="text-sm text-gray-400 text-center py-12 px-4">
             Você ainda não avaliou nada. Depois que um pedido for concluído, você recebe uma
             notificação pra avaliar o restaurante e os itens que pediu.
@@ -73,6 +103,7 @@ export function MyReviewsPage() {
                 comment: restaurantReview.comment,
                 isAnonymous: restaurantReview.isAnonymous,
                 createdAt: restaurantReview.createdAt,
+                response: restaurantReview.response,
               }}
               onDeleted={() => setRestaurantReview(null)}
             />

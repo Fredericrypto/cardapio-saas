@@ -337,6 +337,11 @@ export interface MyReview {
   comment: string | null;
   isAnonymous: boolean;
   createdAt: string;
+  // Só vem preenchido quando a review veio da rota "/me" (tela Minhas
+  // Avaliações) — a rota "/by-orders" usada nos recibos ainda não
+  // inclui isso, por decisão de escopo (Felipe só pediu isso na tela
+  // de Minhas Avaliações por enquanto).
+  response?: { responseText: string; createdAt: string } | null;
 }
 
 export interface MyItemReview {
