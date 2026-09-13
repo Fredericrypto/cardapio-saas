@@ -96,6 +96,7 @@ export function MyReviewsPage() {
             <ReviewDisplay
               tenantId={tenant.id}
               token={token!}
+              restaurantName={tenant.name}
               review={{
                 id: restaurantReview.id,
                 orderId: '',

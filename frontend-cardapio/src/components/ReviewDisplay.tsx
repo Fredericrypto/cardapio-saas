@@ -27,11 +27,16 @@ export function ReviewDisplay({
   token,
   review,
   onDeleted,
+  restaurantName,
 }: {
   tenantId: string;
   token: string;
   review: MyReview;
   onDeleted: () => void;
+  // Nome do restaurante configurado pelo admin (ex: "Restaurante
+  // Awesome") — pedido do Felipe: mostrar o nome de verdade em vez do
+  // rótulo genérico "Resposta do restaurante".
+  restaurantName?: string;
 }) {
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -75,7 +80,9 @@ export function ReviewDisplay({
           (ver ReviewDisplay do lado admin/PublicReviewsPage). */}
       {review.response && (
         <div className="mt-1 bg-gray-50 border border-gray-100 rounded-xl p-3 flex flex-col gap-1">
-          <p className="text-xs font-semibold text-gray-700">Resposta do restaurante</p>
+          <p className="text-xs font-semibold text-gray-700">
+            Resposta de {restaurantName ?? 'restaurante'}
+          </p>
           <p className="text-sm text-gray-600">{review.response.responseText}</p>
         </div>
       )}

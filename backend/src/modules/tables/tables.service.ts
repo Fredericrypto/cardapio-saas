@@ -467,6 +467,14 @@ export class TablesService {
           accountCustomerIds.add(order.customerId);
         }
       }
+      // BUG CORRIGIDO: só entrava no set de IDs pra buscar quem tinha
+      // colocado PEDIDO — uma mesa recém-aberta por um cliente logado
+      // (via QR, antes de pedir qualquer coisa) não tinha esse ID
+      // buscado aqui, então ficava sem nome/foto no painel até o
+      // primeiro pedido sair, mesmo a conta já estando identificada.
+      if (session.openedByCustomerId) {
+        accountCustomerIds.add(session.openedByCustomerId);
+      }
     }
     const accountCustomers =
       accountCustomerIds.size > 0
@@ -555,6 +563,25 @@ export class TablesService {
           customers.push(entry);
         } else if (entry.hasAccount && !customers[idx].hasAccount) {
           customers[idx] = entry;
+        }
+      }
+      // Mostra quem ABRIU a mesa mesmo antes de qualquer pedido sair —
+      // antes disso, uma mesa recém-aberta por um cliente logado
+      // aparecia como "Ninguém identificado ainda" até o primeiro
+      // pedido, mesmo a identidade já sendo conhecida desde o scan do
+      // QR (session.openedByCustomerId). Entra primeiro; o loop de
+      // pedidos abaixo pode então enriquecer/confirmar com dados mais
+      // recentes do mesmo cliente, sem duplicar (upsertCustomer dedupe
+      // por nome).
+      if (session.openedByCustomerId) {
+        const account = accountCustomerById.get(session.openedByCustomerId);
+        if (account) {
+          upsertCustomer({
+            name: account.name,
+            avatarUrl: resolveAvatarUrl(account.avatarUrl ?? null),
+            hasAccount: true,
+            isVerified: this.verificationService.verifyIntegritySync(account),
+          });
         }
       }
       for (const order of orders) {
