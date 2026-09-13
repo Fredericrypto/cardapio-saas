@@ -61,7 +61,7 @@ const CustomerAuthContext = createContext<CustomerAuthContextValue | null>(null)
 // infinito. Com Context, existe exatamente UM fetch de perfil por
 // sessão de navegação.
 export function CustomerAuthProvider({ children }: { children: ReactNode }) {
-  const { tenant } = useTenant();
+  const { tenant, isLoading: isTenantLoading } = useTenant();
   const tenantId = tenant?.id;
   const { clearCart, setCartOwner } = useCart();
   const clearCartRef = useRef(clearCart);
@@ -98,6 +98,23 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   }, [tenantId, customer?.id, setCartOwner]);
 
   useEffect(() => {
+    // CAUSA RAIZ CORRIGIDA (essa era a de verdade, não só a do
+    // useTableSession): `TenantProvider` nunca segura os filhos
+    // esperando o tenant carregar — eles montam de cara com
+    // `tenant = null`. Isso significa que, no primeiro instante,
+    // `tenantId` aqui é `undefined`, e esse efeito caía direto no
+    // `if (!tenantId || !token)` e marcava `isLoading = false`
+    // IMEDIATAMENTE — mesmo quando o cliente estava logado de verdade
+    // (só ainda não deu tempo de saber, porque sem tenantId nem dá pra
+    // saber QUAL chave do localStorage checar). Um instante depois, o
+    // tenant carregava, o token certo era lido, e `isLoading` voltava
+    // pra `true` só então — só que qualquer código que tivesse decidido
+    // algo com base naquele `isLoading = false` mentiroso (ex:
+    // useTableSession criando a sessão da mesa como convidado) já tinha
+    // agido tarde demais. Agora esse efeito não decide NADA enquanto o
+    // tenant ainda não é conhecido — fica genuinamente "carregando" até
+    // então.
+    if (isTenantLoading) return;
     if (!tenantId || !token) {
       setCustomer(null);
       setIsLoading(false);
@@ -136,7 +153,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tenantId, token, retryTick]);
+  }, [tenantId, token, retryTick, isTenantLoading]);
 
   async function login(email: string, password: string) {
     if (!tenantId) return;

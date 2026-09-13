@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { useTableSession, clearActiveMesaTokenForSlug } from '../hooks/useTableSession';
+import { useTableSession, clearActiveMesaTokenForSlug, getActiveMesaToken } from '../hooks/useTableSession';
 import { TableSessionProvider } from '../contexts/TableSessionContext';
 import { QrScannerModal } from './QrScannerModal';
 import { TableSessionTimer } from './TableSessionTimer';
@@ -35,15 +35,32 @@ export function TableSessionGate({ children }: { children: ReactNode }) {
   }
 
   if (error) {
+    // BUG CORRIGIDO: esse erro é EXATAMENTE o backend recusando abrir
+    // mesa nova porque o cliente já tem conta aberta em OUTRA mesa —
+    // ou seja, a mesa de verdade dele ainda existe e está esperando. O
+    // botão mandava pro cardápio genérico (sem mesa nenhuma), que é
+    // pior que inútil aqui: joga fora exatamente o contexto que o
+    // cliente precisa pra voltar e fechar a conta. `getActiveMesaToken`
+    // é o mesmo "voltar pra onde eu estava" já usado em outras telas.
+    const activeToken = slug ? getActiveMesaToken(slug) : null;
     return (
       <div className="flex flex-col items-center justify-center h-screen gap-3 px-6 text-center bg-gray-50">
         <p className="text-sm text-gray-500">{error}</p>
-        <button
-          onClick={() => navigate(`/${slug}`)}
-          className="text-sm font-semibold text-gray-900 underline"
-        >
-          Ir pro cardápio geral
-        </button>
+        {activeToken && activeToken !== qrCodeToken ? (
+          <button
+            onClick={() => navigate(`/${slug}/mesa/${activeToken}`)}
+            className="text-sm font-semibold text-gray-900 underline"
+          >
+            Voltar pra minha mesa
+          </button>
+        ) : (
+          <button
+            onClick={() => navigate(`/${slug}`)}
+            className="text-sm font-semibold text-gray-900 underline"
+          >
+            Ir pro cardápio geral
+          </button>
+        )}
       </div>
     );
   }
