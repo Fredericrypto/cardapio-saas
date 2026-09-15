@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsUUID } from 'class-validator';
+import { IsString, IsNotEmpty, IsUUID, IsOptional, IsIn } from 'class-validator';
 
 export class CreateTableDto {
   @IsNotEmpty()
@@ -7,4 +7,8 @@ export class CreateTableDto {
 
   @IsUUID()
   locationId: string;
+
+  @IsOptional()
+  @IsIn(['mesa', 'balcao'])
+  kind?: 'mesa' | 'balcao';
 }

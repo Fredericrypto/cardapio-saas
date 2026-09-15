@@ -129,6 +129,27 @@ export class TablesService {
       order: { openedAt: 'DESC' },
     });
     if (existingSession) {
+      // BUG REAL ENCONTRADO 2026-09-13: esse early-return devolvia a sessão
+      // existente tal como estava, mesmo quando `customerId` chegava
+      // preenchido agora e `openedByCustomerId` da sessão ainda era `null`.
+      // Isso significa que qualquer sessão já criada como convidado (por
+      // exemplo, se a primeira chamada aconteceu um instante antes do
+      // AuthContext do cliente resolver, ou uma sessão remanescente de
+      // antes deste próprio deploy) ficava com a identidade travada em
+      // "convidado" pra sempre — nenhuma chamada seguinte, mesmo já
+      // autenticada, jamais atualizava o dono da sessão. É a explicação
+      // mais provável do sintoma "Ninguém identificado ainda" persistir
+      // mesmo depois das duas correções anteriores (findActiveOverview +
+      // race do CustomerAuthContext): aquelas corrigiram como a IDENTIDADE
+      // é lida/detectada, mas não cobriam o caso de uma sessão que já
+      // existia sem identidade nenhuma gravada. Agora, se a sessão ainda
+      // não tem dono e um cliente logado está entrando nela, grava o dono
+      // agora — nunca sobrescreve um openedByCustomerId já preenchido (não
+      // rouba a mesa de quem abriu primeiro).
+      if (customerId && !existingSession.openedByCustomerId) {
+        existingSession.openedByCustomerId = customerId;
+        return this.sessionRepo.save(existingSession);
+      }
       return existingSession;
     }
 
@@ -250,7 +271,21 @@ export class TablesService {
   // a mesa sozinha, sem ninguém escanear nada de verdade. Agora, entrar
   // numa mesa de fato (criar/juntar sessão) só acontece por uma ação
   // explícita do cliente — ver joinSession no controller.
-  async getCurrentSession(qrCodeToken: string): Promise<TableSession | null> {
+  // Pedido do Felipe (13/09, sessão F): eliminar de vez qualquer decisão
+  // de "abrir sozinho" baseada em memória do navegador (localStorage
+  // sobrevive até ser limpo manualmente — ele quer que nem isso "salve"
+  // uma aba velha). A distinção que importa não é "esse dispositivo já
+  // visitou essa mesa" (client-side, frágil) e sim "essa mesa JÁ TEVE
+  // alguma sessão antes" (server-side, sobrevive a qualquer coisa do
+  // lado do cliente): uma mesa nunca usada pode entrar direto sem
+  // fricção nenhuma; uma mesa que já teve sessão e está sem nenhuma
+  // ativa agora NUNCA cria uma nova sozinha — precisa de uma ação
+  // explícita do cliente (ver `scanTableQrCode`/`openOrJoinSession`,
+  // continuam exigindo uma chamada de verdade; o que muda é só o
+  // frontend não chamar isso automaticamente mais nesse caso).
+  async getCurrentSession(
+    qrCodeToken: string,
+  ): Promise<{ session: TableSession | null; hasHistory: boolean }> {
     const table = await this.tableRepo.findOne({ where: { qrCodeToken, isActive: true } });
     if (!table) {
       throw new NotFoundException('Mesa não encontrada ou QR code inválido.');
@@ -263,9 +298,12 @@ export class TablesService {
       relations: { table: true },
       order: { openedAt: 'DESC' },
     });
-    if (!session) return null;
-    const expired = await this.expireIfStale(session);
-    return expired ? null : session;
+    if (session) {
+      const expired = await this.expireIfStale(session);
+      if (!expired) return { session, hasHistory: true };
+    }
+    const hasHistory = await this.sessionRepo.exists({ where: { tableId: table.id } });
+    return { session: null, hasHistory };
   }
 
   // Devolve `true` se a sessão FOI expirada agora (chamador deve tratar

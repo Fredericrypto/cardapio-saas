@@ -157,8 +157,11 @@ export class TablesController {
   // a tela de "confirmar entrada" (que aí sim chama scanQrCode acima).
   @Get('table-sessions/public/current/:qrCodeToken')
   async getCurrentSession(@Param('qrCodeToken') qrCodeToken: string) {
-    const session = await this.tablesService.getCurrentSession(qrCodeToken);
-    return session ? this.tablesService.withTimerInfo(session) : null;
+    const { session, hasHistory } = await this.tablesService.getCurrentSession(qrCodeToken);
+    return {
+      session: session ? this.tablesService.withTimerInfo(session) : null,
+      hasHistory,
+    };
   }
 
   // "Minha Conta": tenantId vem resolvido no frontend a partir da própria

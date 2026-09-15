@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react';
-import { Bell, Clock, Table2, Receipt, Check, X, ShoppingBag, Bike, Copy, MessageSquare, Tag, Coins } from 'lucide-react';
+import { Bell, Clock, Table2, Store, Receipt, Check, X, ShoppingBag, Bike, Copy, MessageSquare, Tag, Coins } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import {
   attendWaiterCall,
@@ -727,7 +727,13 @@ function ActiveTableCard({
       onClick={group.needsAttention ? onDismissAttention : undefined}
       className={`rounded-2xl p-4 flex flex-col gap-3 text-white ${
         group.needsAttention ? 'attention-blink cursor-pointer' : ''
-      } ${isAwaitingClosing ? 'ring-2 ring-blue-400' : ''}`}
+      } ${
+        isAwaitingClosing
+          ? `ring-4 ring-offset-2 ring-offset-gray-50 ring-blue-400 ${
+              group.needsAttention ? 'blue-ring-blink' : ''
+            }`
+          : ''
+      }`}
       style={{
         background: 'linear-gradient(160deg, #27272A 0%, #18181B 55%, #0A0A0B 100%)',
         ...(group.needsAttention
@@ -742,7 +748,11 @@ function ActiveTableCard({
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
-          <Table2 size={15} className="text-gray-400" />
+          {group.table?.kind === 'balcao' ? (
+            <Store size={15} className="text-gray-400" />
+          ) : (
+            <Table2 size={15} className="text-gray-400" />
+          )}
           <p className="text-sm font-semibold text-white">{group.table?.number ?? 'Mesa'}</p>
           {isAwaitingClosing && (
             <span className="text-xs font-semibold text-blue-300">aguardando fechamento</span>

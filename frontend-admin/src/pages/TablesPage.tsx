@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Trash2, Printer, Copy, Check } from 'lucide-react';
+import { Plus, Trash2, Printer, Copy, Check, Table2, Store } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { fetchTables, createTable, deleteTable, fetchLocations } from '../lib/admin-api';
 import { useAuth } from '../contexts/AuthContext';
@@ -7,11 +7,19 @@ import type { RestaurantTable, Location } from '../types';
 
 const MENU_BASE_URL = import.meta.env.VITE_MENU_BASE_URL || 'http://localhost:5173';
 
+// Nível de correção de erro do QR: subimos de 'L' (padrão da lib, o mais
+// frágil) pra 'M' nos QRs feitos pra ser escaneados de verdade (impresso
+// ou na tela) — 'L' tolera menos sujeira/dobra/reflexo no papel e é o
+// tipo de coisa que só aparece como "câmera não lê" sem nenhum erro no
+// código, sem relação com o texto/nome da mesa.
+const SCAN_QR_LEVEL = 'M';
+
 export function TablesPage() {
   const { tenant } = useAuth();
   const [tables, setTables] = useState<RestaurantTable[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [newTableNumber, setNewTableNumber] = useState('');
+  const [newTableKind, setNewTableKind] = useState<'mesa' | 'balcao'>('mesa');
   const [selectedLocationId, setSelectedLocationId] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [printingTable, setPrintingTable] = useState<RestaurantTable | null>(null);
@@ -41,7 +49,7 @@ export function TablesPage() {
 
   async function handleCreate() {
     if (!newTableNumber.trim() || !selectedLocationId) return;
-    await createTable(newTableNumber.trim(), selectedLocationId);
+    await createTable(newTableNumber.trim(), selectedLocationId, newTableKind);
     setNewTableNumber('');
     loadAll();
   }
@@ -94,11 +102,33 @@ export function TablesPage() {
             ))}
           </select>
         )}
+        <div className="flex border border-gray-200 rounded-lg overflow-hidden shrink-0">
+          <button
+            type="button"
+            onClick={() => setNewTableKind('mesa')}
+            className={`px-3 py-2.5 text-sm font-semibold flex items-center gap-1.5 ${
+              newTableKind === 'mesa' ? 'bg-gray-900 text-white' : 'bg-white text-gray-500'
+            }`}
+          >
+            <Table2 size={14} />
+            Mesa
+          </button>
+          <button
+            type="button"
+            onClick={() => setNewTableKind('balcao')}
+            className={`px-3 py-2.5 text-sm font-semibold flex items-center gap-1.5 border-l border-gray-200 ${
+              newTableKind === 'balcao' ? 'bg-gray-900 text-white' : 'bg-white text-gray-500'
+            }`}
+          >
+            <Store size={14} />
+            Balcão
+          </button>
+        </div>
         <input
           value={newTableNumber}
           onChange={(e) => setNewTableNumber(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-          placeholder="Ex: Mesa 5, Balcão 2..."
+          placeholder={newTableKind === 'mesa' ? 'Ex: 5' : 'Ex: 1'}
           className="flex-1 border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none"
         />
         <button
@@ -121,48 +151,69 @@ export function TablesPage() {
               {hasMultipleLocations && (
                 <p className="text-xs font-semibold text-gray-500 mb-2">{location?.name}</p>
               )}
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {locationTables.map((table) => (
-                  <div
-                    key={table.id}
-                    className="bg-white border border-gray-100 rounded-xl p-4 flex flex-col items-center gap-3"
-                  >
-                    <QRCodeSVG value={tableUrl(table)} size={100} />
-                    <p className="text-sm font-semibold text-gray-900">{table.number}</p>
-                    <div className="flex gap-2 w-full">
-                      <button
-                        onClick={() => handleCopyLink(table)}
-                        className="flex-1 py-1.5 rounded-lg bg-gray-100 text-xs font-semibold text-gray-600 flex items-center justify-center gap-1"
-                      >
-                        {copiedTableId === table.id ? (
-                          <>
-                            <Check size={13} />
-                            Copiado
-                          </>
-                        ) : (
-                          <>
-                            <Copy size={13} />
-                            Copiar link
-                          </>
-                        )}
-                      </button>
-                      <button
-                        onClick={() => setPrintingTable(table)}
-                        className="flex-1 py-1.5 rounded-lg bg-gray-100 text-xs font-semibold text-gray-600 flex items-center justify-center gap-1"
-                      >
-                        <Printer size={13} />
-                        Imprimir
-                      </button>
-                      <button
-                        onClick={() => handleDelete(table.id)}
-                        className="py-1.5 px-2.5 rounded-lg bg-gray-100"
-                      >
-                        <Trash2 size={13} className="text-gray-400" />
-                      </button>
+              {(['mesa', 'balcao'] as const).map((kind) => {
+                const kindTables = locationTables.filter((t) => (t.kind ?? 'mesa') === kind);
+                if (kindTables.length === 0) return null;
+                return (
+                  <div key={kind} className="mb-5 last:mb-0">
+                    {/* Separação minimalista: só um rótulo pequeno com ícone —
+                        nada de cor/badge chamativo, mas bate o olho e já dá
+                        pra saber se é mesa ou balcão sem ler cada card. */}
+                    <div className="flex items-center gap-1.5 mb-2">
+                      {kind === 'mesa' ? (
+                        <Table2 size={13} className="text-gray-400" />
+                      ) : (
+                        <Store size={13} className="text-gray-400" />
+                      )}
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                        {kind === 'mesa' ? 'Mesas' : 'Balcão'}
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {kindTables.map((table) => (
+                        <div
+                          key={table.id}
+                          className="bg-white border border-gray-100 rounded-xl p-4 flex flex-col items-center gap-3"
+                        >
+                          <QRCodeSVG value={tableUrl(table)} size={100} level={SCAN_QR_LEVEL} />
+                          <p className="text-sm font-semibold text-gray-900">{table.number}</p>
+                          <div className="flex gap-2 w-full">
+                            <button
+                              onClick={() => handleCopyLink(table)}
+                              className="flex-1 py-1.5 rounded-lg bg-gray-100 text-xs font-semibold text-gray-600 flex items-center justify-center gap-1"
+                            >
+                              {copiedTableId === table.id ? (
+                                <>
+                                  <Check size={13} />
+                                  Copiado
+                                </>
+                              ) : (
+                                <>
+                                  <Copy size={13} />
+                                  Copiar link
+                                </>
+                              )}
+                            </button>
+                            <button
+                              onClick={() => setPrintingTable(table)}
+                              className="flex-1 py-1.5 rounded-lg bg-gray-100 text-xs font-semibold text-gray-600 flex items-center justify-center gap-1"
+                            >
+                              <Printer size={13} />
+                              Imprimir
+                            </button>
+                            <button
+                              onClick={() => handleDelete(table.id)}
+                              className="py-1.5 px-2.5 rounded-lg bg-gray-100"
+                            >
+                              <Trash2 size={13} className="text-gray-400" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                ))}
-              </div>
+                );
+              })}
             </div>
           ))}
         </div>
@@ -200,7 +251,7 @@ function PrintQrModal({
       <div className="bg-white rounded-2xl p-8 flex flex-col items-center gap-4 max-w-xs w-full">
         <div className="flex flex-col items-center gap-3">
           <p className="text-sm text-gray-500">{tenantName}</p>
-          <QRCodeSVG value={url} size={220} />
+          <QRCodeSVG value={url} size={220} level={SCAN_QR_LEVEL} />
           <p className="font-display text-lg font-bold text-gray-900">
             {table.number}
           </p>

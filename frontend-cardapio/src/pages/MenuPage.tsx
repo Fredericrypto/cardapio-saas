@@ -269,6 +269,7 @@ export function MenuPage() {
           tenant={tenant}
           location={activeLocation}
           tableNumber={session?.table?.number}
+          tableKind={session?.table?.kind}
           onCallWaiter={handleCallWaiter}
           onOpenAccount={() => navigate(`/${slug}/mesa/${qrCodeToken}/conta`)}
           isCallingWaiter={isCallingWaiter}

@@ -1,41 +1,18 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getCurrentTableSession, scanTableQrCode } from '../lib/menu-api';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import type { TableSession } from '../types';
 
-// Bug real que essa reescrita corrige: antes, `useTableSession` chamava
-// scanTableQrCode (que CRIA sessão nova quando não encontra uma aberta)
-// toda vez que a página de mesa MONTAVA — o que acontece em qualquer
-// carregamento/recarregamento de URL, não só num scan de verdade. Uma
-// aba esquecida, um refresh, o histórico do navegador: qualquer coisa
-// que revisitasse a URL depois da conta já paga reabria a mesa sozinha,
-// sem ninguém escanear nada fisicamente.
-//
-// Mas pedir confirmação ("Você está nessa mesa agora?") TODA vez que não
-// há sessão ativa também está errado — no scan de verdade (primeira vez
-// que ESSA aba visita essa mesa; cobre tanto abrir pela câmera nativa
-// quanto pelo scanner de dentro do app, já que os dois só fazem
-// `navigate()` pra essa mesma URL) isso é fricção sem motivo: a pessoa
-// acabou de apontar o celular pro QR físico da mesa, não tem "outro
-// motivo" pra suspeitar. A confirmação só faz sentido quando essa MESMA
-// aba já tinha entrado nessa mesa antes e está voltando (ex: notificação
-// reabrindo uma aba antiga, app saindo/voltando de segundo plano) — aí
-// sim pode ser um retorno indevido, não um scan novo.
-//
-// `sessionStorage` (por aba, some ao fechar) marca "essa aba já entrou
-// nessa mesa alguma vez": ausente = trata como scan de verdade, entra
-// direto; presente = pede confirmação antes de entrar de novo.
-function visitedKey(qrCodeToken: string) {
-  return `mesa_visitada_${qrCodeToken}`;
-}
-
-// `localStorage` (sobrevive a navegação completa, ao contrário de
-// sessionStorage) guarda qual foi a ÚLTIMA mesa com sessão ativa nesse
-// restaurante — usado só pra devolver o cliente pra ela se ele se
-// afastar do fluxo de mesa sem querer (ex: cai no fluxo geral de
-// entrega/retirada e passa pela troca de unidade) enquanto a sessão
-// ainda está viva. Nunca cria nem decide nada sozinho — só um "voltar
-// pra onde eu estava" pra outras telas oferecerem.
+// `mesa_ativa_{slug}`: usado SÓ como conveniência pra montar o link do
+// menu de baixo (BottomNav) quando o cliente navega pra uma página que
+// não tem o token na própria URL (ex: "Minha conta", histórico de
+// pedidos) — sem isso, o menu de baixo levava pro cardápio genérico e a
+// mesa era "esquecida" ao voltar. IMPORTANTE: isso NÃO participa mais de
+// nenhuma decisão sobre abrir/criar/reabrir sessão (ver reescrita da
+// sessão F logo abaixo) — só decide pra ONDE um link aponta. Se estiver
+// desatualizado, o pior caso é o link levar pra tela "mesa livre, toque
+// pra pedir" em vez de ir direto — nunca cria nem reabre nada sozinho.
 function activeMesaKey(slug: string) {
   return `mesa_ativa_${slug}`;
 }
@@ -49,22 +26,52 @@ export function clearActiveMesaTokenForSlug(slug: string) {
   localStorage.removeItem(activeMesaKey(slug));
 }
 
+// REESCRITA 2026-09-13 (sessão F) — o modelo da sessão E (um "ponteiro"
+// de qual mesa é "a ativa" por dispositivo, redirecionando abas antigas
+// sozinho) causou o oposto do pedido: escanear uma mesa nova estava
+// silenciosamente "transformando" a mesa de uma aba diferente na mesa
+// nova, e vice-versa. Felipe foi taxativo: **nenhuma decisão sobre qual
+// mesa mostrar pode depender de nada guardado no navegador** — nem
+// localStorage, nem sessionStorage, nada disso sobrevive de forma
+// confiável entre abas/tempo e, mais importante, ele não quer que
+// sobreviva mesmo limpando cache. A fonte de verdade agora é 100%
+// backend, recalculada do zero a cada carregamento de página:
+//
+//   - Essa mesa (esse token específico) tem sessão ativa agora? Se sim,
+//     SEMPRE pede confirmação antes de mostrar — não importa se "essa
+//     aba já esteve aqui antes" (não existe mais esse conceito). Único
+//     jeito de entrar numa sessão que já existe.
+//   - Se não tem sessão ativa: essa mesa já teve ALGUMA sessão antes
+//     (checado no banco, não no navegador)? Se sim, está livre mas não
+//     abre sozinha — mostra uma tela neutra "mesa livre agora" com um
+//     botão explícito pra começar um pedido novo (uma ação de verdade
+//     do cliente, nunca automática).
+//   - Se a mesa nunca teve sessão nenhuma (mesa realmente virgem), aí
+//     sim entra direto, sem fricção — não tem ninguém pra atrapalhar.
+//
+// Isso elimina de vez qualquer "mágica" de redirecionar uma aba pra
+// mesa de outra, ou de uma aba velha reaparecer com o estado de antes:
+// toda visita reconsulta o servidor do zero e nunca herda nada.
 export function useTableSession(slug: string | undefined, qrCodeToken: string | undefined) {
   const { token: customerToken, isLoading: isAuthLoading } = useCustomerAuth();
+  const navigate = useNavigate();
   const [session, setSession] = useState<TableSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [needsConfirmation, setNeedsConfirmation] = useState(false);
-  const [expired, setExpired] = useState(false);
+  // true = mesa sem sessão ativa, mas já usada antes — mostra a tela
+  // "mesa livre, toque pra pedir" em vez de criar sozinha.
+  const [tableIsFree, setTableIsFree] = useState(false);
+  // token != null = essa mesa tem sessão ativa que ainda não é "minha"
+  // nessa aba — pede confirmação antes de entrar.
+  const [pendingJoinToken, setPendingJoinToken] = useState<string | null>(null);
 
   const doJoin = useCallback(
     async (token: string) => {
       const freshSession = await scanTableQrCode(token, customerToken);
-      sessionStorage.setItem(visitedKey(token), '1');
       if (slug) setActiveMesaToken(slug, token);
       setSession(freshSession);
-      setNeedsConfirmation(false);
-      setExpired(false);
+      setTableIsFree(false);
+      setPendingJoinToken(null);
     },
     [customerToken, slug],
   );
@@ -76,23 +83,27 @@ export function useTableSession(slug: string | undefined, qrCodeToken: string | 
     }
     setIsLoading(true);
     setError(null);
+    setPendingJoinToken(null);
+    setTableIsFree(false);
     try {
-      const current = await getCurrentTableSession(qrCodeToken);
+      const { session: current, hasHistory } = await getCurrentTableSession(qrCodeToken);
       if (current) {
-        sessionStorage.setItem(visitedKey(qrCodeToken), '1');
-        if (slug) setActiveMesaToken(slug, qrCodeToken);
-        setSession(current);
-        setNeedsConfirmation(false);
-        setExpired(false);
-      } else if (sessionStorage.getItem(visitedKey(qrCodeToken))) {
-        // Essa aba já esteve nessa mesa antes e não há sessão ativa
-        // agora — pode ser retorno indevido (notificação reabrindo aba
-        // velha, app voltando de segundo plano). Só aqui vale confirmar.
+        // Sempre pede confirmação — mesmo que essa "seja minha" sessão
+        // de verdade (ex: só dei um refresh na própria aba). É a única
+        // pergunta que sobrou no sistema, e ela cobre TODOS os casos de
+        // forma previsível, em vez de tentar adivinhar por heurística.
         setSession(null);
-        setNeedsConfirmation(true);
+        setPendingJoinToken(qrCodeToken);
+      } else if (hasHistory) {
+        // Mesa já foi usada antes e está livre agora — nunca cria
+        // sessão nova sozinha, precisa de toque explícito (ver
+        // `startNewOrderHere` abaixo).
+        setSession(null);
+        setTableIsFree(true);
+        if (slug) clearActiveMesaTokenForSlug(slug);
       } else {
-        // Primeira vez que essa aba visita essa mesa — trata como scan
-        // de verdade, entra direto, sem perguntar nada.
+        // Mesa nunca teve sessão nenhuma — sem ninguém pra atrapalhar,
+        // entra direto.
         await doJoin(qrCodeToken);
       }
     } catch (err) {
@@ -104,25 +115,37 @@ export function useTableSession(slug: string | undefined, qrCodeToken: string | 
   }, [qrCodeToken, doJoin, slug]);
 
   useEffect(() => {
-    // BUG REAL CORRIGIDO: essa corrida era a causa raiz do painel do
-    // admin nunca reconhecer o cliente antes do primeiro pedido. Antes,
-    // isso disparava assim que a página montava, sem esperar
-    // `useCustomerAuth` terminar de verificar o token salvo — então a
-    // mesa era criada como CONVIDADO (customerId nulo) no exato momento
-    // em que o login ainda estava carregando. Quando o login terminava
-    // um instante depois, a sessão da mesa JÁ EXISTIA (sessionStorage já
-    // marcado como "visitada"), então a próxima checagem só reaproveita
-    // a sessão-convidado existente — nunca reabre vinculando o cliente
-    // de verdade. Esperar `isAuthLoading` resolver antes do primeiro
-    // join garante que, se o cliente estiver logado, o customerId certo
-    // já vai junto na primeira (e única) chamada que cria a sessão.
+    // Espera `useCustomerAuth` resolver antes do primeiro join — se não
+    // esperar, uma mesa pode ser criada como convidado (customerId nulo)
+    // com o login ainda carregando, e nunca mais vincula o cliente
+    // depois (ver TablesService.openOrJoinSession no backend, que só
+    // preenche o dono numa sessão que ainda não tem um).
     if (isAuthLoading) return;
     checkCurrent();
   }, [checkCurrent, isAuthLoading]);
 
-  // AÇÃO EXPLÍCITA — só deve ser chamada a partir de um gesto real do
-  // cliente (botão "Sim, estou nessa mesa"), nunca automaticamente.
-  const confirmJoin = useCallback(async () => {
+  // AÇÕES EXPLÍCITAS — só chamadas a partir de um toque real do cliente
+  // num botão, nunca automaticamente.
+  const confirmJoinExisting = useCallback(async () => {
+    if (!pendingJoinToken) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      await doJoin(pendingJoinToken);
+    } catch (err) {
+      const backendMessage = extractBackendMessage(err);
+      setError(backendMessage ?? 'Não foi possível abrir esta mesa. Peça ajuda a um garçom.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [pendingJoinToken, doJoin]);
+
+  const declineJoinExisting = useCallback(() => {
+    setPendingJoinToken(null);
+    if (slug) navigate(`/${slug}`);
+  }, [slug, navigate]);
+
+  const startNewOrderHere = useCallback(async () => {
     if (!qrCodeToken) return;
     setIsLoading(true);
     setError(null);
@@ -136,47 +159,75 @@ export function useTableSession(slug: string | undefined, qrCodeToken: string | 
     }
   }, [qrCodeToken, doJoin]);
 
-  // Chamado pelo componente do timer quando o prazo estoura no relógio
-  // do CLIENTE — ainda assim reconsulta o backend (fonte da verdade,
-  // pode já ter expirado por lá via a varredura periódica, ou o backend
-  // pode discordar por alguns segundos de diferença de relógio) antes de
-  // decidir mostrar a tela de expirado.
+  // Reconfere no backend (fonte da verdade) se a sessão ainda está
+  // ativa — usado pelo timer quando o prazo estoura, e pela varredura
+  // de fundo abaixo. BUG REAL CORRIGIDO nesta reescrita: antes, um erro
+  // de rede/timeout (bem comum com o backend no plano grátis do Render,
+  // que "dorme" e demora pra acordar) era tratado como "sessão não
+  // existe" (`.catch(() => null)`), fechando a sessão na tela do
+  // cliente sozinho por causa de uma falha passageira de rede, não por
+  // ela ter realmente acabado. Agora um erro de rede é ignorado
+  // (mantém o estado atual, tenta de novo na próxima varredura) — só um
+  // 200 de verdade sem sessão conta como "encerrada".
   const recheckExpiry = useCallback(async () => {
     if (!qrCodeToken) return;
-    const current = await getCurrentTableSession(qrCodeToken).catch(() => null);
-    if (!current) {
-      // A sessão realmente acabou (fechada/expirada) — libera essa mesa
-      // pra ser tratada como "scan de verdade" de novo na próxima vez
-      // (ex: mesmo celular testando de novo, ou próximo cliente sentando
-      // e usando o mesmo navegador/aba compartilhado do estabelecimento).
-      sessionStorage.removeItem(visitedKey(qrCodeToken));
-      if (slug) clearActiveMesaTokenForSlug(slug);
-      setSession(null);
-      setExpired(true);
-    } else {
-      setSession(current);
+    try {
+      const { session: current } = await getCurrentTableSession(qrCodeToken);
+      if (current) {
+        setSession(current);
+      } else {
+        setSession(null);
+        setTableIsFree(true);
+        if (slug) clearActiveMesaTokenForSlug(slug);
+      }
+    } catch {
+      // falha de rede/timeout — não mexe em nada, tenta de novo depois.
     }
   }, [qrCodeToken, slug]);
 
-  // Checagem de fundo, independente de qual tela o cliente está vendo —
-  // antes, o prazo só era reconferido quando o componente visual do
-  // timer estava montado e chegava a zero (ou seja, só na página do
-  // cardápio). Isso deixava passar o caso de o cliente ficar minutos no
-  // carrinho ou numa tela de produto: a sessão expirava de verdade no
-  // backend, mas o app só percebia quando ele voltasse pro cardápio. A
-  // cada 20s, enquanto existir um prazo (`session.expiresAt`) e a sessão
-  // ainda não tiver pedido nenhum, reconsulta o backend (fonte da
-  // verdade) direto daqui, funcionando em qualquer página do fluxo de
-  // mesa.
+  // Varredura de fundo: detecta fechamento feito em OUTRO dispositivo ou
+  // pelo admin, mesmo sem nenhuma interação nessa aba. A cada 20s
+  // enquanto existir uma sessão ativa mostrada aqui, pausando quando a
+  // aba sai de foco (bateria/dados) e reconferindo na hora que ela volta
+  // a ficar visível.
   useEffect(() => {
-    if (!session?.expiresAt) return;
-    const interval = setInterval(() => {
-      recheckExpiry();
-    }, 20_000);
-    return () => clearInterval(interval);
-  }, [session?.expiresAt, recheckExpiry]);
+    if (!session) return;
+    let interval: ReturnType<typeof setInterval> | null = null;
+    function start() {
+      if (interval) return;
+      interval = setInterval(recheckExpiry, 20_000);
+    }
+    function stop() {
+      if (interval) clearInterval(interval);
+      interval = null;
+    }
+    function handleVisibility() {
+      if (document.visibilityState === 'visible') {
+        recheckExpiry();
+        start();
+      } else {
+        stop();
+      }
+    }
+    if (document.visibilityState === 'visible') start();
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      stop();
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [session, recheckExpiry]);
 
-  return { session, isLoading, error, needsConfirmation, expired, confirmJoin, recheckExpiry };
+  return {
+    session,
+    isLoading,
+    error,
+    tableIsFree,
+    pendingJoinToken,
+    confirmJoinExisting,
+    declineJoinExisting,
+    startNewOrderHere,
+    recheckExpiry,
+  };
 }
 
 function extractBackendMessage(err: unknown): string | undefined {

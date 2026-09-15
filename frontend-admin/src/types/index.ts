@@ -206,6 +206,7 @@ export interface RestaurantTable {
   tenantId: string;
   locationId: string;
   number: string;
+  kind: 'mesa' | 'balcao';
   qrCodeToken: string;
   isActive: boolean;
 }

@@ -1,30 +1,37 @@
-import { useState, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { useTableSession, clearActiveMesaTokenForSlug, getActiveMesaToken } from '../hooks/useTableSession';
+import { useTableSession } from '../hooks/useTableSession';
 import { TableSessionProvider } from '../contexts/TableSessionContext';
-import { QrScannerModal } from './QrScannerModal';
 import { TableSessionTimer } from './TableSessionTimer';
-import { QrCode } from 'lucide-react';
+import { QrCode, Users } from 'lucide-react';
 
-// Porta de entrada de TODAS as rotas `/mesa/:qrCodeToken/*`. Decide entre
-// três telas antes de mostrar qualquer coisa do cardápio:
+// Porta de entrada de TODAS as rotas `/mesa/:qrCodeToken/*`. Ver o
+// cabeçalho de `useTableSession.ts` (reescrita da sessão F) pra regra
+// completa — resumo: NADA aqui depende de memória do navegador pra
+// decidir o que mostrar, só do estado atual no backend pra esse token
+// específico:
 //
-// 1. Sessão já ativa (comum: cliente navegando dentro da própria visita)
-//    → mostra os filhos direto, sem fricção nenhuma.
-// 2. Nenhuma sessão ativa encontrada → pede confirmação explícita
-//    ("Você está nessa mesa agora?") antes de criar uma. Sem essa
-//    barreira, só CARREGAR a página (aba esquecida, refresh, histórico
-//    do navegador) reabria a mesa sozinha depois da conta já paga — bug
-//    real, já reportado.
-// 3. Sessão expirou (prazo configurado estourou sem nenhum pedido) →
-//    avisa e oferece escanear de novo.
+// 1. Mesa tem sessão ativa agora → pede confirmação (única pergunta que
+//    sobrou) antes de mostrar qualquer coisa.
+// 2. Mesa sem sessão ativa mas já usada antes → tela neutra "mesa livre
+//    agora", com botão explícito pra começar um pedido novo. Nunca cria
+//    nada sozinho.
+// 3. Mesa nunca usada → entra direto, sem fricção.
 export function TableSessionGate({ children }: { children: ReactNode }) {
   const { slug, qrCodeToken } = useParams<{ slug: string; qrCodeToken: string }>();
   const location = useLocation();
   const navigate = useNavigate();
-  const { session, isLoading, error, needsConfirmation, expired, confirmJoin, recheckExpiry } =
-    useTableSession(slug, qrCodeToken);
-  const [showScanner, setShowScanner] = useState(false);
+  const {
+    session,
+    isLoading,
+    error,
+    tableIsFree,
+    pendingJoinToken,
+    confirmJoinExisting,
+    declineJoinExisting,
+    startNewOrderHere,
+    recheckExpiry,
+  } = useTableSession(slug, qrCodeToken);
 
   if (isLoading) {
     return (
@@ -35,102 +42,69 @@ export function TableSessionGate({ children }: { children: ReactNode }) {
   }
 
   if (error) {
-    // BUG CORRIGIDO: esse erro é EXATAMENTE o backend recusando abrir
-    // mesa nova porque o cliente já tem conta aberta em OUTRA mesa —
-    // ou seja, a mesa de verdade dele ainda existe e está esperando. O
-    // botão mandava pro cardápio genérico (sem mesa nenhuma), que é
-    // pior que inútil aqui: joga fora exatamente o contexto que o
-    // cliente precisa pra voltar e fechar a conta. `getActiveMesaToken`
-    // é o mesmo "voltar pra onde eu estava" já usado em outras telas.
-    const activeToken = slug ? getActiveMesaToken(slug) : null;
     return (
       <div className="flex flex-col items-center justify-center h-screen gap-3 px-6 text-center bg-gray-50">
         <p className="text-sm text-gray-500">{error}</p>
-        {activeToken && activeToken !== qrCodeToken ? (
-          <button
-            onClick={() => navigate(`/${slug}/mesa/${activeToken}`)}
-            className="text-sm font-semibold text-gray-900 underline"
-          >
-            Voltar pra minha mesa
-          </button>
-        ) : (
-          <button
-            onClick={() => navigate(`/${slug}`)}
-            className="text-sm font-semibold text-gray-900 underline"
-          >
-            Ir pro cardápio geral
-          </button>
-        )}
+        <button
+          onClick={() => navigate(`/${slug}`)}
+          className="text-sm font-semibold text-gray-900 underline"
+        >
+          Ir pro cardápio geral
+        </button>
       </div>
     );
   }
 
-  if (expired) {
+  if (pendingJoinToken) {
     return (
-      <>
-        <div className="flex flex-col items-center justify-center h-screen gap-4 px-6 text-center bg-gray-50">
-          <div className="w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center">
-            <QrCode size={26} className="text-amber-600" />
-          </div>
-          <div>
-            <p className="text-base font-bold text-gray-900">Sua sessão expirou</p>
-            <p className="text-sm text-gray-500 mt-1">
-              Você não fez nenhum pedido dentro do prazo. Escaneie o QR code da mesa de novo
-              pra continuar.
-            </p>
-          </div>
-          <div className="flex flex-col gap-2 w-full max-w-xs">
-            <button
-              onClick={() => setShowScanner(true)}
-              className="py-3 rounded-xl bg-gray-900 text-white text-sm font-semibold"
-            >
-              Escanear QR code de novo
-            </button>
-            <button
-              onClick={() => {
-                if (slug) clearActiveMesaTokenForSlug(slug);
-                navigate(`/${slug}`);
-              }}
-              className="py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600"
-            >
-              Cancelar
-            </button>
-          </div>
+      <div className="flex flex-col items-center justify-center h-screen gap-4 px-6 text-center bg-gray-50">
+        <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center">
+          <Users size={26} className="text-gray-500" />
         </div>
-        {showScanner && <QrScannerModal onClose={() => setShowScanner(false)} />}
-      </>
+        <div>
+          <p className="text-base font-bold text-gray-900">Essa mesa já tem uma conta aberta</p>
+          <p className="text-sm text-gray-500 mt-1">
+            Já existe uma sessão em aberto nessa mesa. Continuar entra na mesma conta, com
+            todos os pedidos já feitos.
+          </p>
+        </div>
+        <div className="flex flex-col gap-2 w-full max-w-xs">
+          <button
+            onClick={confirmJoinExisting}
+            className="py-3 rounded-xl bg-gray-900 text-white text-sm font-semibold"
+          >
+            Sim, continuar nessa mesa
+          </button>
+          <button
+            onClick={declineJoinExisting}
+            className="py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600"
+          >
+            Não, ver cardápio geral
+          </button>
+        </div>
+      </div>
     );
   }
 
-  if (needsConfirmation) {
+  if (tableIsFree) {
     return (
       <div className="flex flex-col items-center justify-center h-screen gap-4 px-6 text-center bg-gray-50">
         <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center">
           <QrCode size={26} className="text-gray-500" />
         </div>
         <div>
-          <p className="text-base font-bold text-gray-900">Você está nessa mesa agora?</p>
+          <p className="text-base font-bold text-gray-900">Essa mesa está livre agora</p>
           <p className="text-sm text-gray-500 mt-1">
-            Confirme pra abrir a conta dessa mesa e começar a pedir.
+            A última conta aqui já foi encerrada. Se você está sentado nessa mesa agora,
+            toque abaixo pra começar um pedido novo.
           </p>
         </div>
-        <div className="flex flex-col gap-2 w-full max-w-xs">
-          <button
-            onClick={confirmJoin}
-            className="py-3 rounded-xl bg-gray-900 text-white text-sm font-semibold"
-          >
-            Sim, estou nessa mesa
-          </button>
-          <button
-            onClick={() => {
-              if (slug) clearActiveMesaTokenForSlug(slug);
-              navigate(`/${slug}`);
-            }}
-            className="py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600"
-          >
-            Não, ver cardápio geral
-          </button>
-        </div>
+        <button
+          onClick={startNewOrderHere}
+          className="py-3 px-6 rounded-xl bg-gray-900 text-white text-sm font-semibold"
+        >
+          Começar meu pedido nessa mesa
+        </button>
       </div>
     );
   }

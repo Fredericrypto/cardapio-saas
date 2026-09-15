@@ -213,7 +213,7 @@ export interface TableSession {
   paymentMethod: string | null;
   amountReceived: number | null;
   changeGiven: number | null;
-  table?: { number: string; locationId: string } | null;
+  table?: { number: string; kind?: 'mesa' | 'balcao'; locationId: string } | null;
   // Calculados na hora (nunca gravados no banco) — só presentes na
   // resposta do scan/consulta de sessão de mesa, pra o timer visual no
   // frontend não precisar de uma chamada extra só pra saber isso.

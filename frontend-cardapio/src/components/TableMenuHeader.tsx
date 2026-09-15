@@ -2,12 +2,12 @@ import { Bell, Receipt } from 'lucide-react';
 import type { Tenant, Location, TableSession } from '../types';
 import { RestaurantInfoPanel } from './RestaurantInfoPanel';
 import { TableSessionTimer } from './TableSessionTimer';
-import { QrScanButton } from './QrScanButton';
 
 interface TableMenuHeaderProps {
   tenant: Tenant;
   location: Location | null;
   tableNumber?: string;
+  tableKind?: 'mesa' | 'balcao';
   onCallWaiter: () => void;
   onOpenAccount: () => void;
   isCallingWaiter: boolean;
@@ -23,6 +23,7 @@ export function TableMenuHeader({
   tenant,
   location,
   tableNumber,
+  tableKind,
   onCallWaiter,
   onOpenAccount,
   isCallingWaiter,
@@ -69,18 +70,32 @@ export function TableMenuHeader({
               {tenant.name}
             </h1>
             <div className="flex-1 flex justify-start min-w-0">
-              <QrScanButton />
+              {/* Pedido do Felipe (13/09): o ícone de escanear QR não
+                  deve aparecer aqui — dentro do fluxo de mesa já existe
+                  uma sessão ativa, então usar o scanner pra "entrar"
+                  numa mesa diferente por cima da atual só cria confusão
+                  (a conta antiga continua aberta no painel do admin sem
+                  jeito do cliente fechar pelo celular). O ícone só faz
+                  sentido quando NÃO há sessão de mesa ativa — nesse caso
+                  o cardápio genérico (MenuHeader) já mostra o dele. Div
+                  vazia só pra manter o título centralizado no layout. */}
             </div>
           </div>
           <p className="text-xs text-gray-400 mt-0.5">
-            {/* O admin já pode nomear a mesa como "Mesa 1" (o campo é
-                livre) — prefixar "Mesa" de novo aqui sempre virava
-                "Mesa Mesa 1". Só prefixa quando o nome ainda não
-                começa com "mesa" sozinho. */}
+            {/* O admin já pode nomear a mesa como "Mesa 1" ou "Balcão 1"
+                (campo livre) — prefixar de novo aqui sempre virava "Mesa
+                Mesa 1"/"Mesa Balcão 1". Com `kind` disponível, decide o
+                prefixo certo direto por ele em vez de adivinhar pelo
+                texto; sem `kind` (sessões antigas), cai no teste de texto
+                de antes como fallback. */}
             {tableNumber
-              ? /^mesa\b/i.test(tableNumber.trim())
-                ? tableNumber
-                : `Mesa ${tableNumber}`
+              ? tableKind === 'balcao'
+                ? /^balc/i.test(tableNumber.trim())
+                  ? tableNumber
+                  : `Balcão ${tableNumber}`
+                : /^mesa\b/i.test(tableNumber.trim())
+                  ? tableNumber
+                  : `Mesa ${tableNumber}`
               : 'Consumo no local'}
           </p>
         </div>

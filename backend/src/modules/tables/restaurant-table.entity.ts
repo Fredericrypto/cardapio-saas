@@ -38,6 +38,14 @@ export class RestaurantTable {
   @Column({ type: 'varchar', length: 20 })
   number: string; // "Mesa 5", "Balcão 2", texto livre
 
+  // Pedido do Felipe (13/09): mesa e balcão usam a MESMA infraestrutura de
+  // sessão/QR/pedido — a única diferença é puramente visual/organizacional
+  // no admin (agrupar separado, ícone diferente). Por isso um campo simples
+  // aqui em vez de uma entidade nova ou fluxo separado. Default 'mesa'
+  // pra todo cadastro antigo continuar exatamente como estava.
+  @Column({ type: 'varchar', length: 10, default: 'mesa' })
+  kind: 'mesa' | 'balcao';
+
   // Token opaco usado no QR code — nunca o id direto, pra não vazar UUIDs
   // sequenciais/previsíveis nem permitir adivinhar outras mesas.
   @Column({ name: 'qr_code_token', type: 'varchar', length: 64, unique: true })

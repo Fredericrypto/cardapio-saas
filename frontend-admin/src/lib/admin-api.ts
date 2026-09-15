@@ -209,8 +209,12 @@ export async function fetchTables(): Promise<RestaurantTable[]> {
   return data;
 }
 
-export async function createTable(number: string, locationId: string): Promise<RestaurantTable> {
-  const { data } = await api.post<RestaurantTable>('/tables', { number, locationId });
+export async function createTable(
+  number: string,
+  locationId: string,
+  kind: 'mesa' | 'balcao' = 'mesa',
+): Promise<RestaurantTable> {
+  const { data } = await api.post<RestaurantTable>('/tables', { number, locationId, kind });
   return data;
 }
 
