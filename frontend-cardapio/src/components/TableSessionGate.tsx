@@ -4,6 +4,15 @@ import { useTableSession } from '../hooks/useTableSession';
 import { TableSessionProvider } from '../contexts/TableSessionContext';
 import { TableSessionTimer } from './TableSessionTimer';
 import { QrCode, Users } from 'lucide-react';
+import { BUILD_VERSION } from '../buildInfo';
+
+// Rodapezinho discreto só nas telas de estado do próprio gate (loading,
+// confirmação, mesa livre, erro) — pedido do Felipe (sessão G) pra bater
+// o olho e confirmar se o navegador está rodando o código novo ou um
+// antigo ainda em memória/cache, sem precisar adivinhar.
+function BuildMark() {
+  return <p className="text-[10px] text-gray-300 mt-6 select-all">build {BUILD_VERSION}</p>;
+}
 
 // Porta de entrada de TODAS as rotas `/mesa/:qrCodeToken/*`. Ver o
 // cabeçalho de `useTableSession.ts` (reescrita da sessão F) pra regra
@@ -51,6 +60,7 @@ export function TableSessionGate({ children }: { children: ReactNode }) {
         >
           Ir pro cardápio geral
         </button>
+        <BuildMark />
       </div>
     );
   }
@@ -82,6 +92,7 @@ export function TableSessionGate({ children }: { children: ReactNode }) {
             Não, ver cardápio geral
           </button>
         </div>
+        <BuildMark />
       </div>
     );
   }
@@ -105,6 +116,7 @@ export function TableSessionGate({ children }: { children: ReactNode }) {
         >
           Começar meu pedido nessa mesa
         </button>
+        <BuildMark />
       </div>
     );
   }

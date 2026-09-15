@@ -39,7 +39,7 @@ export function MenuPage() {
   const tableSessionCtx = useTableSessionContext();
   const session = tableSessionCtx?.session ?? null;
 
-  const { tenant } = useTenant();
+  const { tenant, isLoading: isTenantLoading } = useTenant();
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
@@ -222,7 +222,14 @@ export function MenuPage() {
   // se algum dia divergir — link montado errado, cache velho, etc — é
   // melhor travar aqui com um erro claro do que mostrar a marca de um
   // restaurante com a sessão de mesa de outro.
-  if (isTableFlow && tenant && session && session.tenantId !== tenant.id) {
+  //
+  // BUG REAL CORRIGIDO: essa checagem disparava mesmo enquanto o
+  // `TenantProvider` ainda estava buscando um tenant NOVO (troca de
+  // slug) e `tenant` no contexto ainda apontava pro tenant ANTERIOR —
+  // ou seja, um falso positivo passageiro sempre que o app trocava de
+  // restaurante sem dar reload de página inteira. Agora só considera
+  // divergência de verdade depois que o tenant termina de carregar.
+  if (isTableFlow && !isTenantLoading && tenant && session && session.tenantId !== tenant.id) {
     return (
       <div className="flex flex-col items-center justify-center h-screen px-6 text-center">
         <p className="text-gray-500">

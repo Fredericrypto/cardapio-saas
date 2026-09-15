@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchMyTenant } from '../lib/admin-api';
+import { BUILD_VERSION } from '../buildInfo';
 import { useAttentionStatus } from '../hooks/useAttentionStatus';
 import { DashboardDataProvider, useDashboardData } from '../contexts/DashboardDataContext';
 
@@ -150,6 +151,9 @@ function AdminLayoutContent() {
             <LogOut size={18} />
             Sair
           </button>
+          <p className="text-[10px] text-gray-300 text-center mt-2 select-all">
+            build {BUILD_VERSION}
+          </p>
         </div>
       </aside>
 
