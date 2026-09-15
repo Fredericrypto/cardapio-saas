@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull, Not, In } from 'typeorm';
+import { Repository, IsNull, Not, In, MoreThan } from 'typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { randomBytes } from 'crypto';
 import { RestaurantTable } from './restaurant-table.entity';
@@ -283,9 +283,28 @@ export class TablesService {
   // explícita do cliente (ver `scanTableQrCode`/`openOrJoinSession`,
   // continuam exigindo uma chamada de verdade; o que muda é só o
   // frontend não chamar isso automaticamente mais nesse caso).
+  // Pedido do Felipe (14/09, sessão H): duas exigências que parecem se
+  // contradizer na mesma ação (dar refresh na página) até a gente separar
+  // por QUANDO isso aconteceu:
+  //   - Fechar a conta e dar refresh no MESMO instante não pode reabrir
+  //     nada nem perguntar nada — só "sessão encerrada, voltar pro
+  //     cardápio".
+  //   - Escanear uma mesa que ninguém está usando (de verdade, sem
+  //     ninguém por perto há um tempo) não pode mostrar NENHUMA tela a
+  //     mais — direto pro pedido, sem perguntar nada, sem tela de "mesa
+  //     livre, toque aqui".
+  // As duas situações batem no MESMO endpoint com o MESMO token — não dá
+  // pra saber pelo lado do cliente qual das duas é (um refresh e um scan
+  // novo são tecnicamente idênticos pro navegador). A única forma
+  // honesta de separar isso é por TEMPO, do lado do servidor: se a
+  // última sessão dessa mesa fechou há poucos minutos, trata como "acabei
+  // de fechar, não deixa reabrir sozinho". Se já fechou há mais tempo (ou
+  // nunca existiu), trata como mesa realmente livre agora — entra direto.
+  private static readonly RECENTLY_ENDED_WINDOW_MINUTES = 2;
+
   async getCurrentSession(
     qrCodeToken: string,
-  ): Promise<{ session: TableSession | null; hasHistory: boolean }> {
+  ): Promise<{ session: TableSession | null; recentlyEnded: boolean }> {
     const table = await this.tableRepo.findOne({ where: { qrCodeToken, isActive: true } });
     if (!table) {
       throw new NotFoundException('Mesa não encontrada ou QR code inválido.');
@@ -300,10 +319,15 @@ export class TablesService {
     });
     if (session) {
       const expired = await this.expireIfStale(session);
-      if (!expired) return { session, hasHistory: true };
+      if (!expired) return { session, recentlyEnded: false };
     }
-    const hasHistory = await this.sessionRepo.exists({ where: { tableId: table.id } });
-    return { session: null, hasHistory };
+    const cutoff = new Date(
+      Date.now() - TablesService.RECENTLY_ENDED_WINDOW_MINUTES * 60_000,
+    );
+    const recentlyEnded = await this.sessionRepo.exists({
+      where: { tableId: table.id, closedAt: MoreThan(cutoff) },
+    });
+    return { session: null, recentlyEnded };
   }
 
   // Devolve `true` se a sessão FOI expirada agora (chamador deve tratar

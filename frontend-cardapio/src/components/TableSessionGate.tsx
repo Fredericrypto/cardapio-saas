@@ -15,17 +15,18 @@ function BuildMark() {
 }
 
 // Porta de entrada de TODAS as rotas `/mesa/:qrCodeToken/*`. Ver o
-// cabeçalho de `useTableSession.ts` (reescrita da sessão F) pra regra
+// cabeçalho de `useTableSession.ts` (reescrita da sessão H) pra regra
 // completa — resumo: NADA aqui depende de memória do navegador pra
 // decidir o que mostrar, só do estado atual no backend pra esse token
 // específico:
 //
 // 1. Mesa tem sessão ativa agora → pede confirmação (única pergunta que
 //    sobrou) antes de mostrar qualquer coisa.
-// 2. Mesa sem sessão ativa mas já usada antes → tela neutra "mesa livre
-//    agora", com botão explícito pra começar um pedido novo. Nunca cria
-//    nada sozinho.
-// 3. Mesa nunca usada → entra direto, sem fricção.
+// 2. Mesa sem sessão ativa, mas a última fechou há poucos minutos → tela
+//    final "sessão encerrada", só com botão de voltar pro cardápio
+//    geral — nenhum jeito de recomeçar ali mesmo.
+// 3. Mesa sem sessão ativa e genuinamente livre (nunca usada, ou última
+//    sessão encerrada há mais tempo) → entra direto, sem fricção.
 export function TableSessionGate({ children }: { children: ReactNode }) {
   const { slug, qrCodeToken } = useParams<{ slug: string; qrCodeToken: string }>();
   const location = useLocation();
@@ -34,11 +35,10 @@ export function TableSessionGate({ children }: { children: ReactNode }) {
     session,
     isLoading,
     error,
-    tableIsFree,
+    sessionEnded,
     pendingJoinToken,
     confirmJoinExisting,
     declineJoinExisting,
-    startNewOrderHere,
     recheckExpiry,
   } = useTableSession(slug, qrCodeToken);
 
@@ -97,24 +97,24 @@ export function TableSessionGate({ children }: { children: ReactNode }) {
     );
   }
 
-  if (tableIsFree) {
+  if (sessionEnded) {
     return (
       <div className="flex flex-col items-center justify-center h-screen gap-4 px-6 text-center bg-gray-50">
         <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center">
           <QrCode size={26} className="text-gray-500" />
         </div>
         <div>
-          <p className="text-base font-bold text-gray-900">Essa mesa está livre agora</p>
+          <p className="text-base font-bold text-gray-900">Sessão encerrada</p>
           <p className="text-sm text-gray-500 mt-1">
-            A última conta aqui já foi encerrada. Se você está sentado nessa mesa agora,
-            toque abaixo pra começar um pedido novo.
+            A conta dessa mesa já foi fechada. Se ainda estiver no restaurante, escaneie o QR
+            code físico da mesa de novo pra abrir uma conta nova.
           </p>
         </div>
         <button
-          onClick={startNewOrderHere}
+          onClick={() => navigate(`/${slug}`)}
           className="py-3 px-6 rounded-xl bg-gray-900 text-white text-sm font-semibold"
         >
-          Começar meu pedido nessa mesa
+          Voltar ao cardápio geral
         </button>
         <BuildMark />
       </div>

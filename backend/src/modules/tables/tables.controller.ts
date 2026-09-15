@@ -157,22 +157,10 @@ export class TablesController {
   // a tela de "confirmar entrada" (que aí sim chama scanQrCode acima).
   @Get('table-sessions/public/current/:qrCodeToken')
   async getCurrentSession(@Param('qrCodeToken') qrCodeToken: string) {
-    const { session, hasHistory } = await this.tablesService.getCurrentSession(qrCodeToken);
-    // BUG REAL CORRIGIDO (relatado pelo Felipe, sessão G): faltava esse
-    // `await` — `withTimerInfo` é assíncrona, e embutida direto dentro de
-    // um objeto literal ela NUNCA era esperada (só o retorno direto de
-    // uma função async "achata" a Promise sozinho; dentro de um objeto,
-    // não). Resultado: o campo `session` da resposta virava a própria
-    // Promise pendente, que na serialização JSON vira `{}` — um objeto
-    // "verdadeiro" mas completamente vazio, sem `tenantId` nem nada.
-    // Isso explica o "expulso a cada 15s com QR não pertence a esse
-    // restaurante": a rechecagem de fundo (a cada 20s) chamava esse
-    // endpoint, recebia esse `{}` fantasma como se fosse uma sessão de
-    // verdade, e o front comparava `session.tenantId` (undefined) contra
-    // o tenant certo — sempre dando falso positivo de mesa errada.
+    const { session, recentlyEnded } = await this.tablesService.getCurrentSession(qrCodeToken);
     return {
       session: session ? await this.tablesService.withTimerInfo(session) : null,
-      hasHistory,
+      recentlyEnded,
     };
   }
 

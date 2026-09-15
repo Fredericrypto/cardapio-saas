@@ -154,8 +154,8 @@ export async function scanTableQrCode(
 // de reabrir a mesa sozinha só por causa de um reload.
 export async function getCurrentTableSession(
   qrCodeToken: string,
-): Promise<{ session: TableSession | null; hasHistory: boolean }> {
-  const { data } = await api.get<{ session: TableSession | null; hasHistory: boolean }>(
+): Promise<{ session: TableSession | null; recentlyEnded: boolean }> {
+  const { data } = await api.get<{ session: TableSession | null; recentlyEnded: boolean }>(
     `/table-sessions/public/current/${qrCodeToken}`,
   );
   return data;

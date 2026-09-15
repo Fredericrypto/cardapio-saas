@@ -161,6 +161,35 @@ export function DashboardPage() {
     });
   }
 
+  // Pedido do Felipe (14/09): cada PEDIDO novo dentro de uma mesa (não só
+  // a mesa como um todo) pisca com a mesma borda azul até o admin clicar
+  // em cima dele. Genérico o bastante pra cobrir tanto os pedidos dentro
+  // de uma mesa quanto os de balcão/avulso, guardado por id de pedido —
+  // assim que o status muda de verdade (ex: vai pra "entregue") ele sai
+  // da lista ativa e para de fazer sentido continuar marcado, então não
+  // precisa nem limpar isso explicitamente. Persistido no localStorage
+  // pelo mesmo motivo do dismiss de mesa: sobreviver a um refresh da
+  // própria página do admin sem voltar a piscar tudo de novo.
+  const [dismissedOrderIds, setDismissedOrderIds] = useState<Set<string>>(() => {
+    try {
+      const raw = localStorage.getItem('dashboard-dismissed-order-ids');
+      return raw ? new Set(JSON.parse(raw)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+  function addDismissedOrderId(id: string) {
+    setDismissedOrderIds((prev) => {
+      const next = new Set(prev).add(id);
+      try {
+        localStorage.setItem('dashboard-dismissed-order-ids', JSON.stringify([...next]));
+      } catch {
+        // idem — sem persistência nesse caso, mas não quebra a tela.
+      }
+      return next;
+    });
+  }
+
   const activeOrders = (orders ?? []).filter(
     (o) => o.status !== 'entregue' && o.status !== 'cancelado',
   );
@@ -331,6 +360,8 @@ export function DashboardPage() {
                     }))
                   }
                   actions={tableOrderActions}
+                  dismissedOrderIds={dismissedOrderIds}
+                  onDismissOrder={addDismissedOrderId}
                 />
               );
             }
@@ -397,14 +428,23 @@ function OrderRow({
   order,
   actions,
   dark = false,
+  isNew = false,
+  onDismiss,
 }: {
   order: Order;
   actions: OrderActions;
   dark?: boolean;
+  isNew?: boolean;
+  onDismiss?: () => void;
 }) {
   return (
     <div
-      className={`border-t pt-2.5 first:border-t-0 first:pt-0 ${dark ? 'border-white/10' : 'border-gray-100'}`}
+      onClick={isNew ? onDismiss : undefined}
+      className={`border-t pt-2.5 first:border-t-0 first:pt-0 ${dark ? 'border-white/10' : 'border-gray-100'} ${
+        isNew
+          ? '-mx-2 px-2 pb-2 rounded-lg ring-4 ring-blue-400 blue-ring-blink cursor-pointer'
+          : ''
+      }`}
     >
       {/* Horário desse pedido específico — pedido do Felipe: distinto do
           "Aberta há" da mesa (que é da SESSÃO inteira), aqui é quando
@@ -706,12 +746,16 @@ function ActiveTableCard({
   onCloseAccount,
   onDismissAttention,
   actions,
+  dismissedOrderIds,
+  onDismissOrder,
 }: {
   group: ActiveTableGroup;
   onViewReceipt: () => void;
   onCloseAccount: () => void;
   onDismissAttention: () => void;
   actions: OrderActions;
+  dismissedOrderIds: Set<string>;
+  onDismissOrder: (id: string) => void;
 }) {
   const isAwaitingClosing = group.session.status === 'fechamento_solicitado';
 
@@ -851,7 +895,14 @@ function ActiveTableCard({
       ) : (
         <div className="flex flex-col gap-2.5">
           {group.orders.map((order) => (
-            <OrderRow key={order.id} order={order} actions={actions} dark />
+            <OrderRow
+              key={order.id}
+              order={order}
+              actions={actions}
+              dark
+              isNew={!dismissedOrderIds.has(order.id)}
+              onDismiss={() => onDismissOrder(order.id)}
+            />
           ))}
         </div>
       )}
