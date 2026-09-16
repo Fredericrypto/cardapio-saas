@@ -245,41 +245,44 @@ export class TablesService {
       );
     }
 
-    // ANTI "PULAR DE MESA" — reforçado a pedido do Felipe (14/09, sessão
-    // I): antes só bloqueava se já existisse PEDIDO na outra mesa (uma
-    // sessão vazia podia trocar livremente). Ele foi explícito agora:
-    // "não é possível abrir outra mesa/balcão com uma sessão em aberto"
-    // — sem exceção nenhuma, mesmo vazia. Bloqueia sempre que esse
-    // cliente logado tem QUALQUER sessão ativa (aberta ou com
-    // fechamento solicitado) em OUTRA mesa desse mesmo tenant — seja
-    // porque ele é quem abriu (`openedByCustomerId`) ou porque
-    // confirmou entrar como participante depois (`TableSessionParticipant`,
-    // ver `markPresent`). Cliente convidado (sem login) nunca passa por
-    // essa checagem — não tem como saber se é "a mesma pessoa" sem
-    // conta.
+    // ANTI "PULAR DE MESA" — a pedido do Felipe (14/09, sessão I), sem
+    // exceção pra mesa com PEDIDO em outro lugar (dinheiro/conta real em
+    // jogo — bloqueia sempre, sem exceção). BUG REAL CORRIGIDO NA MESMA
+    // SESSÃO: a primeira versão disso bloqueava TAMBÉM sessões vazias
+    // (sem pedido nenhum) abertas pelo próprio cliente em outra mesa —
+    // e como o bloqueio agora acontece ANTES da limpeza automática de
+    // sessão vazia própria (mais abaixo), isso travava o cliente pra
+    // sempre em qualquer sobra de teste/mesa esquecida sem pedido,
+    // mesmo sem ninguém "usando" de verdade nada. Corrigido: só bloqueia
+    // aqui quando existe PEDIDO de verdade na outra sessão (dele ou de
+    // quem quer que seja na mesa) — uma sessão vazia que ELE MESMO abriu
+    // continua sendo fechada automaticamente logo abaixo, sem bloquear
+    // nada, exatamente como antes de 14/09. Se ele é PARTICIPANTE (não
+    // dono) de uma sessão ativa de outra pessoa, bloqueia sempre, com ou
+    // sem pedido — não é dele pra decidir se está "vazia o suficiente".
     if (customerId) {
-      const otherOpenedByMe = await this.sessionRepo.exists({
-        where: {
-          tenantId: table.tenantId,
-          openedByCustomerId: customerId,
-          status: In(['aberta', 'fechamento_solicitado']),
-          tableId: Not(table.id),
-        },
-      });
-      const otherJoinedByMe = otherOpenedByMe
-        ? false
-        : await this.participantRepo
-            .createQueryBuilder('p')
-            .innerJoin(TableSession, 'otherSession', 'otherSession.id = p.table_session_id')
-            .where('otherSession.tenant_id = :tenantId', { tenantId: table.tenantId })
-            .andWhere('p.customer_id = :customerId', { customerId })
-            .andWhere('p.left_at IS NULL')
-            .andWhere('otherSession.table_id != :tableId', { tableId: table.id })
-            .andWhere('otherSession.status IN (:...openStatuses)', {
-              openStatuses: ['aberta', 'fechamento_solicitado'],
-            })
-            .getExists();
-      if (otherOpenedByMe || otherJoinedByMe) {
+      const otherOpenedByMeWithOrder = await this.sessionRepo
+        .createQueryBuilder('s')
+        .innerJoin('orders', 'o', 'o.table_session_id = s.id')
+        .where('s.tenant_id = :tenantId', { tenantId: table.tenantId })
+        .andWhere('s.opened_by_customer_id = :customerId', { customerId })
+        .andWhere('s.table_id != :tableId', { tableId: table.id })
+        .andWhere('s.status IN (:...openStatuses)', {
+          openStatuses: ['aberta', 'fechamento_solicitado'],
+        })
+        .getExists();
+      const otherJoinedByMe = await this.participantRepo
+        .createQueryBuilder('p')
+        .innerJoin(TableSession, 'otherSession', 'otherSession.id = p.tableSessionId')
+        .where('otherSession.tenant_id = :tenantId', { tenantId: table.tenantId })
+        .andWhere('p.customer_id = :customerId', { customerId })
+        .andWhere('p.left_at IS NULL')
+        .andWhere('otherSession.table_id != :tableId', { tableId: table.id })
+        .andWhere('otherSession.status IN (:...openStatuses)', {
+          openStatuses: ['aberta', 'fechamento_solicitado'],
+        })
+        .getExists();
+      if (otherOpenedByMeWithOrder || otherJoinedByMe) {
         throw new ConflictException(
           'Você tem uma mesa em aberto em outro lugar. Peça pro garçom fechar/pagar essa conta antes de abrir outra mesa ou balcão.',
         );
