@@ -247,6 +247,10 @@ export interface SessionSummary {
   tipAmount: number;
   grandTotal: number;
   customerName: string | null;
+  // Pedido do Felipe (14/09, sessão I): todo mundo que confirmou entrar
+  // na mesa (não só quem fez pedido) — pra mostrar no cupom que a conta
+  // foi compartilhada e quem abriu.
+  participants: Array<{ name: string; avatarUrl: string | null; isOpener: boolean }>;
 }
 
 // ---------- Histórico (expiração de 7 dias) ----------

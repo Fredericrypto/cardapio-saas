@@ -5,6 +5,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { randomBytes } from 'crypto';
 import { RestaurantTable } from './restaurant-table.entity';
 import { TableSession } from './table-session.entity';
+import { TableSessionParticipant } from './table-session-participant.entity';
 import { WaiterCall } from './waiter-call.entity';
 import { Order } from '../orders/order.entity';
 import { Location } from '../locations/location.entity';
@@ -27,6 +28,8 @@ export class TablesService {
     private readonly sessionRepo: Repository<TableSession>,
     @InjectRepository(WaiterCall)
     private readonly waiterCallRepo: Repository<WaiterCall>,
+    @InjectRepository(TableSessionParticipant)
+    private readonly participantRepo: Repository<TableSessionParticipant>,
     @InjectRepository(Order)
     private readonly orderRepo: Repository<Order>,
     @InjectRepository(Location)
@@ -104,6 +107,50 @@ export class TablesService {
     return { ...session, hasOrder, expiresAt };
   }
 
+  // Pedido do Felipe (14/09, sessão I): marca esse cliente como
+  // PRESENTE na mesa desde o instante que ele confirma entrar (scan +
+  // "sim, continuar"), não só quando faz o primeiro pedido. Upsert
+  // simples: se já tinha saído antes e voltou, revive (`leftAt = null`)
+  // em vez de duplicar linha (o índice único de sessão+cliente barraria
+  // mesmo).
+  private async markPresent(tableSessionId: string, customerId: string): Promise<void> {
+    const existing = await this.participantRepo.findOne({
+      where: { tableSessionId, customerId },
+    });
+    if (existing) {
+      if (existing.leftAt) {
+        existing.leftAt = null;
+        await this.participantRepo.save(existing);
+      }
+      return;
+    }
+    await this.participantRepo.save(
+      this.participantRepo.create({ tableSessionId, customerId }),
+    );
+  }
+
+  // Ação explícita do cliente ("Sair dessa mesa") — nunca automática.
+  // Só marca esse cliente como ausente; a sessão em si (e os pedidos já
+  // feitos por ele) continuam intactos pros outros que ainda estão lá.
+  async leaveTable(qrCodeToken: string, customerId: string): Promise<void> {
+    const table = await this.tableRepo.findOne({ where: { qrCodeToken, isActive: true } });
+    if (!table) {
+      throw new NotFoundException('Mesa não encontrada ou QR code inválido.');
+    }
+    const session = await this.sessionRepo.findOne({
+      where: [
+        { tableId: table.id, status: 'aberta' },
+        { tableId: table.id, status: 'fechamento_solicitado' },
+      ],
+      order: { openedAt: 'DESC' },
+    });
+    if (!session) return;
+    await this.participantRepo.update(
+      { tableSessionId: session.id, customerId },
+      { leftAt: new Date() },
+    );
+  }
+
   async openOrJoinSession(qrCodeToken: string, customerId?: string | null): Promise<TableSession> {
     const table = await this.tableRepo.findOne({
       where: { qrCodeToken, isActive: true },
@@ -148,8 +195,10 @@ export class TablesService {
       // rouba a mesa de quem abriu primeiro).
       if (customerId && !existingSession.openedByCustomerId) {
         existingSession.openedByCustomerId = customerId;
+        await this.markPresent(existingSession.id, customerId);
         return this.sessionRepo.save(existingSession);
       }
+      if (customerId) await this.markPresent(existingSession.id, customerId);
       return existingSession;
     }
 
@@ -172,31 +221,67 @@ export class TablesService {
       await this.sessionRepo.save(staleSession);
     }
 
-    // ANTI "PULAR DE MESA" — a mesma checagem que já existia só na hora
-    // de criar um PEDIDO (ver OrdersService) agora também vale pra abrir
-    // uma sessão NOVA numa mesa diferente: se esse cliente logado tem um
-    // pedido em outra sessão ainda ativa (aberta ou com fechamento
-    // solicitado) nesse mesmo tenant, ele precisa fechar/pagar aquela
-    // conta antes de escanear outra mesa. Só se aplica quando já existe
-    // PEDIDO — se o cliente só abriu uma sessão vazia (nunca pediu nada)
-    // em outra mesa, trocar de mesa livremente é permitido (a sessão
-    // vazia expira sozinha depois, via o prazo configurado/varredura).
-    // Cliente convidado (sem login) nunca passa por essa checagem — não
-    // tem como saber se é "a mesma pessoa" sem conta.
+    // TRAVA DE SEGURANÇA (14/09, sessão I): o frontend já decide, pelo
+    // `recentlyEnded` de `getCurrentSession`, não nem tentar chamar isto
+    // aqui enquanto a última sessão dessa mesa fechou há pouco — mas o
+    // Felipe foi taxativo: "sem a menor possibilidade de burlar isso".
+    // Uma checagem só no frontend pode ser contornada por qualquer
+    // chamada direta à API (nunca confiar em validação só do lado do
+    // cliente pra uma regra de segurança). Reforça a MESMA janela aqui,
+    // na origem: se a mesa acabou de ser liberada, nem o backend cria
+    // sessão nova, ponto final — só volta a aceitar depois que a janela
+    // passar.
+    const recentlyClosed = await this.sessionRepo.exists({
+      where: {
+        tableId: table.id,
+        closedAt: MoreThan(
+          new Date(Date.now() - TablesService.RECENTLY_ENDED_WINDOW_MINUTES * 60_000),
+        ),
+      },
+    });
+    if (recentlyClosed) {
+      throw new ConflictException(
+        'Essa mesa acabou de ser encerrada. Aguarde alguns minutos e escaneie o QR code de novo.',
+      );
+    }
+
+    // ANTI "PULAR DE MESA" — reforçado a pedido do Felipe (14/09, sessão
+    // I): antes só bloqueava se já existisse PEDIDO na outra mesa (uma
+    // sessão vazia podia trocar livremente). Ele foi explícito agora:
+    // "não é possível abrir outra mesa/balcão com uma sessão em aberto"
+    // — sem exceção nenhuma, mesmo vazia. Bloqueia sempre que esse
+    // cliente logado tem QUALQUER sessão ativa (aberta ou com
+    // fechamento solicitado) em OUTRA mesa desse mesmo tenant — seja
+    // porque ele é quem abriu (`openedByCustomerId`) ou porque
+    // confirmou entrar como participante depois (`TableSessionParticipant`,
+    // ver `markPresent`). Cliente convidado (sem login) nunca passa por
+    // essa checagem — não tem como saber se é "a mesma pessoa" sem
+    // conta.
     if (customerId) {
-      const otherActiveOrder = await this.orderRepo
-        .createQueryBuilder('order')
-        .innerJoin(TableSession, 'otherSession', 'otherSession.id = order.table_session_id')
-        .where('order.tenant_id = :tenantId', { tenantId: table.tenantId })
-        .andWhere('order.customer_id = :customerId', { customerId })
-        .andWhere('otherSession.table_id != :tableId', { tableId: table.id })
-        .andWhere('otherSession.status IN (:...openStatuses)', {
-          openStatuses: ['aberta', 'fechamento_solicitado'],
-        })
-        .getOne();
-      if (otherActiveOrder) {
+      const otherOpenedByMe = await this.sessionRepo.exists({
+        where: {
+          tenantId: table.tenantId,
+          openedByCustomerId: customerId,
+          status: In(['aberta', 'fechamento_solicitado']),
+          tableId: Not(table.id),
+        },
+      });
+      const otherJoinedByMe = otherOpenedByMe
+        ? false
+        : await this.participantRepo
+            .createQueryBuilder('p')
+            .innerJoin(TableSession, 'otherSession', 'otherSession.id = p.table_session_id')
+            .where('otherSession.tenant_id = :tenantId', { tenantId: table.tenantId })
+            .andWhere('p.customer_id = :customerId', { customerId })
+            .andWhere('p.left_at IS NULL')
+            .andWhere('otherSession.table_id != :tableId', { tableId: table.id })
+            .andWhere('otherSession.status IN (:...openStatuses)', {
+              openStatuses: ['aberta', 'fechamento_solicitado'],
+            })
+            .getExists();
+      if (otherOpenedByMe || otherJoinedByMe) {
         throw new ConflictException(
-          'Você tem uma conta em aberto em outra mesa. Peça pro garçom fechar/pagar essa conta antes de abrir outra mesa.',
+          'Você tem uma mesa em aberto em outro lugar. Peça pro garçom fechar/pagar essa conta antes de abrir outra mesa ou balcão.',
         );
       }
     }
@@ -234,7 +319,9 @@ export class TablesService {
     }
 
     try {
-      return await this.sessionRepo.save(session);
+      const saved = await this.sessionRepo.save(session);
+      if (customerId) await this.markPresent(saved.id, customerId);
+      return saved;
     } catch (err: any) {
       // Race condition: outra requisição concorrente (ex: duplo scan quase
       // simultâneo) já criou a sessão ativa dessa mesa entre o SELECT acima
@@ -254,6 +341,7 @@ export class TablesService {
           order: { openedAt: 'DESC' },
         });
         if (winningSession) {
+          if (customerId) await this.markPresent(winningSession.id, customerId);
           return winningSession;
         }
       }
@@ -394,10 +482,18 @@ export class TablesService {
       throw new NotFoundException('Sessão de mesa não encontrada.');
     }
 
+    // `customer: true` traz nome/avatar de quem fez CADA pedido — pedido
+    // do Felipe (14/09): numa mesa compartilhada, o cupom precisa
+    // mostrar de quem foi cada pedido, não só um nome único pra sessão
+    // inteira. Mesmo `select` restrito de `OrdersService.findAllForAdmin`
+    // pra nunca vazar campo sensível (senha etc.) do cliente.
     const orders = await this.orderRepo.find({
       where: { tableSessionId: session.id },
       order: { createdAt: 'ASC' },
-      relations: { items: true } as any,
+      relations: { items: true, customer: true } as any,
+      select: {
+        customer: { id: true, name: true, avatarUrl: true },
+      } as any,
     });
 
     // BUG CORRIGIDO: pedidos cancelados estavam entrando na soma do total.
@@ -410,9 +506,49 @@ export class TablesService {
     const tipAmount = Number(session.tipAmount) || 0;
     const grandTotal = fromCents(totalCents + toCents(tipAmount));
 
-    // Nome do cliente pro cupom: pega o primeiro nome preenchido entre os
+    // Nome do cliente pro cupito: pega o primeiro nome preenchido entre os
     // pedidos da sessão (geralmente é o mesmo em todos, se preenchido).
+    // Mantido por compatibilidade com quem já lê esse campo — o cupom
+    // agora usa `participants` (abaixo) pra mostrar todo mundo que
+    // passou pela mesa, não só um nome.
     const customerName = orders.find((o) => o.customerName)?.customerName ?? null;
+
+    // Pedido do Felipe (14/09, sessão I): o cupom (tanto via do cliente
+    // quanto via do restaurante) precisa mostrar quem esteve na mesa —
+    // todo mundo que confirmou entrar (não só quem pediu), com destaque
+    // pra quem abriu. Mesma fonte de verdade usada no painel
+    // (`TableSessionParticipant`), resolvida só pra essa sessão.
+    const activeParticipants = await this.participantRepo.find({
+      where: { tableSessionId: session.id, leftAt: IsNull() },
+      order: { joinedAt: 'ASC' },
+    });
+    const participantCustomerIds = new Set(activeParticipants.map((p) => p.customerId));
+    if (session.openedByCustomerId) participantCustomerIds.add(session.openedByCustomerId);
+    const participantCustomers =
+      participantCustomerIds.size > 0
+        ? await this.orderRepo.manager
+            .getRepository(Customer)
+            .find({ where: { id: In([...participantCustomerIds]) } })
+        : [];
+    const participantById = new Map(participantCustomers.map((c) => [c.id, c]));
+    const participants: Array<{ name: string; avatarUrl: string | null; isOpener: boolean }> = [];
+    for (const p of activeParticipants) {
+      const account = participantById.get(p.customerId);
+      if (account) {
+        participants.push({
+          name: account.name,
+          avatarUrl: account.avatarUrl ?? null,
+          isOpener: p.customerId === session.openedByCustomerId,
+        });
+      }
+    }
+    // Fallback pra sessões de antes da migration de participantes.
+    if (participants.length === 0 && session.openedByCustomerId) {
+      const account = participantById.get(session.openedByCustomerId);
+      if (account) {
+        participants.push({ name: account.name, avatarUrl: account.avatarUrl ?? null, isOpener: true });
+      }
+    }
 
     // Código de autenticidade — só existe DEPOIS que a mesa fecha de
     // verdade (closedAt preenchido), porque antes disso o total ainda
@@ -428,7 +564,16 @@ export class TablesService {
         )
       : null;
 
-    return { session, orders, total, tipAmount, grandTotal, customerName, receiptVerificationCode };
+    return {
+      session,
+      orders,
+      total,
+      tipAmount,
+      grandTotal,
+      customerName,
+      participants,
+      receiptVerificationCode,
+    };
   }
 
   // Painel admin: confere um código de autenticidade de cupom de MESA
@@ -512,7 +657,13 @@ export class TablesService {
       session: TableSession;
       total: number;
       openedAt: Date;
-      customers: Array<{ name: string; avatarUrl: string | null; hasAccount: boolean; isVerified: boolean }>;
+      customers: Array<{
+        name: string;
+        avatarUrl: string | null;
+        hasAccount: boolean;
+        isVerified: boolean;
+        isOpener: boolean;
+      }>;
       waiterCallCount: number;
     }> = [];
 
@@ -538,6 +689,26 @@ export class TablesService {
         accountCustomerIds.add(session.openedByCustomerId);
       }
     }
+
+    // Pedido do Felipe (14/09, sessão I): quem confirma entrar numa mesa
+    // aparece no painel NA HORA, não só depois de pedir — busca todos os
+    // participantes ainda presentes (leftAt nulo) de todas as sessões de
+    // uma vez, mesmo raciocínio de bulk-fetch acima.
+    const activeParticipants =
+      sessions.length > 0
+        ? await this.participantRepo.find({
+            where: { tableSessionId: In(sessions.map((s) => s.id)), leftAt: IsNull() },
+            order: { joinedAt: 'ASC' },
+          })
+        : [];
+    const participantsBySession = new Map<string, TableSessionParticipant[]>();
+    for (const p of activeParticipants) {
+      accountCustomerIds.add(p.customerId);
+      const list = participantsBySession.get(p.tableSessionId) ?? [];
+      list.push(p);
+      participantsBySession.set(p.tableSessionId, list);
+    }
+
     const accountCustomers =
       accountCustomerIds.size > 0
         ? await this.orderRepo.manager
@@ -612,30 +783,56 @@ export class TablesService {
         avatarUrl: string | null;
         hasAccount: boolean;
         isVerified: boolean;
+        isOpener: boolean;
       }> = [];
       function upsertCustomer(entry: {
         name: string;
         avatarUrl: string | null;
         hasAccount: boolean;
         isVerified: boolean;
+        isOpener: boolean;
       }) {
         const key = entry.name.trim().toLowerCase();
         const idx = customers.findIndex((c) => c.name.trim().toLowerCase() === key);
         if (idx === -1) {
           customers.push(entry);
         } else if (entry.hasAccount && !customers[idx].hasAccount) {
-          customers[idx] = entry;
+          // Nunca perde o selo de "abriu a mesa" numa fusão — se a
+          // entrada que já estava lá era a que abriu, mantém isso
+          // mesmo trocando o resto dos dados por uma versão mais
+          // completa (ex: convidado que depois logou).
+          customers[idx] = { ...entry, isOpener: entry.isOpener || customers[idx].isOpener };
+        } else if (entry.isOpener && !customers[idx].isOpener) {
+          customers[idx] = { ...customers[idx], isOpener: true };
         }
       }
-      // Mostra quem ABRIU a mesa mesmo antes de qualquer pedido sair —
-      // antes disso, uma mesa recém-aberta por um cliente logado
-      // aparecia como "Ninguém identificado ainda" até o primeiro
-      // pedido, mesmo a identidade já sendo conhecida desde o scan do
-      // QR (session.openedByCustomerId). Entra primeiro; o loop de
-      // pedidos abaixo pode então enriquecer/confirmar com dados mais
-      // recentes do mesmo cliente, sem duplicar (upsertCustomer dedupe
-      // por nome).
-      if (session.openedByCustomerId) {
+      // Pedido do Felipe (14/09, sessão I): todo participante ainda
+      // presente (confirmou entrar e não saiu) aparece aqui, na ordem
+      // em que entrou — ANTES do loop de pedidos, que só enriquece com
+      // dados mais recentes ou adiciona convidados (sem conta, não têm
+      // como estar em `participantsBySession`, que é só de clientes
+      // logados). Substitui o antigo "só quem abriu a mesa" por "todos
+      // os que confirmaram entrar", já que agora várias pessoas podem
+      // se juntar à mesma mesa. `isOpener` marca especificamente quem
+      // abriu a mesa (session.openedByCustomerId) — pedido do Felipe
+      // pra distinguir visualmente no painel quem começou a conta.
+      const participants = participantsBySession.get(session.id) ?? [];
+      for (const participant of participants) {
+        const account = accountCustomerById.get(participant.customerId);
+        if (account) {
+          upsertCustomer({
+            name: account.name,
+            avatarUrl: resolveAvatarUrl(account.avatarUrl ?? null),
+            hasAccount: true,
+            isVerified: this.verificationService.verifyIntegritySync(account),
+            isOpener: participant.customerId === session.openedByCustomerId,
+          });
+        }
+      }
+      // Fallback pra sessões de antes dessa migration (sem nenhuma linha
+      // em table_session_participants ainda) — continua mostrando quem
+      // abriu a mesa mesmo sem registro de participante.
+      if (participants.length === 0 && session.openedByCustomerId) {
         const account = accountCustomerById.get(session.openedByCustomerId);
         if (account) {
           upsertCustomer({
@@ -643,6 +840,7 @@ export class TablesService {
             avatarUrl: resolveAvatarUrl(account.avatarUrl ?? null),
             hasAccount: true,
             isVerified: this.verificationService.verifyIntegritySync(account),
+            isOpener: true,
           });
         }
       }
@@ -655,6 +853,7 @@ export class TablesService {
             avatarUrl: resolveAvatarUrl(account?.avatarUrl ?? null),
             hasAccount: true,
             isVerified: account ? this.verificationService.verifyIntegritySync(account) : false,
+            isOpener: order.customerId === session.openedByCustomerId,
           });
         } else if (order.customerName) {
           upsertCustomer({
@@ -662,6 +861,7 @@ export class TablesService {
             avatarUrl: null,
             hasAccount: false,
             isVerified: false,
+            isOpener: false,
           });
         }
       }

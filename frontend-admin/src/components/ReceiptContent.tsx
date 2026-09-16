@@ -10,7 +10,7 @@ interface ReceiptContentProps {
 // totais e mensagem final. Pensado pra ficar bom tanto na tela quanto
 // impresso (a impressão usa esse mesmo conteúdo via window.print()).
 export function ReceiptContent({ tenant, summary }: ReceiptContentProps) {
-  const { session, orders, total, tipAmount, grandTotal, customerName } = summary;
+  const { session, orders, total, tipAmount, grandTotal, customerName, participants } = summary;
   const isClosed = session.status === 'fechada';
 
   // Soma o desconto de todos os pedidos não cancelados dessa sessão —
@@ -59,11 +59,27 @@ export function ReceiptContent({ tenant, summary }: ReceiptContentProps) {
         <span>{session.table?.number ?? 'Mesa'}</span>
         <span>{isClosed ? 'FECHADA' : 'EM ABERTO'}</span>
       </div>
-      {customerName && (
-        <div className="flex justify-between">
-          <span>Cliente</span>
-          <span>{customerName}</span>
+      {/* Pedido do Felipe (14/09, sessão I): mostrar TODO MUNDO que
+          esteve na mesa (conta compartilhada), não só um nome único —
+          com destaque pra quem abriu. Cai pro `customerName` antigo
+          (uma pessoa só) em sessões de antes dessa mudança. */}
+      {participants.length > 0 ? (
+        <div className="flex flex-col gap-0.5">
+          <span>Mesa compartilhada por:</span>
+          {participants.map((p, idx) => (
+            <div key={idx} className="flex justify-between pl-2">
+              <span>{p.name}</span>
+              <span className="text-[10px] text-gray-400">{p.isOpener ? 'abriu a mesa' : ''}</span>
+            </div>
+          ))}
         </div>
+      ) : (
+        customerName && (
+          <div className="flex justify-between">
+            <span>Cliente</span>
+            <span>{customerName}</span>
+          </div>
+        )
       )}
       <div className="flex justify-between">
         <span>Aberto em</span>
@@ -92,31 +108,44 @@ export function ReceiptContent({ tenant, summary }: ReceiptContentProps) {
 
       <div className="border-t border-dashed border-gray-300 my-1" />
 
-      {orders.map((order) => (
-        <div key={order.id} className="flex flex-col gap-0.5">
-          <p className="text-[10px] text-gray-400">
-            {new Date(order.createdAt).toLocaleTimeString('pt-BR', {
-              hour: '2-digit',
-              minute: '2-digit',
-            })}
-          </p>
-          {(order.items ?? []).map((item, idx) => (
-            <div key={idx} className="flex justify-between">
+      {orders.map((order) => {
+        const orderedByName = order.customer?.name ?? order.customerName ?? null;
+        const orderCashback = Number(order.cashbackEarned ?? 0);
+        return (
+          <div key={order.id} className="flex flex-col gap-0.5">
+            <p className="text-[10px] text-gray-400 flex justify-between">
               <span>
-                {item.quantity}x {item.productName}
-                {item.selectedOptions && item.selectedOptions.length > 0 && (
-                  <span className="block text-[10px] text-gray-400">
-                    {item.selectedOptions.map((o) => o.label).join(', ')}
-                  </span>
-                )}
+                {new Date(order.createdAt).toLocaleTimeString('pt-BR', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
               </span>
-              <span>
-                R$ {Number(item.subtotal).toFixed(2).replace('.', ',')}
-              </span>
-            </div>
-          ))}
-        </div>
-      ))}
+              {participants.length > 1 && orderedByName && <span>{orderedByName}</span>}
+            </p>
+            {(order.items ?? []).map((item, idx) => (
+              <div key={idx} className="flex justify-between">
+                <span>
+                  {item.quantity}x {item.productName}
+                  {item.selectedOptions && item.selectedOptions.length > 0 && (
+                    <span className="block text-[10px] text-gray-400">
+                      {item.selectedOptions.map((o) => o.label).join(', ')}
+                    </span>
+                  )}
+                </span>
+                <span>
+                  R$ {Number(item.subtotal).toFixed(2).replace('.', ',')}
+                </span>
+              </div>
+            ))}
+            {orderCashback > 0 && (
+              <p className="text-[10px] text-green-600 text-right">
+                + R$ {orderCashback.toFixed(2).replace('.', ',')} de cashback
+                {orderedByName ? ` pra ${orderedByName}` : ''}
+              </p>
+            )}
+          </div>
+        );
+      })}
 
       <div className="border-t border-dashed border-gray-300 my-1" />
 

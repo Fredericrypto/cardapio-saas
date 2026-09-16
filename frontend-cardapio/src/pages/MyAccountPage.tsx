@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, CheckCircle2, Bell } from 'lucide-react';
-import { fetchSessionSummary, requestSessionClosing } from '../lib/menu-api';
+import { useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft, CheckCircle2, Bell, LogOut } from 'lucide-react';
+import { fetchSessionSummary, requestSessionClosing, leaveTable } from '../lib/menu-api';
 import type { SessionSummary } from '../types';
 import { useTableSessionContext } from '../contexts/TableSessionContext';
 import { useTenant } from '../contexts/TenantContext';
+import { useCustomerAuth } from '../contexts/CustomerAuthContext';
+import { clearActiveMesaTokenForSlug } from '../hooks/useTableSession';
 
 const STATUS_LABELS: Record<string, string> = {
   aguardando_pagamento: 'Aguardando Pix',
@@ -18,8 +20,26 @@ const STATUS_LABELS: Record<string, string> = {
 
 export function MyAccountPage() {
   const navigate = useNavigate();
+  const { slug, qrCodeToken } = useParams<{ slug: string; qrCodeToken: string }>();
   const { session } = useTableSessionContext()!;
   const { tenant } = useTenant();
+  const { token: customerToken } = useCustomerAuth();
+  const [isLeaving, setIsLeaving] = useState(false);
+
+  async function handleLeaveTable() {
+    if (!customerToken || !qrCodeToken) return;
+    setIsLeaving(true);
+    try {
+      await leaveTable(qrCodeToken, customerToken);
+    } catch {
+      // Mesmo se der erro de rede, ainda tira o cliente do contexto de
+      // mesa localmente — pior caso, ele continua aparecendo pro admin
+      // até a próxima ação dele, mas não fica travado nessa tela.
+    } finally {
+      if (slug) clearActiveMesaTokenForSlug(slug);
+      navigate(`/${slug}`);
+    }
+  }
 
   const [summary, setSummary] = useState<SessionSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -146,7 +166,22 @@ export function MyAccountPage() {
         <button onClick={() => navigate(-1)}>
           <ArrowLeft size={20} />
         </button>
-        <h1 className="font-display font-bold text-lg">Minha conta</h1>
+        <h1 className="font-display font-bold text-lg flex-1">Minha conta</h1>
+        {/* Pedido do Felipe (14/09): sair da mesa some do painel do admin
+            na hora, mas não mexe na sessão nem nos pedidos já feitos —
+            eles continuam contando na conta e no cashback de quem saiu.
+            Só pra quem está logado — convidado nunca é rastreado como
+            participante (ver TableSessionParticipant no backend). */}
+        {customerToken && (
+          <button
+            onClick={handleLeaveTable}
+            disabled={isLeaving}
+            className="flex items-center gap-1 text-xs font-semibold text-gray-400 disabled:opacity-50"
+          >
+            <LogOut size={13} />
+            {isLeaving ? 'Saindo...' : 'Sair da mesa'}
+          </button>
+        )}
       </div>
 
       {statusNotification && (

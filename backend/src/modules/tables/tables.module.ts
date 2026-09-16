@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { RestaurantTable } from './restaurant-table.entity';
 import { TableSession } from './table-session.entity';
+import { TableSessionParticipant } from './table-session-participant.entity';
 import { WaiterCall } from './waiter-call.entity';
 import { Order } from '../orders/order.entity';
 import { Location } from '../locations/location.entity';
@@ -13,7 +14,14 @@ import { CustomersModule } from '../customers/customers.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([RestaurantTable, TableSession, WaiterCall, Order, Location]),
+    TypeOrmModule.forFeature([
+      RestaurantTable,
+      TableSession,
+      TableSessionParticipant,
+      WaiterCall,
+      Order,
+      Location,
+    ]),
     CashbackModule,
     PushModule,
     CustomersModule,

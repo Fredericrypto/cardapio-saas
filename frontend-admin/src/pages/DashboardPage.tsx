@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react';
-import { Bell, Clock, Table2, Store, Receipt, Check, X, ShoppingBag, Bike, Copy, MessageSquare, Tag, Coins } from 'lucide-react';
+import { Bell, Clock, Table2, Store, DoorOpen, Receipt, Check, X, ShoppingBag, Bike, Copy, MessageSquare, Tag, Coins } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import {
   attendWaiterCall,
@@ -56,7 +56,13 @@ interface ActiveTableGroup {
   orders: Order[];
   // Quem já pediu nessa mesa — com conta usa nome/foto atuais do
   // perfil, sem conta usa o nome digitado no checkout (obrigatório).
-  customers: Array<{ name: string; avatarUrl: string | null; hasAccount: boolean; isVerified: boolean }>;
+  customers: Array<{
+    name: string;
+    avatarUrl: string | null;
+    hasAccount: boolean;
+    isVerified: boolean;
+    isOpener: boolean;
+  }>;
   // Quantas vezes o garçom foi chamado NESSA sessão em aberto — zera
   // sozinho quando a mesa fecha e abre de novo (é por sessão, não por
   // mesa física).
@@ -430,13 +436,22 @@ function OrderRow({
   dark = false,
   isNew = false,
   onDismiss,
+  showCustomerName = false,
 }: {
   order: Order;
   actions: OrderActions;
   dark?: boolean;
   isNew?: boolean;
   onDismiss?: () => void;
+  showCustomerName?: boolean;
 }) {
+  // Pedido do Felipe (14/09, sessão I): numa mesa com várias pessoas
+  // pedindo, mostrar de quem é cada pedido — ajuda o garçom a entregar
+  // certo sem perguntar "quem pediu o quê". Só faz sentido ligar isso
+  // onde múltiplas pessoas podem estar pedindo na mesma sessão (mesa
+  // ativa) — no card de Balcão/Entrega já tem uma pessoa só, mostrar de
+  // novo aqui seria redundante.
+  const orderedByName = order.customer?.name ?? order.customerName ?? null;
   return (
     <div
       onClick={isNew ? onDismiss : undefined}
@@ -457,6 +472,9 @@ function OrderRow({
           hour: '2-digit',
           minute: '2-digit',
         })}
+        {showCustomerName && orderedByName && (
+          <span className={dark ? 'text-gray-400' : 'text-gray-500'}>· {orderedByName}</span>
+        )}
       </p>
 
       {order.items && order.items.length > 0 && (
@@ -863,6 +881,14 @@ function ActiveTableCard({
                   {c.isVerified && <Check size={11} strokeWidth={3.5} />}
                   {c.isVerified ? 'Cliente verificado' : c.hasAccount ? 'Cliente' : 'Visitante'}
                 </p>
+                {/* Pedido do Felipe (14/09): destacar quem abriu a
+                    mesa/balcão, separado de quem só se juntou depois. */}
+                {c.isOpener && (
+                  <p className="text-[11px] font-semibold text-amber-400 mt-0.5 flex items-center gap-1">
+                    <DoorOpen size={11} />
+                    Abriu a mesa
+                  </p>
+                )}
               </div>
             </div>
           ))
@@ -902,6 +928,7 @@ function ActiveTableCard({
               dark
               isNew={!dismissedOrderIds.has(order.id)}
               onDismiss={() => onDismissOrder(order.id)}
+              showCustomerName
             />
           ))}
         </div>

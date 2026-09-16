@@ -239,7 +239,13 @@ export async function fetchActiveOverview(): Promise<
     session: TableSession;
     total: number;
     openedAt: string;
-    customers: Array<{ name: string; avatarUrl: string | null; hasAccount: boolean; isVerified: boolean }>;
+    customers: Array<{
+      name: string;
+      avatarUrl: string | null;
+      hasAccount: boolean;
+      isVerified: boolean;
+      isOpener: boolean;
+    }>;
     waiterCallCount: number;
   }>
 > {

@@ -236,6 +236,8 @@ export interface SessionSummary {
     promotionTitleSnapshot?: string | null;
     promotionTitlesSnapshot?: string[] | null;
     createdAt: string;
+    customerName?: string | null;
+    customer?: { id: string; name: string; avatarUrl: string | null } | null;
     items: Array<{
       productName: string;
       quantity: number;
@@ -248,6 +250,10 @@ export interface SessionSummary {
   tipAmount: number;
   grandTotal: number;
   customerName: string | null;
+  // Pedido do Felipe (14/09, sessão I): todo mundo que confirmou entrar
+  // na mesa (não só quem fez pedido) — pra mostrar no cupom que a conta
+  // foi compartilhada e quem abriu. Ver TablesService.getSessionSummary.
+  participants: Array<{ name: string; avatarUrl: string | null; isOpener: boolean }>;
   // Código de autenticidade — null enquanto a mesa ainda está aberta
   // (o total pode mudar); só existe depois que a sessão fecha de
   // verdade. Ver TablesService.getSessionSummary.

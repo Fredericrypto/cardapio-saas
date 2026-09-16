@@ -5,7 +5,7 @@ import { ReceiptAuthenticityCode } from './ReceiptAuthenticityCode';
 // propósito idêntico, char por char no essencial, pra que se o cliente e
 // o restaurante precisarem comparar recibos, os dois batam exatamente.
 export function ReceiptContent({ tenant, summary }: { tenant: Tenant; summary: SessionSummary }) {
-  const { session, orders, total, tipAmount, grandTotal, customerName, receiptVerificationCode } = summary;
+  const { session, orders, total, tipAmount, grandTotal, customerName, participants, receiptVerificationCode } = summary;
   const isClosed = session.status === 'fechada';
 
   const discountTotal = orders
@@ -51,11 +51,28 @@ export function ReceiptContent({ tenant, summary }: { tenant: Tenant; summary: S
         <span>{session.table?.number ?? 'Mesa'}</span>
         <span>{isClosed ? 'FECHADA' : 'EM ABERTO'}</span>
       </div>
-      {customerName && (
-        <div className="flex justify-between">
-          <span>Cliente</span>
-          <span>{customerName}</span>
+      {/* Pedido do Felipe (14/09, sessão I): mostrar TODO MUNDO que
+          esteve na mesa (conta compartilhada), não só um nome único —
+          com destaque pra quem abriu. Cai pro `customerName` antigo
+          (uma pessoa só) em sessões de antes dessa mudança, que não têm
+          `participants` preenchido. */}
+      {participants.length > 0 ? (
+        <div className="flex flex-col gap-0.5">
+          <span>Mesa compartilhada por:</span>
+          {participants.map((p, idx) => (
+            <div key={idx} className="flex justify-between pl-2">
+              <span>{p.name}</span>
+              <span className="text-[10px] text-gray-400">{p.isOpener ? 'abriu a mesa' : ''}</span>
+            </div>
+          ))}
         </div>
+      ) : (
+        customerName && (
+          <div className="flex justify-between">
+            <span>Cliente</span>
+            <span>{customerName}</span>
+          </div>
+        )
       )}
       <div className="flex justify-between">
         <span>Aberto em</span>
@@ -84,29 +101,45 @@ export function ReceiptContent({ tenant, summary }: { tenant: Tenant; summary: S
 
       <div className="border-t border-dashed border-gray-300 my-1" />
 
-      {orders.map((order) => (
-        <div key={order.id} className="flex flex-col gap-0.5">
-          <p className="text-[10px] text-gray-400">
-            {new Date(order.createdAt).toLocaleTimeString('pt-BR', {
-              hour: '2-digit',
-              minute: '2-digit',
-            })}
-          </p>
-          {(order.items ?? []).map((item, idx) => (
-            <div key={idx} className="flex justify-between">
+      {orders.map((order) => {
+        const orderedByName = order.customer?.name ?? order.customerName ?? null;
+        const orderCashback = Number(order.cashbackEarned ?? 0);
+        return (
+          <div key={order.id} className="flex flex-col gap-0.5">
+            <p className="text-[10px] text-gray-400 flex justify-between">
               <span>
-                {item.quantity}x {item.productName}
-                {item.selectedOptions && item.selectedOptions.length > 0 && (
-                  <span className="block text-[10px] text-gray-400">
-                    {item.selectedOptions.map((o) => o.label).join(', ')}
-                  </span>
-                )}
+                {new Date(order.createdAt).toLocaleTimeString('pt-BR', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
               </span>
-              <span>R$ {Number(item.subtotal).toFixed(2).replace('.', ',')}</span>
-            </div>
-          ))}
-        </div>
-      ))}
+              {/* Pedido do Felipe: de quem foi esse pedido, numa mesa
+                  compartilhada — ajuda a conferir a conta e a bater com
+                  o cashback individual logo abaixo. */}
+              {participants.length > 1 && orderedByName && <span>{orderedByName}</span>}
+            </p>
+            {(order.items ?? []).map((item, idx) => (
+              <div key={idx} className="flex justify-between">
+                <span>
+                  {item.quantity}x {item.productName}
+                  {item.selectedOptions && item.selectedOptions.length > 0 && (
+                    <span className="block text-[10px] text-gray-400">
+                      {item.selectedOptions.map((o) => o.label).join(', ')}
+                    </span>
+                  )}
+                </span>
+                <span>R$ {Number(item.subtotal).toFixed(2).replace('.', ',')}</span>
+              </div>
+            ))}
+            {orderCashback > 0 && (
+              <p className="text-[10px] text-green-600 text-right">
+                + R$ {orderCashback.toFixed(2).replace('.', ',')} de cashback
+                {orderedByName ? ` pra ${orderedByName}` : ''}
+              </p>
+            )}
+          </div>
+        );
+      })}
 
       <div className="border-t border-dashed border-gray-300 my-1" />
 

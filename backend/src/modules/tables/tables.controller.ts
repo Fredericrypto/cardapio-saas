@@ -15,6 +15,7 @@ import type { RequestAdminUser } from '../../common/decorators/current-admin-use
 import { CurrentCustomer } from '../../common/decorators/current-customer.decorator';
 import type { RequestCustomer } from '../../common/decorators/current-customer.decorator';
 import { OptionalCustomerJwtAuthGuard } from '../customers/optional-customer-jwt-auth.guard';
+import { CustomerJwtAuthGuard } from '../customers/customer-jwt-auth.guard';
 import { TablesService } from './tables.service';
 import { CreateTableDto } from './dto/create-table.dto';
 import { RequestClosingDto } from './dto/request-closing.dto';
@@ -149,6 +150,20 @@ export class TablesController {
       customer?.customerId ?? null,
     );
     return this.tablesService.withTimerInfo(session);
+  }
+
+  // Ação explícita ("Sair dessa mesa") — exige login porque só faz
+  // sentido remover um PARTICIPANTE identificado; convidado nunca vira
+  // participante rastreado (ver TableSessionParticipant), então não tem
+  // o que "sair" pra ele.
+  @UseGuards(CustomerJwtAuthGuard)
+  @Post('table-sessions/public/:qrCodeToken/leave')
+  async leaveTable(
+    @Param('qrCodeToken') qrCodeToken: string,
+    @CurrentCustomer() customer: RequestCustomer,
+  ) {
+    await this.tablesService.leaveTable(qrCodeToken, customer.customerId);
+    return { ok: true };
   }
 
   // SÓ LEITURA — nunca cria sessão nova, nunca conta como "escaneei agora".

@@ -149,6 +149,19 @@ export async function scanTableQrCode(
   return data;
 }
 
+// Pedido do Felipe (14/09, sessão I): "Sair dessa mesa" — some do
+// painel do admin na hora, mas não mexe na sessão em si nem nos pedidos
+// já feitos por essa pessoa (continuam contando pra conta e pro
+// cashback dela quando a mesa fechar). Exige login — convidado nunca
+// aparece como participante rastreado pra começo de conversa.
+export async function leaveTable(qrCodeToken: string, customerToken: string): Promise<void> {
+  await api.post(
+    `/table-sessions/public/${qrCodeToken}/leave`,
+    undefined,
+    { headers: { Authorization: `Bearer ${customerToken}` } },
+  );
+}
+
 // SÓ LEITURA — nunca cria sessão nova. Usado ao carregar/recarregar uma
 // página de mesa pra saber se já existe sessão ativa, sem correr o risco
 // de reabrir a mesa sozinha só por causa de um reload.
