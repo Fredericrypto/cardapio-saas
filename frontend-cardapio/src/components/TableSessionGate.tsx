@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { useTableSession } from '../hooks/useTableSession';
+import { useTableSession, getActiveMesaToken } from '../hooks/useTableSession';
 import { TableSessionProvider } from '../contexts/TableSessionContext';
 import { TableSessionTimer } from './TableSessionTimer';
 import { useTenant } from '../contexts/TenantContext';
@@ -54,6 +54,13 @@ export function TableSessionGate({ children }: { children: ReactNode }) {
   }
 
   if (error) {
+    // Pedido do Felipe (17/09): quando o motivo do erro é "você já tem
+    // mesa aberta em outro lugar", o botão deve levar DIRETO pra essa
+    // mesa, não pro cardápio genérico — `mesa_ativa_{slug}` é seguro
+    // pra isso aqui porque só é gravado numa entrada confirmada de
+    // verdade (nunca de passagem).
+    const knownActiveToken = slug ? getActiveMesaToken(slug) : null;
+    const hasKnownActiveMesa = knownActiveToken && knownActiveToken !== qrCodeToken;
     return (
       <div className="flex flex-col items-center justify-center h-screen gap-4 px-6 text-center bg-gray-50">
         <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center">
@@ -61,11 +68,13 @@ export function TableSessionGate({ children }: { children: ReactNode }) {
         </div>
         <p className="text-sm text-gray-500 max-w-xs">{error}</p>
         <button
-          onClick={() => navigate(`/${slug}`)}
+          onClick={() =>
+            navigate(hasKnownActiveMesa ? `/${slug}/mesa/${knownActiveToken}` : `/${slug}`)
+          }
           style={{ backgroundColor: primaryColor }}
           className="py-3 px-6 rounded-xl text-white text-sm font-semibold shadow-sm"
         >
-          Ir pro cardápio geral
+          {hasKnownActiveMesa ? 'Voltar pra minha mesa' : 'Ir pro cardápio geral'}
         </button>
         <BuildMark />
       </div>

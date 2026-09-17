@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ConflictException,
   Logger,
 } from '@nestjs/common';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
@@ -13,6 +14,7 @@ import { Tenant } from '../tenants/tenant.entity';
 import { Location } from '../locations/location.entity';
 import { Customer } from '../customers/customer.entity';
 import { TableSession } from '../tables/table-session.entity';
+import { TableSessionParticipant } from '../tables/table-session-participant.entity';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { toCents, fromCents } from '../../common/utils/money';
@@ -325,9 +327,27 @@ export class OrdersService {
     // admin — recalcula a prova de integridade (ver
     // verification-signature.ts) antes de expor. Ver mesmo raciocínio
     // em TablesService.findActiveOverview.
+    //
+    // BUG REAL CORRIGIDO (17/09): `avatarUrl` do cliente vem gravado no
+    // banco como caminho RELATIVO (ex: "/uploads/avatars/xyz.jpg"),
+    // servido pelo app do cliente (frontend-cardapio) — nunca pelo
+    // painel admin. Sem resolver pra URL absoluta aqui, o navegador do
+    // admin tentava carregar essa imagem contra o PRÓPRIO domínio do
+    // admin (onde esse arquivo não existe) e mostrava um círculo cinza
+    // vazio, sem foto nem inicial — só nos cards de Balcão/Entrega
+    // (avulsos), porque o card de Mesa já resolvia isso corretamente
+    // (`resolveAvatarUrl` em TablesService.findActiveOverview). Mesma
+    // lógica replicada aqui: só mexe em caminho relativo (começa com
+    // "/"); uma URL já absoluta (ex: login social) passa direto.
+    const customerAppUrl = (process.env.CUSTOMER_APP_URL ?? '').replace(/\/$/, '');
     for (const order of orders) {
       if (order.customer) {
         order.customer.isVerified = this.verificationService.verifyIntegritySync(order.customer);
+        if (order.customer.avatarUrl?.startsWith('/')) {
+          order.customer.avatarUrl = customerAppUrl
+            ? `${customerAppUrl}${order.customer.avatarUrl}`
+            : null;
+        }
       }
     }
 
@@ -659,17 +679,17 @@ export class OrdersService {
       // também tem uma sessão de mesa ativa aberta por ele nesse mesmo
       // restaurante — pedido do Felipe: não é bloqueado (pode ser
       // intencional, ex: pedir entrega pra alguém de casa enquanto está
-      // no restaurante), mas precisa ficar visível/rastreável tanto pro
-      // admin (evita confusão de "por que ele pediu entrega se está na
-      // mesa 2?") quanto pro próprio cliente (avisa na hora, ver
-      // CartPage). Só verifica pra 'entrega' porque 'balcao' não é mais
-      // uma opção oferecida a quem já escaneou uma mesa (ver
-      // orderTypeOptions no CartPage) — mas o cliente ainda pode digitar
-      // a requisição manualmente ou vir de um cardápio geral enquanto
-      // uma mesa antiga dele ficou esquecida aberta, daí valer conferir
-      // aqui no backend também, não só confiar no frontend.
-      let placedWhileAtTable: string | null = null;
-      if (dto.orderType === 'entrega' && customerId) {
+      // Pedido do Felipe (17/09): virou bloqueio de verdade, não só
+      // aviso — "não deveria nem ter sido possível fazer pedido pelo
+      // balcão/cardápio geral com uma sessão em aberto". Cobre os dois
+      // tipos de pedido fora do fluxo de mesa (balcão e entrega) e
+      // tanto quem ABRIU a mesa quanto quem só ENTROU como participante
+      // (ver TableSessionParticipant) — mesmo raciocínio do bloqueio
+      // "anti pular de mesa" em TablesService.openOrJoinSession, só que
+      // do lado do pedido avulso em vez do lado de abrir mesa nova.
+      // Continua só verificando quando tem CONTA (convidado não dá pra
+      // saber se é "a mesma pessoa" sem login).
+      if ((dto.orderType === 'entrega' || dto.orderType === 'balcao') && customerId) {
         const activeTableSession = await manager.findOne(TableSession, {
           where: [
             { tenantId, openedByCustomerId: customerId, status: 'aberta' },
@@ -677,10 +697,28 @@ export class OrdersService {
           ],
           relations: { table: true },
         });
-        if (activeTableSession) {
-          placedWhileAtTable = activeTableSession.table.number;
+        const activeAsParticipant = activeTableSession
+          ? null
+          : await manager
+              .createQueryBuilder(TableSessionParticipant, 'p')
+              .innerJoinAndSelect('p.tableSession', 'ts')
+              .innerJoinAndSelect('ts.table', 't')
+              .where('ts.tenant_id = :tenantId', { tenantId })
+              .andWhere('p.customer_id = :customerId', { customerId })
+              .andWhere('p.left_at IS NULL')
+              .andWhere('ts.status IN (:...openStatuses)', {
+                openStatuses: ['aberta', 'fechamento_solicitado'],
+              })
+              .getOne();
+        const openTable = activeTableSession?.table ?? activeAsParticipant?.tableSession.table;
+        if (openTable) {
+          const label = dto.orderType === 'entrega' ? 'uma entrega' : 'um pedido de balcão';
+          throw new ConflictException(
+            `Você tem ${openTable.number} em aberto. Faça esse pedido por ela, ou peça pro garçom fechar a conta antes de fazer ${label}.`,
+          );
         }
       }
+      let placedWhileAtTable: string | null = null;
 
       const location = resolvedLocationId
         ? await manager.findOne(Location, { where: { id: resolvedLocationId, tenantId } })

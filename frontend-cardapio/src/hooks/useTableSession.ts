@@ -72,9 +72,24 @@ export function useTableSession(slug: string | undefined, qrCodeToken: string | 
     try {
       const { session: current, recentlyEnded } = await getCurrentTableSession(qrCodeToken);
       if (current) {
-        // Só pergunta quando a mesa REALMENTE está em uso agora.
-        setSession(null);
-        setPendingJoinToken(qrCodeToken);
+        // Pedido do Felipe (17/09): "reconhecer com ABSOLUTA SEGURANÇA
+        // que o cliente já tem mesa aberta" — `mesa_ativa_{slug}` só é
+        // gravado dentro de `doJoin`, ou seja, só depois de uma entrada
+        // de verdade (scan genuíno ou confirmação explícita) nessa
+        // MESMA mesa. Se o token da URL bate com esse ponteiro, é
+        // seguro pular a pergunta — não é um redirecionamento pra outra
+        // mesa (isso já foi removido faz tempo), é só reconhecer "essa
+        // sessão já é minha" sem perguntar de novo toda vez que o
+        // React Router remonta esse componente (ex: ida e volta na
+        // página de perfil). Qualquer token DIFERENTE do ponteiro
+        // continua perguntando sempre, sem exceção.
+        if (slug && getActiveMesaToken(slug) === qrCodeToken) {
+          setSession(current);
+          setPendingJoinToken(null);
+        } else {
+          setSession(null);
+          setPendingJoinToken(qrCodeToken);
+        }
       } else if (recentlyEnded) {
         // Acabou de encerrar — tela final, sem nenhuma saída pra
         // recomeçar aqui mesmo. Só escaneando o QR físico de novo, mais

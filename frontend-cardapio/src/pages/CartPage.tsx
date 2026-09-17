@@ -403,10 +403,17 @@ export function CartPage() {
       // pro cliente escondia demais, e isso já causou confusão antes
       // tentando adivinhar a causa raiz sem essa informação.
       console.error('Falha ao criar pedido:', err);
-      const backendMessage =
+      // Pedido do Felipe (16/09): nunca mostrar texto cru de um erro
+      // inesperado (5xx) pro cliente — só confia na mensagem do backend
+      // quando é um erro 4xx de propósito (as que eu mesmo escrevo em
+      // português simples, tipo "você tem Mesa 1 em aberto...").
+      const response =
         err && typeof err === 'object' && 'response' in err
-          ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+          ? (err as { response?: { status?: number; data?: { message?: string } } }).response
           : undefined;
+      const status = response?.status;
+      const backendMessage =
+        status && status >= 400 && status < 500 ? response?.data?.message : undefined;
       // BUG CORRIGIDO: quando o pedido falha porque a mesa já foi
       // fechada (garçom fechou a conta, ou expirou) pelo lado de lá
       // enquanto o cliente ainda estava com a página aberta, o header
