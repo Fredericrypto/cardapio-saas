@@ -25,19 +25,42 @@ export function MyAccountPage() {
   const { tenant } = useTenant();
   const { token: customerToken } = useCustomerAuth();
   const [isLeaving, setIsLeaving] = useState(false);
+  const [leaveError, setLeaveError] = useState<string | null>(null);
 
   async function handleLeaveTable() {
     if (!customerToken || !qrCodeToken) return;
     setIsLeaving(true);
+    setLeaveError(null);
     try {
       await leaveTable(qrCodeToken, customerToken);
-    } catch {
-      // Mesmo se der erro de rede, ainda tira o cliente do contexto de
-      // mesa localmente — pior caso, ele continua aparecendo pro admin
-      // até a próxima ação dele, mas não fica travado nessa tela.
-    } finally {
       if (slug) clearActiveMesaTokenForSlug(slug);
       navigate(`/${slug}`);
+    } catch (err) {
+      // Pedido do Felipe (16/09): se o backend recusou de propósito
+      // (já tem pedido nessa conta — ver TablesService.leaveTable), tem
+      // que PARAR aqui e avisar, nunca sair mesmo assim. Só numa falha
+      // de rede/inesperada de verdade (sem mensagem 4xx reconhecível
+      // vinda do backend) é que ainda faz sentido deixar sair mesmo
+      // assim — pior caso, a pessoa continua aparecendo pro admin até a
+      // próxima ação, mas não fica presa nessa tela por causa de
+      // instabilidade. Nunca mostra texto cru de um erro 5xx — só
+      // confia em mensagens de erro 4xx (as que eu mesmo escrevo de
+      // propósito em português simples).
+      const response =
+        err && typeof err === 'object' && 'response' in err
+          ? (err as { response?: { status?: number; data?: { message?: string } } }).response
+          : undefined;
+      const status = response?.status;
+      const backendMessage =
+        status && status >= 400 && status < 500 ? response?.data?.message : undefined;
+      if (backendMessage) {
+        setLeaveError(backendMessage);
+      } else {
+        if (slug) clearActiveMesaTokenForSlug(slug);
+        navigate(`/${slug}`);
+      }
+    } finally {
+      setIsLeaving(false);
     }
   }
 
@@ -183,6 +206,9 @@ export function MyAccountPage() {
           </button>
         )}
       </div>
+      {leaveError && (
+        <p className="px-4 pt-3 text-xs text-red-500 text-center">{leaveError}</p>
+      )}
 
       {statusNotification && (
         <div

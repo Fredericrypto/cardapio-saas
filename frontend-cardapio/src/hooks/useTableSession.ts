@@ -89,7 +89,7 @@ export function useTableSession(slug: string | undefined, qrCodeToken: string | 
       }
     } catch (err) {
       const backendMessage = extractBackendMessage(err);
-      setError(backendMessage ?? 'Não foi possível abrir esta mesa. Peça ajuda a um garçom.');
+      setError(backendMessage ?? FRIENDLY_FALLBACK_MESSAGE);
     } finally {
       setIsLoading(false);
     }
@@ -115,7 +115,7 @@ export function useTableSession(slug: string | undefined, qrCodeToken: string | 
       await doJoin(pendingJoinToken);
     } catch (err) {
       const backendMessage = extractBackendMessage(err);
-      setError(backendMessage ?? 'Não foi possível abrir esta mesa. Peça ajuda a um garçom.');
+      setError(backendMessage ?? FRIENDLY_FALLBACK_MESSAGE);
     } finally {
       setIsLoading(false);
     }
@@ -191,8 +191,22 @@ export function useTableSession(slug: string | undefined, qrCodeToken: string | 
   };
 }
 
+// Pedido do Felipe (16/09): nunca mostrar texto cru do servidor pro
+// cliente — nem por engano, se algum dia um erro inesperado (500,
+// "Internal server error", stack trace, etc) vazar até aqui. Só confia
+// na mensagem do backend quando é claramente um erro 4xx (as exceções
+// que eu mesmo escrevo de propósito em português simples pro cliente
+// ler — ex: "essa mesa já tem conta aberta"); qualquer coisa 5xx ou sem
+// status reconhecível vira uma mensagem genérica e amigável, sem
+// revelar NADA do que quebrou por trás.
 function extractBackendMessage(err: unknown): string | undefined {
-  return err && typeof err === 'object' && 'response' in err
-    ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
-    : undefined;
+  if (!err || typeof err !== 'object' || !('response' in err)) return undefined;
+  const response = (err as { response?: { status?: number; data?: { message?: string } } })
+    .response;
+  const status = response?.status;
+  if (!status || status < 400 || status >= 500) return undefined;
+  return response?.data?.message;
 }
+
+const FRIENDLY_FALLBACK_MESSAGE =
+  'Não conseguimos abrir essa mesa agora. Chame um garçom pra te ajudar.';

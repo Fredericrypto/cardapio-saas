@@ -145,6 +145,20 @@ export class TablesService {
       order: { openedAt: 'DESC' },
     });
     if (!session) return;
+    // Pedido do Felipe (16/09): quem JÁ FEZ pedido nessa conta não pode
+    // sair sozinho — a conta continua em aberto, com o valor dele
+    // dentro, e ninguém mais consegue fechar/pagar por ele depois que
+    // ele sumir do painel. Só libera sair sem pedido nenhum ainda
+    // (nesse caso não tem valor nenhum em jogo). "Cancelado" não conta
+    // como pedido de verdade pra esse efeito.
+    const hasOrder = await this.orderRepo.exists({
+      where: { tableSessionId: session.id, customerId, status: Not('cancelado') },
+    });
+    if (hasOrder) {
+      throw new ConflictException(
+        'Você já tem pedidos nessa conta. Peça pro garçom fechar e pagar a conta antes de sair da mesa.',
+      );
+    }
     await this.participantRepo.update(
       { tableSessionId: session.id, customerId },
       { leftAt: new Date() },

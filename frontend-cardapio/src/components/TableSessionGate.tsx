@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useTableSession } from '../hooks/useTableSession';
 import { TableSessionProvider } from '../contexts/TableSessionContext';
 import { TableSessionTimer } from './TableSessionTimer';
+import { useTenant } from '../contexts/TenantContext';
 import { QrCode, Users } from 'lucide-react';
 import { BUILD_VERSION } from '../buildInfo';
 
@@ -31,6 +32,8 @@ export function TableSessionGate({ children }: { children: ReactNode }) {
   const { slug, qrCodeToken } = useParams<{ slug: string; qrCodeToken: string }>();
   const location = useLocation();
   const navigate = useNavigate();
+  const { tenant } = useTenant();
+  const primaryColor = tenant?.primaryColor || '#111827';
   const {
     session,
     isLoading,
@@ -52,11 +55,15 @@ export function TableSessionGate({ children }: { children: ReactNode }) {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen gap-3 px-6 text-center bg-gray-50">
-        <p className="text-sm text-gray-500">{error}</p>
+      <div className="flex flex-col items-center justify-center h-screen gap-4 px-6 text-center bg-gray-50">
+        <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center">
+          <QrCode size={26} className="text-gray-500" />
+        </div>
+        <p className="text-sm text-gray-500 max-w-xs">{error}</p>
         <button
           onClick={() => navigate(`/${slug}`)}
-          className="text-sm font-semibold text-gray-900 underline"
+          style={{ backgroundColor: primaryColor }}
+          className="py-3 px-6 rounded-xl text-white text-sm font-semibold shadow-sm"
         >
           Ir pro cardápio geral
         </button>
@@ -81,7 +88,8 @@ export function TableSessionGate({ children }: { children: ReactNode }) {
         <div className="flex flex-col gap-2 w-full max-w-xs">
           <button
             onClick={confirmJoinExisting}
-            className="py-3 rounded-xl bg-gray-900 text-white text-sm font-semibold"
+            style={{ backgroundColor: primaryColor }}
+            className="py-3 rounded-xl text-white text-sm font-semibold shadow-sm"
           >
             Sim, continuar nessa mesa
           </button>
@@ -112,7 +120,8 @@ export function TableSessionGate({ children }: { children: ReactNode }) {
         </div>
         <button
           onClick={() => navigate(`/${slug}`)}
-          className="py-3 px-6 rounded-xl bg-gray-900 text-white text-sm font-semibold"
+          style={{ backgroundColor: primaryColor }}
+          className="py-3 px-6 rounded-xl text-white text-sm font-semibold shadow-sm"
         >
           Voltar ao cardápio geral
         </button>

@@ -11,6 +11,7 @@ import { Order } from '../modules/orders/order.entity';
 import { OrderItem } from '../modules/orders/order-item.entity';
 import { RestaurantTable } from '../modules/tables/restaurant-table.entity';
 import { TableSession } from '../modules/tables/table-session.entity';
+import { TableSessionParticipant } from '../modules/tables/table-session-participant.entity';
 import { WaiterCall } from '../modules/tables/waiter-call.entity';
 import { Customer } from '../modules/customers/customer.entity';
 import { Promotion } from '../modules/promotions/promotion.entity';
@@ -47,6 +48,7 @@ export const AppDataSource = new DataSource({
     OrderItem,
     RestaurantTable,
     TableSession,
+    TableSessionParticipant,
     WaiterCall,
     Customer,
     Promotion,
