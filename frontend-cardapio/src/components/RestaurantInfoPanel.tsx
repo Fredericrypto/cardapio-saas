@@ -33,16 +33,20 @@ export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelPro
   return (
     <div className="mt-3 pt-3 border-t border-gray-100 flex flex-col gap-2.5">
       {hasSocialLinks && (
-        <div className="flex items-center gap-4 text-xs text-gray-500">
+        // Pedido do Felipe (18/09): sem sublinhado, centralizado, com a
+        // cara do app — trocado de link de texto sublinhado pra
+        // "pilinhas" arredondadas, como a maioria dos apps modernos
+        // mostra contato/rede social hoje em dia.
+        <div className="flex items-center justify-center gap-2 flex-wrap">
           {location?.whatsappNumber && (
             <a
               href={buildWhatsappLink(location.whatsappNumber)}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 active:opacity-70"
+              className="flex items-center gap-1.5 bg-gray-100 text-gray-600 text-xs font-medium px-3 py-1.5 rounded-full active:opacity-70"
             >
-              <WhatsAppIcon size={14} className="shrink-0" />
-              <span className="underline underline-offset-2">{location.whatsappNumber}</span>
+              <WhatsAppIcon size={13} className="shrink-0" />
+              {location.whatsappNumber}
             </a>
           )}
 
@@ -51,12 +55,10 @@ export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelPro
               href={buildInstagramLink(tenant.instagramHandle)}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 active:opacity-70"
+              className="flex items-center gap-1.5 bg-gray-100 text-gray-600 text-xs font-medium px-3 py-1.5 rounded-full active:opacity-70"
             >
-              <InstagramIcon size={14} className="shrink-0" />
-              <span className="underline underline-offset-2">
-                @{tenant.instagramHandle.replace(/^@/, '')}
-              </span>
+              <InstagramIcon size={13} className="shrink-0" />
+              @{tenant.instagramHandle.replace(/^@/, '')}
             </a>
           )}
         </div>

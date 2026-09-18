@@ -213,6 +213,11 @@ export interface TableSession {
   paymentMethod: string | null;
   amountReceived: number | null;
   changeGiven: number | null;
+  // Já vinha na resposta crua do backend (o objeto session é espalhado
+  // por inteiro), só não estava tipado. Precisa pra decidir se mostra o
+  // botão "Sair da mesa" — nunca aparece pra quem abriu a mesa (ver
+  // MyAccountPage).
+  openedByCustomerId: string | null;
   table?: { number: string; kind?: 'mesa' | 'balcao'; locationId: string } | null;
   // Calculados na hora (nunca gravados no banco) — só presentes na
   // resposta do scan/consulta de sessão de mesa, pra o timer visual no

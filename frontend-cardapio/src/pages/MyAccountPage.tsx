@@ -23,12 +23,14 @@ export function MyAccountPage() {
   const { slug, qrCodeToken } = useParams<{ slug: string; qrCodeToken: string }>();
   const { session } = useTableSessionContext()!;
   const { tenant } = useTenant();
-  const { token: customerToken } = useCustomerAuth();
+  const { token: customerToken, customer } = useCustomerAuth();
   const [isLeaving, setIsLeaving] = useState(false);
   const [leaveError, setLeaveError] = useState<string | null>(null);
+  const [confirmingLeave, setConfirmingLeave] = useState(false);
 
   async function handleLeaveTable() {
     if (!customerToken || !qrCodeToken) return;
+    setConfirmingLeave(false);
     setIsLeaving(true);
     setLeaveError(null);
     try {
@@ -183,6 +185,15 @@ export function MyAccountPage() {
     );
   }
 
+  // Pedido do Felipe (18/09): repensado quem pode ver "Sair da mesa" —
+  // nunca pra quem ABRIU a mesa (não faz sentido "sair" de algo que é
+  // seu; a única saída pra quem abriu é fechar a conta de verdade), e
+  // só pra quem ainda não fez NENHUM pedido — assim que a pessoa pede
+  // algo, a única forma de sair é a conta ser fechada com pagamento
+  // (ver TablesService.leaveTable, que já bloqueia nesse caso).
+  const isOpener = Boolean(customer && summary.session.openedByCustomerId === customer.id);
+  const canLeaveTable = Boolean(customerToken) && !isOpener && summary.orders.length === 0;
+
   return (
     <div className="min-h-screen bg-white max-w-md mx-auto pb-32">
       <div className="flex items-center gap-3 px-4 py-4 border-b border-gray-100">
@@ -190,22 +201,46 @@ export function MyAccountPage() {
           <ArrowLeft size={20} />
         </button>
         <h1 className="font-display font-bold text-lg flex-1">Minha conta</h1>
-        {/* Pedido do Felipe (14/09): sair da mesa some do painel do admin
-            na hora, mas não mexe na sessão nem nos pedidos já feitos —
-            eles continuam contando na conta e no cashback de quem saiu.
-            Só pra quem está logado — convidado nunca é rastreado como
-            participante (ver TableSessionParticipant no backend). */}
-        {customerToken && (
+      </div>
+      {/* Fora da barra do cabeçalho de propósito — o relógio de prazo
+          (TableSessionTimer, variant="fixed") flutua no canto superior
+          direito da tela nessa mesma página, e ficava por cima desse
+          botão quando os dois moravam na mesma linha. */}
+      {canLeaveTable && (
+        <div className="px-4 pt-3 flex justify-center">
           <button
-            onClick={handleLeaveTable}
+            onClick={() => setConfirmingLeave(true)}
             disabled={isLeaving}
-            className="flex items-center gap-1 text-xs font-semibold text-gray-400 disabled:opacity-50"
+            className="flex items-center gap-1.5 text-xs font-semibold text-gray-400 disabled:opacity-50"
           >
             <LogOut size={13} />
             {isLeaving ? 'Saindo...' : 'Sair da mesa'}
           </button>
-        )}
-      </div>
+        </div>
+      )}
+      {confirmingLeave && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-6">
+          <div className="bg-white rounded-2xl p-5 max-w-xs w-full flex flex-col gap-4 text-center">
+            <p className="text-sm text-gray-700">
+              Tem certeza que quer sair dessa mesa? Você vai pro cardápio geral da unidade.
+            </p>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={handleLeaveTable}
+                className="py-2.5 rounded-xl bg-gray-900 text-white text-sm font-semibold"
+              >
+                Sim, sair da mesa
+              </button>
+              <button
+                onClick={() => setConfirmingLeave(false)}
+                className="py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {leaveError && (
         <p className="px-4 pt-3 text-xs text-red-500 text-center">{leaveError}</p>
       )}
