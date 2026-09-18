@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react';
-import { Bell, Clock, Table2, Store, DoorOpen, Receipt, Check, X, ShoppingBag, Bike, Copy, MessageSquare, Tag, Coins } from 'lucide-react';
+import { Bell, Clock, Table2, Store, DoorOpen, Receipt, Check, X, ShoppingBag, Bike, Copy, MessageSquare, Tag, Coins, Wallet, ArrowRight } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import {
   attendWaiterCall,
@@ -11,8 +11,6 @@ import { CloseSessionModal } from '../components/CloseSessionModal';
 import { ViewReceiptModal } from '../components/ViewReceiptModal';
 import { ConcludeOrderModal } from '../components/ConcludeOrderModal';
 import type { TableSession, Order, RestaurantTable } from '../types';
-
-const STATUS_OPTIONS: Order['status'][] = ['pendente', 'preparando', 'pronto'];
 
 const STATUS_LABELS: Record<string, string> = {
   aguardando_pagamento: 'Aguardando Pix',
@@ -391,6 +389,8 @@ export function DashboardPage() {
                 actions={standaloneOrderActions}
                 needsAttention={needsAttention}
                 onDismissAttention={() => addDismissedStandaloneOrderId(group.order.id)}
+                dismissedOrderIds={dismissedOrderIds}
+                onDismissOrder={addDismissedOrderId}
               />
             );
           })}
@@ -624,45 +624,59 @@ function OrderRow({
           </p>
 
           <div className="flex items-center gap-1.5">
-            <select
-              value={order.status}
-              onChange={(e) => actions.onStatusChange(order, e.target.value as Order['status'])}
-              className={`text-xs font-medium rounded-lg px-2 py-1.5 outline-none ${
-                dark
-                  ? 'bg-white/10 border border-white/10 text-white [color-scheme:dark]'
-                  : 'border border-gray-200'
-              }`}
+            {/* Pedido do Felipe (17/09): o dropdown de status ("Pendente
+                / Preparando / Pronto") ficava difícil de acompanhar num
+                restaurante cheio, com risco de erro humano por escolher
+                errado num menu. Trocado por um controle de UM toque só:
+                mostra o status atual como uma etiqueta (não precisa
+                clicar em nada pra ver), e um único botão "avança pro
+                próximo passo" — sem menu pra escolher, sem risco de
+                pular ou escolher o status errado. Cancelar continua
+                separado, sempre disponível. */}
+            <span
+              className={`text-xs font-semibold px-2.5 py-1.5 rounded-lg ${STATUS_COLORS[order.status]}`}
             >
-              {STATUS_OPTIONS.map((status) => (
-                <option key={status} value={status}>
-                  {STATUS_LABELS[status]}
-                </option>
-              ))}
-            </select>
-            {/* "Concluir pedido" registra PAGAMENTO — nunca aparece pra
+              {STATUS_LABELS[order.status]}
+            </span>
+            {/* "Receber pagamento" registra PAGAMENTO — nunca aparece pra
                 pedido de mesa. Mesa paga uma vez só, pela conta
                 inteira, no botão "Fechar conta" do card da mesa (ver
                 ActiveTableCard) — nunca pedido por pedido. Bug real que
-                isso corrige: esse botão aparecia aqui também pros
-                pedidos dentro de uma mesa ativa, e clicar nele marcava
-                aquele pedido como pago por fora do fechamento de conta
-                de verdade, sem bater com o total cobrado quando a mesa
-                fechava. */}
-            {order.orderType !== 'mesa' && (
+                isso corrige (herdado do botão antigo): esse passo
+                aparecia aqui também pros pedidos dentro de uma mesa
+                ativa, e usá-lo marcava aquele pedido como pago por fora
+                do fechamento de conta de verdade, sem bater com o total
+                cobrado quando a mesa fechava. Também corrige um
+                problema de descoberta: antes era só um ícone de check
+                sem texto — fácil de não perceber que ALI é onde se
+                confirma o pagamento de um pedido avulso. */}
+            {order.status === 'pronto' && order.orderType !== 'mesa' ? (
               <button
                 onClick={() => actions.onConclude(order)}
-                title="Concluir pedido"
-                className={`w-7 h-7 rounded-lg flex items-center justify-center ${
-                  dark ? 'bg-green-400/20 text-green-400' : 'bg-green-100 text-green-700'
-                }`}
+                className="px-3 py-1.5 rounded-lg bg-green-500 text-white text-xs font-semibold flex items-center gap-1"
               >
-                <Check size={14} />
+                <Wallet size={13} />
+                Receber pagamento
               </button>
+            ) : (
+              nextOrderStatus(order.status) && (
+                <button
+                  onClick={() => actions.onStatusChange(order, nextOrderStatus(order.status)!)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 ${
+                    dark
+                      ? 'bg-white/10 text-white border border-white/10'
+                      : 'bg-gray-100 text-gray-700 border border-gray-200'
+                  }`}
+                >
+                  {STATUS_LABELS[nextOrderStatus(order.status)!]}
+                  <ArrowRight size={13} />
+                </button>
+              )
             )}
             <button
               onClick={() => actions.onCancel(order)}
               title="Cancelar pedido"
-              className={`w-7 h-7 rounded-lg flex items-center justify-center ${
+              className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
                 dark ? 'bg-red-400/20 text-red-400' : 'bg-red-100 text-red-600'
               }`}
             >
@@ -673,6 +687,17 @@ function OrderRow({
       )}
     </div>
   );
+}
+
+// Sequência fixa de preparo — usada pelo botão de "um toque só" que
+// substituiu o dropdown de status. `entregue` só é alcançado por aqui
+// pra pedido de MESA (item chegou na mesa); pedido avulso (balcão/
+// entrega) sai do "pronto" só pelo botão "Receber pagamento" (ver
+// acima), nunca avançando status sozinho sem registrar como foi pago.
+const ORDER_STATUS_FLOW: Order['status'][] = ['pendente', 'preparando', 'pronto', 'entregue'];
+function nextOrderStatus(current: Order['status']): Order['status'] | null {
+  const idx = ORDER_STATUS_FLOW.indexOf(current);
+  return idx >= 0 && idx < ORDER_STATUS_FLOW.length - 1 ? ORDER_STATUS_FLOW[idx + 1] : null;
 }
 
 // Aparece só enquanto um pedido avulso (balcão/entrega) tá esperando o
@@ -938,14 +963,25 @@ function ActiveTableCard({
 }
 
 function ClosedTableCard({ group, actions }: { group: ClosedTableGroup; actions: OrderActions }) {
+  // Pedido do Felipe (17/09): "quando eu fechei a conta da mesa a div
+  // ficou branca" — esse card usava um estilo claro completamente
+  // diferente do resto do painel (que é todo escuro), destoando visual
+  // sem necessidade. Só porque a conta já foi paga não tem motivo pra
+  // trocar a paleta toda — os pedidos aqui ainda estão em preparo de
+  // verdade, então continuam com a mesma cara do resto.
   return (
-    <div className="border border-gray-100 bg-white rounded-xl p-4 flex flex-col gap-3">
+    <div
+      className="rounded-2xl p-4 flex flex-col gap-3 text-white"
+      style={{
+        background: 'linear-gradient(160deg, #27272A 0%, #18181B 55%, #0A0A0B 100%)',
+      }}
+    >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
           <Table2 size={15} className="text-gray-400" />
-          <p className="text-sm font-semibold text-gray-900">{group.tableNumber}</p>
+          <p className="text-sm font-semibold text-white">{group.tableNumber}</p>
         </div>
-        <span className="text-xs font-medium text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+        <span className="text-xs font-medium text-gray-300 bg-white/10 px-2 py-0.5 rounded-full">
           conta já paga
         </span>
       </div>
@@ -954,7 +990,7 @@ function ClosedTableCard({ group, actions }: { group: ClosedTableGroup; actions:
       </p>
       <div className="flex flex-col gap-2.5">
         {group.orders.map((order) => (
-          <OrderRow key={order.id} order={order} actions={actions} />
+          <OrderRow key={order.id} order={order} actions={actions} dark />
         ))}
       </div>
     </div>
@@ -966,11 +1002,15 @@ function StandaloneOrderCard({
   actions,
   needsAttention,
   onDismissAttention,
+  dismissedOrderIds,
+  onDismissOrder,
 }: {
   order: Order;
   actions: OrderActions;
   needsAttention: boolean;
   onDismissAttention: () => void;
+  dismissedOrderIds: Set<string>;
+  onDismissOrder: (id: string) => void;
 }) {
   const Icon = order.orderType === 'entrega' ? Bike : ShoppingBag;
   const label = order.orderType === 'entrega' ? 'Entrega' : 'Balcão';
@@ -1067,7 +1107,13 @@ function StandaloneOrderCard({
         </div>
       </div>
 
-      <OrderRow order={order} actions={actions} dark />
+      <OrderRow
+        order={order}
+        actions={actions}
+        dark
+        isNew={!dismissedOrderIds.has(order.id)}
+        onDismiss={() => onDismissOrder(order.id)}
+      />
     </div>
   );
 }
