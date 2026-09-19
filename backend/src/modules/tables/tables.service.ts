@@ -407,6 +407,14 @@ export class TablesService {
   // nunca existiu), trata como mesa realmente livre agora — entra direto.
   private static readonly RECENTLY_ENDED_WINDOW_MINUTES = 2;
 
+  async getTableInfo(qrCodeToken: string): Promise<{ locationId: string }> {
+    const table = await this.tableRepo.findOne({ where: { qrCodeToken, isActive: true } });
+    if (!table) {
+      throw new NotFoundException('Mesa não encontrada ou QR code inválido.');
+    }
+    return { locationId: table.locationId };
+  }
+
   async getCurrentSession(
     qrCodeToken: string,
   ): Promise<{ session: TableSession | null; recentlyEnded: boolean }> {

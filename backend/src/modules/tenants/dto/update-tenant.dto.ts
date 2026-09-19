@@ -33,6 +33,32 @@ export class UpdateTenantDto {
   @IsString()
   instagramHandle?: string;
 
+  // Redes sociais adicionais (18/09) — mesmo padrão do Instagram, vazio
+  // ("") é tratado como "remover" (ver TenantsService.update).
+  @IsOptional()
+  @IsString()
+  youtubeUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  facebookUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  tiktokHandle?: string;
+
+  @IsOptional()
+  @IsString()
+  twitterHandle?: string;
+
+  @IsOptional()
+  @IsString()
+  telegramUsername?: string;
+
+  @IsOptional()
+  @IsString()
+  messengerUsername?: string;
+
   // whatsappNumber, address, isOpen, openingHours, delivery*,
   // minOrderValue: tudo isso agora é por Location (loja física), não
   // por Tenant (marca) — ver modules/locations. Endereço continua sem

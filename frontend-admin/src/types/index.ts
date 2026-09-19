@@ -14,6 +14,12 @@ export interface Tenant {
   primaryColor: string;
   secondaryColor: string;
   instagramHandle: string | null;
+  youtubeUrl: string | null;
+  facebookUrl: string | null;
+  tiktokHandle: string | null;
+  twitterHandle: string | null;
+  telegramUsername: string | null;
+  messengerUsername: string | null;
   pixKeyType: string | null;
   pixKey: string | null;
   pixMerchantCity: string | null;

@@ -6,6 +6,18 @@ function storageKey(tenantId: string): string {
   return `cardapio_selected_location_${tenantId}`;
 }
 
+// Standalone, fora do hook — usado por telas que precisam corrigir
+// qual loja está selecionada ANTES de navegar pro cardápio genérico
+// (ex: TableSessionGate, quando não consegue abrir uma mesa e manda o
+// cliente pro cardápio geral — sem isso, cairia na última loja
+// escolhida manualmente antes, que pode ser uma filial completamente
+// diferente da que o cliente está fisicamente na frente agora). O
+// cardápio genérico lê esse mesmo localStorage sozinho ao montar, via
+// `useSelectedLocation` abaixo — não precisa reagir na hora aqui.
+export function presetSelectedLocationId(tenantId: string, locationId: string) {
+  localStorage.setItem(storageKey(tenantId), locationId);
+}
+
 // Guarda qual loja o cliente escolheu (balcão/entrega) — persistido no
 // localStorage, sobrevive fechar e reabrir o navegador. Mesa não usa
 // isso: resolve sozinha pela mesa escaneada, sem escolha nenhuma.

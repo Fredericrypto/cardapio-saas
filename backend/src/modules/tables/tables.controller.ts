@@ -179,6 +179,19 @@ export class TablesController {
     };
   }
 
+  // Pedido do Felipe (18/09): quando o app não consegue abrir a mesa
+  // (erro de rede, mesa bloqueada, etc) e o cliente vai pro "cardápio
+  // geral", esse cardápio precisa saber de qual LOJA — sem isso, ele
+  // caía na última loja escolhida manualmente antes (localStorage), que
+  // podia ser uma filial completamente diferente da que o cliente está
+  // fisicamente na frente agora. Esse endpoint só faz UMA consulta,
+  // direto na mesa pelo token — nunca toca sessão nem depende dela
+  // existir, então continua funcionando mesmo quando o resto falha.
+  @Get('table-sessions/public/table-info/:qrCodeToken')
+  async getTableInfo(@Param('qrCodeToken') qrCodeToken: string) {
+    return this.tablesService.getTableInfo(qrCodeToken);
+  }
+
   // "Minha Conta": tenantId vem resolvido no frontend a partir da própria
   // sessão retornada pelo scan (a sessão já carrega o tenantId).
   @Get('table-sessions/public/:tenantId/:sessionId/summary')

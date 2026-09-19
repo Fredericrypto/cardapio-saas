@@ -4,6 +4,8 @@ import { useTableSession, getActiveMesaToken } from '../hooks/useTableSession';
 import { TableSessionProvider } from '../contexts/TableSessionContext';
 import { TableSessionTimer } from './TableSessionTimer';
 import { useTenant } from '../contexts/TenantContext';
+import { fetchTableInfo } from '../lib/menu-api';
+import { presetSelectedLocationId } from '../hooks/useSelectedLocation';
 import { QrCode, Users } from 'lucide-react';
 import { BUILD_VERSION } from '../buildInfo';
 
@@ -45,6 +47,25 @@ export function TableSessionGate({ children }: { children: ReactNode }) {
     recheckExpiry,
   } = useTableSession(slug, qrCodeToken);
 
+  // Pedido do Felipe (18/09): antes de mandar pro cardápio genérico,
+  // corrige qual loja está selecionada pra ser a da MESA que o cliente
+  // acabou de tentar abrir — sem isso, cai na última loja escolhida
+  // manualmente antes (localStorage), que pode ser uma filial
+  // diferente da que o cliente está fisicamente na frente agora. Se
+  // essa consulta falhar por qualquer motivo, ainda assim navega — não
+  // trava o cliente numa tela de erro por causa dessa correção.
+  async function goToGeneralMenu() {
+    try {
+      if (tenant && qrCodeToken) {
+        const { locationId } = await fetchTableInfo(qrCodeToken);
+        presetSelectedLocationId(tenant.id, locationId);
+      }
+    } catch {
+      // segue o baile — pior caso, cai na loja que já estava selecionada.
+    }
+    navigate(`/${slug}`);
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-gray-50">
@@ -69,7 +90,7 @@ export function TableSessionGate({ children }: { children: ReactNode }) {
         <p className="text-sm text-gray-500 max-w-xs">{error}</p>
         <button
           onClick={() =>
-            navigate(hasKnownActiveMesa ? `/${slug}/mesa/${knownActiveToken}` : `/${slug}`)
+            hasKnownActiveMesa ? navigate(`/${slug}/mesa/${knownActiveToken}`) : goToGeneralMenu()
           }
           style={{ backgroundColor: primaryColor }}
           className="py-3 px-6 rounded-xl text-white text-sm font-semibold shadow-sm"
@@ -128,7 +149,7 @@ export function TableSessionGate({ children }: { children: ReactNode }) {
           </p>
         </div>
         <button
-          onClick={() => navigate(`/${slug}`)}
+          onClick={goToGeneralMenu}
           style={{ backgroundColor: primaryColor }}
           className="py-3 px-6 rounded-xl text-white text-sm font-semibold shadow-sm"
         >

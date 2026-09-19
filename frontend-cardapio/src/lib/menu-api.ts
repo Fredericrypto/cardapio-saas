@@ -132,6 +132,17 @@ export async function quoteDeliveryFee(
 
 // ---------- Fluxo de mesa (QR code) ----------
 
+// Pedido do Felipe (18/09): usado só quando o app precisa saber de
+// qual LOJA uma mesa é, mesmo sem conseguir abrir a sessão dela (erro
+// de rede, mesa bloqueada) — pra mandar o cliente pro cardápio geral
+// da loja CERTA em vez de uma escolhida antes por engano.
+export async function fetchTableInfo(qrCodeToken: string): Promise<{ locationId: string }> {
+  const { data } = await api.get<{ locationId: string }>(
+    `/table-sessions/public/table-info/${qrCodeToken}`,
+  );
+  return data;
+}
+
 // Abre (ou entra em) a sessão da mesa. Idempotente: se já existe uma
 // sessão aberta pra essa mesa, o backend devolve a mesma sessão.
 // customerToken é opcional (convidado sem conta continua funcionando

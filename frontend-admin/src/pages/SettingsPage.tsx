@@ -11,6 +11,12 @@ export function SettingsPage() {
   const { tenant, updateTenant } = useAuth();
   const [name, setName] = useState(tenant?.name ?? '');
   const [instagramHandle, setInstagramHandle] = useState(tenant?.instagramHandle ?? '');
+  const [youtubeUrl, setYoutubeUrl] = useState(tenant?.youtubeUrl ?? '');
+  const [facebookUrl, setFacebookUrl] = useState(tenant?.facebookUrl ?? '');
+  const [tiktokHandle, setTiktokHandle] = useState(tenant?.tiktokHandle ?? '');
+  const [twitterHandle, setTwitterHandle] = useState(tenant?.twitterHandle ?? '');
+  const [telegramUsername, setTelegramUsername] = useState(tenant?.telegramUsername ?? '');
+  const [messengerUsername, setMessengerUsername] = useState(tenant?.messengerUsername ?? '');
   const [primaryColor, setPrimaryColor] = useState(tenant?.primaryColor ?? '#E63946');
   const [secondaryColor, setSecondaryColor] = useState(tenant?.secondaryColor ?? '#1D3557');
   const [pixKeyType, setPixKeyType] = useState(tenant?.pixKeyType ?? '');
@@ -40,6 +46,12 @@ export function SettingsPage() {
     hasHydratedRef.current = true;
     setName(tenant.name ?? '');
     setInstagramHandle(tenant.instagramHandle ?? '');
+    setYoutubeUrl(tenant.youtubeUrl ?? '');
+    setFacebookUrl(tenant.facebookUrl ?? '');
+    setTiktokHandle(tenant.tiktokHandle ?? '');
+    setTwitterHandle(tenant.twitterHandle ?? '');
+    setTelegramUsername(tenant.telegramUsername ?? '');
+    setMessengerUsername(tenant.messengerUsername ?? '');
     setPrimaryColor(tenant.primaryColor ?? '#E63946');
     setSecondaryColor(tenant.secondaryColor ?? '#1D3557');
     setPixKeyType(tenant.pixKeyType ?? '');
@@ -89,6 +101,12 @@ export function SettingsPage() {
       const updated = await updateMyTenant({
         name,
         instagramHandle: instagramHandle || undefined,
+        youtubeUrl: youtubeUrl || undefined,
+        facebookUrl: facebookUrl || undefined,
+        tiktokHandle: tiktokHandle || undefined,
+        twitterHandle: twitterHandle || undefined,
+        telegramUsername: telegramUsername || undefined,
+        messengerUsername: messengerUsername || undefined,
         primaryColor,
         secondaryColor,
         pixKeyType: pixKeyType || undefined,
@@ -197,6 +215,76 @@ export function SettingsPage() {
             <input
               value={instagramHandle}
               onChange={(e) => setInstagramHandle(e.target.value.replace(/^@/, ''))}
+              placeholder="seu.restaurante"
+              className="flex-1 py-2.5 pr-3 text-sm outline-none min-w-0"
+            />
+          </div>
+        </Field>
+
+        {/* Pedido do Felipe (18/09): redes sociais adicionais, cada uma
+            opcional — o ícone só aparece pro cliente final quando o
+            campo está preenchido aqui, então "escolher quais usar" é
+            simplesmente preencher (ou deixar vazio) cada uma. */}
+        <Field label="Facebook (link da página)">
+          <input
+            value={facebookUrl}
+            onChange={(e) => setFacebookUrl(e.target.value)}
+            placeholder="https://facebook.com/seu.restaurante"
+            className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none w-full"
+          />
+        </Field>
+
+        <Field label="YouTube (link do canal)">
+          <input
+            value={youtubeUrl}
+            onChange={(e) => setYoutubeUrl(e.target.value)}
+            placeholder="https://youtube.com/@seu.restaurante"
+            className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none w-full"
+          />
+        </Field>
+
+        <Field label="TikTok">
+          <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
+            <span className="pl-3 text-sm text-gray-400 select-none">tiktok.com/@</span>
+            <input
+              value={tiktokHandle}
+              onChange={(e) => setTiktokHandle(e.target.value.replace(/^@/, ''))}
+              placeholder="seu.restaurante"
+              className="flex-1 py-2.5 pr-3 text-sm outline-none min-w-0"
+            />
+          </div>
+        </Field>
+
+        <Field label="X (Twitter)">
+          <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
+            <span className="pl-3 text-sm text-gray-400 select-none">x.com/</span>
+            <input
+              value={twitterHandle}
+              onChange={(e) => setTwitterHandle(e.target.value.replace(/^@/, ''))}
+              placeholder="seu.restaurante"
+              className="flex-1 py-2.5 pr-3 text-sm outline-none min-w-0"
+            />
+          </div>
+        </Field>
+
+        <Field label="Telegram">
+          <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
+            <span className="pl-3 text-sm text-gray-400 select-none">t.me/</span>
+            <input
+              value={telegramUsername}
+              onChange={(e) => setTelegramUsername(e.target.value.replace(/^@/, ''))}
+              placeholder="seu_restaurante"
+              className="flex-1 py-2.5 pr-3 text-sm outline-none min-w-0"
+            />
+          </div>
+        </Field>
+
+        <Field label="Messenger">
+          <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
+            <span className="pl-3 text-sm text-gray-400 select-none">m.me/</span>
+            <input
+              value={messengerUsername}
+              onChange={(e) => setMessengerUsername(e.target.value.replace(/^@/, ''))}
               placeholder="seu.restaurante"
               className="flex-1 py-2.5 pr-3 text-sm outline-none min-w-0"
             />

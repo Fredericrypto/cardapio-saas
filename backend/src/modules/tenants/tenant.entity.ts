@@ -35,6 +35,34 @@ export class Tenant {
   @Column({ name: 'instagram_handle', type: 'varchar', length: 100, nullable: true })
   instagramHandle: string | null;
 
+  // Redes sociais adicionais (18/09, pedido do Felipe) — mesmo
+  // raciocínio do Instagram: fica no nível do TENANT (marca), não da
+  // loja/location, porque normalmente é UM canal/perfil só pra toda a
+  // rede, ao contrário do WhatsApp (esse sim por loja, cada filial tem
+  // seu próprio número). YouTube e Facebook variam demais em formato de
+  // URL (canal, @handle, /c/, página com nome) pra valer a pena tentar
+  // montar a URL a partir só de um "handle" como o Instagram — guarda a
+  // URL completa que o admin colar. Os outros (handle-based) seguem o
+  // mesmo padrão do Instagram: só o usuário, sem @ nem URL, a URL final
+  // é montada no frontend (ver socialLinks.ts).
+  @Column({ name: 'youtube_url', type: 'varchar', length: 300, nullable: true })
+  youtubeUrl: string | null;
+
+  @Column({ name: 'facebook_url', type: 'varchar', length: 300, nullable: true })
+  facebookUrl: string | null;
+
+  @Column({ name: 'tiktok_handle', type: 'varchar', length: 100, nullable: true })
+  tiktokHandle: string | null;
+
+  @Column({ name: 'twitter_handle', type: 'varchar', length: 100, nullable: true })
+  twitterHandle: string | null;
+
+  @Column({ name: 'telegram_username', type: 'varchar', length: 100, nullable: true })
+  telegramUsername: string | null;
+
+  @Column({ name: 'messenger_username', type: 'varchar', length: 100, nullable: true })
+  messengerUsername: string | null;
+
   @Column({ length: 20, default: 'trial' })
   plan: string; // trial, basico, pro
 

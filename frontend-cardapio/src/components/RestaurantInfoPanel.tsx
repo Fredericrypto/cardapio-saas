@@ -2,8 +2,26 @@ import { useState } from 'react';
 import { ChevronDown, MapPin, Clock } from 'lucide-react';
 import type { Tenant, Location } from '../types';
 import { getWeekScheduleLines } from '../lib/openingHours';
-import { WhatsAppIcon, InstagramIcon } from './BrandIcons';
-import { buildWhatsappLink, buildInstagramLink } from '../lib/socialLinks';
+import {
+  WhatsAppIcon,
+  InstagramIcon,
+  YoutubeIcon,
+  FacebookIcon,
+  TikTokIcon,
+  TwitterXIcon,
+  TelegramIcon,
+  MessengerIcon,
+} from './BrandIcons';
+import {
+  buildWhatsappLink,
+  buildInstagramLink,
+  buildYoutubeLink,
+  buildFacebookLink,
+  buildTiktokLink,
+  buildTwitterLink,
+  buildTelegramLink,
+  buildMessengerLink,
+} from '../lib/socialLinks';
 
 interface RestaurantInfoPanelProps {
   tenant: Tenant;
@@ -25,7 +43,15 @@ export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelPro
   const [expanded, setExpanded] = useState(false);
   const weekSchedule = getWeekScheduleLines(location?.openingHours ?? null);
 
-  const hasSocialLinks = Boolean(location?.whatsappNumber) || Boolean(tenant.instagramHandle);
+  const hasSocialLinks =
+    Boolean(location?.whatsappNumber) ||
+    Boolean(tenant.instagramHandle) ||
+    Boolean(tenant.youtubeUrl) ||
+    Boolean(tenant.facebookUrl) ||
+    Boolean(tenant.tiktokHandle) ||
+    Boolean(tenant.twitterHandle) ||
+    Boolean(tenant.telegramUsername) ||
+    Boolean(tenant.messengerUsername);
   const hasCollapsibleInfo = Boolean(location?.address) || Boolean(weekSchedule);
 
   if (!hasSocialLinks && !hasCollapsibleInfo) return null;
@@ -33,32 +59,99 @@ export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelPro
   return (
     <div className="mt-3 pt-3 border-t border-gray-100 flex flex-col gap-2.5">
       {hasSocialLinks && (
-        // Pedido do Felipe (18/09): sem sublinhado, centralizado, com a
-        // cara do app — trocado de link de texto sublinhado pra
-        // "pilinhas" arredondadas, como a maioria dos apps modernos
-        // mostra contato/rede social hoje em dia.
-        <div className="flex items-center justify-center gap-2 flex-wrap">
+        // Pedido do Felipe (18/09): trocado de novo — agora só os
+        // ícones (sem número/usuário escrito do lado), maiores e mais
+        // visíveis, com a aparência oficial de cada app (ver
+        // BrandIcons.tsx). Admin escolhe quais usar simplesmente
+        // preenchendo (ou não) cada campo nas configurações — o que
+        // não foi preenchido nem aparece aqui.
+        <div className="flex items-center justify-center gap-3 flex-wrap">
           {location?.whatsappNumber && (
             <a
               href={buildWhatsappLink(location.whatsappNumber)}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 bg-gray-100 text-gray-600 text-xs font-medium px-3 py-1.5 rounded-full active:opacity-70"
+              className="active:opacity-70"
+              aria-label="WhatsApp"
             >
-              <WhatsAppIcon size={13} className="shrink-0" />
-              {location.whatsappNumber}
+              <WhatsAppIcon size={30} />
             </a>
           )}
-
           {tenant.instagramHandle && (
             <a
               href={buildInstagramLink(tenant.instagramHandle)}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 bg-gray-100 text-gray-600 text-xs font-medium px-3 py-1.5 rounded-full active:opacity-70"
+              className="active:opacity-70"
+              aria-label="Instagram"
             >
-              <InstagramIcon size={13} className="shrink-0" />
-              @{tenant.instagramHandle.replace(/^@/, '')}
+              <InstagramIcon size={30} />
+            </a>
+          )}
+          {tenant.facebookUrl && (
+            <a
+              href={buildFacebookLink(tenant.facebookUrl)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="active:opacity-70"
+              aria-label="Facebook"
+            >
+              <FacebookIcon size={30} />
+            </a>
+          )}
+          {tenant.youtubeUrl && (
+            <a
+              href={buildYoutubeLink(tenant.youtubeUrl)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="active:opacity-70"
+              aria-label="YouTube"
+            >
+              <YoutubeIcon size={30} />
+            </a>
+          )}
+          {tenant.tiktokHandle && (
+            <a
+              href={buildTiktokLink(tenant.tiktokHandle)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="active:opacity-70"
+              aria-label="TikTok"
+            >
+              <TikTokIcon size={30} />
+            </a>
+          )}
+          {tenant.twitterHandle && (
+            <a
+              href={buildTwitterLink(tenant.twitterHandle)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="active:opacity-70"
+              aria-label="X (Twitter)"
+            >
+              <TwitterXIcon size={30} />
+            </a>
+          )}
+          {tenant.telegramUsername && (
+            <a
+              href={buildTelegramLink(tenant.telegramUsername)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="active:opacity-70"
+              aria-label="Telegram"
+            >
+              <TelegramIcon size={30} />
+            </a>
+          )}
+          {tenant.messengerUsername && (
+            <a
+              href={buildMessengerLink(tenant.messengerUsername)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="active:opacity-70"
+              aria-label="Messenger"
+            >
+              <MessengerIcon size={30} />
             </a>
           )}
         </div>

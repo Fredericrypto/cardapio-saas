@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getCurrentTableSession, scanTableQrCode } from '../lib/menu-api';
+import { getCurrentTableSession, scanTableQrCode, fetchTableInfo } from '../lib/menu-api';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
+import { useTenant } from '../contexts/TenantContext';
+import { presetSelectedLocationId } from './useSelectedLocation';
 import type { TableSession } from '../types';
 
 // `mesa_ativa_{slug}`: usado SÓ como conveniência pra montar o link do
@@ -38,6 +40,7 @@ export function clearActiveMesaTokenForSlug(slug: string) {
 // tempo (ou nunca existiu) = mesa genuinamente livre, entra direto.
 export function useTableSession(slug: string | undefined, qrCodeToken: string | undefined) {
   const { token: customerToken, isLoading: isAuthLoading } = useCustomerAuth();
+  const { tenant } = useTenant();
   const navigate = useNavigate();
   const [session, setSession] = useState<TableSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -136,10 +139,22 @@ export function useTableSession(slug: string | undefined, qrCodeToken: string | 
     }
   }, [pendingJoinToken, doJoin]);
 
-  const declineJoinExisting = useCallback(() => {
+  const declineJoinExisting = useCallback(async () => {
     setPendingJoinToken(null);
+    // Pedido do Felipe (18/09): mesmo raciocínio do TableSessionGate —
+    // corrige a loja selecionada pra ser a dessa mesa antes de mandar
+    // pro cardápio geral, em vez de deixar cair numa loja escolhida
+    // antes por engano.
+    try {
+      if (tenant && qrCodeToken) {
+        const { locationId } = await fetchTableInfo(qrCodeToken);
+        presetSelectedLocationId(tenant.id, locationId);
+      }
+    } catch {
+      // segue o baile — pior caso, cai na loja que já estava selecionada.
+    }
     if (slug) navigate(`/${slug}`);
-  }, [slug, navigate]);
+  }, [slug, navigate, tenant, qrCodeToken]);
 
   // Reconfere no backend (fonte da verdade) se a sessão ainda está
   // ativa — usado pelo timer quando o prazo estoura, e pela varredura

@@ -19,3 +19,55 @@ export function buildInstagramLink(rawHandle: string): string {
     .replace(/\/+$/, '');
   return `https://instagram.com/${handle}`;
 }
+
+// Pedido do Felipe (18/09) — mesmo raciocínio do Instagram (aceita
+// handle puro, @handle ou a URL inteira colada por engano, sempre
+// normaliza pra URL final). YouTube e Facebook são URL completa salva
+// direto (formato varia demais — canal, @handle, /c/, página — pra
+// valer montar a partir só de um "usuário"), então só garantem o
+// protocolo https:// se faltar.
+export function buildYoutubeLink(rawUrl: string): string {
+  const url = rawUrl.trim();
+  return /^https?:\/\//i.test(url) ? url : `https://${url}`;
+}
+
+export function buildFacebookLink(rawUrl: string): string {
+  const url = rawUrl.trim();
+  return /^https?:\/\//i.test(url) ? url : `https://${url}`;
+}
+
+export function buildTiktokLink(rawHandle: string): string {
+  const handle = rawHandle
+    .trim()
+    .replace(/^https?:\/\/(www\.)?tiktok\.com\//i, '')
+    .replace(/^@/, '')
+    .replace(/\/+$/, '');
+  return `https://tiktok.com/@${handle}`;
+}
+
+export function buildTwitterLink(rawHandle: string): string {
+  const handle = rawHandle
+    .trim()
+    .replace(/^https?:\/\/(www\.)?(twitter|x)\.com\//i, '')
+    .replace(/^@/, '')
+    .replace(/\/+$/, '');
+  return `https://x.com/${handle}`;
+}
+
+export function buildTelegramLink(rawUsername: string): string {
+  const username = rawUsername
+    .trim()
+    .replace(/^https?:\/\/(www\.)?t\.me\//i, '')
+    .replace(/^@/, '')
+    .replace(/\/+$/, '');
+  return `https://t.me/${username}`;
+}
+
+export function buildMessengerLink(rawUsername: string): string {
+  const username = rawUsername
+    .trim()
+    .replace(/^https?:\/\/(www\.)?m\.me\//i, '')
+    .replace(/^@/, '')
+    .replace(/\/+$/, '');
+  return `https://m.me/${username}`;
+}
