@@ -9,6 +9,17 @@ export class UpdateLocationDto {
   @IsString()
   whatsappNumber?: string;
 
+  // Pedido do Felipe (19/09): Telegram e telefone de contato "puro"
+  // agora são por LOJA, mesmo raciocínio do WhatsApp (cada filial tem
+  // seu próprio número/contato).
+  @IsOptional()
+  @IsString()
+  telegramUsername?: string;
+
+  @IsOptional()
+  @IsString()
+  contactPhoneNumber?: string;
+
   // address NÃO está aqui de propósito, mesmo motivo do Tenant antes —
   // só muda via PATCH /locations/me/:id/location (geocodificação).
 

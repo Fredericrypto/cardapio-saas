@@ -7,6 +7,7 @@ import {
   Body,
   Param,
   UseGuards,
+  Header,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
@@ -21,12 +22,17 @@ export class LocationsController {
 
   // Pública: tela de escolha de loja no cardápio do cliente, antes de
   // ver o menu (igual McDonald's — mostra todas as filiais pra escolher).
+  // Mesmo raciocínio do `no-store` em TenantsController.findPublicBySlug
+  // (19/09) — WhatsApp/endereço/horário mudam a qualquer momento, nunca
+  // deveria ficar preso num cache de navegador.
   @Get('public/:tenantId')
+  @Header('Cache-Control', 'no-store')
   async findAllPublic(@Param('tenantId') tenantId: string) {
     return this.locationsService.findAllPublicForTenant(tenantId);
   }
 
   @Get('public/:tenantId/:id')
+  @Header('Cache-Control', 'no-store')
   async findOnePublic(@Param('tenantId') tenantId: string, @Param('id') id: string) {
     return this.locationsService.findOnePublic(tenantId, id);
   }

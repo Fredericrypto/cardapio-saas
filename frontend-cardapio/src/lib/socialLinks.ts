@@ -71,3 +71,20 @@ export function buildMessengerLink(rawUsername: string): string {
     .replace(/\/+$/, '');
   return `https://m.me/${username}`;
 }
+
+// Pedido do Felipe (19/09) — Gmail: `mailto:` abre o app de e-mail
+// PADRÃO do aparelho (o que estiver configurado como default), o que
+// é mais universal do que tentar forçar a interface web do Gmail
+// especificamente (só funciona bem já logado num navegador, quebra em
+// apps nativos de e-mail). Telefone de contato: `tel:` abre o discador
+// nativo, funciona em qualquer aparelho.
+export function buildGmailLink(rawEmail: string): string {
+  return `mailto:${rawEmail.trim()}`;
+}
+
+export function buildPhoneLink(rawPhone: string): string {
+  // Só dígitos e o "+" do código de país, se tiver — `tel:` não lida
+  // bem com parênteses/hífen/espaço em todos os aparelhos.
+  const digits = rawPhone.trim().replace(/[^\d+]/g, '');
+  return `tel:${digits}`;
+}

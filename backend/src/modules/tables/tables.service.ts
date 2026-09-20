@@ -472,12 +472,22 @@ export class TablesService {
     return true;
   }
 
-  // Varredura periódica — pega sessões que passaram do prazo mesmo que
-  // NINGUÉM tenha revisitado a página (ex: cliente escaneou, nunca mais
-  // voltou nem no app nem fisicamente) — sem isso, o painel do admin
-  // mostraria essa mesa como "aberta há 3 horas" indefinidamente, mesmo
-  // já tendo estourado o prazo configurado há muito tempo.
-  @Cron(CronExpression.EVERY_5_MINUTES)
+  // Pedido do Felipe (19/09): reflexo em tempo real no painel do admin
+  // do prazo estourado, mesmo que o cliente feche o app/navegador ou
+  // deixe em segundo plano — o painel não pode depender do celular do
+  // cliente estar aberto pra saber que a mesa expirou. Reduzido de 5
+  // minutos pra 1 minuto (o menor intervalo que ainda é razoável sem
+  // sobrecarregar o banco). IMPORTANTE: isso só roda enquanto o
+  // processo do backend estiver de pé — no plano grátis do Render, o
+  // serviço "dorme" depois de um tempo sem nenhuma requisição chegando,
+  // e um cron job NÃO roda com o processo dormindo. Pra esse cenário
+  // (ninguém — nem cliente nem admin — acessa o app por muitos minutos
+  // seguidos) funcionar de ponta a ponta de verdade, ainda falta manter
+  // o servidor acordado por fora (ex: um serviço grátis tipo UptimeRobot
+  // pingando a cada poucos minutos) ou fazer upgrade do plano — nenhuma
+  // mudança só de código resolve isso sozinha enquanto o processo
+  // simplesmente não está rodando.
+  @Cron(CronExpression.EVERY_MINUTE)
   async sweepExpiredSessions(): Promise<void> {
     const openSessions = await this.sessionRepo.find({
       where: { status: 'aberta', closedAt: IsNull() },

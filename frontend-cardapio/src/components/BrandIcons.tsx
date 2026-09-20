@@ -33,12 +33,18 @@ export function InstagramIcon({ size = 22, className }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 48 48" className={className}>
       <defs>
-        <radialGradient id={gradId} cx="30%" cy="107%" r="150%">
+        {/* Pedido do Felipe (19/09): degradê atualizado — mais próximo
+            do degradê oficial atual (amarelo canto inferior esquerdo
+            até roxo/azul no canto superior direito, passando por
+            laranja/rosa/magenta no meio). */}
+        <linearGradient id={gradId} x1="0%" y1="100%" x2="100%" y2="0%">
           <stop offset="0" stopColor="#FFDD55" />
-          <stop offset="0.1" stopColor="#FFDD55" />
-          <stop offset="0.5" stopColor="#FF543E" />
-          <stop offset="1" stopColor="#C837AB" />
-        </radialGradient>
+          <stop offset="0.15" stopColor="#FF9A3E" />
+          <stop offset="0.35" stopColor="#FD5949" />
+          <stop offset="0.6" stopColor="#D6249F" />
+          <stop offset="0.8" stopColor="#A930C9" />
+          <stop offset="1" stopColor="#6B5FE0" />
+        </linearGradient>
       </defs>
       <rect width="48" height="48" rx="13" fill={`url(#${gradId})`} />
       <rect x="14" y="14" width="20" height="20" rx="6" fill="none" stroke="#fff" strokeWidth="2.2" />
@@ -49,9 +55,18 @@ export function InstagramIcon({ size = 22, className }: IconProps) {
 }
 
 export function YoutubeIcon({ size = 22, className }: IconProps) {
+  const gradId = 'yt-grad';
   return (
     <svg width={size} height={size} viewBox="0 0 48 48" className={className}>
-      <rect width="48" height="48" rx="12" fill="#FF0000" />
+      <defs>
+        {/* Pedido do Felipe (19/09): cor nova do YouTube — do vermelho
+            pro magenta, degradê leve em vez do vermelho sólido antigo. */}
+        <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0" stopColor="#FF0000" />
+          <stop offset="1" stopColor="#FF0068" />
+        </linearGradient>
+      </defs>
+      <rect width="48" height="48" rx="12" fill={`url(#${gradId})`} />
       <path d="M20 17l12 7-12 7V17z" fill="#fff" />
     </svg>
   );
@@ -117,10 +132,13 @@ export function MessengerIcon({ size = 22, className }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 48 48" className={className}>
       <defs>
-        <linearGradient id={gradId} x1="0" y1="48" x2="48" y2="0">
-          <stop offset="0" stopColor="#0099FF" />
-          <stop offset="0.6" stopColor="#A033FF" />
-          <stop offset="1" stopColor="#FF5280" />
+        {/* Pedido do Felipe (19/09): degradê atualizado — azul no
+            canto inferior esquerdo até rosa/roxo no canto superior
+            direito, mais vívido que a versão anterior. */}
+        <linearGradient id={gradId} x1="0%" y1="100%" x2="100%" y2="0%">
+          <stop offset="0" stopColor="#00B2FF" />
+          <stop offset="0.5" stopColor="#B620E0" />
+          <stop offset="1" stopColor="#F94879" />
         </linearGradient>
       </defs>
       <circle cx="24" cy="24" r="24" fill={`url(#${gradId})`} />
@@ -129,6 +147,20 @@ export function MessengerIcon({ size = 22, className }: IconProps) {
         fill="#fff"
       />
       <path d="M17.5 27.3l4.3-4.6 3.4 3 4.3-4.6-4.9 8.9-3.5-3-4.6 4.6z" fill={`url(#${gradId})`} />
+    </svg>
+  );
+}
+
+export function GmailIcon({ size = 22, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 48 48" className={className}>
+      <rect width="48" height="48" rx="12" fill="#fff" stroke="#E5E7EB" strokeWidth="1" />
+      <path d="M11 15.5v17a1.5 1.5 0 0 0 1.5 1.5H15V19.8L24 26l9-6.2V34h2.5A1.5 1.5 0 0 0 37 32.5v-17c0-1.6-1.8-2.6-3.2-1.7L24 20l-9.8-6.2c-1.4-.9-3.2.1-3.2 1.7z" fill="#EA4335" />
+      <path d="M11 15.5c0-1.6 1.8-2.6 3.2-1.7L15 14.3V19.8L11 17V15.5z" fill="#C5221F" />
+      <path d="M37 15.5c0-1.6-1.8-2.6-3.2-1.7L33 14.3V19.8L37 17V15.5z" fill="#C5221F" />
+      <path d="M15 14.3v19.7h-2.5A1.5 1.5 0 0 1 11 32.5v-15.3l4 2.6v-5.5z" fill="#4285F4" />
+      <path d="M33 14.3v19.7h2.5A1.5 1.5 0 0 0 37 32.5v-15.3l-4 2.6v-5.5z" fill="#34A853" />
+      <path d="M15 19.8l9 6.2 9-6.2v-5.5l-9 6.2-9-6.2v5.5z" fill="#FBBC05" />
     </svg>
   );
 }

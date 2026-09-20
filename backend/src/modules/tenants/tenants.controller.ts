@@ -8,6 +8,7 @@ import {
   UseGuards,
   UseInterceptors,
   UploadedFile,
+  Header,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -44,6 +45,15 @@ export class TenantsController {
   // a loja antes de ver o cardápio, e é a location escolhida que
   // responde por isso.
   @Get('public/:slug')
+  // BUG REAL SUSPEITO (19/09): ícones de rede social apareciam no
+  // cardápio genérico mas não no fluxo de mesa, mesmo os dois usando
+  // exatamente o mesmo componente/dados — o padrão bate com o
+  // navegador guardando em cache uma resposta ANTIGA (de antes dessas
+  // colunas existirem) dessa rota específica, já que nada aqui dizia
+  // pro navegador pra nunca cachear. Dados do restaurante podem mudar
+  // a qualquer momento (o admin acabou de salvar uma rede nova, por
+  // exemplo) — nunca devia ser cacheável pra começo de conversa.
+  @Header('Cache-Control', 'no-store')
   async findPublicBySlug(@Param('slug') slug: string) {
     const tenant = await this.tenantsService.findBySlug(slug);
     return toSafeTenant(tenant);

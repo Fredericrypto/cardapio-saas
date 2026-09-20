@@ -1,6 +1,7 @@
 import {
   IsString,
   IsOptional,
+  IsEmail,
   IsBoolean,
   IsInt,
   Min,
@@ -53,11 +54,11 @@ export class UpdateTenantDto {
 
   @IsOptional()
   @IsString()
-  telegramUsername?: string;
+  messengerUsername?: string;
 
   @IsOptional()
-  @IsString()
-  messengerUsername?: string;
+  @IsEmail()
+  gmailAddress?: string;
 
   // whatsappNumber, address, isOpen, openingHours, delivery*,
   // minOrderValue: tudo isso agora é por Location (loja física), não

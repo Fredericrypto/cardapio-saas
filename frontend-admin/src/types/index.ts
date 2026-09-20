@@ -18,8 +18,8 @@ export interface Tenant {
   facebookUrl: string | null;
   tiktokHandle: string | null;
   twitterHandle: string | null;
-  telegramUsername: string | null;
   messengerUsername: string | null;
+  gmailAddress: string | null;
   pixKeyType: string | null;
   pixKey: string | null;
   pixMerchantCity: string | null;
@@ -36,6 +36,8 @@ export interface Location {
   tenantId: string;
   name: string;
   whatsappNumber: string | null;
+  telegramUsername: string | null;
+  contactPhoneNumber: string | null;
   address: string | null;
   latitude: number | null;
   longitude: number | null;

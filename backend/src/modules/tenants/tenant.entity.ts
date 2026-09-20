@@ -57,11 +57,16 @@ export class Tenant {
   @Column({ name: 'twitter_handle', type: 'varchar', length: 100, nullable: true })
   twitterHandle: string | null;
 
-  @Column({ name: 'telegram_username', type: 'varchar', length: 100, nullable: true })
-  telegramUsername: string | null;
-
   @Column({ name: 'messenger_username', type: 'varchar', length: 100, nullable: true })
   messengerUsername: string | null;
+
+  // Pedido do Felipe (19/09): "esqueci de pedir" — mesmo padrão das
+  // outras redes (nível de tenant, opcional). Guarda o e-mail puro; o
+  // link final é um `mailto:` (abre o app de e-mail padrão do
+  // aparelho — mais universal do que forçar a interface web do Gmail
+  // especificamente, que só funciona bem em navegador logado).
+  @Column({ name: 'gmail_address', type: 'varchar', length: 200, nullable: true })
+  gmailAddress: string | null;
 
   @Column({ length: 20, default: 'trial' })
   plan: string; // trial, basico, pro

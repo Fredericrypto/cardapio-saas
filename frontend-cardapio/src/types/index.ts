@@ -11,8 +11,8 @@ export interface Tenant {
   facebookUrl: string | null;
   tiktokHandle: string | null;
   twitterHandle: string | null;
-  telegramUsername: string | null;
   messengerUsername: string | null;
+  gmailAddress: string | null;
   pixEnabled: boolean;
 }
 
@@ -24,6 +24,10 @@ export interface Location {
   tenantId: string;
   name: string;
   whatsappNumber: string | null;
+  // Pedido do Felipe (19/09): Telegram e telefone de contato passam a
+  // ser por LOJA, não por marca — mesmo raciocínio do WhatsApp.
+  telegramUsername: string | null;
+  contactPhoneNumber: string | null;
   address: string | null;
   latitude: number | null;
   longitude: number | null;

@@ -319,13 +319,13 @@ export function MenuPage() {
       )}
 
       <div className={!isOpenNow ? 'grayscale opacity-70 pointer-events-none select-none' : ''}>
-        <div className="pt-3">
-          <div className="flex items-center justify-between px-4 mb-1.5">
+        <div className="pt-5 pb-1">
+          <div className="flex items-center justify-center relative px-4 mb-3">
             <p className="text-xs font-bold text-gray-500 tracking-wide">PROMOÇÕES</p>
             <button
               onClick={() => setShowPromotions((v) => !v)}
               aria-label={showPromotions ? 'Ocultar promoções' : 'Mostrar promoções'}
-              className="text-gray-300 active:text-gray-400 transition-colors p-1"
+              className="absolute right-4 text-gray-300 active:text-gray-400 transition-colors p-1"
             >
               {showPromotions ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
             </button>

@@ -39,6 +39,19 @@ export class Location {
   @Column({ name: 'whatsapp_number', type: 'varchar', length: 20, nullable: true })
   whatsappNumber: string | null;
 
+  // Pedido do Felipe (19/09): Telegram voltou de nível de TENANT pra
+  // nível de LOCATION, mesmo raciocínio do WhatsApp — cada filial física
+  // tem seu próprio número/contato, não é uma coisa só da marca inteira.
+  @Column({ name: 'telegram_username', type: 'varchar', length: 100, nullable: true })
+  telegramUsername: string | null;
+
+  // Telefone de contato "puro" (sem ser WhatsApp) — pedido do Felipe:
+  // ícone de telefone + número, numa área separada dos ícones de rede
+  // social (dentro de "Informações do estabelecimento"). Link final é
+  // `tel:`, abre o discador nativo do aparelho.
+  @Column({ name: 'contact_phone_number', type: 'varchar', length: 20, nullable: true })
+  contactPhoneNumber: string | null;
+
   @Column({ type: 'text', nullable: true })
   address: string | null;
 

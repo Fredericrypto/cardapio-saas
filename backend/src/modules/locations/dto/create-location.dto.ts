@@ -9,4 +9,12 @@ export class CreateLocationDto {
   @IsOptional()
   @IsString()
   whatsappNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  telegramUsername?: string;
+
+  @IsOptional()
+  @IsString()
+  contactPhoneNumber?: string;
 }

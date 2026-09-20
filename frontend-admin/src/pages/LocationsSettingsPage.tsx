@@ -195,6 +195,10 @@ function LocationEditor({
 }) {
   const [name, setName] = useState(location.name);
   const [whatsappNumber, setWhatsappNumber] = useState(location.whatsappNumber ?? '');
+  const [telegramUsername, setTelegramUsername] = useState(location.telegramUsername ?? '');
+  const [contactPhoneNumber, setContactPhoneNumber] = useState(
+    location.contactPhoneNumber ?? '',
+  );
   const [isOpen, setIsOpen] = useState(location.isOpen);
   const [openingHours, setOpeningHours] = useState<Record<string, DayHours>>(
     initHours(location.openingHours),
@@ -250,6 +254,8 @@ function LocationEditor({
       const updated = await updateLocation(location.id, {
         name,
         whatsappNumber: whatsappNumber || undefined,
+        telegramUsername: telegramUsername || undefined,
+        contactPhoneNumber: contactPhoneNumber || undefined,
         deliveryFee: Number(deliveryFee),
         deliveryFeePerKm: Number(deliveryFeePerKm),
         deliveryMaxRadiusKm: deliveryMaxRadiusKm ? Number(deliveryMaxRadiusKm) : undefined,
@@ -367,6 +373,35 @@ function LocationEditor({
           className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none w-full"
         />
       </Field>
+
+      {/* Pedido do Felipe (19/09): Telegram e telefone de contato
+          "puro" também são por loja agora — cada filial tem seu
+          próprio número. Agrupados junto do WhatsApp, numa seção só de
+          contato, pra ficar fácil de gerenciar todos juntos. */}
+      <div className="border-t border-gray-100 pt-4">
+        <p className="text-sm font-semibold text-gray-900 mb-3">Contato desta loja</p>
+        <div className="flex flex-col gap-3">
+          <Field label="Telegram">
+            <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
+              <span className="pl-3 text-sm text-gray-400 select-none">t.me/</span>
+              <input
+                value={telegramUsername}
+                onChange={(e) => setTelegramUsername(e.target.value.replace(/^@/, ''))}
+                placeholder="usuario_desta_loja"
+                className="flex-1 py-2.5 pr-3 text-sm outline-none min-w-0"
+              />
+            </div>
+          </Field>
+          <Field label="Telefone de contato (sem ser WhatsApp)">
+            <input
+              value={contactPhoneNumber}
+              onChange={(e) => setContactPhoneNumber(e.target.value)}
+              placeholder="(48) 3333-4444"
+              className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none w-full"
+            />
+          </Field>
+        </div>
+      </div>
 
       <div className="border-t border-gray-100 pt-4">
         <p className="text-sm font-semibold text-gray-900 mb-1 flex items-center gap-1.5">
