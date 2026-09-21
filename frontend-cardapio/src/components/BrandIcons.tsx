@@ -146,7 +146,10 @@ export function MessengerIcon({ size = 22, className }: IconProps) {
         d="M24 12c-6.9 0-12.5 5.1-12.5 11.9 0 3.6 1.6 6.8 4.2 9.1v4.5l4.1-2.2c1.3.4 2.7.6 4.2.6 6.9 0 12.5-5.1 12.5-11.9S30.9 12 24 12z"
         fill="#fff"
       />
-      <path d="M17.5 27.3l4.3-4.6 3.4 3 4.3-4.6-4.9 8.9-3.5-3-4.6 4.6z" fill={`url(#${gradId})`} />
+      {/* Raio recentralizado (19/09) — antes ficava deslocado pro
+          canto inferior esquerdo do balão em vez de centrado no corpo
+          redondo dele. */}
+      <path d="M27 11L19 21h5l-3 8 9-12h-7l3-6z" fill={`url(#${gradId})`} />
     </svg>
   );
 }

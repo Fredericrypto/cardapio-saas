@@ -31,6 +31,22 @@ interface RestaurantInfoPanelProps {
   location: Location | null;
 }
 
+// Pedido do Felipe (19/09): "Rua X, Bairro" numa linha, "Cidade: Y -
+// Estado, CEP" na outra. O endereço geocodificado sempre vem como
+// "rua, bairro, cidade, estado, CEP" (ver GeocodingService no backend)
+// — quando bate esse formato exato, separa bonito; caso venha
+// diferente (endereço digitado manualmente antes de existir
+// geocodificação, por exemplo), mostra inteiro numa linha só em vez de
+// arriscar cortar errado.
+function formatAddressLines(address: string): string[] {
+  const parts = address.split(',').map((p) => p.trim());
+  if (parts.length === 5) {
+    const [street, neighborhood, city, state, zip] = parts;
+    return [`${street}, ${neighborhood}`, `Cidade: ${city} - ${state}, ${zip}`];
+  }
+  return [address];
+}
+
 // WhatsApp e Instagram ficam sempre visíveis (não fazem sentido escondidos
 // atrás de um "ver mais" — são a forma mais rápida do cliente confirmar
 // que achou o restaurante certo, e são links tocáveis pro app de verdade).
@@ -187,22 +203,39 @@ export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelPro
           {expanded && (
             <div className="mt-3 px-2 pb-1 flex flex-col items-center gap-3 text-xs text-gray-500 text-center">
               {location?.address && (
-                <p className="flex items-start gap-1.5">
+                <div className="flex items-start gap-1.5">
                   <MapPin size={13} className="shrink-0 mt-0.5" />
-                  <span>{location.address}</span>
-                </p>
+                  {/* Pedido do Felipe (19/09): endereço em duas linhas
+                      — rua/bairro numa, cidade/estado/CEP na outra. O
+                      endereço geocodificado sempre vem nesse formato
+                      exato (rua, bairro, cidade, estado, CEP — ver
+                      GeocodingService.buildFormattedAddress no
+                      backend); se por algum motivo vier diferente
+                      (menos partes que o esperado), cai de volta pra
+                      mostrar o endereço inteiro numa linha só, sem
+                      quebrar o layout. */}
+                  <div className="flex flex-col text-left">
+                    {formatAddressLines(location.address).map((line, idx) => (
+                      <span key={idx}>{line}</span>
+                    ))}
+                  </div>
+                </div>
               )}
 
               {weekSchedule && (
-                <div className="flex items-start gap-1.5">
-                  <Clock size={13} className="shrink-0 mt-0.5" />
-                  <div className="flex flex-col gap-0.5 text-left">
-                    {weekSchedule.map((line) => (
-                      <span key={line.day}>
+                <div className="flex flex-col gap-1 text-left">
+                  {/* Pedido do Felipe (19/09): ícone de relógio em
+                      TODAS as linhas dos dias, não só uma vez pro bloco
+                      inteiro — e dia marcado como fechado (pelo admin,
+                      na aba "Lojas") aparece em vermelho. */}
+                  {weekSchedule.map((line) => (
+                    <span key={line.day} className="flex items-center gap-1.5">
+                      <Clock size={13} className="shrink-0 text-gray-400" />
+                      <span className={line.hours === 'Fechado' ? 'text-red-500 font-medium' : ''}>
                         {line.day}: {line.hours}
                       </span>
-                    ))}
-                  </div>
+                    </span>
+                  ))}
                 </div>
               )}
 

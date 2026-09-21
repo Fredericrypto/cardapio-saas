@@ -8,6 +8,7 @@ import {
   deleteLocation,
 } from '../lib/admin-api';
 import { MaskedNumberField } from '../components/MaskedNumberField';
+import { formatBrPhoneInput } from '../lib/phoneFormat';
 import type { Location } from '../types';
 
 const WEEK_DAYS: { key: string; label: string }[] = [
@@ -368,8 +369,9 @@ function LocationEditor({
       <Field label="WhatsApp desta loja">
         <input
           value={whatsappNumber}
-          onChange={(e) => setWhatsappNumber(e.target.value)}
+          onChange={(e) => setWhatsappNumber(formatBrPhoneInput(e.target.value))}
           placeholder="(48) 99999-9999"
+          inputMode="numeric"
           className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none w-full"
         />
       </Field>
@@ -392,11 +394,16 @@ function LocationEditor({
               />
             </div>
           </Field>
+          {/* Máscara igual ao WhatsApp acima — formato brasileiro
+              padrão, (DDD) + traço no meio, sempre limitado a 11
+              dígitos (o máximo usado hoje no Brasil), nunca deixa
+              digitar infinito. */}
           <Field label="Telefone de contato (sem ser WhatsApp)">
             <input
               value={contactPhoneNumber}
-              onChange={(e) => setContactPhoneNumber(e.target.value)}
+              onChange={(e) => setContactPhoneNumber(formatBrPhoneInput(e.target.value))}
               placeholder="(48) 3333-4444"
+              inputMode="numeric"
               className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none w-full"
             />
           </Field>

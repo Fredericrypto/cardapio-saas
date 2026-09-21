@@ -291,6 +291,8 @@ export function SettingsPage() {
             <Field label="Gmail (e-mail de contato)">
               <input
                 type="email"
+                name="tenant-contact-gmail"
+                autoComplete="off"
                 value={gmailAddress}
                 onChange={(e) => setGmailAddress(e.target.value)}
                 placeholder="contato@seurestaurante.com"
