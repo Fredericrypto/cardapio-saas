@@ -38,11 +38,54 @@ interface RestaurantInfoPanelProps {
 // diferente (endereço digitado manualmente antes de existir
 // geocodificação, por exemplo), mostra inteiro numa linha só em vez de
 // arriscar cortar errado.
+// Nome do estado por extenso (como vem do geocoding) → sigla de 2
+// letras, pro formato compacto que o Felipe pediu ("Araranguá - SC").
+const BR_STATE_ABBREVIATIONS: Record<string, string> = {
+  acre: 'AC',
+  alagoas: 'AL',
+  amapá: 'AP',
+  amazonas: 'AM',
+  bahia: 'BA',
+  ceará: 'CE',
+  'distrito federal': 'DF',
+  'espírito santo': 'ES',
+  goiás: 'GO',
+  maranhão: 'MA',
+  'mato grosso': 'MT',
+  'mato grosso do sul': 'MS',
+  'minas gerais': 'MG',
+  pará: 'PA',
+  paraíba: 'PB',
+  paraná: 'PR',
+  pernambuco: 'PE',
+  piauí: 'PI',
+  'rio de janeiro': 'RJ',
+  'rio grande do norte': 'RN',
+  'rio grande do sul': 'RS',
+  rondônia: 'RO',
+  roraima: 'RR',
+  'santa catarina': 'SC',
+  'são paulo': 'SP',
+  sergipe: 'SE',
+  tocantins: 'TO',
+};
+
+function abbreviateState(state: string): string {
+  return BR_STATE_ABBREVIATIONS[state.trim().toLowerCase()] ?? state;
+}
+
+// Pedido do Felipe (19/09): "Rua X, Bairro" numa linha, "Cidade -
+// Estado, CEP" na outra (estado abreviado, sem o prefixo "Cidade:").
+// O endereço geocodificado sempre vem como "rua, bairro, cidade,
+// estado, CEP" (ver GeocodingService no backend) — quando bate esse
+// formato exato, separa bonito; caso venha diferente (endereço
+// digitado manualmente antes de existir geocodificação, por exemplo),
+// mostra inteiro numa linha só em vez de arriscar cortar errado.
 function formatAddressLines(address: string): string[] {
   const parts = address.split(',').map((p) => p.trim());
   if (parts.length === 5) {
     const [street, neighborhood, city, state, zip] = parts;
-    return [`${street}, ${neighborhood}`, `Cidade: ${city} - ${state}, ${zip}`];
+    return [`${street}, ${neighborhood}`, `${city} - ${abbreviateState(state)}, ${zip}`];
   }
   return [address];
 }
@@ -203,10 +246,11 @@ export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelPro
           {expanded && (
             <div className="mt-3 px-2 pb-1 flex flex-col items-center gap-3 text-xs text-gray-500 text-center">
               {location?.address && (
-                <div className="flex items-start gap-1.5">
-                  <MapPin size={13} className="shrink-0 mt-0.5" />
+                <div className="flex flex-col items-center gap-1">
+                  <MapPin size={13} className="shrink-0 text-gray-400" />
                   {/* Pedido do Felipe (19/09): endereço em duas linhas
-                      — rua/bairro numa, cidade/estado/CEP na outra. O
+                      — rua/bairro numa, cidade/estado/CEP na outra —
+                      as duas centralizadas, uma embaixo da outra. O
                       endereço geocodificado sempre vem nesse formato
                       exato (rua, bairro, cidade, estado, CEP — ver
                       GeocodingService.buildFormattedAddress no
@@ -214,7 +258,7 @@ export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelPro
                       (menos partes que o esperado), cai de volta pra
                       mostrar o endereço inteiro numa linha só, sem
                       quebrar o layout. */}
-                  <div className="flex flex-col text-left">
+                  <div className="flex flex-col items-center">
                     {formatAddressLines(location.address).map((line, idx) => (
                       <span key={idx}>{line}</span>
                     ))}

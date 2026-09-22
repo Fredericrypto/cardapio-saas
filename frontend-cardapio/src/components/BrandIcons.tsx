@@ -132,24 +132,28 @@ export function MessengerIcon({ size = 22, className }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 48 48" className={className}>
       <defs>
-        {/* Pedido do Felipe (19/09): degradê atualizado — azul no
-            canto inferior esquerdo até rosa/roxo no canto superior
-            direito, mais vívido que a versão anterior. */}
-        <linearGradient id={gradId} x1="0%" y1="100%" x2="100%" y2="0%">
-          <stop offset="0" stopColor="#00B2FF" />
-          <stop offset="0.5" stopColor="#B620E0" />
-          <stop offset="1" stopColor="#F94879" />
+        {/* Pedido do Felipe (19/09): capturar a essência de verdade do
+            ícone oficial — degradê indo de coral/vermelho no topo,
+            passando por magenta/roxo no meio, até azul embaixo à
+            esquerda (onde fica o "rabinho" do balão). */}
+        <linearGradient id={gradId} x1="15%" y1="100%" x2="85%" y2="0%">
+          <stop offset="0" stopColor="#0084FF" />
+          <stop offset="0.45" stopColor="#9C2CD8" />
+          <stop offset="0.75" stopColor="#E33FA1" />
+          <stop offset="1" stopColor="#FF6250" />
         </linearGradient>
       </defs>
-      <circle cx="24" cy="24" r="24" fill={`url(#${gradId})`} />
+      {/* Corpo do balão: círculo com um "rabinho" apontando pra baixo à
+          esquerda, igual ao logotipo oficial — não é um círculo perfeito
+          sozinho, tem esse bico característico. */}
       <path
-        d="M24 12c-6.9 0-12.5 5.1-12.5 11.9 0 3.6 1.6 6.8 4.2 9.1v4.5l4.1-2.2c1.3.4 2.7.6 4.2.6 6.9 0 12.5-5.1 12.5-11.9S30.9 12 24 12z"
-        fill="#fff"
+        d="M24 6C12.4 6 3 14.7 3 25.4c0 6.1 3 11.5 7.8 15.1v7.2c0 1 1.1 1.6 2 1.1l6.6-3.7c1.4.3 2.9.5 4.6.5 11.6 0 21-8.7 21-19.4S35.6 6 24 6z"
+        fill={`url(#${gradId})`}
       />
-      {/* Raio recentralizado (19/09) — antes ficava deslocado pro
-          canto inferior esquerdo do balão em vez de centrado no corpo
-          redondo dele. */}
-      <path d="M27 11L19 21h5l-3 8 9-12h-7l3-6z" fill={`url(#${gradId})`} />
+      {/* Raio horizontal ("flash") — dois triângulos que se cruzam no
+          meio, igual ao símbolo oficial: bem mais largo do que alto,
+          não vertical. */}
+      <path d="M13 27l11-11 5 5 11-11-11 16-5-5-11 11z" fill="#fff" />
     </svg>
   );
 }
@@ -157,13 +161,36 @@ export function MessengerIcon({ size = 22, className }: IconProps) {
 export function GmailIcon({ size = 22, className }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 48 48" className={className}>
-      <rect width="48" height="48" rx="12" fill="#fff" stroke="#E5E7EB" strokeWidth="1" />
-      <path d="M11 15.5v17a1.5 1.5 0 0 0 1.5 1.5H15V19.8L24 26l9-6.2V34h2.5A1.5 1.5 0 0 0 37 32.5v-17c0-1.6-1.8-2.6-3.2-1.7L24 20l-9.8-6.2c-1.4-.9-3.2.1-3.2 1.7z" fill="#EA4335" />
-      <path d="M11 15.5c0-1.6 1.8-2.6 3.2-1.7L15 14.3V19.8L11 17V15.5z" fill="#C5221F" />
-      <path d="M37 15.5c0-1.6-1.8-2.6-3.2-1.7L33 14.3V19.8L37 17V15.5z" fill="#C5221F" />
-      <path d="M15 14.3v19.7h-2.5A1.5 1.5 0 0 1 11 32.5v-15.3l4 2.6v-5.5z" fill="#4285F4" />
-      <path d="M33 14.3v19.7h2.5A1.5 1.5 0 0 0 37 32.5v-15.3l-4 2.6v-5.5z" fill="#34A853" />
-      <path d="M15 19.8l9 6.2 9-6.2v-5.5l-9 6.2-9-6.2v5.5z" fill="#FBBC05" />
+      <defs>
+        {/* Pedido do Felipe (19/09): o "M" oficial novo do Gmail (sem
+            envelope), nas 4 cores clássicas do Google — azul embaixo à
+            esquerda, subindo pra vermelho/magenta, até amarelo no topo
+            direito, descendo pra verde embaixo à direita. */}
+        <linearGradient id="gmail-left" x1="0" y1="1" x2="0" y2="0">
+          <stop offset="0" stopColor="#4285F4" />
+          <stop offset="1" stopColor="#EA4335" />
+        </linearGradient>
+        <linearGradient id="gmail-hat" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="#EA4335" />
+          <stop offset="0.5" stopColor="#EA4335" />
+          <stop offset="1" stopColor="#FBBC05" />
+        </linearGradient>
+        <linearGradient id="gmail-right" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#FBBC05" />
+          <stop offset="1" stopColor="#34A853" />
+        </linearGradient>
+      </defs>
+      <rect width="48" height="48" rx="12" fill="#fff" />
+      <path d="M12 36V15" stroke="url(#gmail-left)" strokeWidth="7" strokeLinecap="round" fill="none" />
+      <path
+        d="M12 15L24 27L36 15"
+        stroke="url(#gmail-hat)"
+        strokeWidth="7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+      <path d="M36 15V36" stroke="url(#gmail-right)" strokeWidth="7" strokeLinecap="round" fill="none" />
     </svg>
   );
 }

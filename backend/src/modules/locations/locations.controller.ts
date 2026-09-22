@@ -38,8 +38,12 @@ export class LocationsController {
   }
 
   // Protegidas: painel admin gerenciando as lojas do próprio tenant.
+  // Mesmo `no-store` das outras rotas (19/09) — evita cache de navegador
+  // servindo dados de loja desatualizados (WhatsApp/Telegram/telefone
+  // que acabaram de mudar, por exemplo).
   @UseGuards(JwtAuthGuard)
   @Get('me')
+  @Header('Cache-Control', 'no-store')
   async findAllForMe(@CurrentTenant() tenantId: string) {
     return this.locationsService.findAllForTenant(tenantId);
   }

@@ -60,8 +60,14 @@ export class TenantsController {
   }
 
   // Rota PROTEGIDA: o dono logado vendo os próprios dados no painel admin.
+  // Mesmo raciocínio do `no-store` nas rotas públicas (19/09) — sem isso,
+  // o navegador podia servir uma resposta em cache de ANTES de uma foto
+  // ser trocada, fazendo logo/capa "sumirem" de volta na próxima vez que
+  // esse endpoint fosse consultado (ex: ao trocar de aba no painel),
+  // mesmo com o dado certo salvo no banco o tempo todo.
   @UseGuards(JwtAuthGuard)
   @Get('me')
+  @Header('Cache-Control', 'no-store')
   async findMe(@CurrentTenant() tenantId: string) {
     const tenant = await this.tenantsService.findById(tenantId);
     return toSafeTenant(tenant);
