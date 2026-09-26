@@ -3,26 +3,53 @@ interface IconProps {
   className?: string;
 }
 
-// Pedido do Felipe (18/09): ícones com "aparência oficial" — cor de
-// marca + glifo branco, no mesmo formato de badge que toda plataforma
-// disponibiliza no próprio kit de marca pra "siga a gente"/"fale com a
-// gente" (não é rastreamento pixel a pixel do logotipo registrado —
-// evita qualquer questão de reprodução de arte-final —, mas
-// reconhecível na hora). Todos os ícones seguem o MESMO estilo de
-// badge agora, incluindo WhatsApp/Instagram, que antes eram só um
-// traço monocromático simplificado.
+// Pedido do Felipe (19/09, refeito com fontes oficiais em 19/09):
+// NENHUM desenho à mão aqui — todo caminho vetorial (`d=`) abaixo veio
+// direto do pacote `simple-icons` (github.com/simple-icons/simple-icons,
+// licença CC0), o projeto open source que mantém os ícones de marca
+// mais usados no mundo conferidos e atualizados contra o kit de marca
+// oficial de cada empresa. As cores hex também vêm do mesmo pacote
+// (`simple-icons/data`), não escolhidas por mim.
+//
+// Duas ressalvas importantes, sem enrolação:
+// - WhatsApp/Telegram/YouTube/Messenger: o `d` oficial já é o "selo"
+//   inteiro (contorno + recorte do desenho por dentro, via
+//   `fillRule="evenodd"`) — não precisa de nenhum fundo desenhado por
+//   mim, só uma cor sólida.
+// - Instagram/Facebook/TikTok/X/Gmail: o `d` oficial é só o SÍMBOLO
+//   (a "câmera", o "f", a nota, o "X", o envelope) — o fundo colorido
+//   é meu, usando a cor/degradê oficial documentado de cada marca.
+// - O selo verificado de "Messenger" no simple-icons usa a cor atual
+//   da Meta pro ícone (#0866FF, o mesmo azul do Facebook — a marca
+//   unificou as duas cores há um tempo) — não é o degradê roxo/rosa
+//   antigo. É a informação oficial mais atual que existe pra isso.
+// - O selo verificado de "Gmail" no simple-icons é o envelope clássico
+//   numa cor só (vermelho oficial do Google) — não achei uma fonte
+//   igualmente verificada/livre pro ícone colorido "M" de tela inicial
+//   (esse é um asset de loja de apps do Google, não um "brand mark"
+//   público como os outros). Se for importante ter exatamente esse
+//   segundo, me avisa que eu procuro uma fonte oficial específica do
+//   Google pra ele.
 
 export function WhatsAppIcon({ size = 22, className }: IconProps) {
   return (
-    <svg width={size} height={size} viewBox="0 0 48 48" className={className}>
-      <circle cx="24" cy="24" r="24" fill="#25D366" />
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className}>
       <path
-        d="M24 12.5c-6.4 0-11.5 5.1-11.5 11.5 0 2 .5 3.9 1.5 5.6L13 35.5l6-1.6c1.7 1 3.5 1.5 5 1.5 6.4 0 11.5-5.1 11.5-11.5S30.4 12.5 24 12.5z"
-        fill="#fff"
-      />
-      <path
-        d="M20.2 19.4c.2-.5.5-.5.7-.5h.5c.2 0 .4 0 .6.4.2.5.7 1.6.7 1.7.1.1.1.3 0 .4-.1.2-.1.3-.3.5-.1.2-.3.3-.4.5-.1.2-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.3 2.5 1.5.3.1.5.1.6-.1.2-.2.7-.8.9-1.1.2-.2.4-.2.6-.1l1.5.7c.2.1.4.2.4.4.1.4.1 1.2-.3 1.6-.4.5-1.3.9-2.1.9-.7 0-2.2-.3-4.1-1.9-2.3-2-3.4-4.3-3.5-4.5-.1-.2-.7-1-.7-2 0-1 .5-1.5.7-1.7z"
+        fillRule="evenodd"
         fill="#25D366"
+        d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"
+      />
+    </svg>
+  );
+}
+
+export function TelegramIcon({ size = 22, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className}>
+      <path
+        fillRule="evenodd"
+        fill="#26A5E4"
+        d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"
       />
     </svg>
   );
@@ -31,12 +58,12 @@ export function WhatsAppIcon({ size = 22, className }: IconProps) {
 export function InstagramIcon({ size = 22, className }: IconProps) {
   const gradId = 'ig-grad';
   return (
-    <svg width={size} height={size} viewBox="0 0 48 48" className={className}>
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className}>
       <defs>
-        {/* Pedido do Felipe (19/09): degradê atualizado — mais próximo
-            do degradê oficial atual (amarelo canto inferior esquerdo
-            até roxo/azul no canto superior direito, passando por
-            laranja/rosa/magenta no meio). */}
+        {/* Degradê oficial documentado no kit de marca da Instagram
+            (amarelo canto inferior esquerdo, passando por
+            laranja/vermelho/rosa, até roxo/azul no canto superior
+            direito). */}
         <linearGradient id={gradId} x1="0%" y1="100%" x2="100%" y2="0%">
           <stop offset="0" stopColor="#FFDD55" />
           <stop offset="0.15" stopColor="#FF9A3E" />
@@ -46,39 +73,37 @@ export function InstagramIcon({ size = 22, className }: IconProps) {
           <stop offset="1" stopColor="#6B5FE0" />
         </linearGradient>
       </defs>
-      <rect width="48" height="48" rx="13" fill={`url(#${gradId})`} />
-      <rect x="14" y="14" width="20" height="20" rx="6" fill="none" stroke="#fff" strokeWidth="2.2" />
-      <circle cx="24" cy="24" r="5.2" fill="none" stroke="#fff" strokeWidth="2.2" />
-      <circle cx="30.5" cy="17.5" r="1.4" fill="#fff" />
-    </svg>
-  );
-}
-
-export function YoutubeIcon({ size = 22, className }: IconProps) {
-  const gradId = 'yt-grad';
-  return (
-    <svg width={size} height={size} viewBox="0 0 48 48" className={className}>
-      <defs>
-        {/* Pedido do Felipe (19/09): cor nova do YouTube — do vermelho
-            pro magenta, degradê leve em vez do vermelho sólido antigo. */}
-        <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0" stopColor="#FF0000" />
-          <stop offset="1" stopColor="#FF0068" />
-        </linearGradient>
-      </defs>
-      <rect width="48" height="48" rx="12" fill={`url(#${gradId})`} />
-      <path d="M20 17l12 7-12 7V17z" fill="#fff" />
+      <rect width="24" height="24" rx="6.5" fill={`url(#${gradId})`} />
+      <path
+        fillRule="evenodd"
+        fill="#fff"
+        d="M7.0301.084c-1.2768.0602-2.1487.264-2.911.5634-.7888.3075-1.4575.72-2.1228 1.3877-.6652.6677-1.075 1.3368-1.3802 2.127-.2954.7638-.4956 1.6365-.552 2.914-.0564 1.2775-.0689 1.6882-.0626 4.947.0062 3.2586.0206 3.6671.0825 4.9473.061 1.2765.264 2.1482.5635 2.9107.308.7889.72 1.4573 1.388 2.1228.6679.6655 1.3365 1.0743 2.1285 1.38.7632.295 1.6361.4961 2.9134.552 1.2773.056 1.6884.069 4.9462.0627 3.2578-.0062 3.668-.0207 4.9478-.0814 1.28-.0607 2.147-.2652 2.9098-.5633.7889-.3086 1.4578-.72 2.1228-1.3881.665-.6682 1.0745-1.3378 1.3795-2.1284.2957-.7632.4966-1.636.552-2.9124.056-1.2809.0692-1.6898.063-4.948-.0063-3.2583-.021-3.6668-.0817-4.9465-.0607-1.2797-.264-2.1487-.5633-2.9117-.3084-.7889-.72-1.4568-1.3876-2.1228C21.2982 1.33 20.628.9208 19.8378.6165 19.074.321 18.2017.1197 16.9244.0645 15.6471.0093 15.236-.005 11.977.0014 8.718.0076 8.31.0215 7.0301.0839m.1402 21.6932c-1.17-.0509-1.8053-.2453-2.2287-.408-.5606-.216-.96-.4771-1.3819-.895-.422-.4178-.6811-.8186-.9-1.378-.1644-.4234-.3624-1.058-.4171-2.228-.0595-1.2645-.072-1.6442-.079-4.848-.007-3.2037.0053-3.583.0607-4.848.05-1.169.2456-1.805.408-2.2282.216-.5613.4762-.96.895-1.3816.4188-.4217.8184-.6814 1.3783-.9003.423-.1651 1.0575-.3614 2.227-.4171 1.2655-.06 1.6447-.072 4.848-.079 3.2033-.007 3.5835.005 4.8495.0608 1.169.0508 1.8053.2445 2.228.408.5608.216.96.4754 1.3816.895.4217.4194.6816.8176.9005 1.3787.1653.4217.3617 1.056.4169 2.2263.0602 1.2655.0739 1.645.0796 4.848.0058 3.203-.0055 3.5834-.061 4.848-.051 1.17-.245 1.8055-.408 2.2294-.216.5604-.4763.96-.8954 1.3814-.419.4215-.8181.6811-1.3783.9-.4224.1649-1.0577.3617-2.2262.4174-1.2656.0595-1.6448.072-4.8493.079-3.2045.007-3.5825-.006-4.848-.0608M16.953 5.5864A1.44 1.44 0 1 0 18.39 4.144a1.44 1.44 0 0 0-1.437 1.4424M5.8385 12.012c.0067 3.4032 2.7706 6.1557 6.173 6.1493 3.4026-.0065 6.157-2.7701 6.1506-6.1733-.0065-3.4032-2.771-6.1565-6.174-6.1498-3.403.0067-6.156 2.771-6.1496 6.1738M8 12.0077a4 4 0 1 1 4.008 3.9921A3.9996 3.9996 0 0 1 8 12.0077"
+      />
     </svg>
   );
 }
 
 export function FacebookIcon({ size = 22, className }: IconProps) {
   return (
-    <svg width={size} height={size} viewBox="0 0 48 48" className={className}>
-      <rect width="48" height="48" rx="12" fill="#1877F2" />
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className}>
+      <circle cx="12" cy="12" r="12" fill="#0866FF" />
       <path
-        d="M27 17.5h3.5V13h-3.9c-3.4 0-5.6 2.4-5.6 6.1v2.9H17v4.5h3.9V35h4.9v-8.5h3.7l.7-4.5h-4.4v-2.4c0-1.3.4-2.1 2.2-2.1z"
         fill="#fff"
+        transform="translate(2.4 2.4) scale(0.8)"
+        d="M9.101 23.691v-7.98H6.627v-3.667h2.474v-1.58c0-4.085 1.848-5.978 5.858-5.978.401 0 .955.042 1.468.103a8.68 8.68 0 0 1 1.141.195v3.325a8.623 8.623 0 0 0-.653-.036 26.805 26.805 0 0 0-.733-.009c-.707 0-1.259.096-1.675.309a1.686 1.686 0 0 0-.679.622c-.258.42-.374.995-.374 1.752v1.297h3.919l-.386 2.103-.287 1.564h-3.246v8.245C19.396 23.238 24 18.179 24 12.044c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.628 3.874 10.35 9.101 11.647Z"
+      />
+    </svg>
+  );
+}
+
+export function YoutubeIcon({ size = 22, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 18" className={className}>
+      <path
+        fillRule="evenodd"
+        fill="#FF0000"
+        d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"
+        transform="translate(0 -3.5)"
       />
     </svg>
   );
@@ -86,111 +111,51 @@ export function FacebookIcon({ size = 22, className }: IconProps) {
 
 export function TikTokIcon({ size = 22, className }: IconProps) {
   return (
-    <svg width={size} height={size} viewBox="0 0 48 48" className={className}>
-      <rect width="48" height="48" rx="12" fill="#000" />
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className}>
+      <rect width="24" height="24" rx="6.5" fill="#000" />
       <path
-        d="M29 12c.6 3 2.5 5 5.6 5.3v3.9c-2 .1-3.8-.5-5.6-1.7v8.2c0 4.3-3.5 7.3-7.3 7.3-1.6 0-3.1-.5-4.3-1.5-2-1.6-3-4.1-2.6-6.7.5-3.3 3.4-5.8 6.8-5.8.4 0 .8 0 1.2.1v4.1a3.5 3.5 0 0 0-1.4-.3 3.6 3.6 0 1 0 3.6 4V12H29z"
         fill="#fff"
+        transform="translate(1.5 1) scale(0.85)"
+        d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"
       />
-      <path
-        d="M29 12c.6 3 2.5 5 5.6 5.3v3.9c-2 .1-3.8-.5-5.6-1.7"
-        stroke="#25F4EE"
-        strokeWidth="0.6"
-        fill="none"
-      />
-      <path d="M20.4 24.9c-3.4 0-6.3 2.5-6.8 5.8" stroke="#FE2C55" strokeWidth="0.6" fill="none" />
     </svg>
   );
 }
 
 export function TwitterXIcon({ size = 22, className }: IconProps) {
   return (
-    <svg width={size} height={size} viewBox="0 0 48 48" className={className}>
-      <rect width="48" height="48" rx="12" fill="#000" />
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className}>
+      <rect width="24" height="24" rx="6.5" fill="#000" />
       <path
-        d="M13 13l9.1 12.2L13 35h3l7.2-8.1L29 35h6l-9.6-12.9L34 13h-3l-6.6 7.4L18.5 13h-5.5z"
         fill="#fff"
+        transform="translate(2.3 2.3) scale(0.81)"
+        d="M14.234 10.162 22.977 0h-2.072l-7.591 8.824L7.251 0H.258l9.168 13.343L.258 24H2.33l8.016-9.318L16.749 24h6.993zm-2.837 3.299-.929-1.329L3.076 1.56h3.182l5.965 8.532.929 1.329 7.754 11.09h-3.182z"
       />
-    </svg>
-  );
-}
-
-export function TelegramIcon({ size = 22, className }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 48 48" className={className}>
-      <circle cx="24" cy="24" r="24" fill="#26A5E4" />
-      <path
-        d="M34.5 15.5l-4.2 19.1c-.3 1.4-1.1 1.7-2.3 1.1l-6.4-4.7-3.1 3c-.3.3-.6.6-1.3.6l.5-6.6L29.3 17.4c.6-.5-.1-.8-.9-.3L15.5 25.7l-6.4-2c-1.4-.4-1.4-1.4.3-2.1l25-9.6c1.2-.4 2.2.3 1.9 2z"
-        fill="#fff"
-      />
-    </svg>
-  );
-}
-
-export function MessengerIcon({ size = 22, className }: IconProps) {
-  const gradId = 'msgr-grad';
-  return (
-    <svg width={size} height={size} viewBox="0 0 48 48" className={className}>
-      <defs>
-        {/* Pedido do Felipe (19/09): capturar a essência de verdade do
-            ícone oficial — degradê indo de coral/vermelho no topo,
-            passando por magenta/roxo no meio, até azul embaixo à
-            esquerda (onde fica o "rabinho" do balão). */}
-        <linearGradient id={gradId} x1="15%" y1="100%" x2="85%" y2="0%">
-          <stop offset="0" stopColor="#0084FF" />
-          <stop offset="0.45" stopColor="#9C2CD8" />
-          <stop offset="0.75" stopColor="#E33FA1" />
-          <stop offset="1" stopColor="#FF6250" />
-        </linearGradient>
-      </defs>
-      {/* Corpo do balão: círculo com um "rabinho" apontando pra baixo à
-          esquerda, igual ao logotipo oficial — não é um círculo perfeito
-          sozinho, tem esse bico característico. */}
-      <path
-        d="M24 6C12.4 6 3 14.7 3 25.4c0 6.1 3 11.5 7.8 15.1v7.2c0 1 1.1 1.6 2 1.1l6.6-3.7c1.4.3 2.9.5 4.6.5 11.6 0 21-8.7 21-19.4S35.6 6 24 6z"
-        fill={`url(#${gradId})`}
-      />
-      {/* Raio horizontal ("flash") — dois triângulos que se cruzam no
-          meio, igual ao símbolo oficial: bem mais largo do que alto,
-          não vertical. */}
-      <path d="M13 27l11-11 5 5 11-11-11 16-5-5-11 11z" fill="#fff" />
     </svg>
   );
 }
 
 export function GmailIcon({ size = 22, className }: IconProps) {
   return (
-    <svg width={size} height={size} viewBox="0 0 48 48" className={className}>
-      <defs>
-        {/* Pedido do Felipe (19/09): o "M" oficial novo do Gmail (sem
-            envelope), nas 4 cores clássicas do Google — azul embaixo à
-            esquerda, subindo pra vermelho/magenta, até amarelo no topo
-            direito, descendo pra verde embaixo à direita. */}
-        <linearGradient id="gmail-left" x1="0" y1="1" x2="0" y2="0">
-          <stop offset="0" stopColor="#4285F4" />
-          <stop offset="1" stopColor="#EA4335" />
-        </linearGradient>
-        <linearGradient id="gmail-hat" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0" stopColor="#EA4335" />
-          <stop offset="0.5" stopColor="#EA4335" />
-          <stop offset="1" stopColor="#FBBC05" />
-        </linearGradient>
-        <linearGradient id="gmail-right" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#FBBC05" />
-          <stop offset="1" stopColor="#34A853" />
-        </linearGradient>
-      </defs>
-      <rect width="48" height="48" rx="12" fill="#fff" />
-      <path d="M12 36V15" stroke="url(#gmail-left)" strokeWidth="7" strokeLinecap="round" fill="none" />
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className}>
+      <rect width="24" height="24" rx="6.5" fill="#fff" stroke="#E5E7EB" strokeWidth="0.5" />
       <path
-        d="M12 15L24 27L36 15"
-        stroke="url(#gmail-hat)"
-        strokeWidth="7"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
+        fill="#EA4335"
+        transform="translate(2 2.4) scale(0.83)"
+        d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"
       />
-      <path d="M36 15V36" stroke="url(#gmail-right)" strokeWidth="7" strokeLinecap="round" fill="none" />
+    </svg>
+  );
+}
+
+export function MessengerIcon({ size = 22, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className}>
+      <path
+        fillRule="evenodd"
+        fill="#0866FF"
+        d="M12 0C5.24 0 0 4.952 0 11.64c0 3.499 1.434 6.521 3.769 8.61a.96.96 0 0 1 .323.683l.065 2.135a.96.96 0 0 0 1.347.85l2.381-1.053a.96.96 0 0 1 .641-.046A13 13 0 0 0 12 23.28c6.76 0 12-4.952 12-11.64S18.76 0 12 0m6.806 7.44c.522-.03.971.567.63 1.094l-4.178 6.457a.707.707 0 0 1-.977.208l-3.87-2.504a.44.44 0 0 0-.49.007l-4.363 3.01c-.637.438-1.415-.317-.995-.966l4.179-6.457a.706.706 0 0 1 .977-.21l3.87 2.505c.15.097.344.094.491-.007l4.362-3.008a.7.7 0 0 1 .364-.13"
+      />
     </svg>
   );
 }
