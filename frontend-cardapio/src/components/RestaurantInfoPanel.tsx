@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, MapPin, Clock, Phone } from 'lucide-react';
+import { ChevronDown, MapPin, Clock, Phone, Info } from 'lucide-react';
 import type { Tenant, Location } from '../types';
 import { getWeekScheduleLines } from '../lib/openingHours';
 import {
@@ -13,7 +13,6 @@ import {
   MessengerIcon,
   GmailIcon,
 } from './BrandIcons';
-import { InfoIcon } from './MenuIcons';
 import {
   buildWhatsappLink,
   buildInstagramLink,
@@ -240,8 +239,8 @@ export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelPro
             onClick={() => setExpanded((v) => !v)}
             className="flex items-center justify-center gap-1.5 w-full text-xs font-semibold text-gray-500 py-1"
           >
-            <InfoIcon size={13} />
-            <span>Info</span>
+            <Info size={15} className="shrink-0" />
+            <span>Informações</span>
             <ChevronDown size={14} className={`transition-transform ${expanded ? 'rotate-180' : ''}`} />
           </button>
 

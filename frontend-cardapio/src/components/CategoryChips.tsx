@@ -32,9 +32,9 @@ function normalize(label: string): string {
     .toLowerCase();
 }
 
-// Abas com ícone em cima e a palavra embaixo, centralizados (pedido do
-// Felipe, sessão S) — mais espaçadas entre si (gap-7) e com uma folga
-// maior entre ícone e texto do que a versão só-texto anterior. Ativa em
+// Abas com ícone em cima e a palavra embaixo, centralizadas (pedido do
+// Felipe, sessão S/T) — cada aba tem área de toque generosa (px-4/py-2,
+// largura mínima 76px) e o conjunto fica centralizado na tela. Ativa em
 // preto/negrito com friso embaixo na cor do tenant, as outras em cinza —
 // o ícone segue a mesma cor via `currentColor`.
 export function CategoryChips({
@@ -44,7 +44,11 @@ export function CategoryChips({
   primaryColor,
 }: CategoryChipsProps) {
   return (
-    <div className="flex gap-7 px-4 pt-2 pb-2.5 overflow-x-auto no-scrollbar border-b border-gray-100">
+    <div className="overflow-x-auto no-scrollbar border-b border-gray-100">
+      {/* `w-max min-w-full justify-center` centraliza quando cabe na tela e, quando não
+          cabe, continua rolando normal pra esquerda (justify-center
+          direto cortaria o começo da lista). */}
+      <div className="flex w-max min-w-full justify-center gap-2 px-3 pt-1.5">
       <Tab
         label="Todos"
         isActive={activeCategoryId === null}
@@ -60,6 +64,7 @@ export function CategoryChips({
           primaryColor={primaryColor}
         />
       ))}
+      </div>
     </div>
   );
 }
@@ -81,7 +86,7 @@ function Tab({
   return (
     <button
       onClick={onClick}
-      className="shrink-0 flex flex-col items-center gap-1.5 pb-1.5 transition-colors"
+      className="shrink-0 flex flex-col items-center gap-2 px-4 pt-2 pb-2 min-w-[76px] transition-colors active:bg-gray-50 rounded-t-xl"
       style={{
         color,
         borderBottom: isActive ? `2.5px solid ${primaryColor}` : '2.5px solid transparent',

@@ -323,8 +323,8 @@ export function MenuPage() {
         <div className="pt-5 pb-1">
           <div className="flex items-center justify-center relative px-4 mb-3">
             <p className="flex items-center gap-1.5 text-xs font-bold text-gray-500 tracking-wide">
-              <PromoTagIcon size={13} />
               PROMOÇÕES
+              <PromoTagIcon size={13} />
             </p>
             <button
               onClick={() => setShowPromotions((v) => !v)}
