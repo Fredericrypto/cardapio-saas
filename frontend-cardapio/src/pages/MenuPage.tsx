@@ -20,6 +20,7 @@ import { TableMenuHeader } from '../components/TableMenuHeader';
 import { PromoCards } from '../components/PromoCards';
 import { SearchBar } from '../components/SearchBar';
 import { CategoryChips } from '../components/CategoryChips';
+import { PromoTagIcon } from '../components/MenuIcons';
 import { ProductCard } from '../components/ProductCard';
 import { CartBar } from '../components/CartBar';
 import { BottomNav } from '../components/BottomNav';
@@ -321,7 +322,10 @@ export function MenuPage() {
       <div className={!isOpenNow ? 'grayscale opacity-70 pointer-events-none select-none' : ''}>
         <div className="pt-5 pb-1">
           <div className="flex items-center justify-center relative px-4 mb-3">
-            <p className="text-xs font-bold text-gray-500 tracking-wide">PROMOÇÕES</p>
+            <p className="flex items-center gap-1.5 text-xs font-bold text-gray-500 tracking-wide">
+              <PromoTagIcon size={13} />
+              PROMOÇÕES
+            </p>
             <button
               onClick={() => setShowPromotions((v) => !v)}
               aria-label={showPromotions ? 'Ocultar promoções' : 'Mostrar promoções'}

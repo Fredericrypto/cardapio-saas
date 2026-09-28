@@ -8,6 +8,7 @@ import type { Product, SelectedCartOption } from '../types';
 import { useCart } from '../contexts/CartContext';
 import { useTenant } from '../contexts/TenantContext';
 import { VerifiedBadge } from '../components/VerifiedBadge';
+import { CartIcon } from '../components/MenuIcons';
 
 // Texto mínimo necessário pro grupo, no estilo iFood: nada quando é
 // realmente livre (0 a 1), "Escolha até N" quando é opcional com teto,
@@ -342,7 +343,10 @@ export function ProductDetailPage() {
           className="w-full py-3.5 rounded-xl text-white font-semibold flex justify-between items-center px-5"
           style={{ backgroundColor: tenant.primaryColor }}
         >
-          <span>Adicionar</span>
+          <span className="flex items-center gap-2">
+            <CartIcon size={16} />
+            Adicionar
+          </span>
           <span>R$ {subtotal.toFixed(2).replace('.', ',')}</span>
         </button>
       </div>

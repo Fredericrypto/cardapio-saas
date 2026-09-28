@@ -142,11 +142,13 @@ export function YoutubeIcon({ size = 22, className }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 18" className={className}>
       <defs>
-        {/* Degradê pedido pelo Felipe (19/09) pra substituir o vermelho
-            sólido: vermelho YouTube (#FF1A47) até magenta vibrante
-            (#FF1DCF). */}
+        {/* Degradê pedido pelo Felipe (19/09, proporção ajustada 27/09
+            pra 75%/25%): vermelho YouTube (#FF1A47) sólido até 75% do
+            ícone, transicionando pro magenta vibrante (#FF1DCF) só nos
+            25% finais. */}
         <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0" stopColor="#FF1A47" />
+          <stop offset="0.75" stopColor="#FF1A47" />
           <stop offset="1" stopColor="#FF1DCF" />
         </linearGradient>
       </defs>

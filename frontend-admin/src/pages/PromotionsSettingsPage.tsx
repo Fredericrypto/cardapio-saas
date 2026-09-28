@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Percent, Plus, Trash2, Pencil, ImagePlus, Clock, Users } from 'lucide-react';
+import { Percent, Trash2, Pencil, ImagePlus, Clock, Users } from 'lucide-react';
+import { PromotionBagIcon } from '../components/PromotionBagIcon';
 import {
   fetchPromotions,
   createPromotion,
@@ -546,7 +547,7 @@ export function PromotionsSettingsPage() {
           onClick={() => setIsCreating(true)}
           className="w-full bg-gray-900 text-white rounded-lg py-3 flex items-center justify-center gap-1.5 text-sm font-semibold"
         >
-          <Plus size={16} />
+          <PromotionBagIcon size={16} />
           Nova promoção
         </button>
       )}

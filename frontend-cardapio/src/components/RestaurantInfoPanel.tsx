@@ -13,6 +13,7 @@ import {
   MessengerIcon,
   GmailIcon,
 } from './BrandIcons';
+import { InfoIcon } from './MenuIcons';
 import {
   buildWhatsappLink,
   buildInstagramLink,
@@ -239,7 +240,8 @@ export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelPro
             onClick={() => setExpanded((v) => !v)}
             className="flex items-center justify-center gap-1.5 w-full text-xs font-semibold text-gray-500 py-1"
           >
-            <span>Informações do estabelecimento</span>
+            <InfoIcon size={13} />
+            <span>Info</span>
             <ChevronDown size={14} className={`transition-transform ${expanded ? 'rotate-180' : ''}`} />
           </button>
 
