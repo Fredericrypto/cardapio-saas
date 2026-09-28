@@ -2,6 +2,7 @@ import { Bell, Receipt } from 'lucide-react';
 import type { Tenant, Location, TableSession } from '../types';
 import { RestaurantInfoPanel } from './RestaurantInfoPanel';
 import { TableSessionTimer } from './TableSessionTimer';
+import { ReviewBadge, OpenStatusRow } from './HeaderStatus';
 
 interface TableMenuHeaderProps {
   tenant: Tenant;
@@ -102,13 +103,12 @@ export function TableMenuHeader({
                   : `Mesa ${tableNumber}`
               : 'Consumo no local'}
           </p>
+          <ReviewBadge tenant={tenant} location={location} />
         </div>
 
-        {location?.closingInMinutes != null && (
-          <p className="text-xs font-bold text-red-500 mt-2 text-center">
-            Fecha em {location.closingInMinutes} min
-          </p>
-        )}
+        {/* Horário de funcionamento + selo Aberto/Fechado (e "Fecha em X
+            min") continuam visíveis dentro do fluxo de mesa. */}
+        <OpenStatusRow location={location} />
 
         <div className="flex gap-2 mt-3">
           <button

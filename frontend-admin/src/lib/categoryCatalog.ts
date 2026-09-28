@@ -13,6 +13,8 @@ export const CATEGORY_CATALOG: CatalogEntry[] = [
   { key: 'petiscos', name: 'Petiscos / Aperitivos' },
   { key: 'saladas', name: 'Saladas' },
   { key: 'sorvetes', name: 'Sorvetes' },
+  { key: 'bolos', name: 'Bolos' },
+  { key: 'tortas', name: 'Tortas' },
   { key: 'vinhos', name: 'Vinhos' },
   { key: 'sopas-caldos', name: 'Sopas e Caldos' },
   { key: 'pratos-principais', name: 'Pratos Principais' },

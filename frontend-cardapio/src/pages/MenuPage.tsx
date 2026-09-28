@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronUp, ChevronDown } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import {
   fetchCategories,
   fetchProducts,
@@ -21,7 +21,6 @@ import { PromoCards } from '../components/PromoCards';
 import { SearchBar } from '../components/SearchBar';
 import { CategoryChips } from '../components/CategoryChips';
 import { getCategoryIcon } from '../components/CategoryIcon';
-import { PromoTagIcon } from '../components/MenuIcons';
 import { ProductCard } from '../components/ProductCard';
 import { CartBar } from '../components/CartBar';
 import { BottomNav } from '../components/BottomNav';
@@ -330,17 +329,20 @@ export function MenuPage() {
 
       <div className={!isOpenNow ? 'grayscale opacity-70 pointer-events-none select-none' : ''}>
         <div className="pt-5 pb-1">
-          <div className="flex items-center justify-center relative px-4 mb-3">
-            <p className="flex items-center gap-1.5 text-xs font-bold text-gray-500 tracking-wide">
-              PROMOÇÕES
-              <PromoTagIcon size={13} />
-            </p>
+          {/* Sem título/ícone (visual clean, pedido do Felipe 28/09) — só a
+              seta de recolher, a mesma das seções da aba "Todos". */}
+          <div className="flex justify-end px-4 mb-1.5">
             <button
               onClick={() => setShowPromotions((v) => !v)}
               aria-label={showPromotions ? 'Ocultar promoções' : 'Mostrar promoções'}
-              className="absolute right-4 text-gray-300 active:text-gray-400 transition-colors p-1"
+              aria-expanded={showPromotions}
+              className="p-1"
             >
-              {showPromotions ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              <ChevronDown
+                size={16}
+                strokeWidth={1.8}
+                className={`text-gray-400 transition-transform ${showPromotions ? '' : '-rotate-90'}`}
+              />
             </button>
           </div>
 

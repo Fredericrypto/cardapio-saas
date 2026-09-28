@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { QrCode } from 'lucide-react';
 import { QrScannerModal } from './QrScannerModal';
+import { FloatingNotice } from './FloatingNotice';
 
 interface QrScanButtonProps {
   // 'fixed': badge flutuante de canto, posição absoluta (comportamento
@@ -13,6 +14,7 @@ interface QrScanButtonProps {
 // precisar sair e abrir a câmera nativa do celular manualmente.
 export function QrScanButton({ variant = 'inline' }: QrScanButtonProps) {
   const [showScanner, setShowScanner] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const positionClass =
     variant === 'fixed'
@@ -28,7 +30,10 @@ export function QrScanButton({ variant = 'inline' }: QrScanButtonProps) {
       >
         <QrCode size={15} />
       </button>
-      {showScanner && <QrScannerModal onClose={() => setShowScanner(false)} />}
+      {showScanner && (
+        <QrScannerModal onClose={() => setShowScanner(false)} onCameraError={setNotice} />
+      )}
+      {notice && <FloatingNotice message={notice} onDone={() => setNotice(null)} />}
     </>
   );
 }

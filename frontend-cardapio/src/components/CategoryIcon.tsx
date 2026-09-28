@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react';
 import {
   CakeSlice,
+  Cake,
   Utensils,
   Popcorn,
   Salad,
@@ -34,6 +35,27 @@ function line(Icon: typeof Utensils): IconComponent {
   );
 }
 
+// Torta (lucide não tem ícone de torta/pie): desenho próprio no mesmo
+// estilo de traço 24x24 dos outros — forma de torta com cúpula de recheio
+// e dois cortes de vapor no topo.
+const TortaIcon: IconComponent = ({ size = 22, className }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={1.6}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <path d="M4 12h16l-1.6 7.2a1 1 0 0 1-1 .8H6.6a1 1 0 0 1-1-.8L4 12z" />
+    <path d="M4.5 12c0-3 3.4-5.5 7.5-5.5s7.5 2.5 7.5 5.5" />
+    <path d="M10 9l.8 2M14 9l-.8 2" />
+  </svg>
+);
+
 export const CATEGORY_ICONS: Record<string, IconComponent> = {
   todos: TodosIcon,
   lanches: LanchesIcon,
@@ -43,6 +65,8 @@ export const CATEGORY_ICONS: Record<string, IconComponent> = {
   petiscos: line(Popcorn),
   saladas: line(Salad),
   sorvetes: line(IceCreamCone),
+  bolos: line(Cake),
+  tortas: TortaIcon,
   vinhos: line(Wine),
   'sopas-caldos': line(Soup),
   'pratos-principais': line(UtensilsCrossed),

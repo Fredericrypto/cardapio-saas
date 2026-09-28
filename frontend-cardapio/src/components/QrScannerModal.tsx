@@ -5,6 +5,10 @@ import { X } from 'lucide-react';
 
 interface QrScannerModalProps {
   onClose: () => void;
+  // Falha ao abrir a câmera (permissão negada/cancelada): o modal fecha
+  // sozinho e quem abriu mostra um aviso flutuante temporário — antes
+  // ficava uma faixa preta com o texto presa na tela até recarregar.
+  onCameraError: (message: string) => void;
 }
 
 // Scanner de QR code DENTRO do app — evita o cliente ter que sair e abrir
@@ -20,7 +24,7 @@ interface QrScannerModalProps {
 // impede um QR falso/de outro estabelecimento ser reconhecido.
 const MESA_URL_PATTERN = /^\/([a-z0-9-]+)\/mesa\/([a-f0-9-]+)\/?$/i;
 
-export function QrScannerModal({ onClose }: QrScannerModalProps) {
+export function QrScannerModal({ onClose, onCameraError }: QrScannerModalProps) {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -50,9 +54,10 @@ export function QrScannerModal({ onClose }: QrScannerModalProps) {
         }
       } catch {
         if (!cancelled) {
-          setError(
-            'Não foi possível acessar a câmera. Confirma que deu permissão pro navegador, ou escaneia com a câmera do celular mesmo.',
+          onCameraError(
+            'Não foi possível acessar a câmera. Confirme a permissão do navegador ou escaneie com a câmera do celular.',
           );
+          onClose();
         }
       }
     }
