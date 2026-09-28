@@ -20,6 +20,7 @@ import { TableMenuHeader } from '../components/TableMenuHeader';
 import { PromoCards } from '../components/PromoCards';
 import { SearchBar } from '../components/SearchBar';
 import { CategoryChips } from '../components/CategoryChips';
+import { getCategoryIcon } from '../components/CategoryIcon';
 import { PromoTagIcon } from '../components/MenuIcons';
 import { ProductCard } from '../components/ProductCard';
 import { CartBar } from '../components/CartBar';
@@ -49,6 +50,8 @@ export function MenuPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
+  // Seções recolhidas dentro da aba "Todos" (só vale nessa aba).
+  const [collapsedCategoryIds, setCollapsedCategoryIds] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState('');
   const [showPromotions, setShowPromotions] = useState(true);
 
@@ -365,7 +368,7 @@ export function MenuPage() {
           <p className="text-center text-gray-400 text-sm py-12">
             Nenhum produto encontrado.
           </p>
-        ) : (
+        ) : activeCategoryId !== null ? (
           <div className="grid grid-cols-2 gap-3 px-4 pt-3 pb-4">
             {filteredProducts.map((product) => (
               <ProductCard
@@ -375,6 +378,55 @@ export function MenuPage() {
                 onClick={() => navigate(productHref(product.id))}
               />
             ))}
+          </div>
+        ) : (
+          // Aba "Todos": itens separados por categoria (só as que o admin
+          // ativou), cada seção com ícone + nome e seta pra recolher.
+          // Durante uma busca as seções ficam sempre abertas.
+          <div className="pt-1 pb-4">
+            {categories.map((category) => {
+              const items = filteredProducts.filter((p) => p.categoryId === category.id);
+              if (items.length === 0) return null;
+              const Icon = getCategoryIcon(category.key, category.name);
+              const isCollapsed =
+                searchTerm.trim() === '' && collapsedCategoryIds.has(category.id);
+              return (
+                <section key={category.id}>
+                  <button
+                    onClick={() =>
+                      setCollapsedCategoryIds((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(category.id)) next.delete(category.id);
+                        else next.add(category.id);
+                        return next;
+                      })
+                    }
+                    className="w-full flex items-center gap-2 px-4 pt-4 pb-1.5 text-gray-700"
+                    aria-expanded={!isCollapsed}
+                  >
+                    {Icon && <Icon size={16} />}
+                    <span className="text-sm font-semibold flex-1 text-left">{category.name}</span>
+                    <ChevronDown
+                      size={16}
+                      strokeWidth={1.8}
+                      className={`text-gray-400 transition-transform ${isCollapsed ? '-rotate-90' : ''}`}
+                    />
+                  </button>
+                  {!isCollapsed && (
+                    <div className="grid grid-cols-2 gap-3 px-4 pt-1.5">
+                      {items.map((product) => (
+                        <ProductCard
+                          key={product.id}
+                          product={product}
+                          primaryColor={tenant.primaryColor}
+                          onClick={() => navigate(productHref(product.id))}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </section>
+              );
+            })}
           </div>
         )}
       </div>

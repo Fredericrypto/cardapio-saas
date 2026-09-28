@@ -1,3 +1,5 @@
+import { useEffect, useRef, useState } from 'react';
+import { ArrowRight } from 'lucide-react';
 import type { Category } from '../types';
 import { getCategoryIcon } from './CategoryIcon';
 
@@ -19,8 +21,32 @@ export function CategoryChips({
   onSelect,
   primaryColor,
 }: CategoryChipsProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [hasMoreToRight, setHasMoreToRight] = useState(false);
+
+  // Seta "→" só quando há MAIS de 4 abas (contando "Todos") E de fato dá
+  // pra rolar pra direita; some quando o cliente chega no fim da lista.
+  const tabCount = categories.length + 1;
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const update = () => {
+      const overflows = el.scrollWidth > el.clientWidth + 4;
+      const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 4;
+      setHasMoreToRight(tabCount > 4 && overflows && !atEnd);
+    };
+    update();
+    el.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    return () => {
+      el.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+    };
+  }, [tabCount]);
+
   return (
-    <div className="overflow-x-auto no-scrollbar border-b border-gray-100">
+    <div className="relative border-b border-gray-100">
+    <div ref={scrollRef} className="overflow-x-auto no-scrollbar">
       {/* `w-max min-w-full justify-center` centraliza quando cabe na tela e, quando não
           cabe, continua rolando normal pra esquerda (justify-center
           direto cortaria o começo da lista). */}
@@ -42,6 +68,12 @@ export function CategoryChips({
         />
       ))}
       </div>
+    </div>
+    {hasMoreToRight && (
+      <div className="pointer-events-none absolute right-0 top-0 h-full w-10 flex items-center justify-end pr-1.5 bg-gradient-to-l from-white via-white/90 to-transparent">
+        <ArrowRight size={14} strokeWidth={2} className="text-gray-400" />
+      </div>
+    )}
     </div>
   );
 }
