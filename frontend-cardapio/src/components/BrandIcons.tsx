@@ -140,15 +140,25 @@ export function FacebookIcon({ size = 22, className }: IconProps) {
 export function YoutubeIcon({ size = 22, className }: IconProps) {
   const gradId = 'yt-grad';
   return (
-    <svg width={size} height={size} viewBox="0 0 24 18" className={className}>
+    // viewBox quadrado 24x24 (o path do play já é centrado nele, sem
+    // `translate`) pra ter a MESMA caixa dos outros ícones; a folga de
+    // 0,5 unidade em volta + overflow visível evita cortar os cantos
+    // arredondados nas bordas.
+    <svg
+      width={size}
+      height={size}
+      viewBox="-0.5 -0.5 25 25"
+      overflow="visible"
+      className={className}
+    >
       <defs>
-        {/* Degradê pedido pelo Felipe (19/09, proporção ajustada 27/09
-            pra 75%/25%): vermelho YouTube (#FF1A47) sólido até 75% do
-            ícone, transicionando pro magenta vibrante (#FF1DCF) só nos
-            25% finais. */}
+        {/* Degradê pedido pelo Felipe (19/09; proporção 60%/40% em
+            28/09): vermelho YouTube (#FF1A47) sólido até 60% do ícone,
+            transicionando pro magenta vibrante (#FF1DCF) nos 40%
+            finais. */}
         <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0" stopColor="#FF1A47" />
-          <stop offset="0.75" stopColor="#FF1A47" />
+          <stop offset="0.6" stopColor="#FF1A47" />
           <stop offset="1" stopColor="#FF1DCF" />
         </linearGradient>
       </defs>
@@ -156,7 +166,6 @@ export function YoutubeIcon({ size = 22, className }: IconProps) {
         fillRule="evenodd"
         fill={`url(#${gradId})`}
         d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"
-        transform="translate(0 -3.5)"
       />
     </svg>
   );

@@ -60,17 +60,22 @@ export function TableMenuHeader({
             )}
           </div>
 
-          <div className="w-full flex items-center justify-center gap-2 mt-1.5 px-1">
-            <div className="flex-1 flex justify-end min-w-0">
-              {session?.expiresAt && onExpiryTick && (
-                <TableSessionTimer session={session} onExpiryTick={onExpiryTick} variant="inline" />
-              )}
-            </div>
-            <h1 className="font-display text-lg font-bold leading-tight text-gray-900 shrink-0 truncate max-w-[60%]">
+          {/* Nome sem truncar (quebra em várias linhas se preciso, sempre
+              centralizado — padding simétrico px-14 reserva o espaço do
+              timer da mesa, que fica preso no canto esquerdo). */}
+          <div className="relative w-full mt-1.5 px-14">
+            <h1
+              className="font-display text-lg font-bold leading-tight text-gray-900 text-center text-balance"
+              style={{ overflowWrap: 'anywhere' }}
+            >
               {tenant.name}
             </h1>
-            <div className="flex-1 flex justify-start min-w-0">
-              {/* Pedido do Felipe (13/09): o ícone de escanear QR não
+            {session?.expiresAt && onExpiryTick && (
+              <div className="absolute left-0 top-1/2 -translate-y-1/2">
+                <TableSessionTimer session={session} onExpiryTick={onExpiryTick} variant="inline" />
+              </div>
+            )}
+            {/* Pedido do Felipe (13/09): o ícone de escanear QR não
                   deve aparecer aqui — dentro do fluxo de mesa já existe
                   uma sessão ativa, então usar o scanner pra "entrar"
                   numa mesa diferente por cima da atual só cria confusão
@@ -79,7 +84,6 @@ export function TableMenuHeader({
                   sentido quando NÃO há sessão de mesa ativa — nesse caso
                   o cardápio genérico (MenuHeader) já mostra o dele. Div
                   vazia só pra manter o título centralizado no layout. */}
-            </div>
           </div>
           <p className="text-xs text-gray-400 mt-0.5">
             {/* O admin já pode nomear a mesa como "Mesa 1" ou "Balcão 1"

@@ -110,12 +110,22 @@ export function MenuHeader({ tenant, location, onBack }: MenuHeaderProps) {
             )}
           </div>
 
-          <div className="w-full flex items-center justify-center gap-2 mt-1.5 px-1">
-            <div className="flex-1" />
-            <h1 className="font-display text-lg font-bold leading-tight text-gray-900 shrink-0 truncate max-w-[70%] text-center">
+          {/* Nome do restaurante SEM truncar: quebra em quantas linhas
+              precisar (text-balance deixa as linhas equilibradas) e
+              `overflowWrap: anywhere` cobre até uma palavra gigante. O
+              botão de QR fica preso no canto direito, centralizado na
+              vertical; o padding lateral simétrico (px-11) reserva o
+              espaço dele nos DOIS lados, então o nome continua
+              perfeitamente centralizado e nunca passa por baixo do
+              botão, seja 1 linha ou 4. */}
+          <div className="relative w-full mt-1.5 px-11">
+            <h1
+              className="font-display text-lg font-bold leading-tight text-gray-900 text-center text-balance"
+              style={{ overflowWrap: 'anywhere' }}
+            >
               {tenant.name}
             </h1>
-            <div className="flex-1 flex justify-start min-w-0">
+            <div className="absolute right-0 top-1/2 -translate-y-1/2">
               <QrScanButton />
             </div>
           </div>
