@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 interface FloatingNoticeProps {
   message: string;
@@ -6,23 +7,28 @@ interface FloatingNoticeProps {
   durationMs?: number;
 }
 
-// Aviso flutuante minimalista no topo da tela (não ocupa espaço no
-// layout, não bloqueia toque) que some sozinho após `durationMs`
-// (padrão 6s). Substitui a faixa preta fixa que ficava presa na tela.
+// Aviso estilo notificação push: horizontal, centralizado no topo da
+// tela, bordas levemente arredondadas, some sozinho após `durationMs`
+// (padrão 6s). Renderizado num portal em `document.body` — quem chama
+// pode estar dentro de um ancestral com `transform`/`filter` (ex: o
+// header do cardápio), e nesse caso `position: fixed` deixa de ser
+// relativo à tela e o aviso ficava espremido do lado do ícone.
 export function FloatingNotice({ message, onDone, durationMs = 6000 }: FloatingNoticeProps) {
   useEffect(() => {
     const t = setTimeout(onDone, durationMs);
     return () => clearTimeout(t);
   }, [onDone, durationMs]);
 
-  return (
+  return createPortal(
     <div
       role="status"
-      className="pointer-events-none fixed top-3 left-0 right-0 z-[60] flex justify-center px-4"
+      className="pointer-events-none fixed inset-x-0 z-[60] flex justify-center px-4"
+      style={{ top: 'max(0.75rem, env(safe-area-inset-top))' }}
     >
-      <p className="max-w-sm rounded-full bg-gray-900/90 px-4 py-2 text-center text-xs font-medium leading-snug text-white shadow-lg backdrop-blur-sm">
+      <p className="w-full max-w-sm rounded-xl bg-gray-900/95 px-4 py-3 text-center text-sm font-medium leading-snug text-white shadow-lg">
         {message}
       </p>
-    </div>
+    </div>,
+    document.body,
   );
 }

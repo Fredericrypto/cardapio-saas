@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import jsQR from 'jsqr';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 interface QrScannerModalProps {
@@ -118,7 +119,11 @@ export function QrScannerModal({ onClose, onCameraError }: QrScannerModalProps) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return (
+  // Portal em `document.body`: o botão que abre o scanner fica dentro do
+  // header (que usa `transform`/`filter`), e dentro de um ancestral assim
+  // `position: fixed` deixa de cobrir a tela — o scanner virava um
+  // quadrado preto do tamanho do botão e a câmera nunca aparecia.
+  return createPortal(
     <div className="fixed inset-0 z-50 bg-black flex flex-col">
       <div className="flex items-center justify-between p-4">
         <p className="text-white text-sm font-semibold">Escanear QR code da mesa</p>
@@ -149,6 +154,7 @@ export function QrScannerModal({ onClose, onCameraError }: QrScannerModalProps) 
           </button>
         </div>
       )}
-    </div>
+    </div>,
+    document.body,
   );
 }
