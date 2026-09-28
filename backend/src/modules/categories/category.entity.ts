@@ -24,6 +24,12 @@ export class Category {
   @JoinColumn({ name: 'tenant_id' })
   tenant: Tenant;
 
+  // Chave da categoria no catálogo fixo (category-catalog.ts). NULL só em
+  // categorias legadas criadas à mão antes do catálogo — continuam
+  // funcionando (produtos presos a elas), mas ninguém cria novas assim.
+  @Column({ type: 'varchar', length: 40, nullable: true })
+  key: string | null;
+
   @Column({ length: 100 })
   name: string;
 

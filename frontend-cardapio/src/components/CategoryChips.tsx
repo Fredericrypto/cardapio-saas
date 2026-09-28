@@ -1,35 +1,11 @@
-import type { ReactElement } from 'react';
 import type { Category } from '../types';
-import { TodosIcon, LanchesIcon, BebidasIcon, SobremesasIcon } from './MenuIcons';
+import { getCategoryIcon } from './CategoryIcon';
 
 interface CategoryChipsProps {
   categories: Category[];
   activeCategoryId: string | null;
   onSelect: (categoryId: string | null) => void;
   primaryColor: string;
-}
-
-type IconComponent = (props: { size?: number; className?: string }) => ReactElement;
-
-// Ícone por categoria (pedido do Felipe, sessão S, 27/09) — casamento por
-// nome normalizado (sem acento, minúsculo) pra bater com "Lanches",
-// "Bebidas", "Sobremesas" e o pseudo-item fixo "Todos" mesmo se o admin
-// digitar com acento/maiúscula diferente. Categoria sem ícone mapeado
-// (nome que o Felipe não previu) cai de volta pro texto sozinho, sem
-// quebrar layout.
-const CATEGORY_ICONS: Record<string, IconComponent> = {
-  todos: TodosIcon,
-  lanches: LanchesIcon,
-  bebidas: BebidasIcon,
-  sobremesas: SobremesasIcon,
-};
-
-function normalize(label: string): string {
-  return label
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .trim()
-    .toLowerCase();
 }
 
 // Abas com ícone em cima e a palavra embaixo, centralizadas (pedido do
@@ -59,6 +35,7 @@ export function CategoryChips({
         <Tab
           key={category.id}
           label={category.name}
+          categoryKey={category.key}
           isActive={activeCategoryId === category.id}
           onClick={() => onSelect(category.id)}
           primaryColor={primaryColor}
@@ -71,16 +48,18 @@ export function CategoryChips({
 
 function Tab({
   label,
+  categoryKey,
   isActive,
   onClick,
   primaryColor,
 }: {
   label: string;
+  categoryKey?: string | null;
   isActive: boolean;
   onClick: () => void;
   primaryColor: string;
 }) {
-  const Icon = CATEGORY_ICONS[normalize(label)];
+  const Icon = getCategoryIcon(categoryKey ?? (label === 'Todos' ? 'todos' : null), label);
   const color = isActive ? '#111827' : '#9CA3AF';
 
   return (

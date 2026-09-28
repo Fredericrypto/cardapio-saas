@@ -79,6 +79,8 @@ export interface Promotion {
 export interface Category {
   id: string;
   tenantId: string;
+  // Chave do catálogo fixo de categorias (null só em categorias legadas).
+  key: string | null;
   name: string;
   displayOrder: number;
   isActive: boolean;

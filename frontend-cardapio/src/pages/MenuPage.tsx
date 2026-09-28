@@ -156,7 +156,13 @@ export function MenuPage() {
   }, [tenant?.id]);
 
   const filteredProducts = useMemo(() => {
-    return products.filter((product) => {
+    // Só aparecem produtos de categorias ativas (a API pública já manda
+    // só as ativas), na ordem das abas quando está em "Todos".
+    const order = new Map(categories.map((c, i) => [c.id, i]));
+    return products
+      .filter((product) => order.has(product.categoryId))
+      .sort((a, b) => order.get(a.categoryId)! - order.get(b.categoryId)!)
+      .filter((product) => {
       const matchesCategory =
         activeCategoryId === null || product.categoryId === activeCategoryId;
       const matchesSearch = product.name
@@ -164,7 +170,7 @@ export function MenuPage() {
         .includes(searchTerm.toLowerCase());
       return matchesCategory && matchesSearch;
     });
-  }, [products, activeCategoryId, searchTerm]);
+  }, [products, categories, activeCategoryId, searchTerm]);
 
   async function handleCallWaiter() {
     if (!tenant || !session) return;

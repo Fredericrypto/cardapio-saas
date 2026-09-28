@@ -95,19 +95,10 @@ export async function fetchCategories(): Promise<Category[]> {
   return data;
 }
 
-export async function createCategory(payload: {
-  name: string;
-  displayOrder?: number;
-}): Promise<Category> {
-  const { data } = await api.post<Category>('/categories', payload);
-  return data;
-}
-
-export async function updateCategory(
-  id: string,
-  payload: Partial<Category>,
-): Promise<Category> {
-  const { data } = await api.patch<Category>(`/categories/${id}`, payload);
+// Liga/desliga uma categoria do catálogo fixo (não dá mais pra criar com
+// nome digitado).
+export async function setCategoryActive(key: string, active: boolean): Promise<Category> {
+  const { data } = await api.put<Category>(`/categories/catalog/${key}`, { active });
   return data;
 }
 

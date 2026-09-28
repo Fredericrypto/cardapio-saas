@@ -54,6 +54,8 @@ export interface Location {
 export interface Category {
   id: string;
   tenantId: string;
+  // Chave do catálogo fixo (null = categoria legada criada à mão).
+  key: string | null;
   name: string;
   displayOrder: number;
   isActive: boolean;
