@@ -10,7 +10,7 @@ interface ReceiptContentProps {
 // totais e mensagem final. Pensado pra ficar bom tanto na tela quanto
 // impresso (a impressão usa esse mesmo conteúdo via window.print()).
 export function ReceiptContent({ tenant, summary }: ReceiptContentProps) {
-  const { session, orders, total, tipAmount, grandTotal, customerName, participants } = summary;
+  const { session, orders, total, tipAmount, grandTotal, cashbackApplied, customerName, participants } = summary;
   const isClosed = session.status === 'fechada';
 
   // Soma o desconto de todos os pedidos não cancelados dessa sessão —
@@ -172,6 +172,12 @@ export function ReceiptContent({ tenant, summary }: ReceiptContentProps) {
         <div className="flex justify-between">
           <span>Gorjeta</span>
           <span>R$ {tipAmount.toFixed(2).replace('.', ',')}</span>
+        </div>
+      )}
+      {cashbackApplied > 0 && (
+        <div className="flex justify-between text-red-600">
+          <span>Cashback usado no fechamento</span>
+          <span>- R$ {cashbackApplied.toFixed(2).replace('.', ',')}</span>
         </div>
       )}
       <div className="flex justify-between font-bold text-sm">

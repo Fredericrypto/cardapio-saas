@@ -195,14 +195,22 @@ export async function fetchSessionSummary(
   return data;
 }
 
+export interface RequestClosingPayload {
+  tipAmount?: number;
+  paymentMethod: 'dinheiro' | 'cartao' | 'pix';
+  useCashback?: boolean;
+  // Obrigatório quando paymentMethod = 'dinheiro'.
+  cashDeliveryPreference?: 'balcao' | 'mesa';
+}
+
 export async function requestSessionClosing(
   tenantId: string,
   sessionId: string,
-  tipAmount?: number,
+  payload: RequestClosingPayload,
 ) {
   const { data } = await api.post(
     `/table-sessions/public/${tenantId}/${sessionId}/request-closing`,
-    { tipAmount },
+    payload,
   );
   return data;
 }

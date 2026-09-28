@@ -5,7 +5,7 @@ import { ReceiptAuthenticityCode } from './ReceiptAuthenticityCode';
 // propósito idêntico, char por char no essencial, pra que se o cliente e
 // o restaurante precisarem comparar recibos, os dois batam exatamente.
 export function ReceiptContent({ tenant, summary }: { tenant: Tenant; summary: SessionSummary }) {
-  const { session, orders, total, tipAmount, grandTotal, customerName, participants, receiptVerificationCode } = summary;
+  const { session, orders, total, tipAmount, grandTotal, cashbackApplied, customerName, participants, receiptVerificationCode } = summary;
   const isClosed = session.status === 'fechada';
 
   const discountTotal = orders
@@ -166,6 +166,12 @@ export function ReceiptContent({ tenant, summary }: { tenant: Tenant; summary: S
         <div className="flex justify-between">
           <span>Gorjeta</span>
           <span>R$ {tipAmount.toFixed(2).replace('.', ',')}</span>
+        </div>
+      )}
+      {cashbackApplied > 0 && (
+        <div className="flex justify-between text-red-600">
+          <span>Cashback usado no fechamento</span>
+          <span>- R$ {cashbackApplied.toFixed(2).replace('.', ',')}</span>
         </div>
       )}
       <div className="flex justify-between font-bold text-sm">

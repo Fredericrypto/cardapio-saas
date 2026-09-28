@@ -56,9 +56,37 @@ export class TableSession {
   @Column({ name: 'tip_amount', type: 'numeric', precision: 10, scale: 2, default: 0, transformer: numericTransformer })
   tipAmount: number;
 
+  // ---- Escolhido pelo CLIENTE, no momento de solicitar o fechamento
+  // (pedido do Felipe, 28/09 — antes disso o admin decidia tudo sozinho,
+  // sem nenhum sinal de quem ia pagar). Só uma INTENÇÃO: o pagamento de
+  // verdade (Pix/cartão) continua acontecendo fisicamente entre cliente
+  // e restaurante; o admin só confirma. Nunca usado pra travar nada —
+  // ele pode mudar de ideia e o admin ajusta na hora de fechar.
+  @Column({ name: 'requested_payment_method', type: 'varchar', length: 20, nullable: true })
+  requestedPaymentMethod: string | null; // dinheiro, cartao, pix
+
+  // Só preenchido quando requestedPaymentMethod = 'dinheiro'.
+  @Column({ name: 'cash_delivery_preference', type: 'varchar', length: 20, nullable: true })
+  cashDeliveryPreference: string | null; // balcao, mesa
+
+  // Cliente logado que pediu pra usar o saldo de cashback dele nessa
+  // conta (null = ninguém pediu, ou pediu como convidado — convidado
+  // não tem carteira). O valor de verdade só é debitado da carteira em
+  // closeSession (nunca aqui) — ver TablesService.getSessionSummary e
+  // closeSession, que sempre recalculam contra o saldo AO VIVO.
+  @Column({ name: 'cashback_requested_by_customer_id', type: 'uuid', nullable: true })
+  cashbackRequestedByCustomerId: string | null;
+
+  // Quanto de cashback foi REALMENTE debitado ao fechar a conta (0 até
+  // lá). Nunca é a intenção do cliente — é sempre o valor final, já
+  // limitado pelo saldo disponível e pelo total da conta no instante do
+  // fechamento.
+  @Column({ name: 'cashback_used', type: 'numeric', precision: 10, scale: 2, default: 0, transformer: numericTransformer })
+  cashbackUsed: number;
+
   // Preenchidos pelo garçom/admin ao fechar a conta de fato.
   @Column({ name: 'payment_method', type: 'varchar', length: 20, nullable: true })
-  paymentMethod: string | null; // dinheiro, cartao, pix
+  paymentMethod: string | null; // dinheiro, cartao, pix, cashback (conta totalmente paga com saldo)
 
   @Column({ name: 'amount_received', type: 'numeric', precision: 10, scale: 2, nullable: true, transformer: numericTransformer })
   amountReceived: number | null; // só relevante para pagamento em dinheiro

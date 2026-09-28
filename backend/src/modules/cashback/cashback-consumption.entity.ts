@@ -2,6 +2,7 @@ import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, ManyToOne, Jo
 import { Tenant } from '../tenants/tenant.entity';
 import { Customer } from '../customers/customer.entity';
 import { Order } from '../orders/order.entity';
+import { TableSession } from '../tables/table-session.entity';
 import { CashbackLedgerEntry } from './cashback-ledger-entry.entity';
 import { numericTransformer } from '../../common/utils/numeric-transformer';
 
@@ -15,6 +16,11 @@ import { numericTransformer } from '../../common/utils/numeric-transformer';
 //
 // UNIQUE (order_id) NÃO é aplicado de propósito: um pedido gera
 // N linhas aqui (uma por crédito consumido), nunca uma só.
+//
+// Origem POLIMÓRFICA (28/09): cashback também pode ser gasto direto no
+// fechamento de uma MESA (não só num pedido avulso de balcão/entrega) —
+// ver CashbackService.consumeForTableSession. Exatamente um dos dois,
+// orderId/tableSessionId, é preenchido; nunca os dois, nunca nenhum.
 @Entity('cashback_consumptions')
 export class CashbackConsumption {
   @PrimaryGeneratedColumn('uuid')
@@ -37,12 +43,20 @@ export class CashbackConsumption {
   customer: Customer;
 
   @Index()
-  @Column({ name: 'order_id' })
-  orderId: string;
+  @Column({ name: 'order_id', nullable: true })
+  orderId: string | null;
 
-  @ManyToOne(() => Order, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Order, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn({ name: 'order_id' })
-  order: Order;
+  order: Order | null;
+
+  @Index()
+  @Column({ name: 'table_session_id', nullable: true })
+  tableSessionId: string | null;
+
+  @ManyToOne(() => TableSession, { onDelete: 'CASCADE', nullable: true })
+  @JoinColumn({ name: 'table_session_id' })
+  tableSession: TableSession | null;
 
   @Index()
   @Column({ name: 'ledger_entry_id' })

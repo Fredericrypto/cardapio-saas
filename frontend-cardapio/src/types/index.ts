@@ -222,6 +222,11 @@ export interface TableSession {
   openedAt: string;
   closedAt: string | null;
   tipAmount: number;
+  // Escolhido pelo CLIENTE ao pedir o fechamento (28/09) — a intenção
+  // dele; o pagamento de verdade só é confirmado pelo admin.
+  requestedPaymentMethod: 'dinheiro' | 'cartao' | 'pix' | null;
+  cashDeliveryPreference: 'balcao' | 'mesa' | null;
+  cashbackUsed: number;
   paymentMethod: string | null;
   amountReceived: number | null;
   changeGiven: number | null;
@@ -265,7 +270,13 @@ export interface SessionSummary {
   }>;
   total: number;
   tipAmount: number;
+  // Já vem com o desconto de cashback (se algum) aplicado.
   grandTotal: number;
+  // Saldo de cashback de quem pediu pra usar (0 se ninguém pediu, ou
+  // pediu como convidado sem carteira) e quanto disso abate a conta —
+  // já refletido em `grandTotal`.
+  cashbackAvailable: number;
+  cashbackApplied: number;
   customerName: string | null;
   // Pedido do Felipe (14/09, sessão I): todo mundo que confirmou entrar
   // na mesa (não só quem fez pedido) — pra mostrar no cupom que a conta

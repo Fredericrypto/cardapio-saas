@@ -539,7 +539,17 @@ export class TablesService {
       .reduce((sum, order) => sum + toCents(order.total), 0);
     const total = fromCents(totalCents);
     const tipAmount = Number(session.tipAmount) || 0;
-    const grandTotal = fromCents(totalCents + toCents(tipAmount));
+    const totalPlusTipCents = totalCents + toCents(tipAmount);
+
+    // Preview de cashback (pedido do Felipe, 28/09): quando a sessão já
+    // foi fechada, usa o valor REAL debitado (session.cashbackUsed,
+    // congelado pra sempre); enquanto ainda está aberta/aguardando
+    // fechamento, recalcula ao vivo contra o saldo atual do cliente —
+    // ver previewCashbackCents.
+    const { availableCents: cashbackAvailableCents, appliedCents: cashbackPreviewCents } = session.closedAt
+      ? { availableCents: toCents(Number(session.cashbackUsed) || 0), appliedCents: toCents(Number(session.cashbackUsed) || 0) }
+      : await this.previewCashbackCents(tenantId, session, totalPlusTipCents);
+    const grandTotal = fromCents(Math.max(0, totalPlusTipCents - cashbackPreviewCents));
 
     // Nome do cliente pro cupito: pega o primeiro nome preenchido entre os
     // pedidos da sessão (geralmente é o mesmo em todos, se preenchido).
@@ -608,6 +618,12 @@ export class TablesService {
       customerName,
       participants,
       receiptVerificationCode,
+      // Saldo de cashback disponível pro cliente que pediu pra usar (0
+      // se ninguém pediu, ou se pediu como convidado). `cashbackApplied`
+      // é o que efetivamente abate do total — já refletido em
+      // `grandTotal` acima.
+      cashbackAvailable: fromCents(cashbackAvailableCents),
+      cashbackApplied: fromCents(cashbackPreviewCents),
     };
   }
 
@@ -633,7 +649,15 @@ export class TablesService {
     const totalCents = orders
       .filter((o) => o.status !== 'cancelado')
       .reduce((sum, o) => sum + toCents(o.total), 0);
-    const grandTotalCents = totalCents + toCents(Number(session.tipAmount) || 0);
+    // Mesma fórmula usada pra ASSINAR o cupom em getSessionSummary/
+    // closeSession: total dos itens + gorjeta - cashback REALMENTE
+    // debitado (session.cashbackUsed, congelado desde o fechamento).
+    // Sem subtrair isto aqui, todo cupom de mesa que usou cashback
+    // falhava na verificação — o valor assinado nunca batia.
+    const grandTotalCents = Math.max(
+      0,
+      totalCents + toCents(Number(session.tipAmount) || 0) - toCents(Number(session.cashbackUsed) || 0),
+    );
 
     const valid = verifyReceiptSignature(
       session.id,
@@ -649,18 +673,56 @@ export class TablesService {
     };
   }
 
+  // Reforma do fechamento (pedido do Felipe, 28/09): o CLIENTE escolhe
+  // forma de pagamento (e, se quiser e tiver saldo, usa cashback) já
+  // aqui — nunca mais o admin decidindo tudo sozinho sem nenhum sinal
+  // de quem ia pagar. Isto grava só a INTENÇÃO do cliente: nada de
+  // dinheiro/cashback muda de mão ainda. O débito de cashback de
+  // verdade só acontece em closeSession, sempre recalculado contra o
+  // saldo AO VIVO (nunca confia num valor congelado aqui).
   async requestClosing(
     tenantId: string,
     sessionId: string,
-    tipAmount?: number,
+    dto: { tipAmount?: number; paymentMethod: string; useCashback?: boolean; cashDeliveryPreference?: string },
+    customerId: string | null,
   ): Promise<TableSession> {
     const session = await this.findSession(tenantId, sessionId);
     if (session.status !== 'aberta') {
       throw new BadRequestException('Esta sessão já foi fechada ou já solicitou fechamento.');
     }
+    if (dto.paymentMethod === 'dinheiro' && !dto.cashDeliveryPreference) {
+      throw new BadRequestException(
+        'Escolha se prefere pagar no balcão ou se um atendente vai até a mesa.',
+      );
+    }
+
     session.status = 'fechamento_solicitado';
-    session.tipAmount = tipAmount && tipAmount > 0 ? tipAmount : 0;
+    session.tipAmount = dto.tipAmount && dto.tipAmount > 0 ? dto.tipAmount : 0;
+    session.requestedPaymentMethod = dto.paymentMethod;
+    session.cashDeliveryPreference = dto.paymentMethod === 'dinheiro' ? dto.cashDeliveryPreference! : null;
+    // Convidado sem login nunca tem carteira — ignora silenciosamente
+    // em vez de dar erro (não é uma escolha inválida, só não se aplica).
+    session.cashbackRequestedByCustomerId = dto.useCashback && customerId ? customerId : null;
     return this.sessionRepo.save(session);
+  }
+
+  // Quanto de cashback SERIA aplicado agora, se a conta fosse fechada
+  // neste exato instante — sempre recalculado contra o saldo ao vivo do
+  // cliente (nunca um valor congelado). Usado tanto pra montar o
+  // preview em getSessionSummary (cliente e admin veem o mesmo número)
+  // quanto pelo valor de verdade debitado em closeSession.
+  private async previewCashbackCents(
+    tenantId: string,
+    session: TableSession,
+    totalPlusTipCents: number,
+  ): Promise<{ availableCents: number; appliedCents: number }> {
+    if (!session.cashbackRequestedByCustomerId) return { availableCents: 0, appliedCents: 0 };
+    const balance = await this.cashbackService.getBalance(
+      tenantId,
+      session.cashbackRequestedByCustomerId,
+    );
+    const availableCents = toCents(balance);
+    return { availableCents, appliedCents: Math.min(availableCents, totalPlusTipCents) };
   }
 
   // Lista mesas aguardando o garçom confirmar o fechamento — usado pelo
@@ -919,10 +981,12 @@ export class TablesService {
   async closeSession(
     tenantId: string,
     sessionId: string,
-    paymentMethod: string,
+    paymentMethod?: string,
     amountReceived?: number,
   ): Promise<TableSession> {
-    const { session, grandTotal } = await this.getSessionSummary(tenantId, sessionId);
+    // grandTotal aqui já vem com o PREVIEW de cashback abatido (ver
+    // getSessionSummary) — mas preview não é débito de verdade ainda.
+    const { session, total, tipAmount } = await this.getSessionSummary(tenantId, sessionId);
 
     // BUG CORRIGIDO: sem essa guarda, um duplo-clique em "Confirmar
     // fechamento" (ou o garçom reenviando a requisição após um refresh)
@@ -933,27 +997,70 @@ export class TablesService {
       throw new BadRequestException('Esta conta já foi fechada anteriormente.');
     }
 
+    const totalPlusTipCents = toCents(total) + toCents(tipAmount);
+
+    // Débito de cashback DE VERDADE — só agora, dentro do fechamento que
+    // não tem mais volta (comida já servida/consumida). `consumeForTableSession`
+    // trava as linhas do ledger (`pessimistic_write`) e devolve o quanto
+    // REALMENTE conseguiu consumir, nunca supondo que o preview de
+    // getSessionSummary ainda é válido (o saldo pode ter mudado nesse
+    // meio-tempo, ex: cliente gastou em outro pedido).
+    let cashbackUsedCents = 0;
+    if (session.cashbackRequestedByCustomerId) {
+      const { appliedCents: previewCents } = await this.previewCashbackCents(
+        tenantId,
+        session,
+        totalPlusTipCents,
+      );
+      if (previewCents > 0) {
+        cashbackUsedCents = await this.cashbackService.consumeForTableSession(
+          this.orderRepo.manager,
+          tenantId,
+          session.cashbackRequestedByCustomerId,
+          session.id,
+          previewCents,
+        );
+      }
+    }
+
+    const grandTotalCents = Math.max(0, totalPlusTipCents - cashbackUsedCents);
+    const grandTotal = fromCents(grandTotalCents);
+
     let changeGiven: number | null = null;
-    if (paymentMethod === 'dinheiro') {
-      if (amountReceived === undefined) {
-        throw new BadRequestException(
-          'Informe o valor recebido em dinheiro para calcular o troco.',
-        );
+    let resolvedPaymentMethod = paymentMethod ?? null;
+
+    if (grandTotalCents === 0) {
+      // Cashback cobriu a conta inteira — não existe forma de pagamento
+      // pra escolher, o admin só confirma. Ignora qualquer paymentMethod
+      // que tenha vindo do frontend nesse caso (a fonte da verdade é o
+      // valor, não o que foi clicado).
+      resolvedPaymentMethod = 'cashback';
+    } else {
+      if (!resolvedPaymentMethod || !['dinheiro', 'cartao', 'pix'].includes(resolvedPaymentMethod)) {
+        throw new BadRequestException('Escolha a forma de pagamento pra fechar a conta.');
       }
-      const changeCents = toCents(amountReceived) - toCents(grandTotal);
-      if (changeCents < 0) {
-        throw new BadRequestException(
-          'Valor recebido é menor que o total da conta (incluindo gorjeta).',
-        );
+      if (resolvedPaymentMethod === 'dinheiro') {
+        if (amountReceived === undefined) {
+          throw new BadRequestException(
+            'Informe o valor recebido em dinheiro para calcular o troco.',
+          );
+        }
+        const changeCents = toCents(amountReceived) - grandTotalCents;
+        if (changeCents < 0) {
+          throw new BadRequestException(
+            'Valor recebido é menor que o total da conta (incluindo gorjeta e descontando o cashback usado).',
+          );
+        }
+        changeGiven = fromCents(changeCents);
       }
-      changeGiven = fromCents(changeCents);
     }
 
     session.status = 'fechada';
     session.closedAt = new Date();
-    session.paymentMethod = paymentMethod;
-    session.amountReceived = amountReceived ?? null;
+    session.paymentMethod = resolvedPaymentMethod;
+    session.amountReceived = resolvedPaymentMethod === 'dinheiro' ? amountReceived ?? null : null;
     session.changeGiven = changeGiven;
+    session.cashbackUsed = fromCents(cashbackUsedCents);
     const savedSession = await this.sessionRepo.save(session);
 
     // BUG CORRIGIDO (v2): a versão anterior forçava QUALQUER pedido não

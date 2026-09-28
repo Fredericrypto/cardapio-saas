@@ -14,16 +14,25 @@ interface CloseSessionModalProps {
   onClosed: () => void;
 }
 
-const PAYMENT_METHODS = [
+const PAYMENT_METHODS: { value: 'dinheiro' | 'cartao' | 'pix'; label: string }[] = [
   { value: 'dinheiro', label: 'Dinheiro' },
   { value: 'cartao', label: 'Cartão' },
   { value: 'pix', label: 'Pix' },
 ];
 
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  dinheiro: 'Dinheiro',
+  cartao: 'Cartão',
+  pix: 'Pix',
+};
+
 export function CloseSessionModal({ session, onClose, onClosed }: CloseSessionModalProps) {
   const { tenant } = useAuth();
   const [summary, setSummary] = useState<SessionSummary | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState('dinheiro');
+  // Parte do que o CLIENTE já escolheu ao pedir o fechamento (pedido do
+  // Felipe, 28/09) — pré-seleciona aqui, mas o admin ainda pode trocar
+  // se a pessoa mudar de ideia na hora.
+  const [paymentMethod, setPaymentMethod] = useState(session.requestedPaymentMethod ?? 'dinheiro');
   // Em CENTAVOS (nunca float) — ver CashAmountInput.
   const [amountReceivedCents, setAmountReceivedCents] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -68,7 +77,7 @@ export function CloseSessionModal({ session, onClose, onClosed }: CloseSessionMo
     setError(null);
 
     const totalCents = Math.round(summary.grandTotal * 100);
-    if (paymentMethod === 'dinheiro' && amountReceivedCents < totalCents) {
+    if (!fullyCoveredByCashback && paymentMethod === 'dinheiro' && amountReceivedCents < totalCents) {
       setError('Valor recebido é menor que o total da conta.');
       return;
     }
@@ -76,8 +85,11 @@ export function CloseSessionModal({ session, onClose, onClosed }: CloseSessionMo
     setIsSubmitting(true);
     try {
       await closeTableSession(session.id, {
-        paymentMethod,
-        amountReceived: paymentMethod === 'dinheiro' ? amountReceivedCents / 100 : undefined,
+        // Conta zerada por cashback: não manda nada, o backend resolve
+        // sozinho e grava paymentMethod = 'cashback'.
+        paymentMethod: fullyCoveredByCashback ? undefined : paymentMethod,
+        amountReceived:
+          !fullyCoveredByCashback && paymentMethod === 'dinheiro' ? amountReceivedCents / 100 : undefined,
       });
       if (refreshIntervalRef.current) clearInterval(refreshIntervalRef.current);
       // Busca de novo já com status "fechada" + dados de pagamento
@@ -94,6 +106,13 @@ export function CloseSessionModal({ session, onClose, onClosed }: CloseSessionMo
   const changeCents = calculateChangeCents();
   const unfinishedOrdersCount =
     summary?.orders.filter((o) => o.status === 'pendente' || o.status === 'preparando').length ?? 0;
+  // Conta zerada só de cashback — não existe forma de pagamento pra
+  // escolher, o admin só confirma (ver TablesService.closeSession, que
+  // decide isso sozinho e ignora paymentMethod nesse caso).
+  const fullyCoveredByCashback = !!summary && summary.grandTotal === 0 && summary.cashbackApplied > 0;
+  const requestedLabel = session.requestedPaymentMethod
+    ? PAYMENT_METHOD_LABELS[session.requestedPaymentMethod]
+    : null;
 
   async function handleForceReset() {
     if (forceResetReason.trim().length < 5) {
@@ -178,6 +197,12 @@ export function CloseSessionModal({ session, onClose, onClosed }: CloseSessionMo
                   <span>R$ {summary.tipAmount.toFixed(2).replace('.', ',')}</span>
                 </div>
               )}
+              {summary.cashbackApplied > 0 && (
+                <div className="flex justify-between text-red-600">
+                  <span>Cashback aplicado no fechamento</span>
+                  <span>- R$ {summary.cashbackApplied.toFixed(2).replace('.', ',')}</span>
+                </div>
+              )}
               <div className="flex justify-between font-bold text-gray-900 text-base pt-1 border-t border-gray-100 mt-1">
                 <span>Total a cobrar</span>
                 <span>R$ {summary.grandTotal.toFixed(2).replace('.', ',')}</span>
@@ -188,78 +213,110 @@ export function CloseSessionModal({ session, onClose, onClosed }: CloseSessionMo
               </p>
             </div>
 
-            <div>
-              <label className="text-xs font-semibold text-gray-500 block mb-1.5">
-                Forma de pagamento
-              </label>
-              <div className="flex gap-2">
-                {PAYMENT_METHODS.map((method) => (
-                  <button
-                    key={method.value}
-                    onClick={() => setPaymentMethod(method.value)}
-                    className="flex-1 py-2 rounded-lg text-xs font-semibold border"
-                    style={
-                      paymentMethod === method.value
-                        ? { backgroundColor: '#111827', color: 'white', borderColor: '#111827' }
-                        : { borderColor: '#e5e5e5', color: '#666' }
-                    }
-                  >
-                    {method.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {paymentMethod === 'dinheiro' && (
-              <div>
-                <label className="text-xs font-semibold text-gray-500 block mb-1.5">
-                  Valor recebido
-                </label>
-                <CashAmountInput
-                  valueCents={amountReceivedCents}
-                  onChangeCents={setAmountReceivedCents}
-                  autoFocus
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none"
-                />
-                {changeCents !== null && amountReceivedCents > 0 && (
-                  <p
-                    className={`text-sm font-semibold mt-1.5 ${
-                      changeCents < 0 ? 'text-red-500' : 'text-green-600'
-                    }`}
-                  >
-                    {changeCents < 0
-                      ? `Faltam R$ ${(Math.abs(changeCents) / 100).toFixed(2).replace('.', ',')}`
-                      : `Troco: R$ ${(changeCents / 100).toFixed(2).replace('.', ',')}`}
-                  </p>
+            {/* Aviso claro do que o CLIENTE já escolheu ao pedir o
+                fechamento (pedido do Felipe, 28/09) — o admin não
+                precisa mais adivinhar nem perguntar de novo. */}
+            {requestedLabel && !fullyCoveredByCashback && (
+              <div className="bg-blue-50 border border-blue-100 rounded-lg p-2.5 text-xs text-blue-700">
+                <span className="font-semibold">Cliente pediu para pagar: {requestedLabel}.</span>
+                {session.requestedPaymentMethod === 'dinheiro' && session.cashDeliveryPreference && (
+                  <>
+                    {' '}
+                    {session.cashDeliveryPreference === 'balcao'
+                      ? 'Prefere pagar no balcão.'
+                      : 'Prefere que um atendente vá até a mesa.'}
+                  </>
                 )}
               </div>
             )}
 
-            {paymentMethod === 'pix' && (
-              <div>
-                {tenant?.pixKey ? (
-                  <div className="flex flex-col items-center gap-2 bg-gray-50 rounded-lg p-4">
-                    <QRCodeSVG
-                      value={generatePixPayload({
-                        pixKey: tenant.pixKey,
-                        merchantName: tenant.name,
-                        merchantCity: tenant.pixMerchantCity || 'BRASIL',
-                        amount: summary.grandTotal,
-                      })}
-                      size={160}
-                    />
-                    <p className="text-xs text-gray-500 text-center">
-                      Cliente escaneia com o app do banco. Confirme o recebimento
-                      antes de fechar a conta.
-                    </p>
+            {fullyCoveredByCashback ? (
+              <div className="bg-green-50 border border-green-100 rounded-lg p-3 text-sm text-green-700 font-semibold text-center">
+                Conta totalmente paga com cashback — nada a cobrar.
+              </div>
+            ) : (
+              <>
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 block mb-1.5">
+                    Forma de pagamento
+                  </label>
+                  <div className="flex gap-2">
+                    {PAYMENT_METHODS.map((method) => (
+                      <button
+                        key={method.value}
+                        onClick={() => setPaymentMethod(method.value)}
+                        className="flex-1 py-2 rounded-lg text-xs font-semibold border"
+                        style={
+                          paymentMethod === method.value
+                            ? { backgroundColor: '#111827', color: 'white', borderColor: '#111827' }
+                            : { borderColor: '#e5e5e5', color: '#666' }
+                        }
+                      >
+                        {method.label}
+                      </button>
+                    ))}
                   </div>
-                ) : (
-                  <p className="text-xs text-amber-600 bg-amber-50 rounded-lg p-3">
-                    Nenhuma chave Pix cadastrada. Configure em Configurações para
-                    gerar o QR code automaticamente.
+                </div>
+
+                {paymentMethod === 'dinheiro' && (
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500 block mb-1.5">
+                      Valor recebido
+                    </label>
+                    <CashAmountInput
+                      valueCents={amountReceivedCents}
+                      onChangeCents={setAmountReceivedCents}
+                      autoFocus
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none"
+                    />
+                    {changeCents !== null && amountReceivedCents > 0 && (
+                      <p
+                        className={`text-sm font-semibold mt-1.5 ${
+                          changeCents < 0 ? 'text-red-500' : 'text-green-600'
+                        }`}
+                      >
+                        {changeCents < 0
+                          ? `Faltam R$ ${(Math.abs(changeCents) / 100).toFixed(2).replace('.', ',')}`
+                          : `Troco: R$ ${(changeCents / 100).toFixed(2).replace('.', ',')}`}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {paymentMethod === 'pix' && (
+                  <div>
+                    {tenant?.pixKey ? (
+                      <div className="flex flex-col items-center gap-2 bg-gray-50 rounded-lg p-4">
+                        <QRCodeSVG
+                          value={generatePixPayload({
+                            pixKey: tenant.pixKey,
+                            merchantName: tenant.name,
+                            merchantCity: tenant.pixMerchantCity || 'BRASIL',
+                            amount: summary.grandTotal,
+                          })}
+                          size={160}
+                        />
+                        <p className="text-xs text-gray-500 text-center">
+                          Cliente escaneia com o app do banco. Confirme o recebimento
+                          antes de fechar a conta.
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-amber-600 bg-amber-50 rounded-lg p-3">
+                        Nenhuma chave Pix cadastrada. Configure em Configurações para
+                        gerar o QR code automaticamente.
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {paymentMethod === 'cartao' && (
+                  <p className="text-xs text-gray-500 bg-gray-50 rounded-lg p-2.5">
+                    Passe o cartão na maquininha do restaurante e confirme abaixo depois que o
+                    pagamento for aprovado.
                   </p>
                 )}
-              </div>
+              </>
             )}
 
             {error && <p className="text-xs text-red-500">{error}</p>}

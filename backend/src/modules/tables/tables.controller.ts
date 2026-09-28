@@ -202,13 +202,18 @@ export class TablesController {
     return this.tablesService.getSessionSummary(tenantId, sessionId);
   }
 
+  // Guard OPCIONAL (mesmo motivo do scan acima): convidado sem login
+  // continua podendo pedir o fechamento normalmente, só não tem carteira
+  // de cashback pra oferecer — ver TablesService.requestClosing.
+  @UseGuards(OptionalCustomerJwtAuthGuard)
   @Post('table-sessions/public/:tenantId/:sessionId/request-closing')
   async requestClosing(
     @Param('tenantId') tenantId: string,
     @Param('sessionId') sessionId: string,
     @Body() dto: RequestClosingDto,
+    @CurrentCustomer() customer: RequestCustomer | null,
   ) {
-    return this.tablesService.requestClosing(tenantId, sessionId, dto.tipAmount);
+    return this.tablesService.requestClosing(tenantId, sessionId, dto, customer?.customerId ?? null);
   }
 
   @Post('table-sessions/public/:tenantId/:sessionId/call-waiter')

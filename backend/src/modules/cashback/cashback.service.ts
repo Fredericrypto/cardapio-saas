@@ -330,6 +330,66 @@ export class CashbackService {
     return requestedCents - remaining;
   }
 
+  // Igual a `consume()` acima (mesmo FIFO por proximidade de expiração,
+  // mesmo lock pessimista), só que gravando a origem como uma MESA em
+  // vez de um pedido avulso — ver TablesService.closeSession, chamado
+  // só ali, só depois que o pagamento (ou a própria conta zerada por
+  // cashback) já está confirmado. Mantido como método separado (em vez
+  // de generalizar `consume`) pra nunca arriscar mudar o comportamento
+  // já em produção de pedidos de balcão/entrega.
+  async consumeForTableSession(
+    manager: EntityManager,
+    tenantId: string,
+    customerId: string,
+    tableSessionId: string,
+    requestedCents: number,
+  ): Promise<number> {
+    if (requestedCents <= 0) return 0;
+
+    const repo = manager.getRepository(CashbackLedgerEntry);
+    const entries = await repo
+      .createQueryBuilder('e')
+      .where('e.tenantId = :tenantId', { tenantId })
+      .andWhere('e.customerId = :customerId', { customerId })
+      .andWhere('e.remainingAmount > 0')
+      .andWhere('(e.expiresAt IS NULL OR e.expiresAt > :now)', { now: new Date() })
+      .orderBy('e.expiresAt', 'ASC', 'NULLS LAST')
+      .addOrderBy('e.createdAt', 'ASC')
+      .setLock('pessimistic_write')
+      .getMany();
+
+    let remaining = requestedCents;
+    const consumptions: CashbackConsumption[] = [];
+    const consumptionRepo = manager.getRepository(CashbackConsumption);
+
+    for (const entry of entries) {
+      if (remaining <= 0) break;
+      const availableCents = toCents(entry.remainingAmount);
+      if (availableCents <= 0) continue;
+      const takeCents = Math.min(availableCents, remaining);
+
+      entry.remainingAmount = fromCents(availableCents - takeCents);
+      await repo.save(entry);
+
+      consumptions.push(
+        consumptionRepo.create({
+          tenantId,
+          customerId,
+          orderId: null,
+          tableSessionId,
+          ledgerEntryId: entry.id,
+          amount: fromCents(takeCents),
+        }),
+      );
+      remaining -= takeCents;
+    }
+
+    if (consumptions.length > 0) {
+      await consumptionRepo.save(consumptions);
+    }
+    return requestedCents - remaining;
+  }
+
   // ---------- Reversão (pedido cancelado) ----------
 
   // Contrapartida de `consume`: devolve pro(s) crédito(s) de origem
@@ -433,18 +493,29 @@ export class CashbackService {
       id: string;
       customerId: string;
       customerName: string | null;
-      orderId: string;
+      // Exatamente um dos dois preenchido — pedido avulso de
+      // balcão/entrega, OU fechamento de mesa (28/09: cashback também
+      // pode ser gasto direto ao fechar a conta de uma mesa).
+      orderId: string | null;
+      tableSessionId: string | null;
+      tableNumber: string | null;
       locationName: string | null;
       amount: number;
       reversed: boolean;
       createdAt: Date;
     }[]
   > {
+    // LEFT join (não inner) em `order` e `tableSession` — um INNER join
+    // aqui escondia silenciosamente todo consumo com origem em MESA
+    // (orderId sempre null nesses casos).
     const consumptions = await this.consumptionRepo
       .createQueryBuilder('c')
       .innerJoinAndSelect('c.customer', 'customer')
-      .innerJoinAndSelect('c.order', 'order')
-      .leftJoinAndSelect('order.location', 'location')
+      .leftJoinAndSelect('c.order', 'order')
+      .leftJoinAndSelect('order.location', 'orderLocation')
+      .leftJoinAndSelect('c.tableSession', 'tableSession')
+      .leftJoinAndSelect('tableSession.table', 'table')
+      .leftJoinAndSelect('table.location', 'tableLocation')
       .where('c.tenantId = :tenantId', { tenantId })
       .orderBy('c.createdAt', 'DESC')
       .getMany();
@@ -454,7 +525,9 @@ export class CashbackService {
       customerId: c.customerId,
       customerName: c.customer?.name ?? null,
       orderId: c.orderId,
-      locationName: c.order?.location?.name ?? null,
+      tableSessionId: c.tableSessionId,
+      tableNumber: c.tableSession?.table?.number ?? null,
+      locationName: c.order?.location?.name ?? c.tableSession?.table?.location?.name ?? null,
       amount: c.amount,
       reversed: c.reversed,
       createdAt: c.createdAt,

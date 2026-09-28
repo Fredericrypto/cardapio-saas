@@ -261,7 +261,10 @@ export async function forceResetSession(sessionId: string, reason: string) {
 
 export async function closeTableSession(
   sessionId: string,
-  payload: { paymentMethod: string; amountReceived?: number },
+  // paymentMethod fica opcional: quando o cashback cobre a conta
+  // inteira, não existe forma de pagamento a escolher — o backend
+  // resolve sozinho (ver TablesService.closeSession).
+  payload: { paymentMethod?: string; amountReceived?: number },
 ) {
   const { data } = await api.post(`/table-sessions/${sessionId}/close`, payload);
   return data;
@@ -487,7 +490,11 @@ export interface CashbackConsumptionHistoryEntry {
   id: string;
   customerId: string;
   customerName: string | null;
-  orderId: string;
+  // Exatamente um dos dois: pedido avulso de balcão/entrega, ou
+  // fechamento de mesa (cashback usado direto na conta da mesa).
+  orderId: string | null;
+  tableSessionId: string | null;
+  tableNumber: string | null;
   locationName: string | null;
   amount: number;
   reversed: boolean;

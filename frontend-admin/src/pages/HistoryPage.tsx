@@ -643,7 +643,7 @@ function CashbackHistoryTab() {
                         {c.customerName ?? 'Cliente'}
                       </p>
                       <p className="text-xs text-gray-400">
-                        {c.locationName ? `${c.locationName} · ` : ''}
+                        {c.tableNumber ? `Mesa ${c.tableNumber} · ` : c.locationName ? `${c.locationName} · ` : ''}
                         {formatDateTimeFull(c.createdAt)}
                       </p>
                     </div>

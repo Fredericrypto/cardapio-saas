@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, Bell, LogOut } from 'lucide-react';
 import { fetchSessionSummary, requestSessionClosing, leaveTable } from '../lib/menu-api';
+import type { RequestClosingPayload } from '../lib/menu-api';
+import { ClosingPaymentSheet } from '../components/ClosingPaymentSheet';
 import type { SessionSummary } from '../types';
 import { useTableSessionContext } from '../contexts/TableSessionContext';
 import { useTenant } from '../contexts/TenantContext';
@@ -74,6 +76,9 @@ export function MyAccountPage() {
   const [tipPercent, setTipPercent] = useState<number | 'custom' | null>(null);
   const [customTip, setCustomTip] = useState('');
   const [statusNotification, setStatusNotification] = useState<string | null>(null);
+  // Folha de pagamento (forma de pagamento + cashback) aberta ao tocar
+  // em "Solicitar fechamento" — pedido do Felipe, 28/09.
+  const [showPaymentSheet, setShowPaymentSheet] = useState(false);
 
   // Guarda o último status conhecido de cada pedido pra detectar mudanças
   // entre uma atualização (poll) e outra, e avisar o cliente na tela.
@@ -144,12 +149,13 @@ export function MyAccountPage() {
     return 0;
   }
 
-  async function handleRequestClosing() {
+  async function handleConfirmClosing(payload: RequestClosingPayload) {
     if (!tenant || !session) return;
     setIsRequesting(true);
     setRequestError(null);
     try {
-      await requestSessionClosing(tenant.id, session.id, calculateTipAmount());
+      await requestSessionClosing(tenant.id, session.id, payload);
+      setShowPaymentSheet(false);
       setClosingRequested(true);
     } catch (err) {
       setRequestError('Não foi possível solicitar o fechamento. Tente novamente ou chame um garçom.');
@@ -392,15 +398,29 @@ export function MyAccountPage() {
           </div>
         ) : (
           <button
-            onClick={handleRequestClosing}
+            onClick={() => setShowPaymentSheet(true)}
             disabled={isRequesting || summary.orders.length === 0}
             className="w-full py-3.5 rounded-xl text-white font-semibold disabled:opacity-60"
             style={{ backgroundColor: tenant.primaryColor }}
           >
-            {isRequesting ? 'Enviando...' : 'Solicitar fechamento da conta'}
+            Solicitar fechamento da conta
           </button>
         )}
       </div>
+
+      {showPaymentSheet && (
+        <ClosingPaymentSheet
+          tenantId={tenant.id}
+          primaryColor={tenant.primaryColor}
+          subtotal={summary.total}
+          tipAmount={calculateTipAmount()}
+          customerToken={customerToken}
+          isSubmitting={isRequesting}
+          error={requestError}
+          onCancel={() => setShowPaymentSheet(false)}
+          onConfirm={handleConfirmClosing}
+        />
+      )}
     </div>
   );
 }
