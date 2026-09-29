@@ -77,12 +77,51 @@ export class TableSession {
   @Column({ name: 'cashback_requested_by_customer_id', type: 'uuid', nullable: true })
   cashbackRequestedByCustomerId: string | null;
 
+  // Quem tocou em "Solicitar fechamento" — SEMPRE gravado quando é um
+  // cliente logado (independente de ter pedido pra usar cashback ou
+  // não). É o alvo do cashback GANHO nessa sessão quando
+  // cashbackSplitMode = 'pagador' (28/09) — ver
+  // TablesService.creditCashbackForClosedSession.
+  @Column({ name: 'closing_requested_by_customer_id', type: 'uuid', nullable: true })
+  closingRequestedByCustomerId: string | null;
+
+  // Como dividir o cashback GANHO nessa sessão entre os clientes que
+  // pediram algo (pedido do Felipe, 28/09) — só perguntado quando há
+  // mais de um cliente distinto com pedido na mesa:
+  //   'por_pedido' (padrão/comportamento de sempre): cada cliente
+  //     recebe o cashback dos PRÓPRIOS pedidos.
+  //   'pagador': tudo vai pra closingRequestedByCustomerId.
+  // null = mesa de uma pessoa só, ou ninguém escolheu (cai no padrão
+  // 'por_pedido').
+  @Column({ name: 'cashback_split_mode', type: 'varchar', length: 20, nullable: true })
+  cashbackSplitMode: string | null;
+
   // Quanto de cashback foi REALMENTE debitado ao fechar a conta (0 até
   // lá). Nunca é a intenção do cliente — é sempre o valor final, já
   // limitado pelo saldo disponível e pelo total da conta no instante do
   // fechamento.
   @Column({ name: 'cashback_used', type: 'numeric', precision: 10, scale: 2, default: 0, transformer: numericTransformer })
   cashbackUsed: number;
+
+  // ---- Pix de verdade via Mercado Pago (28/09) — mesmo mecanismo já
+  // usado pra pedidos avulsos de balcão/entrega (ver
+  // OrdersService/MercadoPagoService), agora também pro TOTAL da mesa.
+  // Preenchidos só quando o cliente escolhe Pix E o tenant tem Mercado
+  // Pago configurado; sem isso, Pix de mesa continua sendo só a
+  // intenção combinada em pessoa (paymentStatus fica null).
+  @Column({ name: 'mp_payment_id', type: 'varchar', nullable: true })
+  mpPaymentId: string | null;
+
+  @Column({ name: 'pix_payload', type: 'text', nullable: true })
+  pixPayload: string | null; // "Pix copia e cola"
+
+  @Column({ name: 'pix_expires_at', type: 'timestamptz', nullable: true })
+  pixExpiresAt: Date | null;
+
+  // pendente | pago | falhou — null enquanto não existe nenhuma cobrança
+  // Pix de gateway pra essa sessão.
+  @Column({ name: 'payment_status', type: 'varchar', length: 20, nullable: true })
+  paymentStatus: string | null;
 
   // Preenchidos pelo garçom/admin ao fechar a conta de fato.
   @Column({ name: 'payment_method', type: 'varchar', length: 20, nullable: true })

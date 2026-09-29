@@ -24,6 +24,7 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
   dinheiro: 'Dinheiro',
   cartao: 'Cartão',
   pix: 'Pix',
+  cashback: 'Cashback (cobre 100% da conta)',
 };
 
 export function CloseSessionModal({ session, onClose, onClosed }: CloseSessionModalProps) {
@@ -63,6 +64,18 @@ export function CloseSessionModal({ session, onClose, onClosed }: CloseSessionMo
     refreshIntervalRef.current = interval;
     return () => clearInterval(interval);
   }, [session.id]);
+
+  // Pix real (Mercado Pago) pode fechar a conta SOZINHO, sem ninguém
+  // clicar em nada aqui (28/09) — se o polling acima flagrar que a
+  // sessão virou 'fechada' por fora (não pelo `handleConfirm` local),
+  // troca pro cupom igual já fazia quando era o próprio admin quem
+  // confirmava, e para de atualizar.
+  useEffect(() => {
+    if (summary?.session.status === 'fechada' && !closedSummary) {
+      setClosedSummary(summary);
+      if (refreshIntervalRef.current) clearInterval(refreshIntervalRef.current);
+    }
+  }, [summary, closedSummary]);
 
   // Cálculo em centavos, igual ao backend — evita mostrar um troco
   // "quase certo" que depois diverge do valor que o servidor grava.
@@ -227,6 +240,32 @@ export function CloseSessionModal({ session, onClose, onClosed }: CloseSessionMo
                       : 'Prefere que um atendente vá até a mesa.'}
                   </>
                 )}
+              </div>
+            )}
+
+            {/* Divisão do cashback GANHO nessa sessão (pedido do
+                Felipe, 28/09) — só existe quando a mesa teve mais de um
+                cliente pedindo e alguém escolheu explicitamente. */}
+            {session.cashbackSplitMode === 'pagador' && (
+              <div className="bg-blue-50 border border-blue-100 rounded-lg p-2.5 text-xs text-blue-700">
+                O cliente que está fechando pediu pra ficar com TODO o cashback ganho nessa
+                conta, em vez de dividir entre quem pediu cada item.
+              </div>
+            )}
+
+            {/* Pix real via Mercado Pago em andamento (28/09) — usa
+                `summary.session`, sempre a cópia mais recente do polling
+                (o `session` recebido por prop pode estar velho), pra
+                mostrar corretamente que o pagamento pode confirmar
+                sozinho a qualquer momento, sem o admin precisar fazer
+                nada. */}
+            {summary.session.paymentStatus === 'pendente' && summary.session.mpPaymentId && (
+              <div className="bg-amber-50 border border-amber-100 rounded-lg p-2.5 text-xs text-amber-700 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                <span>
+                  Aguardando o cliente pagar o Pix pelo app do banco. A conta fecha sozinha
+                  assim que o Mercado Pago confirmar — não precisa clicar em nada.
+                </span>
               </div>
             )}
 

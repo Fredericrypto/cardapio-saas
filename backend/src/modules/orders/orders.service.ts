@@ -29,6 +29,7 @@ import type { CartLine } from '../promotions/promotions.service';
 import { CashbackService } from '../cashback/cashback.service';
 import { PushService } from '../push/push.service';
 import { CustomerVerificationService } from '../customers/customer-verification.service';
+import { TablesService } from '../tables/tables.service';
 
 // Janela pro cliente pagar o Pix antes do pedido expirar sozinho — mesmo
 // tempo que o iFood usa (6 min). Com Mercado Pago configurado, a
@@ -56,6 +57,7 @@ export class OrdersService {
     private readonly cashbackService: CashbackService,
     private readonly pushService: PushService,
     private readonly verificationService: CustomerVerificationService,
+    private readonly tablesService: TablesService,
   ) {}
 
   // Ponto ÚNICO por onde um pedido vira 'cancelado' — usado nos 4
@@ -1144,6 +1146,20 @@ export class OrdersService {
       dataId,
     );
     if (!externalReference) return { received: true };
+
+    // Prefixo "mesa:" (28/09) distingue uma cobrança de FECHAMENTO DE
+    // MESA de uma de PEDIDO avulso — mesmo webhook, dois destinos
+    // possíveis. Ver TablesService.requestClosing (quem cria a cobrança
+    // com essa referência) e applyMercadoPagoStatusToSession (quem
+    // decide o que fazer com o status).
+    if (externalReference.startsWith('mesa:')) {
+      const sessionId = externalReference.slice('mesa:'.length);
+      const session = await this.tablesService.findSessionOrNull(tenantId, sessionId);
+      if (session) {
+        await this.tablesService.applyMercadoPagoStatusToSession(tenantId, session, status);
+      }
+      return { received: true };
+    }
 
     const order = await this.orderRepo.findOne({
       where: { id: externalReference, tenantId },

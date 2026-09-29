@@ -197,10 +197,24 @@ export async function fetchSessionSummary(
 
 export interface RequestClosingPayload {
   tipAmount?: number;
-  paymentMethod: 'dinheiro' | 'cartao' | 'pix';
+  // 'cashback' só é válido quando useCashback=true e o saldo cobre 100%
+  // da conta — é uma escolha EXPLÍCITA do cliente (nunca inferida só
+  // porque dava pra cobrir).
+  paymentMethod: 'dinheiro' | 'cartao' | 'pix' | 'cashback';
   useCashback?: boolean;
   // Obrigatório quando paymentMethod = 'dinheiro'.
   cashDeliveryPreference?: 'balcao' | 'mesa';
+  // Só enviado (e só aceito pelo backend) quando há mais de um cliente
+  // distinto com pedido na mesa.
+  cashbackSplitMode?: 'pagador' | 'por_pedido';
+}
+
+export async function checkSessionPixStatus(
+  tenantId: string,
+  sessionId: string,
+): Promise<{ status: string; paymentStatus: string | null; pixExpiresAt: string | null }> {
+  const { data } = await api.get(`/table-sessions/public/${tenantId}/${sessionId}/pix-status`);
+  return data;
 }
 
 export async function requestSessionClosing(

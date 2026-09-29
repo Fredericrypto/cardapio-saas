@@ -4,6 +4,7 @@ import { ArrowLeft, CheckCircle2, Bell, LogOut } from 'lucide-react';
 import { fetchSessionSummary, requestSessionClosing, leaveTable } from '../lib/menu-api';
 import type { RequestClosingPayload } from '../lib/menu-api';
 import { ClosingPaymentSheet } from '../components/ClosingPaymentSheet';
+import { TableSessionPixWaitingPanel } from '../components/TableSessionPixWaitingPanel';
 import type { SessionSummary } from '../types';
 import { useTableSessionContext } from '../contexts/TableSessionContext';
 import { useTenant } from '../contexts/TenantContext';
@@ -198,6 +199,13 @@ export function MyAccountPage() {
   // algo, a única forma de sair é a conta ser fechada com pagamento
   // (ver TablesService.leaveTable, que já bloqueia nesse caso).
   const isOpener = Boolean(customer && summary.session.openedByCustomerId === customer.id);
+  // Quantos clientes DISTINTOS e logados pediram algo nessa mesa —
+  // pergunta como dividir o cashback ganho só quando é mais de 1 (ver
+  // ClosingPaymentSheet). Conta só pedidos não cancelados com cliente
+  // logado (convidado não recebe cashback de qualquer forma).
+  const distinctPayingCustomers = new Set(
+    summary.orders.filter((o) => o.status !== 'cancelado' && o.customer?.id).map((o) => o.customer!.id),
+  ).size;
   const canLeaveTable = Boolean(customerToken) && !isOpener && summary.orders.length === 0;
 
   return (
@@ -392,10 +400,38 @@ export function MyAccountPage() {
         )}
 
         {closingRequested ? (
-          <div className="flex items-center justify-center gap-2 py-3 text-sm font-semibold text-gray-500">
-            <CheckCircle2 size={16} />
-            Fechamento solicitado — aguarde o garçom
-          </div>
+          summary.session.paymentStatus === 'pendente' && summary.session.pixPayload ? (
+            <TableSessionPixWaitingPanel
+              tenant={tenant}
+              session={summary.session}
+              onConfirmed={() => {
+                /* fetchSessionSummary do polling já vai pegar o status
+                   'fechada' no próximo tick e trocar de tela sozinho. */
+              }}
+              onFailed={() => {
+                /* idem — o próximo poll vai ver paymentStatus:'falhou'
+                   e cair no ramo de abaixo automaticamente. */
+              }}
+            />
+          ) : summary.session.paymentStatus === 'falhou' ? (
+            <div className="flex flex-col items-center gap-2 py-2">
+              <p className="text-sm font-semibold text-red-500 text-center">
+                O Pix não foi confirmado a tempo.
+              </p>
+              <button
+                onClick={() => setShowPaymentSheet(true)}
+                className="w-full py-3 rounded-xl text-white font-semibold"
+                style={{ backgroundColor: tenant.primaryColor }}
+              >
+                Tentar de novo
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center gap-2 py-3 text-sm font-semibold text-gray-500">
+              <CheckCircle2 size={16} />
+              Fechamento solicitado — aguarde o garçom
+            </div>
+          )
         ) : (
           <button
             onClick={() => setShowPaymentSheet(true)}
@@ -415,6 +451,7 @@ export function MyAccountPage() {
           subtotal={summary.total}
           tipAmount={calculateTipAmount()}
           customerToken={customerToken}
+          distinctPayingCustomers={distinctPayingCustomers}
           isSubmitting={isRequesting}
           error={requestError}
           onCancel={() => setShowPaymentSheet(false)}

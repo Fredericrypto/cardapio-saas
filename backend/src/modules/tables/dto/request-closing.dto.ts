@@ -8,10 +8,11 @@ export class RequestClosingDto {
   tipAmount?: number;
 
   // Forma de pagamento que o cliente pretende usar (pedido do Felipe,
-  // 28/09). Sempre exigida — mesmo quando o cashback vai cobrir tudo, o
-  // serviço decide isso sozinho (ver TablesService.requestClosing);
-  // aqui é só a intenção do cliente.
-  @IsIn(['dinheiro', 'cartao', 'pix'])
+  // 28/09). 'cashback' só é aceito quando useCashback=true E o saldo
+  // realmente cobre 100% da conta (validado no serviço) — é uma escolha
+  // EXPLÍCITA do cliente, nunca inferida automaticamente só porque o
+  // saldo dava pra cobrir (ver TablesService.requestClosing).
+  @IsIn(['dinheiro', 'cartao', 'pix', 'cashback'])
   paymentMethod: string;
 
   // Cliente quer usar o saldo de cashback dele pra abater a conta.
@@ -26,4 +27,12 @@ export class RequestClosingDto {
   @IsOptional()
   @IsIn(['balcao', 'mesa'])
   cashDeliveryPreference?: string;
+
+  // Só perguntado (e só aceito) quando a mesa tem mais de um cliente
+  // distinto com pedido — 'pagador' manda todo o cashback GANHO nessa
+  // sessão pra quem está fechando a conta; 'por_pedido' (padrão) mantém
+  // cada cliente recebendo o cashback dos próprios pedidos.
+  @IsOptional()
+  @IsIn(['pagador', 'por_pedido'])
+  cashbackSplitMode?: string;
 }

@@ -396,9 +396,9 @@ export function SettingsPage() {
             </p>
             <p className="text-xs text-gray-400 mb-3">
               Quando configurado, tem prioridade sobre a chave Pix acima: o pagamento é
-              confirmado sozinho (igual iFood), sem você precisar clicar em nada. O
-              dinheiro cai direto na sua conta Mercado Pago — nunca passa pela nossa
-              infra.
+              confirmado sozinho (igual iFood), sem você precisar clicar em nada. Vale pra
+              balcão/entrega E pro fechamento de conta de mesa. O dinheiro cai direto na
+              sua conta Mercado Pago — nunca passa pela nossa infra.
             </p>
 
             {tenant?.mercadoPagoConfigured && !showMercadoPagoField ? (

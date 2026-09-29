@@ -248,6 +248,9 @@ export interface TableSession {
   // Só preenchido quando requestedPaymentMethod = 'dinheiro'.
   cashDeliveryPreference: 'balcao' | 'mesa' | null;
   cashbackUsed: number;
+  cashbackSplitMode: 'pagador' | 'por_pedido' | null;
+  mpPaymentId: string | null;
+  paymentStatus: string | null;
   paymentMethod: string | null;
   amountReceived: number | null;
   changeGiven: number | null;

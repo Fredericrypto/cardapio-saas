@@ -227,6 +227,12 @@ export interface TableSession {
   requestedPaymentMethod: 'dinheiro' | 'cartao' | 'pix' | null;
   cashDeliveryPreference: 'balcao' | 'mesa' | null;
   cashbackUsed: number;
+  // Pix real via Mercado Pago (28/09) — presentes só enquanto uma
+  // cobrança está de pé. `paymentStatus`: 'pendente' | 'pago' | 'falhou'.
+  mpPaymentId?: string | null;
+  pixPayload?: string | null;
+  pixExpiresAt?: string | null;
+  paymentStatus?: string | null;
   paymentMethod: string | null;
   amountReceived: number | null;
   changeGiven: number | null;

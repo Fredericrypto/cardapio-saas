@@ -15,9 +15,17 @@ import { CustomerVerificationService } from '../customers/customer-verification.
 import { CreateTableDto } from './dto/create-table.dto';
 import { CashbackService } from '../cashback/cashback.service';
 import { PushService } from '../push/push.service';
+import { MercadoPagoService } from '../payments/mercadopago.service';
+import { decryptSecret } from '../../common/utils/encryption';
 import { toCents, fromCents } from '../../common/utils/money';
 import { computeIsOpenNow } from '../../common/utils/schedule';
 import { signReceipt, verifyReceiptSignature, formatVerificationCode, parseVerificationCode } from '../../common/utils/receipt-signature';
+
+// Janela de pagamento do Pix de MESA (28/09) — bem maior que a de um
+// pedido avulso (6 min, em OrdersService): fechar a conta de uma mesa
+// inteira envolve reunir todo mundo, decidir gorjeta, abrir o banco...
+// 6 minutos seria apertado demais e expiraria cobranças legítimas.
+const TABLE_PIX_PAYMENT_WINDOW_MS = 15 * 60 * 1000;
 
 @Injectable()
 export class TablesService {
@@ -36,6 +44,7 @@ export class TablesService {
     private readonly locationRepo: Repository<Location>,
     private readonly cashbackService: CashbackService,
     private readonly pushService: PushService,
+    private readonly mercadoPagoService: MercadoPagoService,
     private readonly verificationService: CustomerVerificationService,
   ) {}
 
@@ -507,6 +516,14 @@ export class TablesService {
     return session;
   }
 
+  // Igual acima, mas devolve null em vez de lançar — usado pelo webhook
+  // do Mercado Pago (OrdersService.handleMercadoPagoWebhook), que nunca
+  // pode estourar erro pro Mercado Pago só porque a referência não bateu
+  // com nenhuma sessão (webhook malformado ou sessão já removida).
+  async findSessionOrNull(tenantId: string, sessionId: string): Promise<TableSession | null> {
+    return this.sessionRepo.findOne({ where: { id: sessionId, tenantId } });
+  }
+
   // "Minha Conta": todos os pedidos feitos nessa sessão + total acumulado.
   async getSessionSummary(tenantId: string, sessionId: string) {
     const session = await this.sessionRepo.findOne({
@@ -674,36 +691,174 @@ export class TablesService {
   }
 
   // Reforma do fechamento (pedido do Felipe, 28/09): o CLIENTE escolhe
-  // forma de pagamento (e, se quiser e tiver saldo, usa cashback) já
-  // aqui — nunca mais o admin decidindo tudo sozinho sem nenhum sinal
-  // de quem ia pagar. Isto grava só a INTENÇÃO do cliente: nada de
-  // dinheiro/cashback muda de mão ainda. O débito de cashback de
-  // verdade só acontece em closeSession, sempre recalculado contra o
-  // saldo AO VIVO (nunca confia num valor congelado aqui).
+  // forma de pagamento já aqui — nunca mais o admin decidindo tudo
+  // sozinho sem nenhum sinal de quem ia pagar. 'cashback' como
+  // paymentMethod é uma escolha EXPLÍCITA (o cliente viu que cobria
+  // 100% e apertou "pagar com cashback"), nunca inferida sozinha.
+  // Quando é Pix de verdade (Mercado Pago configurado) e sobra algo a
+  // pagar, já cria a cobrança aqui — o cliente sai dessa tela vendo o QR.
   async requestClosing(
     tenantId: string,
     sessionId: string,
-    dto: { tipAmount?: number; paymentMethod: string; useCashback?: boolean; cashDeliveryPreference?: string },
+    dto: {
+      tipAmount?: number;
+      paymentMethod: string;
+      useCashback?: boolean;
+      cashDeliveryPreference?: string;
+      cashbackSplitMode?: string;
+    },
     customerId: string | null,
   ): Promise<TableSession> {
     const session = await this.findSession(tenantId, sessionId);
-    if (session.status !== 'aberta') {
-      throw new BadRequestException('Esta sessão já foi fechada ou já solicitou fechamento.');
+    // Aceita reenviar mesmo já estando em 'fechamento_solicitado' —
+    // necessário pra permitir tentar de novo depois de um Pix que
+    // expirou ou falhou (ver checkSessionPixStatus), sem precisar
+    // voltar pra 'aberta' primeiro. Só recusa se já fechou de verdade.
+    if (session.status === 'fechada') {
+      throw new BadRequestException('Esta sessão já foi fechada.');
     }
     if (dto.paymentMethod === 'dinheiro' && !dto.cashDeliveryPreference) {
       throw new BadRequestException(
         'Escolha se prefere pagar no balcão ou se um atendente vai até a mesa.',
       );
     }
+    // Convidado sem login nunca tem carteira — ignora silenciosamente em
+    // vez de dar erro (não é uma escolha inválida, só não se aplica).
+    const useCashback = Boolean(dto.useCashback && customerId);
+
+    session.tipAmount = dto.tipAmount && dto.tipAmount > 0 ? dto.tipAmount : 0;
+    session.cashbackRequestedByCustomerId = useCashback ? customerId : null;
+    // SEMPRE grava quem está fechando (independente de usar cashback ou
+    // não) — é o alvo do cashback GANHO quando cashbackSplitMode =
+    // 'pagador', ver creditCashbackForClosedSession.
+    session.closingRequestedByCustomerId = customerId;
+
+    // 'cashback' como forma de pagamento só é aceito se realmente cobrir
+    // tudo — nunca aceita a palavra do cliente sem reconferir contra o
+    // saldo AO VIVO (a mesma checagem que closeSession faz de novo,
+    // depois, antes de debitar de verdade).
+    const totalCents = await this.calculateSessionTotalCents(tenantId, sessionId);
+    const totalPlusTipCents = totalCents + toCents(session.tipAmount);
+    if (dto.paymentMethod === 'cashback') {
+      if (!useCashback) {
+        throw new BadRequestException('Ative "usar meu cashback" pra pagar só com ele.');
+      }
+      const { appliedCents } = await this.previewCashbackCents(tenantId, session, totalPlusTipCents);
+      if (appliedCents < totalPlusTipCents) {
+        throw new BadRequestException('Seu saldo de cashback não cobre o total da conta.');
+      }
+    }
+
+    // Divisão do cashback GANHO só faz sentido com mais de um cliente
+    // distinto pedindo algo — com uma pessoa só, ignora silenciosamente
+    // (não é erro, só não se aplica) em vez de recusar a requisição.
+    if (dto.cashbackSplitMode) {
+      const distinctCustomers = await this.orderRepo
+        .createQueryBuilder('o')
+        .select('DISTINCT o.customer_id', 'customerId')
+        .where('o.table_session_id = :sessionId', { sessionId })
+        .andWhere('o.status != :cancelado', { cancelado: 'cancelado' })
+        .andWhere('o.customer_id IS NOT NULL')
+        .getRawMany<{ customerId: string }>();
+      session.cashbackSplitMode =
+        distinctCustomers.length > 1 && customerId ? dto.cashbackSplitMode : null;
+    } else {
+      session.cashbackSplitMode = null;
+    }
+
+    // Cobrança Pix antiga (se houver) fica órfã a partir daqui — cancela
+    // no Mercado Pago antes de decidir o que vem a seguir (best-effort,
+    // nunca bloqueia o fechamento; ver MercadoPagoService.cancelPayment).
+    // Evita o cliente conseguir pagar por engano um QR que ele mesmo já
+    // abandonou ao mudar de forma de pagamento.
+    if (session.mpPaymentId && session.paymentStatus === 'pendente') {
+      const tenantForCancel = await this.orderRepo.manager
+        .getRepository(Tenant)
+        .findOne({ where: { id: tenantId } });
+      if (tenantForCancel?.mercadoPagoAccessTokenEncrypted) {
+        await this.mercadoPagoService.cancelPayment(
+          decryptSecret(tenantForCancel.mercadoPagoAccessTokenEncrypted),
+          session.mpPaymentId,
+        );
+      }
+    }
+
+    if (dto.paymentMethod === 'pix' || dto.paymentMethod === 'cashback') {
+      session.requestedPaymentMethod = dto.paymentMethod;
+      session.cashDeliveryPreference = null;
+    } else {
+      session.requestedPaymentMethod = dto.paymentMethod;
+      session.cashDeliveryPreference = dto.paymentMethod === 'dinheiro' ? dto.cashDeliveryPreference! : null;
+    }
+
+    // Pix de VERDADE (Mercado Pago) — só quando sobra algo a pagar de
+    // fato depois do cashback (senão não existe cobrança nenhuma a
+    // criar: é o caso 'cashback' acima). Sem Mercado Pago configurado
+    // no tenant, Pix de mesa continua sendo só a intenção combinada em
+    // pessoa — comportamento de sempre, nada muda.
+    if (dto.paymentMethod === 'pix') {
+      const { appliedCents } = await this.previewCashbackCents(tenantId, session, totalPlusTipCents);
+      const remainingCents = totalPlusTipCents - appliedCents;
+      const tenant = await this.orderRepo.manager
+        .getRepository(Tenant)
+        .findOne({ where: { id: tenantId } });
+      if (remainingCents > 0 && tenant?.mercadoPagoAccessTokenEncrypted) {
+        const customer = customerId
+          ? await this.orderRepo.manager.getRepository(Customer).findOne({ where: { id: customerId } })
+          : null;
+        const pixExpiresAt = new Date(Date.now() + TABLE_PIX_PAYMENT_WINDOW_MS);
+        const publicUrl = process.env.API_PUBLIC_URL;
+        const payment = await this.mercadoPagoService.createPixPayment({
+          accessToken: decryptSecret(tenant.mercadoPagoAccessTokenEncrypted),
+          amount: fromCents(remainingCents),
+          description: `Conta - Mesa ${session.tableId} - ${tenant.name}`,
+          payerEmail: customer?.email ?? `mesa-${session.id}@guest.cardapiosaas.com`,
+          // Prefixo "mesa:" distingue de um externalReference de PEDIDO
+          // (que é só o id cru) no dispatch do webhook — ver
+          // OrdersService.handleMercadoPagoWebhook.
+          externalReference: `mesa:${session.id}`,
+          // Único por TENTATIVA (nunca só por sessão) — ver o comentário
+          // em CreatePixPaymentParams.idempotencyKey sobre o bug que
+          // isso evita.
+          idempotencyKey: `mesa:${session.id}:${Date.now()}`,
+          expiresAt: pixExpiresAt,
+          notificationUrl: publicUrl
+            ? `${publicUrl}/orders/public/${tenantId}/webhook/mercadopago`
+            : undefined,
+        });
+        session.mpPaymentId = payment.id;
+        session.pixPayload = payment.qrCode;
+        session.pixExpiresAt = pixExpiresAt;
+        session.paymentStatus = 'pendente';
+      } else {
+        // Sem gateway configurado (ou cashback já cobre o resto, caso
+        // raro de corrida) — limpa qualquer cobrança antiga de uma
+        // tentativa anterior desta mesma sessão.
+        session.mpPaymentId = null;
+        session.pixPayload = null;
+        session.pixExpiresAt = null;
+        session.paymentStatus = null;
+      }
+    } else {
+      session.mpPaymentId = null;
+      session.pixPayload = null;
+      session.pixExpiresAt = null;
+      session.paymentStatus = null;
+    }
 
     session.status = 'fechamento_solicitado';
-    session.tipAmount = dto.tipAmount && dto.tipAmount > 0 ? dto.tipAmount : 0;
-    session.requestedPaymentMethod = dto.paymentMethod;
-    session.cashDeliveryPreference = dto.paymentMethod === 'dinheiro' ? dto.cashDeliveryPreference! : null;
-    // Convidado sem login nunca tem carteira — ignora silenciosamente
-    // em vez de dar erro (não é uma escolha inválida, só não se aplica).
-    session.cashbackRequestedByCustomerId = dto.useCashback && customerId ? customerId : null;
     return this.sessionRepo.save(session);
+  }
+
+  // Total dos itens da mesa (pedidos não cancelados), em centavos — a
+  // mesma soma usada por getSessionSummary, extraída aqui pra poder ser
+  // calculada ANTES de montar o resumo completo (requestClosing precisa
+  // só disso pra decidir a cobrança Pix).
+  private async calculateSessionTotalCents(tenantId: string, sessionId: string): Promise<number> {
+    const orders = await this.orderRepo.find({
+      where: { tableSessionId: sessionId, tenantId, status: Not('cancelado') },
+    });
+    return orders.reduce((sum, o) => sum + toCents(o.total), 0);
   }
 
   // Quanto de cashback SERIA aplicado agora, se a conta fosse fechada
@@ -975,6 +1130,95 @@ export class TablesService {
     return overview;
   }
 
+  // Endpoint público que o app do cliente fica consultando a cada poucos
+  // segundos enquanto mostra o QR do Pix da MESA — mesmo padrão de
+  // OrdersService.checkPixStatus. Confirma automaticamente (fecha a
+  // sessão de verdade) assim que o Mercado Pago disser que aprovou, sem
+  // precisar do admin clicar em nada.
+  async checkSessionPixStatus(
+    tenantId: string,
+    sessionId: string,
+  ): Promise<{ status: string; paymentStatus: string | null; pixExpiresAt: Date | null }> {
+    const session = await this.findSession(tenantId, sessionId);
+
+    if (session.status === 'fechamento_solicitado' && session.mpPaymentId && session.paymentStatus === 'pendente') {
+      const tenant = await this.orderRepo.manager
+        .getRepository(Tenant)
+        .findOne({ where: { id: tenantId } });
+      if (tenant?.mercadoPagoAccessTokenEncrypted) {
+        try {
+          const { status } = await this.mercadoPagoService.getPaymentStatus(
+            decryptSecret(tenant.mercadoPagoAccessTokenEncrypted),
+            session.mpPaymentId,
+          );
+          await this.applyMercadoPagoStatusToSession(tenantId, session, status);
+        } catch {
+          // Falha pontual na consulta ao Mercado Pago — não derruba a
+          // tela do cliente por isso, só tenta de novo no próximo poll.
+        }
+      }
+    }
+
+    if (
+      session.paymentStatus === 'pendente' &&
+      session.pixExpiresAt &&
+      session.pixExpiresAt.getTime() < Date.now()
+    ) {
+      // Expira só a COBRANÇA — a mesa continua em 'fechamento_solicitado'
+      // (nunca volta sozinha pra 'aberta'), o cliente só perde o QR e
+      // precisa escolher a forma de pagamento de novo.
+      session.paymentStatus = 'falhou';
+      session.requestedPaymentMethod = null;
+      session.mpPaymentId = null;
+      session.pixPayload = null;
+      await this.sessionRepo.save(session);
+    }
+
+    return { status: session.status, paymentStatus: session.paymentStatus, pixExpiresAt: session.pixExpiresAt };
+  }
+
+  // Traduz o status do Mercado Pago pro fechamento de mesa — chamado
+  // tanto pelo polling (checkSessionPixStatus) quanto pelo webhook (ver
+  // OrdersService.handleMercadoPagoWebhook, que delega pra cá quando o
+  // externalReference começa com "mesa:"). 'approved' fecha a conta de
+  // verdade sozinho — mesma lógica de closeSession, sem precisar do
+  // admin clicar em nada, igual iFood.
+  async applyMercadoPagoStatusToSession(
+    tenantId: string,
+    session: TableSession,
+    mpStatus: string,
+  ): Promise<void> {
+    if (session.status !== 'fechamento_solicitado' || session.paymentStatus !== 'pendente') return;
+
+    if (mpStatus === 'approved') {
+      // Trava atômica (28/09): o mesmo pagamento aprovado pode chegar
+      // por DOIS caminhos quase ao mesmo tempo — o poll do cliente
+      // (checkSessionPixStatus) e o webhook do Mercado Pago — e sem
+      // isso os dois conseguiam passar pela checagem acima antes de
+      // qualquer um salvar, executando closeSession (e o crédito de
+      // cashback) DUAS vezes pro mesmo pagamento. O UPDATE...WHERE é
+      // uma operação atômica no Postgres: só UM dos dois concorrentes
+      // consegue affected=1; o outro vê 0 e desiste sem fazer nada.
+      const result = await this.sessionRepo
+        .createQueryBuilder()
+        .update(TableSession)
+        .set({ paymentStatus: 'pago' })
+        .where('id = :id AND payment_status = :pending', { id: session.id, pending: 'pendente' })
+        .execute();
+      if ((result.affected ?? 0) === 0) return; // outro caminho já ganhou a corrida
+      await this.closeSession(tenantId, session.id, 'pix');
+    } else if (mpStatus === 'rejected' || mpStatus === 'cancelled') {
+      // Não fecha nada — só limpa a cobrança falha pra o cliente poder
+      // tentar de novo (outra forma de pagamento, ou gerar outro Pix).
+      session.paymentStatus = 'falhou';
+      session.requestedPaymentMethod = null;
+      session.mpPaymentId = null;
+      session.pixPayload = null;
+      await this.sessionRepo.save(session);
+    }
+    // 'pending'/'in_process' — continua aguardando, nada muda.
+  }
+
   // Usado pelo painel admin/garçom pra encerrar de fato a mesa, com o
   // pagamento já resolvido. Todo cálculo de troco é feito aqui, em
   // centavos, nunca confiando em nenhum valor pré-calculado do frontend.
@@ -1104,10 +1348,15 @@ export class TablesService {
     // registro de auditoria), mas a notificação é consolidada: no
     // máximo 3 avisos por CLIENTE ao fim de toda a mesa, cobrindo o
     // total de todos os pedidos dele nessa sessão — não um por pedido.
-    const perCustomer = new Map<
-      string,
-      { totalCents: number; cashbackCents: number; lastOrderId: string }
-    >();
+    //
+    // Dois mapas SEPARADOS (pedido do Felipe, 28/09 — divisão de
+    // cashback): "pagamento confirmado" é sempre sobre o total do
+    // PRÓPRIO pedido de quem pediu; "você ganhou cashback" é sobre quem
+    // de fato RECEBEU o crédito — os dois só coincidem quando
+    // cashbackSplitMode não é 'pagador' (o caso de sempre).
+    const paymentByOrderer = new Map<string, number>();
+    const cashbackByRecipient = new Map<string, number>();
+    const lastOrderIdByOrderer = new Map<string, string>();
 
     for (const order of sessionOrders) {
       if (order.status === 'cancelado' || !order.customerId) continue;
@@ -1118,13 +1367,11 @@ export class TablesService {
       // mesmo quando não há crédito a dar.
       order.cashbackLocked = true;
 
-      const bucket = perCustomer.get(order.customerId) ?? {
-        totalCents: 0,
-        cashbackCents: 0,
-        lastOrderId: order.id,
-      };
-      bucket.totalCents += toCents(order.total);
-      bucket.lastOrderId = order.id;
+      paymentByOrderer.set(
+        order.customerId,
+        (paymentByOrderer.get(order.customerId) ?? 0) + toCents(order.total),
+      );
+      lastOrderIdByOrderer.set(order.customerId, order.id);
 
       // Mesmo raciocínio de OrdersService.creditCashbackForPaidOrder:
       // `order.total` já está líquido de cashback usado, então NUNCA
@@ -1133,10 +1380,20 @@ export class TablesService {
       // consistência).
       const eligibleCents = toCents(order.total) - toCents(order.deliveryFee);
       if (eligibleCents > 0) {
+        // Divisão do cashback GANHO (pedido do Felipe, 28/09): por
+        // padrão cada cliente recebe o cashback dos PRÓPRIOS pedidos
+        // ('por_pedido'/null); em 'pagador', tudo vai pra quem fechou a
+        // conta (closingRequestedByCustomerId) — mas o crédito continua
+        // sendo registrado UM POR PEDIDO (auditoria por pedido intacta),
+        // só muda o destinatário.
+        const creditRecipientId =
+          session.cashbackSplitMode === 'pagador' && session.closingRequestedByCustomerId
+            ? session.closingRequestedByCustomerId
+            : order.customerId;
         const result = await this.cashbackService.credit(
           this.orderRepo.manager,
           tenantId,
-          order.customerId,
+          creditRecipientId,
           order.locationId,
           eligibleCents,
           'order',
@@ -1144,41 +1401,50 @@ export class TablesService {
         );
         if (result.creditedCents > 0) {
           order.cashbackEarned = fromCents(result.creditedCents);
-          bucket.cashbackCents += result.creditedCents;
+          cashbackByRecipient.set(
+            creditRecipientId,
+            (cashbackByRecipient.get(creditRecipientId) ?? 0) + result.creditedCents,
+          );
         }
       }
-      perCustomer.set(order.customerId, bucket);
       await this.orderRepo.save(order);
     }
 
     if (tenantForNotify) {
-      for (const [customerId, bucket] of perCustomer) {
-        await this.pushService.sendToCustomer(tenantId, customerId, {
-          title: 'Pagamento confirmado',
-          body: `Recebemos o pagamento de R$ ${fromCents(bucket.totalCents).toFixed(2).replace('.', ',')} da sua conta.`,
-          url: `/${tenantForNotify.slug}/conta-cliente/pedidos/mesa/${sessionId}`,
-          tag: 'payment_completed',
-          groupTag: `payment-session-${sessionId}-${customerId}`,
-          icon: tenantForNotify.logoUrl ?? undefined,
-        });
-        if (bucket.cashbackCents > 0) {
+      const allCustomerIds = new Set([...paymentByOrderer.keys(), ...cashbackByRecipient.keys()]);
+      for (const customerId of allCustomerIds) {
+        const totalCents = paymentByOrderer.get(customerId);
+        if (totalCents) {
+          await this.pushService.sendToCustomer(tenantId, customerId, {
+            title: 'Pagamento confirmado',
+            body: `Recebemos o pagamento de R$ ${fromCents(totalCents).toFixed(2).replace('.', ',')} da sua conta.`,
+            url: `/${tenantForNotify.slug}/conta-cliente/pedidos/mesa/${sessionId}`,
+            tag: 'payment_completed',
+            groupTag: `payment-session-${sessionId}-${customerId}`,
+            icon: tenantForNotify.logoUrl ?? undefined,
+          });
+        }
+        const cashbackCents = cashbackByRecipient.get(customerId);
+        if (cashbackCents) {
           await this.pushService.sendToCustomer(tenantId, customerId, {
             title: 'Você ganhou cashback',
-            body: `R$ ${fromCents(bucket.cashbackCents).toFixed(2).replace('.', ',')} caíram na sua carteira desse restaurante. Toque pra ver o saldo.`,
+            body: `R$ ${fromCents(cashbackCents).toFixed(2).replace('.', ',')} caíram na sua carteira desse restaurante. Toque pra ver o saldo.`,
             url: `/${tenantForNotify.slug}/conta-cliente/cashback`,
             tag: 'cashback',
             groupTag: `cashback-session-${sessionId}-${customerId}`,
             icon: tenantForNotify.logoUrl ?? undefined,
           });
         }
-        // Um único pedido "leva" o convite pra avaliar (o mais recente
-        // da sessão) — não um por pedido. Avaliar cada item de uma
-        // mesma visita separadamente não compensa o excesso de
-        // notificações que isso gerava antes.
+      }
+      // Convite pra avaliar só vai pra quem de fato PEDIU algo (um único
+      // pedido "leva" o convite — o mais recente da sessão daquele
+      // cliente — não um por pedido). Quem só pagou (modo 'pagador' de
+      // cashback) mas não pediu nada não recebe: não tem o que avaliar.
+      for (const customerId of paymentByOrderer.keys()) {
         await this.pushService.sendToCustomer(tenantId, customerId, {
           title: 'Como foi seu pedido?',
           body: 'Sua opinião ajuda outros clientes e o restaurante a melhorar. Toque pra avaliar.',
-          url: `/${tenantForNotify.slug}/conta-cliente/pedidos/mesa/${sessionId}?avaliar=${bucket.lastOrderId}`,
+          url: `/${tenantForNotify.slug}/conta-cliente/pedidos/mesa/${sessionId}?avaliar=${lastOrderIdByOrderer.get(customerId)}`,
           tag: 'review_prompt',
           groupTag: `review-session-${sessionId}-${customerId}`,
           icon: tenantForNotify.logoUrl ?? undefined,

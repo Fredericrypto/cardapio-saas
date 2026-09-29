@@ -8,6 +8,11 @@ interface ClosingPaymentSheetProps {
   subtotal: number;
   tipAmount: number;
   customerToken: string | null;
+  // Quantos clientes DISTINTOS e logados pediram algo nessa mesa — só
+  // pergunta como dividir o cashback ganho quando é mais de 1 (pedido
+  // do Felipe, 28/09). Ver MyAccountPage, que conta isso a partir de
+  // summary.orders.
+  distinctPayingCustomers: number;
   isSubmitting: boolean;
   error: string | null;
   onCancel: () => void;
@@ -21,7 +26,9 @@ const PAYMENT_METHODS: { value: 'pix' | 'cartao' | 'dinheiro'; label: string }[]
 ];
 
 // Folha de pagamento aberta ao tocar em "Solicitar fechamento" (pedido
-// do Felipe, 28/09) — antes disso o cliente só apertava um botão e o
+// do Felipe, 28/09, revisado no mesmo dia pra NUNCA pular direto pra
+// "nada a pagar" mesmo quando o cashback cobre tudo — sempre uma
+// escolha explícita) — antes disso o cliente só apertava um botão e o
 // admin tinha que decidir tudo sozinho, sem nenhum sinal de forma de
 // pagamento nem chance de usar cashback. Formata em reais só pra
 // exibição; tudo que sai daqui pro backend continua em número puro
@@ -34,6 +41,7 @@ export function ClosingPaymentSheet({
   subtotal,
   tipAmount,
   customerToken,
+  distinctPayingCustomers,
   isSubmitting,
   error,
   onCancel,
@@ -41,8 +49,15 @@ export function ClosingPaymentSheet({
 }: ClosingPaymentSheetProps) {
   const [cashbackBalance, setCashbackBalance] = useState<number | null>(null);
   const [useCashback, setUseCashback] = useState(false);
+  // Escolha EXPLÍCITA de "pagar tudo com cashback" quando ele cobre
+  // 100% — nunca assumida sozinha, mesmo com useCashback ligado; o
+  // cliente ainda pode preferir "usar outra forma" nesse caso.
+  const [payFullyWithCashback, setPayFullyWithCashback] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'pix' | 'cartao' | 'dinheiro' | null>(null);
   const [cashDeliveryPreference, setCashDeliveryPreference] = useState<'balcao' | 'mesa' | null>(
+    null,
+  );
+  const [cashbackSplitMode, setCashbackSplitMode] = useState<'pagador' | 'por_pedido' | null>(
     null,
   );
 
@@ -57,27 +72,24 @@ export function ClosingPaymentSheet({
   const preTotal = subtotal + tipAmount;
   const cashbackApplied = useCashback && cashbackBalance ? Math.min(cashbackBalance, preTotal) : 0;
   const remaining = Math.max(0, Math.round((preTotal - cashbackApplied) * 100) / 100);
-  const fullyCoveredByCashback = cashbackApplied > 0 && remaining === 0;
+  const cashbackCoversAll = useCashback && cashbackApplied > 0 && remaining === 0;
+  const askSplitMode = distinctPayingCustomers > 1;
 
-  const canConfirm = fullyCoveredByCashback
-    ? true
-    : paymentMethod !== null && (paymentMethod !== 'dinheiro' || cashDeliveryPreference !== null);
+  const canConfirm = cashbackCoversAll
+    ? payFullyWithCashback && (!askSplitMode || cashbackSplitMode !== null)
+    : paymentMethod !== null &&
+      (paymentMethod !== 'dinheiro' || cashDeliveryPreference !== null) &&
+      (!askSplitMode || cashbackSplitMode !== null);
 
   function handleConfirm() {
     if (!canConfirm) return;
-    if (fullyCoveredByCashback) {
-      // Ainda precisa mandar uma forma de pagamento válida pro DTO —
-      // o backend ignora e resolve como 'cashback' sozinho quando o
-      // desconto cobre tudo (ver TablesService.closeSession). Manda
-      // 'pix' aqui só como valor de preenchimento, nunca usado de fato.
-      onConfirm({ tipAmount, paymentMethod: 'pix', useCashback: true });
-      return;
-    }
     onConfirm({
       tipAmount,
-      paymentMethod: paymentMethod!,
-      useCashback,
-      cashDeliveryPreference: paymentMethod === 'dinheiro' ? cashDeliveryPreference! : undefined,
+      paymentMethod: cashbackCoversAll && payFullyWithCashback ? 'cashback' : paymentMethod!,
+      useCashback: cashbackCoversAll ? payFullyWithCashback : useCashback,
+      cashDeliveryPreference:
+        !cashbackCoversAll && paymentMethod === 'dinheiro' ? cashDeliveryPreference! : undefined,
+      cashbackSplitMode: askSplitMode ? cashbackSplitMode! : undefined,
     });
   }
 
@@ -111,7 +123,10 @@ export function ClosingPaymentSheet({
 
         {cashbackBalance !== null && cashbackBalance > 0 && (
           <button
-            onClick={() => setUseCashback((v) => !v)}
+            onClick={() => {
+              setUseCashback((v) => !v);
+              setPayFullyWithCashback(false);
+            }}
             className="flex items-center justify-between border border-gray-200 rounded-xl px-3 py-2.5 text-left"
           >
             <span className="text-sm text-gray-700">
@@ -133,9 +148,36 @@ export function ClosingPaymentSheet({
           </button>
         )}
 
-        {fullyCoveredByCashback ? (
-          <div className="bg-green-50 border border-green-100 rounded-lg p-3 text-sm text-green-700 font-semibold text-center">
-            Seu cashback cobre a conta inteira — nada a pagar.
+        {useCashback && cashbackApplied > 0 && remaining === 0 ? (
+          // Cobre 100% — mas SEMPRE pergunta explicitamente em vez de
+          // assumir (pedido do Felipe, 28/09): o cliente pode preferir
+          // guardar o cashback e pagar de outro jeito mesmo assim.
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={() => setPayFullyWithCashback(true)}
+              className="w-full py-3 rounded-xl text-sm font-semibold border-2 text-left px-4"
+              style={
+                payFullyWithCashback
+                  ? { backgroundColor: '#F0FDF4', borderColor: '#16A34A', color: '#15803D' }
+                  : { borderColor: '#e5e5e5', color: '#374151' }
+              }
+            >
+              Pagar com cashback
+              <span className="block text-xs font-normal opacity-80">
+                Cobre a conta inteira — nada mais a pagar
+              </span>
+            </button>
+            <button
+              onClick={() => setPayFullyWithCashback(false)}
+              className="w-full py-2.5 rounded-xl text-xs font-semibold border"
+              style={
+                !payFullyWithCashback
+                  ? { backgroundColor: primaryColor, color: 'white', borderColor: primaryColor }
+                  : { borderColor: '#e5e5e5', color: '#666' }
+              }
+            >
+              Prefiro pagar de outro jeito
+            </button>
           </div>
         ) : (
           <>
@@ -196,7 +238,9 @@ export function ClosingPaymentSheet({
 
             {paymentMethod === 'pix' && (
               <p className="text-xs text-gray-500 bg-gray-50 rounded-lg p-2.5">
-                O garçom vai levar o QR code do Pix até você para confirmar o pagamento.
+                Se o restaurante tiver Pix automático configurado, o QR aparece na próxima
+                tela e a conta fecha sozinha assim que você pagar. Senão, o garçom leva o
+                QR até você.
               </p>
             )}
             {paymentMethod === 'cartao' && (
@@ -205,6 +249,39 @@ export function ClosingPaymentSheet({
               </p>
             )}
           </>
+        )}
+
+        {askSplitMode && (
+          <div>
+            <p className="text-xs font-semibold text-gray-500 mb-1.5">
+              Essa mesa teve mais de uma pessoa pedindo. O cashback que essa conta vai gerar
+              fica:
+            </p>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => setCashbackSplitMode('por_pedido')}
+                className="w-full py-2.5 rounded-xl text-xs text-left px-3 border"
+                style={
+                  cashbackSplitMode === 'por_pedido'
+                    ? { backgroundColor: primaryColor, color: 'white', borderColor: primaryColor }
+                    : { borderColor: '#e5e5e5', color: '#374151' }
+                }
+              >
+                Cada pessoa recebe o cashback do que ela mesma pediu
+              </button>
+              <button
+                onClick={() => setCashbackSplitMode('pagador')}
+                className="w-full py-2.5 rounded-xl text-xs text-left px-3 border"
+                style={
+                  cashbackSplitMode === 'pagador'
+                    ? { backgroundColor: primaryColor, color: 'white', borderColor: primaryColor }
+                    : { borderColor: '#e5e5e5', color: '#374151' }
+                }
+              >
+                Só pra mim, já que estou fechando a conta
+              </button>
+            </div>
+          </div>
         )}
 
         {error && <p className="text-xs text-red-500 text-center">{error}</p>}

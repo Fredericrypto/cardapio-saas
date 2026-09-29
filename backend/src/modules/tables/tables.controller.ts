@@ -205,6 +205,18 @@ export class TablesController {
   // Guard OPCIONAL (mesmo motivo do scan acima): convidado sem login
   // continua podendo pedir o fechamento normalmente, só não tem carteira
   // de cashback pra oferecer — ver TablesService.requestClosing.
+  // Consultado pelo app do cliente a cada poucos segundos enquanto
+  // mostra o QR do Pix da MESA — confirma sozinho assim que o Mercado
+  // Pago aprovar, sem precisar do admin clicar em nada (ver
+  // TablesService.checkSessionPixStatus).
+  @Get('table-sessions/public/:tenantId/:sessionId/pix-status')
+  async checkSessionPixStatus(
+    @Param('tenantId') tenantId: string,
+    @Param('sessionId') sessionId: string,
+  ) {
+    return this.tablesService.checkSessionPixStatus(tenantId, sessionId);
+  }
+
   @UseGuards(OptionalCustomerJwtAuthGuard)
   @Post('table-sessions/public/:tenantId/:sessionId/request-closing')
   async requestClosing(

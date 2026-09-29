@@ -11,6 +11,7 @@ import { TablesController } from './tables.controller';
 import { CashbackModule } from '../cashback/cashback.module';
 import { PushModule } from '../push/push.module';
 import { CustomersModule } from '../customers/customers.module';
+import { PaymentsModule } from '../payments/payments.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { CustomersModule } from '../customers/customers.module';
     CashbackModule,
     PushModule,
     CustomersModule,
+    PaymentsModule,
   ],
   controllers: [TablesController],
   providers: [TablesService],

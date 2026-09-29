@@ -8,8 +8,19 @@ export interface CreatePixPaymentParams {
   amount: number;
   description: string;
   payerEmail: string;
-  externalReference: string; // orderId — usado pra casar o webhook com o pedido
+  externalReference: string; // id do pedido, OU "mesa:<sessionId>" pro fechamento de mesa (ver TablesService.requestClosing) — usado pra casar o webhook com o destino certo
   expiresAt: Date;
+  // Chave de idempotência do Mercado Pago — por padrão usa o próprio
+  // externalReference (comportamento de sempre, seguro pra PEDIDO: cada
+  // um tem um id novo). BUG CORRIGIDO (28/09): fechamento de MESA
+  // reusa o MESMO externalReference (`mesa:<sessionId>`) em cada
+  // tentativa (o cliente pode gerar um Pix novo depois que o anterior
+  // expira ou falha) — se a idempotency key repetisse junto, o Mercado
+  // Pago devolvia o pagamento ANTIGO (já expirado/falho) em vez de
+  // criar um novo, e o cliente via um QR novo na tela apontando pra uma
+  // cobrança morta. TablesService sempre passa um valor único por
+  // tentativa aqui (ex: com timestamp).
+  idempotencyKey?: string;
   // Ausente quando não há URL pública configurada (ex: dev local) — a
   // confirmação nesse caso acontece só via polling (ver OrdersService).
   notificationUrl?: string;
@@ -39,7 +50,7 @@ export class MercadoPagoService {
         // Evita cobrança duplicada se a requisição for reenviada (ex:
         // timeout seguido de retry) — o Mercado Pago usa essa chave pra
         // identificar "essa é a mesma tentativa de pagamento".
-        'X-Idempotency-Key': params.externalReference,
+        'X-Idempotency-Key': params.idempotencyKey ?? params.externalReference,
       },
       body: JSON.stringify({
         transaction_amount: Number(params.amount.toFixed(2)),
@@ -95,6 +106,32 @@ export class MercadoPagoService {
     }
 
     return { status: data.status, externalReference: data.external_reference ?? null };
+  }
+
+  // Cancela uma cobrança Pix ainda pendente (28/09) — chamado quando o
+  // cliente muda de ideia sobre a forma de pagamento (ou gera outra
+  // cobrança) ANTES de pagar a antiga. Sem isso, a cobrança velha
+  // continuava válida no Mercado Pago: se o cliente pagasse ela por
+  // engano mesmo depois de mudar de forma de pagamento no app, o
+  // dinheiro caía na conta do restaurante mas o sistema não sabia mais
+  // o que fazer com aquele pagamento (a sessão já tinha esquecido esse
+  // mpPaymentId). Best-effort de propósito: nunca lança erro — se o
+  // Mercado Pago já processou o pagamento nesse meio-tempo (não dá mais
+  // pra cancelar), o webhook/poll vai tratar como aprovado normalmente,
+  // que é o comportamento correto.
+  async cancelPayment(accessToken: string, paymentId: string): Promise<void> {
+    try {
+      await fetch(`${MERCADOPAGO_API_BASE}/v1/payments/${paymentId}`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: 'cancelled' }),
+      });
+    } catch (err) {
+      this.logger.warn(`Falha ao cancelar pagamento ${paymentId} no Mercado Pago: ${err}`);
+    }
   }
 
   // Verifica a assinatura HMAC do webhook (header x-signature), usando o
