@@ -221,10 +221,17 @@ export async function requestSessionClosing(
   tenantId: string,
   sessionId: string,
   payload: RequestClosingPayload,
+  customerToken?: string | null,
 ) {
+  // BUG CORRIGIDO (30/09): sem o token do cliente aqui, o backend via um
+  // CONVIDADO — `customerId` nulo — e ignorava o cashback em silêncio
+  // (e recusava "pagar com cashback" com a mensagem "Ative usar meu
+  // cashback" mesmo com ele ativado). Também mandava o Pix com e-mail de
+  // convidado em vez do e-mail do cliente.
   const { data } = await api.post(
     `/table-sessions/public/${tenantId}/${sessionId}/request-closing`,
     payload,
+    customerToken ? { headers: { Authorization: `Bearer ${customerToken}` } } : undefined,
   );
   return data;
 }

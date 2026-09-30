@@ -173,7 +173,7 @@ export function MyAccountPage() {
     setIsRequesting(true);
     setRequestError(null);
     try {
-      await requestSessionClosing(tenant.id, session.id, payload);
+      await requestSessionClosing(tenant.id, session.id, payload, customerToken);
       setShowPaymentSheet(false);
       setClosingRequested(true);
     } catch (err) {

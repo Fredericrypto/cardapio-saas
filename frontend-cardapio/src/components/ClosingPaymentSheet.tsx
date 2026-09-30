@@ -52,7 +52,6 @@ export function ClosingPaymentSheet({
   // Escolha EXPLÍCITA de "pagar tudo com cashback" quando ele cobre
   // 100% — nunca assumida sozinha, mesmo com useCashback ligado; o
   // cliente ainda pode preferir "usar outra forma" nesse caso.
-  const [payFullyWithCashback, setPayFullyWithCashback] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'pix' | 'cartao' | 'dinheiro' | null>(null);
   const [cashDeliveryPreference, setCashDeliveryPreference] = useState<'balcao' | 'mesa' | null>(
     null,
@@ -73,10 +72,18 @@ export function ClosingPaymentSheet({
   const cashbackApplied = useCashback && cashbackBalance ? Math.min(cashbackBalance, preTotal) : 0;
   const remaining = Math.max(0, Math.round((preTotal - cashbackApplied) * 100) / 100);
   const cashbackCoversAll = useCashback && cashbackApplied > 0 && remaining === 0;
+  // O saldo, sozinho, cobre a conta inteira? Muda só o RÓTULO do botão
+  // (um botão só — "Pagar com cashback" em vez de "Usar meu cashback"):
+  // tocar nele já escolhe pagar tudo com cashback, tocar de novo desfaz.
+  // Sempre uma escolha explícita do cliente, nunca assumida.
+  const balanceCoversAll =
+    cashbackBalance !== null &&
+    preTotal > 0 &&
+    Math.round(cashbackBalance * 100) >= Math.round(preTotal * 100);
   const askSplitMode = distinctPayingCustomers > 1;
 
   const canConfirm = cashbackCoversAll
-    ? payFullyWithCashback && (!askSplitMode || cashbackSplitMode !== null)
+    ? !askSplitMode || cashbackSplitMode !== null
     : paymentMethod !== null &&
       (paymentMethod !== 'dinheiro' || cashDeliveryPreference !== null) &&
       (!askSplitMode || cashbackSplitMode !== null);
@@ -85,8 +92,8 @@ export function ClosingPaymentSheet({
     if (!canConfirm) return;
     onConfirm({
       tipAmount,
-      paymentMethod: cashbackCoversAll && payFullyWithCashback ? 'cashback' : paymentMethod!,
-      useCashback: cashbackCoversAll ? payFullyWithCashback : useCashback,
+      paymentMethod: cashbackCoversAll ? 'cashback' : paymentMethod!,
+      useCashback,
       cashDeliveryPreference:
         !cashbackCoversAll && paymentMethod === 'dinheiro' ? cashDeliveryPreference! : undefined,
       cashbackSplitMode: askSplitMode ? cashbackSplitMode! : undefined,
@@ -123,15 +130,13 @@ export function ClosingPaymentSheet({
 
         {cashbackBalance !== null && cashbackBalance > 0 && (
           <button
-            onClick={() => {
-              setUseCashback((v) => !v);
-              setPayFullyWithCashback(false);
-            }}
+            onClick={() => setUseCashback((v) => !v)}
             className="flex items-center justify-between border border-gray-200 rounded-xl px-3 py-2.5 text-left"
           >
             <span className="text-sm text-gray-700">
-              Usar meu cashback
+              {balanceCoversAll ? 'Pagar com cashback' : 'Usar meu cashback'}
               <span className="block text-xs text-gray-400">
+                {balanceCoversAll ? 'Cobre a conta inteira — nada mais a pagar · ' : ''}
                 Saldo disponível: R$ {cashbackBalance.toFixed(2).replace('.', ',')}
               </span>
             </span>
@@ -148,38 +153,7 @@ export function ClosingPaymentSheet({
           </button>
         )}
 
-        {useCashback && cashbackApplied > 0 && remaining === 0 ? (
-          // Cobre 100% — mas SEMPRE pergunta explicitamente em vez de
-          // assumir (pedido do Felipe, 28/09): o cliente pode preferir
-          // guardar o cashback e pagar de outro jeito mesmo assim.
-          <div className="flex flex-col gap-2">
-            <button
-              onClick={() => setPayFullyWithCashback(true)}
-              className="w-full py-3 rounded-xl text-sm font-semibold border-2 text-left px-4"
-              style={
-                payFullyWithCashback
-                  ? { backgroundColor: '#F0FDF4', borderColor: '#16A34A', color: '#15803D' }
-                  : { borderColor: '#e5e5e5', color: '#374151' }
-              }
-            >
-              Pagar com cashback
-              <span className="block text-xs font-normal opacity-80">
-                Cobre a conta inteira — nada mais a pagar
-              </span>
-            </button>
-            <button
-              onClick={() => setPayFullyWithCashback(false)}
-              className="w-full py-2.5 rounded-xl text-xs font-semibold border"
-              style={
-                !payFullyWithCashback
-                  ? { backgroundColor: primaryColor, color: 'white', borderColor: primaryColor }
-                  : { borderColor: '#e5e5e5', color: '#666' }
-              }
-            >
-              Prefiro pagar de outro jeito
-            </button>
-          </div>
-        ) : (
+        {cashbackCoversAll ? null : (
           <>
             <div>
               <p className="text-xs font-semibold text-gray-500 mb-1.5">Como você vai pagar?</p>

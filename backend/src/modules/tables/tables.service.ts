@@ -749,6 +749,9 @@ export class TablesService {
     const totalCents = await this.calculateSessionTotalCents(tenantId, sessionId);
     const totalPlusTipCents = totalCents + toCents(session.tipAmount);
     if (dto.paymentMethod === 'cashback') {
+      if (!customerId) {
+        throw new BadRequestException('Entre na sua conta pra pagar com cashback.');
+      }
       if (!useCashback) {
         throw new BadRequestException('Ative "usar meu cashback" pra pagar só com ele.');
       }
