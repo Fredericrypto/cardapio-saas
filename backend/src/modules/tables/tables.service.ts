@@ -260,6 +260,9 @@ export class TablesService {
         closedAt: MoreThan(
           new Date(Date.now() - TablesService.RECENTLY_ENDED_WINDOW_MINUTES * 60_000),
         ),
+        // Mesma exceção do getCurrentSession: encerramento forçado pelo
+        // admin libera a mesa na hora.
+        forceClosedReason: IsNull(),
       },
     });
     if (recentlyClosed) {
@@ -446,8 +449,14 @@ export class TablesService {
     const cutoff = new Date(
       Date.now() - TablesService.RECENTLY_ENDED_WINDOW_MINUTES * 60_000,
     );
+    // Sessão encerrada à força pelo admin ("corrigir sessão") NÃO conta
+    // como "recém-encerrada": a trava de poucos minutos existe pra
+    // impedir que o cliente que ACABOU DE FECHAR a conta reabra a mesa
+    // sozinho, e o encerramento forçado é o oposto — o admin, com motivo
+    // escrito e auditado, está justamente liberando a mesa pro próximo
+    // QR code (ver forceResetSession).
     const recentlyEnded = await this.sessionRepo.exists({
-      where: { tableId: table.id, closedAt: MoreThan(cutoff) },
+      where: { tableId: table.id, closedAt: MoreThan(cutoff), forceClosedReason: IsNull() },
     });
     return { session: null, recentlyEnded };
   }
@@ -1167,11 +1176,30 @@ export class TablesService {
       // Expira só a COBRANÇA — a mesa continua em 'fechamento_solicitado'
       // (nunca volta sozinha pra 'aberta'), o cliente só perde o QR e
       // precisa escolher a forma de pagamento de novo.
+      const expiredMpPaymentId = session.mpPaymentId;
       session.paymentStatus = 'falhou';
       session.requestedPaymentMethod = null;
       session.mpPaymentId = null;
       session.pixPayload = null;
       await this.sessionRepo.save(session);
+      // O gateway aceita pagar por mais alguns minutos além do prazo do
+      // app (mínimo de 30 min do Mercado Pago) — cancela pra não entrar
+      // dinheiro que o sistema já esqueceu. Best-effort.
+      if (expiredMpPaymentId) {
+        try {
+          const tenant = await this.orderRepo.manager
+            .getRepository(Tenant)
+            .findOne({ where: { id: tenantId } });
+          if (tenant?.mercadoPagoAccessTokenEncrypted) {
+            await this.mercadoPagoService.cancelPayment(
+              decryptSecret(tenant.mercadoPagoAccessTokenEncrypted),
+              expiredMpPaymentId,
+            );
+          }
+        } catch {
+          // Segue sem cancelar — o pior caso é o de antes.
+        }
+      }
     }
 
     return { status: session.status, paymentStatus: session.paymentStatus, pixExpiresAt: session.pixExpiresAt };

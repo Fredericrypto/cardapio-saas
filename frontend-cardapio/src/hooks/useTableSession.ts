@@ -24,6 +24,68 @@ export function clearActiveMesaTokenForSlug(slug: string) {
   localStorage.removeItem(activeMesaKey(slug));
 }
 
+// REGRA ABSOLUTA (30/09, decisão final do Felipe): sessão fechada é
+// sessão fechada — por qualquer motivo (cliente, admin, "corrigir
+// sessão", pagamento, prazo). RECARREGAR A ABA NUNCA reabre nem cria
+// sessão; a única forma de abrir uma sessão nova é ESCANEAR o QR de novo.
+//
+// Como o servidor não consegue distinguir um refresh de um scan (a URL é
+// idêntica), quem distingue é o próprio navegador:
+//   - `sessionStorage` (por ABA — sobrevive a refresh, não existe numa aba
+//     nova aberta pela câmera) guarda o id da sessão que ESTA aba viveu;
+//   - o tipo de navegação do documento (`navigate` = abriu um link/QR,
+//     `reload`/`back_forward` = refresh/voltar) diz como esta carga
+//     começou.
+// Se esta aba já teve uma sessão dessa mesa e a carga NÃO é uma abertura
+// nova (é refresh, voltar, ou o React remontando dentro da mesma página),
+// e o servidor não tem mais aquela sessão ativa → tela "sessão
+// encerrada", nada é criado. Só uma abertura nova (scan) esquece a
+// memória e deixa o backend decidir (que ainda segura a trava de poucos
+// minutos após fechamento normal).
+const TAB_SESSION_PREFIX = 'mesa_sessao_aba_';
+function rememberTabSession(qrCodeToken: string, sessionId: string) {
+  try {
+    sessionStorage.setItem(TAB_SESSION_PREFIX + qrCodeToken, sessionId);
+  } catch {
+    // modo privado/armazenamento bloqueado — sem memória, cai no
+    // comportamento do servidor (trava de poucos minutos).
+  }
+}
+function getTabSession(qrCodeToken: string): string | null {
+  try {
+    return sessionStorage.getItem(TAB_SESSION_PREFIX + qrCodeToken);
+  } catch {
+    return null;
+  }
+}
+function forgetTabSession(qrCodeToken: string) {
+  try {
+    sessionStorage.removeItem(TAB_SESSION_PREFIX + qrCodeToken);
+  } catch {
+    // ignora
+  }
+}
+// true = este documento foi aberto por uma navegação nova (QR, link,
+// endereço digitado); false = refresh ou voltar/avançar.
+function isFreshDocumentLoad(): boolean {
+  try {
+    const nav = performance.getEntriesByType('navigation')[0] as
+      | PerformanceNavigationTiming
+      | undefined;
+    if (nav) return nav.type === 'navigate';
+    // Navegadores antigos: 0 = navigate, 1 = reload, 2 = back_forward.
+    const legacy = (performance as unknown as { navigation?: { type?: number } }).navigation;
+    if (legacy && typeof legacy.type === 'number') return legacy.type === 0;
+  } catch {
+    // ignora
+  }
+  return true;
+}
+// A "abertura nova" só vale UMA vez por carga de documento (a primeira
+// checagem). Qualquer checagem depois disso (React remontando o gate ao
+// navegar dentro do app) NÃO é um scan novo.
+let documentLoadConsumed = false;
+
 // REESCRITA 2026-09-14 (sessão H). Duas exigências do Felipe que batem
 // no MESMO carregamento de página (um refresh e um scan novo do QR são
 // tecnicamente idênticos pro navegador — a URL é igual):
@@ -55,6 +117,7 @@ export function useTableSession(slug: string | undefined, qrCodeToken: string | 
   const doJoin = useCallback(
     async (token: string) => {
       const freshSession = await scanTableQrCode(token, customerToken);
+      rememberTabSession(token, freshSession.id);
       if (slug) setActiveMesaToken(slug, token);
       setSession(freshSession);
       setSessionEnded(false);
@@ -72,6 +135,12 @@ export function useTableSession(slug: string | undefined, qrCodeToken: string | 
     setError(null);
     setPendingJoinToken(null);
     setSessionEnded(false);
+    // Decidido de forma SÍNCRONA, antes de qualquer await — ver a REGRA
+    // ABSOLUTA no topo do arquivo.
+    const wasFreshLoad = !documentLoadConsumed && isFreshDocumentLoad();
+    documentLoadConsumed = true;
+    if (wasFreshLoad) forgetTabSession(qrCodeToken);
+    const thisTabHadSession = getTabSession(qrCodeToken) !== null;
     try {
       const { session: current, recentlyEnded } = await getCurrentTableSession(qrCodeToken);
       if (current) {
@@ -87,16 +156,18 @@ export function useTableSession(slug: string | undefined, qrCodeToken: string | 
         // página de perfil). Qualquer token DIFERENTE do ponteiro
         // continua perguntando sempre, sem exceção.
         if (slug && getActiveMesaToken(slug) === qrCodeToken) {
+          rememberTabSession(qrCodeToken, current.id);
           setSession(current);
           setPendingJoinToken(null);
         } else {
           setSession(null);
           setPendingJoinToken(qrCodeToken);
         }
-      } else if (recentlyEnded) {
-        // Acabou de encerrar — tela final, sem nenhuma saída pra
-        // recomeçar aqui mesmo. Só escaneando o QR físico de novo, mais
-        // tarde, quando já não contar mais como "recém-encerrada".
+      } else if (recentlyEnded || thisTabHadSession) {
+        // Acabou de encerrar (ou ESTA aba já viveu uma sessão dessa mesa
+        // que não existe mais e isto não é um scan novo) — tela final,
+        // sem nenhuma saída pra recomeçar aqui mesmo. Só escaneando o QR
+        // físico de novo.
         setSession(null);
         if (slug) clearActiveMesaTokenForSlug(slug);
         setSessionEnded(true);
@@ -166,6 +237,7 @@ export function useTableSession(slug: string | undefined, qrCodeToken: string | 
     try {
       const { session: current } = await getCurrentTableSession(qrCodeToken);
       if (current) {
+        rememberTabSession(qrCodeToken, current.id);
         setSession(current);
       } else {
         setSession(null);

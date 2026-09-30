@@ -126,14 +126,32 @@ export function MyAccountPage() {
     // quando o garçom avança o status do pedido, ou quando a conta é
     // efetivamente fechada (pagamento confirmado), sem precisar recarregar
     // a página manualmente.
-    const interval = setInterval(async () => {
-      const summaryData = await fetchSessionSummary(tenantId, session!.id);
-      setSummary(summaryData);
-      setClosingRequested(summaryData.session.status === 'fechamento_solicitado');
-      detectStatusChanges(summaryData);
-    }, 4000);
+    // Não consulta com a aba escondida / celular bloqueado, nunca empilha
+    // uma consulta em cima da outra (o Render gratuito pode levar mais de
+    // 4s pra responder) e não deixa uma falha de rede pontual virar erro
+    // não tratado. Ao voltar pra aba, atualiza na hora.
+    let inFlight = false;
+    async function refresh() {
+      if (inFlight || document.visibilityState !== 'visible') return;
+      inFlight = true;
+      try {
+        const summaryData = await fetchSessionSummary(tenantId, session!.id);
+        setSummary(summaryData);
+        setClosingRequested(summaryData.session.status === 'fechamento_solicitado');
+        detectStatusChanges(summaryData);
+      } catch {
+        // Tenta de novo no próximo ciclo.
+      } finally {
+        inFlight = false;
+      }
+    }
+    const interval = setInterval(refresh, 4000);
+    document.addEventListener('visibilitychange', refresh);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', refresh);
+    };
   }, [tenant, session]);
 
   function calculateTipAmount(): number {
@@ -159,7 +177,22 @@ export function MyAccountPage() {
       setShowPaymentSheet(false);
       setClosingRequested(true);
     } catch (err) {
-      setRequestError('Não foi possível solicitar o fechamento. Tente novamente ou chame um garçom.');
+      // Mostra o motivo que o backend escreveu de propósito (só 4xx, como
+      // no resto do app) em vez de sempre a mesma frase genérica, que
+      // escondia a causa real. 5xx/falha de rede continuam genéricos.
+      const response =
+        err && typeof err === 'object' && 'response' in err
+          ? (err as { response?: { status?: number; data?: { message?: string } } }).response
+          : undefined;
+      const status = response?.status;
+      const backendMessage =
+        status && status >= 400 && status < 500 && typeof response?.data?.message === 'string'
+          ? response.data.message
+          : undefined;
+      setRequestError(
+        backendMessage ??
+          'Não foi possível solicitar o fechamento. Tente novamente ou chame um garçom.',
+      );
     } finally {
       setIsRequesting(false);
     }

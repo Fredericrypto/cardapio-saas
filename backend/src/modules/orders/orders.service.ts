@@ -70,6 +70,26 @@ export class OrdersService {
   // um cupom); cai pra `[promotionId]` só em pedidos bem antigos, de
   // antes dessa coluna existir. Idempotente — se o pedido já estava
   // cancelado, não faz nada (evita liberar a vaga duas vezes por engano).
+  // Cancela no Mercado Pago a cobrança Pix cujo prazo do app estourou (o
+  // gateway aceita pagar por mais alguns minutos — ver
+  // MP_PIX_MIN_EXPIRATION_MS). Best-effort: nunca derruba quem chamou.
+  private async cancelGatewayPaymentQuietly(
+    tenantId: string,
+    mpPaymentId: string | null,
+  ): Promise<void> {
+    if (!mpPaymentId) return;
+    try {
+      const tenant = await this.tenantRepo.findOne({ where: { id: tenantId } });
+      if (!tenant?.mercadoPagoAccessTokenEncrypted) return;
+      await this.mercadoPagoService.cancelPayment(
+        decryptSecret(tenant.mercadoPagoAccessTokenEncrypted),
+        mpPaymentId,
+      );
+    } catch (err) {
+      this.logger.warn(`Não foi possível cancelar a cobrança ${mpPaymentId} no gateway: ${err}`);
+    }
+  }
+
   private async markCancelled(order: Order): Promise<void> {
     if (order.status === 'cancelado') return;
     order.status = 'cancelado';
@@ -400,6 +420,7 @@ export class OrdersService {
       for (const order of expiredOrders) {
         await this.markCancelled(order);
         order.paymentStatus = 'falhou';
+        await this.cancelGatewayPaymentQuietly(tenantId, order.mpPaymentId);
       }
       await this.orderRepo.save(expiredOrders);
     }
@@ -1056,9 +1077,15 @@ export class OrdersService {
       order.pixExpiresAt &&
       order.pixExpiresAt.getTime() < Date.now()
     ) {
-      order.status = 'cancelado';
+      // markCancelled (e não só `status = 'cancelado'`): devolve promoção
+      // e cashback usado, igual ao caminho do polling do painel (findAll).
+      // Antes, quando era o polling do CLIENTE que percebia o prazo
+      // estourado primeiro, isso não era devolvido e o painel nunca mais
+      // via o pedido como "aguardando" pra corrigir.
+      await this.markCancelled(order);
       order.paymentStatus = 'falhou';
       await this.orderRepo.save(order);
+      await this.cancelGatewayPaymentQuietly(tenantId, order.mpPaymentId);
     }
 
     return {

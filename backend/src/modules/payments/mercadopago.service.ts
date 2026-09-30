@@ -37,11 +37,29 @@ export interface MercadoPagoPixPayment {
 // REST em si é o contrato estável). Toda chamada usa o access token do
 // TENANT (nunca um token nosso), então o dinheiro sempre cai direto na
 // conta do restaurante que configurou a credencial.
+// O Mercado Pago só aceita `date_of_expiration` de Pix entre 30 minutos e
+// 30 dias depois da criação — qualquer prazo menor é recusado (400) e
+// vira "não foi possível gerar a cobrança" pro cliente. O prazo que o app
+// mostra ao cliente (6 min em pedido, 15 min em mesa) é mais curto que
+// isso, então o vencimento enviado ao gateway é sempre ao menos 31 min;
+// quando o prazo do app estoura, quem chama cancela a cobrança no gateway
+// (ver cancelPayment) pra ela não ficar paga "por fora" do app.
+const MP_PIX_MIN_EXPIRATION_MS = 31 * 60 * 1000;
+const BRAZIL_UTC_OFFSET_MS = 3 * 60 * 60 * 1000; // sem horário de verão desde 2019
+
+// Formato da doc do MP: 2022-11-17T09:37:52.000-03:00
+function toMercadoPagoDate(date: Date): string {
+  return new Date(date.getTime() - BRAZIL_UTC_OFFSET_MS).toISOString().replace('Z', '-03:00');
+}
+
 @Injectable()
 export class MercadoPagoService {
   private readonly logger = new Logger(MercadoPagoService.name);
 
   async createPixPayment(params: CreatePixPaymentParams): Promise<MercadoPagoPixPayment> {
+    const gatewayExpiresAt = new Date(
+      Math.max(params.expiresAt.getTime(), Date.now() + MP_PIX_MIN_EXPIRATION_MS),
+    );
     const response = await fetch(`${MERCADOPAGO_API_BASE}/v1/payments`, {
       method: 'POST',
       headers: {
@@ -57,7 +75,7 @@ export class MercadoPagoService {
         payment_method_id: 'pix',
         description: params.description,
         external_reference: params.externalReference,
-        date_of_expiration: params.expiresAt.toISOString(),
+        date_of_expiration: toMercadoPagoDate(gatewayExpiresAt),
         ...(params.notificationUrl ? { notification_url: params.notificationUrl } : {}),
         payer: { email: params.payerEmail },
       }),

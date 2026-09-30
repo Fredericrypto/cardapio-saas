@@ -10,6 +10,10 @@ async function bootstrap() {
   app.enableCors({
     origin: true, // reflete a origem da requisição — ok para dev; restrinja em produção
     credentials: true,
+    // Sem isso o navegador refaz o OPTIONS (preflight) ANTES DE CADA GET
+    // de polling (padrão de 5s) — dobrava as requisições do painel. 24h é
+    // o teto que o Firefox respeita (Chrome limita a 2h).
+    maxAge: 86400,
   });
 
   // Faz os DTOs com class-validator (RegisterDto, CreateProductDto, etc.)
