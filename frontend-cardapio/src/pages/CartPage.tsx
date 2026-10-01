@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Minus, Plus, Trash2, MapPin, AlertTriangle, Tag, X } from 'lucide-react';
 import { createOrder, quoteDeliveryFee, callWaiter, cancelWaiterCall, getWaiterCallStatus, cancelOrder, flagOrderForAttention, fetchLocationById, fetchActivePromotions } from '../lib/menu-api';
 import { computePromotionEligibility, computeSelectedPromotionsEligibility } from '../lib/promotionEligibility';
@@ -11,6 +11,7 @@ import { useTableSessionContext } from '../contexts/TableSessionContext';
 import { useSelectedLocation } from '../hooks/useSelectedLocation';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { fetchMyCashbackBalance, fetchActiveCashbackSettings } from '../lib/customer-api';
+import { CashbackLoginNotice } from '../components/CashbackLoginNotice';
 import type { ActiveCashbackSettings } from '../lib/customer-api';
 import { CurrencyInput } from '../components/CurrencyInput';
 import { PhoneInput } from '../components/PhoneInput';
@@ -60,6 +61,7 @@ interface OrderSnapshot {
 export function CartPage() {
   const { slug, qrCodeToken } = useParams<{ slug: string; qrCodeToken?: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const {
     items,
     increaseItem,
@@ -1643,6 +1645,17 @@ export function CartPage() {
               {PAYMENT_METHOD_LABELS[paymentMethod]} na {orderType === 'entrega' ? 'entrega' : 'retirada'}
             </p>
           </div>
+
+          {/* Convidado: nenhum acesso ao cashback — só o aviso + botão pro
+              login, que volta pra ESTE carrinho (decisão de 30/09). */}
+          {!customerToken && (
+            <div className="border-t border-gray-100 pt-3">
+              <CashbackLoginNotice
+                returnTo={`${location.pathname}${location.search}`}
+                primaryColor={tenant.primaryColor}
+              />
+            </div>
+          )}
 
           {customerToken && (
             <div className="flex items-center justify-between gap-3 border-t border-gray-100 pt-3">

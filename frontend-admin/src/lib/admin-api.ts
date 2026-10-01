@@ -236,6 +236,9 @@ export async function fetchActiveOverview(): Promise<
       hasAccount: boolean;
       isVerified: boolean;
       isOpener: boolean;
+      // Saiu da mesa (assento encerrado): só visual pro admin acompanhar
+      // quem esteve nela — o cliente em si não volta sem novo QR Code.
+      hasLeft: boolean;
     }>;
     waiterCallCount: number;
   }>

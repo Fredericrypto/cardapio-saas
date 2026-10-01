@@ -41,6 +41,7 @@ export function TableSessionGate({ children }: { children: ReactNode }) {
     isLoading,
     error,
     sessionEnded,
+    leftTable,
     pendingJoinToken,
     confirmJoinExisting,
     declineJoinExisting,
@@ -130,6 +131,33 @@ export function TableSessionGate({ children }: { children: ReactNode }) {
             Não, ver cardápio geral
           </button>
         </div>
+        <BuildMark />
+      </div>
+    );
+  }
+
+  // Decisão final do Felipe (30/09): quem saiu da mesa não volta por
+  // refresh/voltar/limpar cache — só escaneando o QR Code de novo. A mesa
+  // pode continuar ativa pros outros; pra ESTE cliente acabou.
+  if (leftTable) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen gap-4 px-6 text-center bg-gray-50">
+        <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center">
+          <QrCode size={26} className="text-gray-500" />
+        </div>
+        <div>
+          <p className="text-base font-bold text-gray-900">Você saiu desta mesa</p>
+          <p className="text-sm text-gray-500 mt-1">
+            Pra voltar, escaneie o QR code físico da mesa de novo.
+          </p>
+        </div>
+        <button
+          onClick={goToGeneralMenu}
+          style={{ backgroundColor: primaryColor }}
+          className="py-3 px-6 rounded-xl text-white text-sm font-semibold shadow-sm"
+        >
+          Voltar ao cardápio geral
+        </button>
         <BuildMark />
       </div>
     );

@@ -254,6 +254,9 @@ export interface TableSession {
 
 export interface SessionSummary {
   session: TableSession;
+  // Situação de quem está olhando (assento): `active` = ainda vale;
+  // `canLeave` = servidor diz que pode sair (nenhum pedido seu).
+  mySeat?: { active: boolean; canLeave: boolean };
   orders: Array<{
     id: string;
     status: string;

@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull, Not, In, MoreThan } from 'typeorm';
+import { Repository, IsNull, Not, In, MoreThan, FindOptionsWhere } from 'typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { randomBytes } from 'crypto';
 import { RestaurantTable } from './restaurant-table.entity';
@@ -116,65 +116,224 @@ export class TablesService {
     return { ...session, hasOrder, expiresAt };
   }
 
-  // Pedido do Felipe (14/09, sessão I): marca esse cliente como
-  // PRESENTE na mesa desde o instante que ele confirma entrar (scan +
-  // "sim, continuar"), não só quando faz o primeiro pedido. Upsert
-  // simples: se já tinha saído antes e voltou, revive (`leftAt = null`)
-  // em vez de duplicar linha (o índice único de sessão+cliente barraria
-  // mesmo).
-  private async markPresent(tableSessionId: string, customerId: string): Promise<void> {
-    const existing = await this.participantRepo.findOne({
-      where: { tableSessionId, customerId },
-    });
-    if (existing) {
-      if (existing.leftAt) {
-        existing.leftAt = null;
-        await this.participantRepo.save(existing);
-      }
-      return;
-    }
-    await this.participantRepo.save(
-      this.participantRepo.create({ tableSessionId, customerId }),
-    );
+  // ---------- Assentos (30/09, decisão final do Felipe) ----------
+  //
+  // REGRA ABSOLUTA: sessão encerrada/saída é DEFINITIVA. Todo mundo que
+  // entra numa mesa (logado OU convidado) recebe um assento com um token
+  // secreto de 256 bits. Quem SAI (ou é expulso por fechamento) perde o
+  // assento pra sempre: o servidor recusa pedido, fechamento e chamado de
+  // garçom feitos com ele, não importa o que o navegador faça (refresh,
+  // voltar, limpar cache, aba nova). A única forma de ter um assento de
+  // novo é entrar de novo (novo escaneamento) — `enterSeat` dá um token
+  // NOVO e o antigo nunca mais vale.
+  //
+  // LIMITE FÍSICO, dito com clareza: o QR code é só um link. O servidor
+  // não consegue distinguir "escaneou de novo" de "abriu o mesmo link de
+  // novo" — quem tem o link entra, como sempre foi. O que este desenho
+  // garante é que NADA que não seja uma nova entrada deliberada devolve
+  // a sessão de quem saiu.
+  static readonly SEAT_LEFT_MESSAGE =
+    'Você saiu desta mesa. Escaneie o QR Code da mesa novamente para voltar.';
+
+  private static newSeatToken(): string {
+    return randomBytes(32).toString('hex');
   }
 
-  // Ação explícita do cliente ("Sair dessa mesa") — nunca automática.
-  // Só marca esse cliente como ausente; a sessão em si (e os pedidos já
-  // feitos por ele) continuam intactos pros outros que ainda estão lá.
-  async leaveTable(qrCodeToken: string, customerId: string): Promise<void> {
+  // Convidado que faz login no meio da visita: o assento dele passa a
+  // pertencer ao cliente (nome/avatar no painel, regra de saída por
+  // conta). Nunca duplica — se o cliente já tem outro assento nessa
+  // sessão, não mexe.
+  private async bindSeatToCustomer(
+    seat: TableSessionParticipant,
+    customerId: string | null,
+  ): Promise<void> {
+    if (seat.customerId || !customerId) return;
+    const alreadyHasSeat = await this.participantRepo.exists({
+      where: { tableSessionId: seat.tableSessionId, customerId },
+    });
+    if (alreadyHasSeat) return;
+    seat.customerId = customerId;
+    try {
+      await this.participantRepo.save(seat);
+    } catch {
+      seat.customerId = null;
+    }
+  }
+
+  // Acha o assento de quem está agindo: pelo token; e, pra cliente LOGADO
+  // que ainda não tem token (app aberto de antes desta versão), pela
+  // identidade dele na sessão. Devolve o assento mesmo que já tenha
+  // saído (quem chama decide o que fazer com `leftAt`).
+  private async findSeat(
+    sessionId: string,
+    seatToken: string | null,
+    customerId: string | null,
+  ): Promise<TableSessionParticipant | null> {
+    if (seatToken) {
+      const bySeat = await this.participantRepo.findOne({
+        where: { seatToken, tableSessionId: sessionId },
+      });
+      if (bySeat) return bySeat;
+    }
+    if (customerId) {
+      return this.participantRepo.findOne({ where: { tableSessionId: sessionId, customerId } });
+    }
+    return null;
+  }
+
+  // Guarda de TODA ação de cliente numa sessão (pedir, fechar conta,
+  // chamar garçom): sem assento ativo, nada feito.
+  async assertActiveSeat(
+    sessionId: string,
+    seatToken: string | null,
+    customerId: string | null,
+  ): Promise<TableSessionParticipant> {
+    const seat = await this.findSeat(sessionId, seatToken, customerId);
+    if (!seat || seat.leftAt) {
+      throw new ForbiddenException(TablesService.SEAT_LEFT_MESSAGE);
+    }
+    await this.bindSeatToCustomer(seat, customerId);
+    return seat;
+  }
+
+  // Entrada EXPLÍCITA na mesa (só o scan chama). Reaproveita o assento
+  // ativo que o cliente já apresenta; senão cria um NOVO — e quem tinha
+  // saído (mesma conta) recebe um token novo, o antigo morre de vez.
+  private async enterSeat(
+    sessionId: string,
+    customerId: string | null,
+    presentedSeatToken: string | null,
+  ): Promise<TableSessionParticipant> {
+    if (presentedSeatToken) {
+      const presented = await this.participantRepo.findOne({
+        where: { seatToken: presentedSeatToken, tableSessionId: sessionId },
+      });
+      if (presented && !presented.leftAt) {
+        await this.bindSeatToCustomer(presented, customerId);
+        return presented;
+      }
+    }
+    if (customerId) {
+      const mine = await this.participantRepo.findOne({
+        where: { tableSessionId: sessionId, customerId },
+      });
+      if (mine) {
+        if (mine.leftAt) {
+          mine.leftAt = null;
+          mine.seatToken = TablesService.newSeatToken();
+          mine.joinedAt = new Date();
+          return this.participantRepo.save(mine);
+        }
+        return mine;
+      }
+    }
+    try {
+      return await this.participantRepo.save(
+        this.participantRepo.create({
+          tableSessionId: sessionId,
+          customerId: customerId ?? null,
+          seatToken: TablesService.newSeatToken(),
+        }),
+      );
+    } catch (err: any) {
+      if (err?.code === '23505' && customerId) {
+        const again = await this.participantRepo.findOne({
+          where: { tableSessionId: sessionId, customerId },
+        });
+        if (again) return again;
+      }
+      throw err;
+    }
+  }
+
+  // "Sair da mesa" — ação explícita do cliente (logado OU convidado).
+  // Regras (decisão final, 30/09):
+  //  - só sai quem NÃO tem pedido (pedido cancelado não conta);
+  //  - o assento morre pra sempre; a reentrada só por novo escaneamento;
+  //  - se era o último cliente ativo e a sessão não tem nenhum pedido, a
+  //    sessão é encerrada na hora (mesa livre pro próximo QR);
+  //  - se ainda há gente na mesa, a sessão segue pros outros — inclusive
+  //    se quem saiu foi quem abriu a mesa.
+  // Tudo numa transação com a sessão TRAVADA: um pedido feito no mesmo
+  // instante por outro celular, ou a saída enxerga esse pedido e recusa,
+  // ou o pedido enxerga o assento morto e é recusado (OrdersService.create
+  // trava a mesma linha antes de aceitar).
+  async leaveTable(
+    qrCodeToken: string,
+    seatToken: string | null,
+    customerId: string | null,
+  ): Promise<void> {
     const table = await this.tableRepo.findOne({ where: { qrCodeToken, isActive: true } });
     if (!table) {
       throw new NotFoundException('Mesa não encontrada ou QR code inválido.');
     }
-    const session = await this.sessionRepo.findOne({
-      where: [
-        { tableId: table.id, status: 'aberta' },
-        { tableId: table.id, status: 'fechamento_solicitado' },
-      ],
-      order: { openedAt: 'DESC' },
+    await this.sessionRepo.manager.transaction(async (manager) => {
+      const session = await manager
+        .getRepository(TableSession)
+        .createQueryBuilder('s')
+        .setLock('pessimistic_write')
+        .where('s.table_id = :tableId', { tableId: table.id })
+        .andWhere('s.status IN (:...open)', { open: ['aberta', 'fechamento_solicitado'] })
+        .orderBy('s.opened_at', 'DESC')
+        .getOne();
+      // Nada ativo nessa mesa: não há o que sair, e nenhum assento vale.
+      if (!session) return;
+
+      const participantRepo = manager.getRepository(TableSessionParticipant);
+      let seat = seatToken
+        ? await participantRepo.findOne({ where: { seatToken, tableSessionId: session.id } })
+        : null;
+      if (!seat && customerId) {
+        seat = await participantRepo.findOne({
+          where: { tableSessionId: session.id, customerId },
+        });
+      }
+      // Quem não tem assento nessa mesa não está nela — nada a fazer.
+      if (!seat || seat.leftAt) return;
+
+      const orderRepo = manager.getRepository(Order);
+      const ownOrders: FindOptionsWhere<Order>[] = [
+        { tableSessionId: session.id, status: Not('cancelado'), tableParticipantId: seat.id },
+      ];
+      if (seat.customerId) {
+        ownOrders.push({
+          tableSessionId: session.id,
+          status: Not('cancelado'),
+          customerId: seat.customerId,
+        });
+      }
+      if (await orderRepo.exists({ where: ownOrders })) {
+        throw new ConflictException(
+          'Você já tem pedidos nessa conta. Peça pro garçom fechar e pagar a conta antes de sair da mesa.',
+        );
+      }
+
+      seat.leftAt = new Date();
+      await participantRepo.save(seat);
+
+      const othersActive = await participantRepo.count({
+        where: { tableSessionId: session.id, leftAt: IsNull(), id: Not(seat.id) },
+      });
+      const anyLiveOrder = await orderRepo.exists({
+        where: { tableSessionId: session.id, status: Not('cancelado') },
+      });
+      if (othersActive === 0 && !anyLiveOrder) {
+        session.status = 'fechada';
+        session.closedAt = new Date();
+        session.closedReason = 'saida_sem_pedido';
+        await manager.getRepository(TableSession).save(session);
+        await manager
+          .getRepository(WaiterCall)
+          .update({ tableSessionId: session.id, status: 'pendente' }, { status: 'cancelado' });
+      }
     });
-    if (!session) return;
-    // Pedido do Felipe (16/09): quem JÁ FEZ pedido nessa conta não pode
-    // sair sozinho — a conta continua em aberto, com o valor dele
-    // dentro, e ninguém mais consegue fechar/pagar por ele depois que
-    // ele sumir do painel. Só libera sair sem pedido nenhum ainda
-    // (nesse caso não tem valor nenhum em jogo). "Cancelado" não conta
-    // como pedido de verdade pra esse efeito.
-    const hasOrder = await this.orderRepo.exists({
-      where: { tableSessionId: session.id, customerId, status: Not('cancelado') },
-    });
-    if (hasOrder) {
-      throw new ConflictException(
-        'Você já tem pedidos nessa conta. Peça pro garçom fechar e pagar a conta antes de sair da mesa.',
-      );
-    }
-    await this.participantRepo.update(
-      { tableSessionId: session.id, customerId },
-      { leftAt: new Date() },
-    );
   }
 
-  async openOrJoinSession(qrCodeToken: string, customerId?: string | null): Promise<TableSession> {
+  async openOrJoinSession(
+    qrCodeToken: string,
+    customerId?: string | null,
+    presentedSeatToken: string | null = null,
+  ): Promise<{ session: TableSession; seat: TableSessionParticipant }> {
     const table = await this.tableRepo.findOne({
       where: { qrCodeToken, isActive: true },
     });
@@ -218,11 +377,12 @@ export class TablesService {
       // rouba a mesa de quem abriu primeiro).
       if (customerId && !existingSession.openedByCustomerId) {
         existingSession.openedByCustomerId = customerId;
-        await this.markPresent(existingSession.id, customerId);
-        return this.sessionRepo.save(existingSession);
+        const seat = await this.enterSeat(existingSession.id, customerId, presentedSeatToken);
+        const savedExisting = await this.sessionRepo.save(existingSession);
+        return { session: savedExisting, seat };
       }
-      if (customerId) await this.markPresent(existingSession.id, customerId);
-      return existingSession;
+      const seat = await this.enterSeat(existingSession.id, customerId ?? null, presentedSeatToken);
+      return { session: existingSession, seat };
     }
 
     // BUG REAL CORRIGIDO: uma sessão "expirada" (ver expireIfStale/cron
@@ -263,6 +423,9 @@ export class TablesService {
         // Mesma exceção do getCurrentSession: encerramento forçado pelo
         // admin libera a mesa na hora.
         forceClosedReason: IsNull(),
+        // Saída do último cliente de uma mesa sem pedido também libera
+        // a mesa na hora — não há conta nem dinheiro em jogo.
+        closedReason: IsNull(),
       },
     });
     if (recentlyClosed) {
@@ -349,8 +512,8 @@ export class TablesService {
 
     try {
       const saved = await this.sessionRepo.save(session);
-      if (customerId) await this.markPresent(saved.id, customerId);
-      return saved;
+      const seat = await this.enterSeat(saved.id, customerId ?? null, presentedSeatToken);
+      return { session: saved, seat };
     } catch (err: any) {
       // Race condition: outra requisição concorrente (ex: duplo scan quase
       // simultâneo) já criou a sessão ativa dessa mesa entre o SELECT acima
@@ -370,8 +533,8 @@ export class TablesService {
           order: { openedAt: 'DESC' },
         });
         if (winningSession) {
-          if (customerId) await this.markPresent(winningSession.id, customerId);
-          return winningSession;
+          const seat = await this.enterSeat(winningSession.id, customerId ?? null, presentedSeatToken);
+          return { session: winningSession, seat };
         }
       }
       throw err;
@@ -429,7 +592,17 @@ export class TablesService {
 
   async getCurrentSession(
     qrCodeToken: string,
-  ): Promise<{ session: TableSession | null; recentlyEnded: boolean }> {
+    seatToken: string | null = null,
+    customerId: string | null = null,
+  ): Promise<{
+    session: TableSession | null;
+    recentlyEnded: boolean;
+    // 'active' = quem pergunta tem assento VIVO nessa sessão (pode
+    // retomar); 'left' = o assento dele saiu (morto pra sempre);
+    // 'none' = não tem assento nela.
+    seat: 'active' | 'left' | 'none';
+    seatToken?: string;
+  }> {
     const table = await this.tableRepo.findOne({ where: { qrCodeToken, isActive: true } });
     if (!table) {
       throw new NotFoundException('Mesa não encontrada ou QR code inválido.');
@@ -444,7 +617,14 @@ export class TablesService {
     });
     if (session) {
       const expired = await this.expireIfStale(session);
-      if (!expired) return { session, recentlyEnded: false };
+      if (!expired) {
+        const seat = await this.findSeat(session.id, seatToken, customerId);
+        if (seat && !seat.leftAt) {
+          await this.bindSeatToCustomer(seat, customerId);
+          return { session, recentlyEnded: false, seat: 'active', seatToken: seat.seatToken };
+        }
+        return { session, recentlyEnded: false, seat: seat ? 'left' : 'none' };
+      }
     }
     const cutoff = new Date(
       Date.now() - TablesService.RECENTLY_ENDED_WINDOW_MINUTES * 60_000,
@@ -456,9 +636,14 @@ export class TablesService {
     // escrito e auditado, está justamente liberando a mesa pro próximo
     // QR code (ver forceResetSession).
     const recentlyEnded = await this.sessionRepo.exists({
-      where: { tableId: table.id, closedAt: MoreThan(cutoff), forceClosedReason: IsNull() },
+      where: {
+        tableId: table.id,
+        closedAt: MoreThan(cutoff),
+        forceClosedReason: IsNull(),
+        closedReason: IsNull(),
+      },
     });
-    return { session: null, recentlyEnded };
+    return { session: null, recentlyEnded, seat: 'none' };
   }
 
   // Devolve `true` se a sessão FOI expirada agora (chamador deve tratar
@@ -534,7 +719,12 @@ export class TablesService {
   }
 
   // "Minha Conta": todos os pedidos feitos nessa sessão + total acumulado.
-  async getSessionSummary(tenantId: string, sessionId: string) {
+  async getSessionSummary(
+    tenantId: string,
+    sessionId: string,
+    seatToken: string | null = null,
+    customerId: string | null = null,
+  ) {
     const session = await this.sessionRepo.findOne({
       where: { id: sessionId, tenantId },
       relations: { table: true },
@@ -593,7 +783,13 @@ export class TablesService {
       where: { tableSessionId: session.id, leftAt: IsNull() },
       order: { joinedAt: 'ASC' },
     });
-    const participantCustomerIds = new Set(activeParticipants.map((p) => p.customerId));
+    const participantCustomerIds = new Set(
+      activeParticipants.map((p) => p.customerId).filter((id): id is string => Boolean(id)),
+    );
+    // O fallback de "quem abriu a mesa" abaixo é SÓ pra sessões de antes
+    // da tabela de participantes (nenhuma linha). Se existe qualquer
+    // linha — inclusive de quem já saiu —, quem saiu não volta pro cupom.
+    const anySeatRow = await this.participantRepo.exists({ where: { tableSessionId: session.id } });
     if (session.openedByCustomerId) participantCustomerIds.add(session.openedByCustomerId);
     const participantCustomers =
       participantCustomerIds.size > 0
@@ -604,7 +800,7 @@ export class TablesService {
     const participantById = new Map(participantCustomers.map((c) => [c.id, c]));
     const participants: Array<{ name: string; avatarUrl: string | null; isOpener: boolean }> = [];
     for (const p of activeParticipants) {
-      const account = participantById.get(p.customerId);
+      const account = p.customerId ? participantById.get(p.customerId) : undefined;
       if (account) {
         participants.push({
           name: account.name,
@@ -614,7 +810,7 @@ export class TablesService {
       }
     }
     // Fallback pra sessões de antes da migration de participantes.
-    if (participants.length === 0 && session.openedByCustomerId) {
+    if (participants.length === 0 && !anySeatRow && session.openedByCustomerId) {
       const account = participantById.get(session.openedByCustomerId);
       if (account) {
         participants.push({ name: account.name, avatarUrl: account.avatarUrl ?? null, isOpener: true });
@@ -650,7 +846,28 @@ export class TablesService {
       // `grandTotal` acima.
       cashbackAvailable: fromCents(cashbackAvailableCents),
       cashbackApplied: fromCents(cashbackPreviewCents),
+      // Situação de QUEM está perguntando (assento): `active` diz se o
+      // assento ainda vale; `canLeave` é verdade só pra quem não tem
+      // nenhum pedido seu (cancelado não conta) — é o servidor quem
+      // decide, o botão "Sair da mesa" só obedece.
+      mySeat: await this.describeMySeat(session, orders, seatToken, customerId),
     };
+  }
+
+  private async describeMySeat(
+    session: TableSession,
+    orders: Order[],
+    seatToken: string | null,
+    customerId: string | null,
+  ): Promise<{ active: boolean; canLeave: boolean }> {
+    const seat = await this.findSeat(session.id, seatToken, customerId);
+    if (!seat || seat.leftAt) return { active: false, canLeave: false };
+    const hasOwnLiveOrder = orders.some(
+      (o) =>
+        o.status !== 'cancelado' &&
+        (o.tableParticipantId === seat.id || (seat.customerId && o.customerId === seat.customerId)),
+    );
+    return { active: true, canLeave: !hasOwnLiveOrder };
   }
 
   // Painel admin: confere um código de autenticidade de cupom de MESA
@@ -717,8 +934,18 @@ export class TablesService {
       cashbackSplitMode?: string;
     },
     customerId: string | null,
+    seatToken: string | null = null,
   ): Promise<TableSession> {
     const session = await this.findSession(tenantId, sessionId);
+    // Assento morto (quem saiu) nunca fecha nem paga conta.
+    await this.assertActiveSeat(session.id, seatToken, customerId);
+    // REGRA (30/09): cashback é exclusivo de quem tem conta. Convidado não
+    // tem nenhum acesso — recusa em vez de ignorar em silêncio.
+    if (!customerId && (dto.useCashback || dto.paymentMethod === 'cashback')) {
+      throw new BadRequestException(
+        'Faça login ou crie uma conta para usufruir dos benefícios do cashback.',
+      );
+    }
     // Aceita reenviar mesmo já estando em 'fechamento_solicitado' —
     // necessário pra permitir tentar de novo depois de um Pix que
     // expirou ou falhou (ver checkSessionPixStatus), sem precisar
@@ -749,9 +976,6 @@ export class TablesService {
     const totalCents = await this.calculateSessionTotalCents(tenantId, sessionId);
     const totalPlusTipCents = totalCents + toCents(session.tipAmount);
     if (dto.paymentMethod === 'cashback') {
-      if (!customerId) {
-        throw new BadRequestException('Entre na sua conta pra pagar com cashback.');
-      }
       if (!useCashback) {
         throw new BadRequestException('Ative "usar meu cashback" pra pagar só com ele.');
       }
@@ -961,12 +1185,15 @@ export class TablesService {
     const activeParticipants =
       sessions.length > 0
         ? await this.participantRepo.find({
-            where: { tableSessionId: In(sessions.map((s) => s.id)), leftAt: IsNull() },
+            // Inclui também quem JÁ SAIU (leftAt preenchido): o painel os
+            // mostra inativos (cinza) pra o admin ver quem esteve na mesa.
+            where: { tableSessionId: In(sessions.map((s) => s.id)) },
             order: { joinedAt: 'ASC' },
           })
         : [];
     const participantsBySession = new Map<string, TableSessionParticipant[]>();
     for (const p of activeParticipants) {
+      if (!p.customerId) continue; // assento de convidado: sem conta, sem nome/avatar
       accountCustomerIds.add(p.customerId);
       const list = participantsBySession.get(p.tableSessionId) ?? [];
       list.push(p);
@@ -1048,6 +1275,7 @@ export class TablesService {
         hasAccount: boolean;
         isVerified: boolean;
         isOpener: boolean;
+        hasLeft: boolean;
       }> = [];
       function upsertCustomer(entry: {
         name: string;
@@ -1055,17 +1283,22 @@ export class TablesService {
         hasAccount: boolean;
         isVerified: boolean;
         isOpener: boolean;
+        hasLeft?: boolean;
       }) {
         const key = entry.name.trim().toLowerCase();
         const idx = customers.findIndex((c) => c.name.trim().toLowerCase() === key);
         if (idx === -1) {
-          customers.push(entry);
+          customers.push({ ...entry, hasLeft: entry.hasLeft ?? false });
         } else if (entry.hasAccount && !customers[idx].hasAccount) {
           // Nunca perde o selo de "abriu a mesa" numa fusão — se a
           // entrada que já estava lá era a que abriu, mantém isso
           // mesmo trocando o resto dos dados por uma versão mais
           // completa (ex: convidado que depois logou).
-          customers[idx] = { ...entry, isOpener: entry.isOpener || customers[idx].isOpener };
+          customers[idx] = {
+            ...entry,
+            isOpener: entry.isOpener || customers[idx].isOpener,
+            hasLeft: entry.hasLeft ?? customers[idx].hasLeft,
+          };
         } else if (entry.isOpener && !customers[idx].isOpener) {
           customers[idx] = { ...customers[idx], isOpener: true };
         }
@@ -1082,7 +1315,9 @@ export class TablesService {
       // pra distinguir visualmente no painel quem começou a conta.
       const participants = participantsBySession.get(session.id) ?? [];
       for (const participant of participants) {
-        const account = accountCustomerById.get(participant.customerId);
+        const account = participant.customerId
+          ? accountCustomerById.get(participant.customerId)
+          : undefined;
         if (account) {
           upsertCustomer({
             name: account.name,
@@ -1090,6 +1325,7 @@ export class TablesService {
             hasAccount: true,
             isVerified: this.verificationService.verifyIntegritySync(account),
             isOpener: participant.customerId === session.openedByCustomerId,
+            hasLeft: Boolean(participant.leftAt),
           });
         }
       }
@@ -1545,8 +1781,14 @@ export class TablesService {
 
   // ---------- Chamar garçom ----------
 
-  async callWaiter(tenantId: string, sessionId: string): Promise<WaiterCall> {
+  async callWaiter(
+    tenantId: string,
+    sessionId: string,
+    seatToken: string | null = null,
+    customerId: string | null = null,
+  ): Promise<WaiterCall> {
     const session = await this.findSession(tenantId, sessionId);
+    await this.assertActiveSeat(session.id, seatToken, customerId);
     const table = await this.tableRepo.findOne({ where: { id: session.tableId } });
     if (!table) {
       throw new NotFoundException('Mesa não encontrada.');
@@ -1588,7 +1830,13 @@ export class TablesService {
   // "Cancelar chamar garçom" — pro caso do cliente ter clicado sem
   // querer. Só cancela o chamado mais recente, e só se ainda estiver
   // 'pendente' (se o garçom já foi atender, não faz sentido desfazer).
-  async cancelWaiterCall(tenantId: string, sessionId: string): Promise<{ cancelled: boolean }> {
+  async cancelWaiterCall(
+    tenantId: string,
+    sessionId: string,
+    seatToken: string | null = null,
+    customerId: string | null = null,
+  ): Promise<{ cancelled: boolean }> {
+    await this.assertActiveSeat(sessionId, seatToken, customerId);
     const call = await this.waiterCallRepo.findOne({
       where: { tenantId, tableSessionId: sessionId },
       order: { createdAt: 'DESC' },

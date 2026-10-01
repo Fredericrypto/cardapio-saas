@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, Bell, LogOut } from 'lucide-react';
 import { fetchSessionSummary, requestSessionClosing, leaveTable } from '../lib/menu-api';
+import { markLeftLocally } from '../lib/seat';
 import type { RequestClosingPayload } from '../lib/menu-api';
 import { ClosingPaymentSheet } from '../components/ClosingPaymentSheet';
 import { TableSessionPixWaitingPanel } from '../components/TableSessionPixWaitingPanel';
@@ -32,14 +33,13 @@ export function MyAccountPage() {
   const [confirmingLeave, setConfirmingLeave] = useState(false);
 
   async function handleLeaveTable() {
-    if (!customerToken || !qrCodeToken) return;
+    if (!qrCodeToken) return;
     setConfirmingLeave(false);
     setIsLeaving(true);
     setLeaveError(null);
     try {
       await leaveTable(qrCodeToken, customerToken);
-      if (slug) clearActiveMesaTokenForSlug(slug);
-      navigate(`/${slug}`);
+      finishLeaving();
     } catch (err) {
       // Pedido do Felipe (16/09): se o backend recusou de propósito
       // (já tem pedido nessa conta — ver TablesService.leaveTable), tem
@@ -61,12 +61,21 @@ export function MyAccountPage() {
       if (backendMessage) {
         setLeaveError(backendMessage);
       } else {
-        if (slug) clearActiveMesaTokenForSlug(slug);
-        navigate(`/${slug}`);
+        // Falha de rede: NÃO finge que saiu (o servidor pode ainda
+        // considerar o assento ativo). Pede pra tentar de novo.
+        setLeaveError('Não foi possível sair da mesa agora. Tente novamente.');
       }
     } finally {
       setIsLeaving(false);
     }
+  }
+
+  // Saída confirmada pelo servidor: o assento morreu. Vai pra tela final
+  // "Você saiu desta mesa" (que NÃO tem caminho de volta — só novo QR).
+  function finishLeaving() {
+    if (qrCodeToken) markLeftLocally(qrCodeToken);
+    if (slug) clearActiveMesaTokenForSlug(slug);
+    navigate(`/${slug}/mesa/${qrCodeToken}`, { replace: true });
   }
 
   const [summary, setSummary] = useState<SessionSummary | null>(null);
@@ -80,6 +89,18 @@ export function MyAccountPage() {
   // Folha de pagamento (forma de pagamento + cashback) aberta ao tocar
   // em "Solicitar fechamento" — pedido do Felipe, 28/09.
   const [showPaymentSheet, setShowPaymentSheet] = useState(false);
+  // Voltando do login/cadastro feito a partir do aviso de cashback: cai de
+  // volta EXATAMENTE na folha de pagamento (?fechar=1), com a sessão da
+  // mesa intacta. O parâmetro é consumido na hora (não reabre em refresh).
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    if (searchParams.get('fechar') === '1') {
+      setShowPaymentSheet(true);
+      const next = new URLSearchParams(searchParams);
+      next.delete('fechar');
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   // Guarda o último status conhecido de cada pedido pra detectar mudanças
   // entre uma atualização (poll) e outra, e avisar o cliente na tela.
@@ -113,7 +134,7 @@ export function MyAccountPage() {
     const tenantId = tenant.id;
 
     async function load() {
-      const summaryData = await fetchSessionSummary(tenantId, session!.id);
+      const summaryData = await fetchSessionSummary(tenantId, session!.id, customerToken);
       setSummary(summaryData);
       setClosingRequested(summaryData.session.status === 'fechamento_solicitado');
       detectStatusChanges(summaryData);
@@ -135,7 +156,12 @@ export function MyAccountPage() {
       if (inFlight || document.visibilityState !== 'visible') return;
       inFlight = true;
       try {
-        const summaryData = await fetchSessionSummary(tenantId, session!.id);
+        const summaryData = await fetchSessionSummary(tenantId, session!.id, customerToken);
+        // Meu assento saiu (ex: saí por outra aba): fim, definitivo.
+        if (summaryData.mySeat && !summaryData.mySeat.active) {
+          finishLeaving();
+          return;
+        }
         setSummary(summaryData);
         setClosingRequested(summaryData.session.status === 'fechamento_solicitado');
         detectStatusChanges(summaryData);
@@ -152,7 +178,7 @@ export function MyAccountPage() {
       clearInterval(interval);
       document.removeEventListener('visibilitychange', refresh);
     };
-  }, [tenant, session]);
+  }, [tenant, session, customerToken]);
 
   function calculateTipAmount(): number {
     if (!summary) return 0;
@@ -239,7 +265,12 @@ export function MyAccountPage() {
   const distinctPayingCustomers = new Set(
     summary.orders.filter((o) => o.status !== 'cancelado' && o.customer?.id).map((o) => o.customer!.id),
   ).size;
-  const canLeaveTable = Boolean(customerToken) && !isOpener && summary.orders.length === 0;
+  // Decisão final (30/09): qualquer cliente — logado ou convidado, inclusive quem
+  // abriu a mesa — sai se não tem pedido seu (cancelado não conta). Quem decide
+  // é o servidor (`mySeat.canLeave`); o botão só obedece.
+  const canLeaveTable =
+    Boolean(summary.mySeat?.active && summary.mySeat.canLeave) &&
+    summary.session.status === 'aberta';
 
   return (
     <div className="min-h-screen bg-white max-w-md mx-auto pb-32">
@@ -269,7 +300,9 @@ export function MyAccountPage() {
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-6">
           <div className="bg-white rounded-2xl p-5 max-w-xs w-full flex flex-col gap-4 text-center">
             <p className="text-sm text-gray-700">
-              Tem certeza que quer sair dessa mesa? Você vai pro cardápio geral da unidade.
+              Tem certeza que quer sair dessa mesa?
+              {isOpener ? ' Você abriu a mesa, mas a conta continua pra quem ficar.' : ''} Pra voltar,
+              só escaneando o QR code da mesa de novo.
             </p>
             <div className="flex flex-col gap-2">
               <button

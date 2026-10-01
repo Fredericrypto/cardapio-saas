@@ -142,6 +142,13 @@ export class TableSession {
   @Column({ name: 'force_closed_reason', type: 'text', nullable: true })
   forceClosedReason: string | null;
 
+  // 'saida_sem_pedido' = sessão sem nenhum pedido encerrada porque o
+  // último cliente ativo saiu da mesa. Como no encerramento forçado, não
+  // conta como "recém-encerrada": o próximo QR escaneado abre a mesa na
+  // hora (não há dinheiro em jogo).
+  @Column({ name: 'closed_reason', type: 'varchar', length: 30, nullable: true })
+  closedReason: string | null;
+
   @Column({ name: 'force_closed_by_user_id', type: 'uuid', nullable: true })
   forceClosedByUserId: string | null;
 

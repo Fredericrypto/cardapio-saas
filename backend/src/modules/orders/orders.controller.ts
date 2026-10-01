@@ -42,10 +42,16 @@ export class OrdersController {
     @Param('tenantId') tenantId: string,
     @Body() dto: CreateOrderDto,
     @Headers('authorization') authHeader?: string,
+    @Headers('x-seat-token') seatToken?: string,
   ) {
     const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
     const customer = token ? this.customersAuthService.verifyToken(tenantId, token) : null;
-    return this.ordersService.create(tenantId, dto, customer?.customerId ?? null);
+    return this.ordersService.create(
+      tenantId,
+      dto,
+      customer?.customerId ?? null,
+      seatToken ?? null,
+    );
   }
 
   @UseGuards(JwtAuthGuard)

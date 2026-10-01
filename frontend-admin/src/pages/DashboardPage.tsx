@@ -60,6 +60,9 @@ interface ActiveTableGroup {
     hasAccount: boolean;
     isVerified: boolean;
     isOpener: boolean;
+    // Saiu da mesa (assento encerrado): só visual pro admin acompanhar
+    // quem esteve nela — o cliente em si não volta sem novo QR Code.
+    hasLeft: boolean;
   }>;
   // Quantas vezes o garçom foi chamado NESSA sessão em aberto — zera
   // sozinho quando a mesa fecha e abre de novo (é por sessão, não por
@@ -872,9 +875,16 @@ function ActiveTableCard({
       <div className="rounded-xl bg-white/5 p-3.5 flex flex-col gap-2.5">
         {group.customers.length > 0 ? (
           group.customers.map((c, i) => (
-            <div key={`${c.name}-${i}`} className="flex items-center gap-3">
+            <div
+              key={`${c.name}-${i}`}
+              className={`flex items-center gap-3 ${c.hasLeft ? 'opacity-50' : ''}`}
+            >
               <div className="relative shrink-0">
-                <span className="block w-14 h-14 rounded-full overflow-hidden ring-[3px] ring-white/20 shadow-md bg-white/10 flex items-center justify-center">
+                <span
+                  className={`block w-14 h-14 rounded-full overflow-hidden ring-[3px] ring-white/20 shadow-md bg-white/10 flex items-center justify-center ${
+                    c.hasLeft ? 'grayscale' : ''
+                  }`}
+                >
                   {c.avatarUrl ? (
                     <img src={c.avatarUrl} alt="" className="w-full h-full object-cover" />
                   ) : (
@@ -906,6 +916,14 @@ function ActiveTableCard({
                   {c.isVerified && <Check size={11} strokeWidth={3.5} />}
                   {c.isVerified ? 'Cliente verificado' : c.hasAccount ? 'Cliente' : 'Visitante'}
                 </p>
+                {/* Decisão do Felipe (30/09): quem saiu da mesa fica cinza
+                    (só visual, pro admin controlar o fluxo e ver quem
+                    esteve ali) — o selo de quem abriu a mesa continua. */}
+                {c.hasLeft && (
+                  <p className="text-[11px] font-semibold text-gray-300 mt-0.5">
+                    Cliente saiu da mesa
+                  </p>
+                )}
                 {/* Pedido do Felipe (14/09): destacar quem abriu a
                     mesa/balcão, separado de quem só se juntou depois. */}
                 {c.isOpener && (

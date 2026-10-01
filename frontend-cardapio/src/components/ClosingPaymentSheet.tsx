@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
+import { CashbackLoginNotice } from './CashbackLoginNotice';
 import { fetchMyCashbackBalance } from '../lib/customer-api';
 import type { RequestClosingPayload } from '../lib/menu-api';
 
@@ -47,6 +49,7 @@ export function ClosingPaymentSheet({
   onCancel,
   onConfirm,
 }: ClosingPaymentSheetProps) {
+  const location = useLocation();
   const [cashbackBalance, setCashbackBalance] = useState<number | null>(null);
   const [useCashback, setUseCashback] = useState(false);
   // Escolha EXPLÍCITA de "pagar tudo com cashback" quando ele cobre
@@ -127,6 +130,16 @@ export function ClosingPaymentSheet({
             <span>R$ {remaining.toFixed(2).replace('.', ',')}</span>
           </div>
         </div>
+
+        {/* Convidado: nenhum acesso ao cashback — só o aviso + botão pro
+            login. Volta pra ESTA tela com a folha de pagamento já aberta
+            (?fechar=1, ver MyAccountPage). */}
+        {!customerToken && (
+          <CashbackLoginNotice
+            returnTo={`${location.pathname}?fechar=1`}
+            primaryColor={primaryColor}
+          />
+        )}
 
         {cashbackBalance !== null && cashbackBalance > 0 && (
           <button

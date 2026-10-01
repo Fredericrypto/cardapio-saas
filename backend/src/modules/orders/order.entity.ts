@@ -47,6 +47,13 @@ export class Order {
   @Column({ name: 'table_session_id', nullable: true })
   tableSessionId: string | null;
 
+  // Assento (TableSessionParticipant) de quem fez o pedido na mesa —
+  // a regra "só pode sair da mesa quem não tem pedido" precisa saber de
+  // quem é cada pedido, inclusive de convidado (sem customerId).
+  @Index()
+  @Column({ name: 'table_participant_id', type: 'uuid', nullable: true })
+  tableParticipantId: string | null;
+
   @ManyToOne(() => TableSession, { nullable: true })
   @JoinColumn({ name: 'table_session_id' })
   tableSession: TableSession | null;

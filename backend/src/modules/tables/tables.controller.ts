@@ -5,6 +5,7 @@ import {
   Delete,
   Body,
   Param,
+  Headers,
   UseGuards,
 } from '@nestjs/common';
 import { SkipThrottle } from '@nestjs/throttler';
@@ -143,26 +144,31 @@ export class TablesController {
   @Post('table-sessions/public/scan/:qrCodeToken')
   async scanQrCode(
     @Param('qrCodeToken') qrCodeToken: string,
+    @Headers('x-seat-token') seatToken: string | undefined,
     @CurrentCustomer() customer: RequestCustomer | null,
   ) {
-    const session = await this.tablesService.openOrJoinSession(
+    const { session, seat } = await this.tablesService.openOrJoinSession(
       qrCodeToken,
       customer?.customerId ?? null,
+      seatToken ?? null,
     );
-    return this.tablesService.withTimerInfo(session);
+    // `seatToken` é a credencial secreta do assento (ver TablesService):
+    // o app guarda e manda de volta em todo pedido/fechamento/chamado.
+    return { ...(await this.tablesService.withTimerInfo(session)), seatToken: seat.seatToken };
   }
 
   // Ação explícita ("Sair dessa mesa") — exige login porque só faz
   // sentido remover um PARTICIPANTE identificado; convidado nunca vira
   // participante rastreado (ver TableSessionParticipant), então não tem
   // o que "sair" pra ele.
-  @UseGuards(CustomerJwtAuthGuard)
+  @UseGuards(OptionalCustomerJwtAuthGuard)
   @Post('table-sessions/public/:qrCodeToken/leave')
   async leaveTable(
     @Param('qrCodeToken') qrCodeToken: string,
-    @CurrentCustomer() customer: RequestCustomer,
+    @Headers('x-seat-token') seatToken: string | undefined,
+    @CurrentCustomer() customer: RequestCustomer | null,
   ) {
-    await this.tablesService.leaveTable(qrCodeToken, customer.customerId);
+    await this.tablesService.leaveTable(qrCodeToken, seatToken ?? null, customer?.customerId ?? null);
     return { ok: true };
   }
 
@@ -170,12 +176,24 @@ export class TablesController {
   // O frontend usa isso ao carregar/recarregar uma página de mesa: se
   // devolver uma sessão, mostra o cardápio normal; se devolver null, mostra
   // a tela de "confirmar entrada" (que aí sim chama scanQrCode acima).
+  @UseGuards(OptionalCustomerJwtAuthGuard)
   @Get('table-sessions/public/current/:qrCodeToken')
-  async getCurrentSession(@Param('qrCodeToken') qrCodeToken: string) {
-    const { session, recentlyEnded } = await this.tablesService.getCurrentSession(qrCodeToken);
+  async getCurrentSession(
+    @Param('qrCodeToken') qrCodeToken: string,
+    @Headers('x-seat-token') seatToken: string | undefined,
+    @CurrentCustomer() customer: RequestCustomer | null,
+  ) {
+    const { session, recentlyEnded, seat, seatToken: resolvedSeatToken } =
+      await this.tablesService.getCurrentSession(
+        qrCodeToken,
+        seatToken ?? null,
+        customer?.customerId ?? null,
+      );
     return {
       session: session ? await this.tablesService.withTimerInfo(session) : null,
       recentlyEnded,
+      seat,
+      seatToken: resolvedSeatToken,
     };
   }
 
@@ -194,12 +212,20 @@ export class TablesController {
 
   // "Minha Conta": tenantId vem resolvido no frontend a partir da própria
   // sessão retornada pelo scan (a sessão já carrega o tenantId).
+  @UseGuards(OptionalCustomerJwtAuthGuard)
   @Get('table-sessions/public/:tenantId/:sessionId/summary')
   async getSessionSummary(
     @Param('tenantId') tenantId: string,
     @Param('sessionId') sessionId: string,
+    @Headers('x-seat-token') seatToken: string | undefined,
+    @CurrentCustomer() customer: RequestCustomer | null,
   ) {
-    return this.tablesService.getSessionSummary(tenantId, sessionId);
+    return this.tablesService.getSessionSummary(
+      tenantId,
+      sessionId,
+      seatToken ?? null,
+      customer?.customerId ?? null,
+    );
   }
 
   // Guard OPCIONAL (mesmo motivo do scan acima): convidado sem login
@@ -223,17 +249,32 @@ export class TablesController {
     @Param('tenantId') tenantId: string,
     @Param('sessionId') sessionId: string,
     @Body() dto: RequestClosingDto,
+    @Headers('x-seat-token') seatToken: string | undefined,
     @CurrentCustomer() customer: RequestCustomer | null,
   ) {
-    return this.tablesService.requestClosing(tenantId, sessionId, dto, customer?.customerId ?? null);
+    return this.tablesService.requestClosing(
+      tenantId,
+      sessionId,
+      dto,
+      customer?.customerId ?? null,
+      seatToken ?? null,
+    );
   }
 
+  @UseGuards(OptionalCustomerJwtAuthGuard)
   @Post('table-sessions/public/:tenantId/:sessionId/call-waiter')
   async callWaiter(
     @Param('tenantId') tenantId: string,
     @Param('sessionId') sessionId: string,
+    @Headers('x-seat-token') seatToken: string | undefined,
+    @CurrentCustomer() customer: RequestCustomer | null,
   ) {
-    return this.tablesService.callWaiter(tenantId, sessionId);
+    return this.tablesService.callWaiter(
+      tenantId,
+      sessionId,
+      seatToken ?? null,
+      customer?.customerId ?? null,
+    );
   }
 
   @Get('table-sessions/public/:tenantId/:sessionId/waiter-call-status')
@@ -246,11 +287,19 @@ export class TablesController {
 
   // "Cancelar chamar garçom" — desfaz um chamado feito sem querer,
   // enquanto ainda estiver pendente (garçom ainda não foi atender).
+  @UseGuards(OptionalCustomerJwtAuthGuard)
   @Post('table-sessions/public/:tenantId/:sessionId/cancel-waiter-call')
   async cancelWaiterCall(
     @Param('tenantId') tenantId: string,
     @Param('sessionId') sessionId: string,
+    @Headers('x-seat-token') seatToken: string | undefined,
+    @CurrentCustomer() customer: RequestCustomer | null,
   ) {
-    return this.tablesService.cancelWaiterCall(tenantId, sessionId);
+    return this.tablesService.cancelWaiterCall(
+      tenantId,
+      sessionId,
+      seatToken ?? null,
+      customer?.customerId ?? null,
+    );
   }
 }

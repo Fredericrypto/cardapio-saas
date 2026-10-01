@@ -4,9 +4,10 @@ import {
   BadRequestException,
   ConflictException,
   Logger,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { Repository, DataSource, EntityManager } from 'typeorm';
 import { Order } from './order.entity';
 import { OrderItem } from './order-item.entity';
 import { Product } from '../products/product.entity';
@@ -88,6 +89,37 @@ export class OrdersService {
     } catch (err) {
       this.logger.warn(`Não foi possível cancelar a cobrança ${mpPaymentId} no gateway: ${err}`);
     }
+  }
+
+  // Assento ATIVO de quem está pedindo numa mesa. Mesma regra do
+  // TablesService.assertActiveSeat, aqui dentro da transação do pedido.
+  private async resolveActiveSeat(
+    manager: EntityManager,
+    sessionId: string,
+    seatToken: string | null,
+    customerId: string | null,
+  ): Promise<TableSessionParticipant> {
+    const repo = manager.getRepository(TableSessionParticipant);
+    let seat = seatToken
+      ? await repo.findOne({ where: { seatToken, tableSessionId: sessionId } })
+      : null;
+    if (!seat && customerId) {
+      seat = await repo.findOne({ where: { tableSessionId: sessionId, customerId } });
+    }
+    if (!seat || seat.leftAt) {
+      throw new ForbiddenException(
+        'Você saiu desta mesa. Escaneie o QR Code da mesa novamente para voltar.',
+      );
+    }
+    // Convidado que fez login no meio da visita: o assento passa a ser do cliente.
+    if (!seat.customerId && customerId) {
+      const alreadyHasSeat = await repo.exists({ where: { tableSessionId: sessionId, customerId } });
+      if (!alreadyHasSeat) {
+        seat.customerId = customerId;
+        await repo.save(seat);
+      }
+    }
+    return seat;
   }
 
   private async markCancelled(order: Order): Promise<void> {
@@ -478,7 +510,12 @@ export class OrdersService {
   // Cria o pedido inteiro em UMA transação: ou tudo é salvo, ou nada é.
   // O preço de cada item vem sempre do banco (nunca do que o cliente mandou),
   // pra impedir que alguém manipule o preço direto na requisição.
-  async create(tenantId: string, dto: CreateOrderDto, customerId: string | null = null): Promise<Order> {
+  async create(
+    tenantId: string,
+    dto: CreateOrderDto,
+    customerId: string | null = null,
+    seatToken: string | null = null,
+  ): Promise<Order> {
     // A geocodificação roda ANTES de abrir a transação de propósito: é uma
     // chamada de rede externa (LocationIQ, até ~8s) e nunca deve segurar uma
     // transação de banco aberta enquanto espera resposta de fora. O valor
@@ -636,7 +673,18 @@ export class OrdersService {
 
       let resolvedTableNumber = dto.tableNumber ?? null;
       let resolvedLocationId: string | null = dto.orderType !== 'mesa' ? dto.locationId! : null;
+      let resolvedSeatId: string | null = null;
       if (trustedTableSessionId) {
+        // Trava (compartilhada) a linha da sessão até o fim desta
+        // transação: "sair da mesa" (TablesService.leaveTable) trava a
+        // MESMA linha como escrita. Assim, pedido e saída nunca se
+        // cruzam: ou a saída vê este pedido e recusa, ou este pedido vê
+        // o assento já morto e é recusado — sem brecha de corrida.
+        await manager
+          .createQueryBuilder(TableSession, 'lockedSession')
+          .setLock('pessimistic_read')
+          .where('lockedSession.id = :id', { id: trustedTableSessionId })
+          .getOne();
         const session = await manager.findOne(TableSession, {
           where: { id: trustedTableSessionId, tenantId },
           relations: { table: true },
@@ -652,6 +700,10 @@ export class OrdersService {
             'Esta conta já foi encerrada. Escaneie o QR code novamente para abrir uma nova.',
           );
         }
+        // Assento morto (quem saiu da mesa) NUNCA faz pedido — mesmo que
+        // o navegador ainda guarde o id da sessão (decisão final de
+        // 30/09: sessão encerrada é definitiva).
+        resolvedSeatId = (await this.resolveActiveSeat(manager, session.id, seatToken, customerId)).id;
         resolvedTableNumber = session.table.number;
         // A mesa já pertence a uma loja física específica — é assim que o
         // fluxo de QR code resolve automaticamente em qual filial o
@@ -797,6 +849,13 @@ export class OrdersService {
       // cliente só precisa tentar de novo — nunca cobramos um valor que
       // não bate com o que foi realmente debitado da carteira.
       let cashbackUsedCents = 0;
+      // REGRA (30/09): cashback é exclusivo de quem tem conta. Convidado
+      // não tem nenhum acesso — recusa em vez de ignorar em silêncio.
+      if (dto.useCashback && !customerId) {
+        throw new BadRequestException(
+          'Faça login ou crie uma conta para usufruir dos benefícios do cashback.',
+        );
+      }
       if (dto.useCashback && customerId) {
         const availableCents = toCents(
           await this.cashbackService.getBalance(tenantId, customerId, manager),
@@ -825,6 +884,7 @@ export class OrdersService {
       const order = manager.create(Order, {
         tenantId,
         tableSessionId: trustedTableSessionId ?? null,
+        tableParticipantId: resolvedSeatId,
         locationId: resolvedLocationId,
         customerId,
         customerName: dto.customerName,
