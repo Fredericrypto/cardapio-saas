@@ -995,6 +995,24 @@ export function CartPage() {
   const showPaymentStep = orderType !== 'mesa' && checkoutStep === 'payment';
   const showReviewStep = orderType !== 'mesa' && checkoutStep === 'review';
 
+  // Rótulo do botão grande de baixo. Enquanto a loja ainda carrega
+  // (`activeLocation` nulo) NÃO mostra "fechado" — é neutro.
+  const primaryButtonLabel = isSubmitting
+    ? 'Enviando...'
+    : !activeLocation
+      ? 'Carregando...'
+      : !activeLocation.isOpenNow
+        ? 'Estabelecimento fechado'
+        : orderType === 'mesa'
+          ? 'Confirmar pedido'
+          : checkoutStep === 'form'
+            ? orderType === 'entrega' && !quote
+              ? 'Calcule a taxa de entrega'
+              : 'Ir para pagamento'
+            : checkoutStep === 'payment'
+              ? 'Revisar pedido'
+              : 'Confirmar pedido';
+
   return (
     <div className="min-h-screen bg-white max-w-md mx-auto pb-40">
       <div className="flex items-center gap-3 px-4 py-4 border-b border-gray-100">
@@ -1747,10 +1765,15 @@ export function CartPage() {
         </div>
       )}
 
-      <div
-        className="fixed bottom-0 left-0 right-0 max-w-md mx-auto p-4 bg-white border-t border-gray-100"
-        style={{ transform: 'translateZ(0)' }}
-      >
+      {/* BUG CORRIGIDO (30/09): o texto do botão grande só aparecia depois
+          de um toque na tela. Causa: o rótulo troca DEPOIS de montar (a
+          loja carrega por rede) dentro de uma barra fixa promovida a
+          camada própria (`translateZ(0)`), e alguns navegadores Android
+          não repintam o texto dessa camada até a próxima interação.
+          Agora a barra é uma barra fixa comum (sem forçar camada), o
+          rótulo não diz mais "fechado" enquanto a loja ainda carrega, e o
+          texto troca por nós novos (`key`). */}
+      <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto p-4 bg-white border-t border-gray-100">
         <button
           onClick={handlePrimaryAction}
           disabled={
@@ -1762,22 +1785,12 @@ export function CartPage() {
           className="w-full py-3.5 rounded-xl text-white font-semibold flex justify-between items-center px-5 disabled:opacity-60"
           style={{ backgroundColor: tenant.primaryColor }}
         >
-          <span>
-            {isSubmitting
-              ? 'Enviando...'
-              : !activeLocation?.isOpenNow
-                ? 'Estabelecimento fechado'
-                : orderType === 'mesa'
-                  ? 'Confirmar pedido'
-                  : checkoutStep === 'form'
-                    ? orderType === 'entrega' && !quote
-                      ? 'Calcule a taxa de entrega'
-                      : 'Ir para pagamento'
-                    : checkoutStep === 'payment'
-                      ? 'Revisar pedido'
-                      : 'Confirmar pedido'}
-          </span>
-          <span>R$ {displayTotal.toFixed(2).replace('.', ',')}</span>
+          {/* `key` = o texto/total viram nós NOVOS do DOM quando mudam (a
+              loja carrega depois de montar e o rótulo troca): pintura
+              garantida, em vez de depender de o navegador repintar um
+              nó antigo (ver o bug do texto que só aparecia ao tocar). */}
+          <span key={primaryButtonLabel}>{primaryButtonLabel}</span>
+          <span key={displayTotal.toFixed(2)}>R$ {displayTotal.toFixed(2).replace('.', ',')}</span>
         </button>
       </div>
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Coins, ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
+import { ArrowLeft, CircleDollarSign, ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { useTenant } from '../contexts/TenantContext';
 import { fetchMyCashbackBalance, fetchMyCashbackHistory } from '../lib/customer-api';
@@ -59,7 +59,7 @@ export function CustomerCashbackPage() {
           style={{ backgroundColor: tenant.primaryColor }}
         >
           <p className="text-xs opacity-80 flex items-center gap-1.5">
-            <Coins size={14} />
+            <CircleDollarSign size={14} />
             Saldo disponível
           </p>
           <p className="text-3xl font-bold">

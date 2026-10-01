@@ -18,6 +18,7 @@ import { CustomerPixWalletPage } from './pages/CustomerPixWalletPage';
 import { CustomerCashbackPage } from './pages/CustomerCashbackPage';
 import { MyReviewsPage } from './pages/MyReviewsPage';
 import { PublicReviewsPage } from './pages/PublicReviewsPage';
+import { ItemReviewsPage } from './pages/ItemReviewsPage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { RequireCustomerAuth } from './components/RequireCustomerAuth';
 import { OptionalCustomerAuth } from './components/OptionalCustomerAuth';
@@ -101,6 +102,9 @@ function App() {
               }
             />
             <Route path="avaliacoes" element={<PublicReviewsPage />} />
+            {/* Avaliações de um item — pública como a do restaurante; serve os
+                dois fluxos (geral e mesa), o voltar usa o histórico. */}
+            <Route path="produto/:productId/avaliacoes" element={<ItemReviewsPage />} />
             <Route
               path="escolher-loja"
               element={

@@ -1,3 +1,4 @@
+import { RestaurantResponse } from './ReviewsShared';
 import { useState } from 'react';
 import { Star, Trash2, EyeOff } from 'lucide-react';
 import { deleteReview } from '../lib/customer-api';
@@ -27,7 +28,6 @@ export function ReviewDisplay({
   token,
   review,
   onDeleted,
-  restaurantName,
 }: {
   tenantId: string;
   token: string;
@@ -36,7 +36,7 @@ export function ReviewDisplay({
   // Nome do restaurante configurado pelo admin (ex: "Restaurante
   // Awesome") — pedido do Felipe: mostrar o nome de verdade em vez do
   // rótulo genérico "Resposta do restaurante".
-  restaurantName?: string;
+  restaurantName?: string; // legado: o nome agora vem do tenant (RestaurantResponse)
 }) {
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -79,10 +79,7 @@ export function ReviewDisplay({
           resposta. Mesmo texto/data que já aparece na vitrine pública
           (ver ReviewDisplay do lado admin/PublicReviewsPage). */}
       {review.response && (
-        <div className="mt-1 bg-gray-50 border border-gray-100 rounded-xl p-3 flex flex-col gap-1">
-          <p className="text-xs font-semibold text-gray-700">{restaurantName ?? 'Restaurante'}</p>
-          <p className="text-sm text-gray-600">{review.response.responseText}</p>
-        </div>
+        <RestaurantResponse responseText={review.response.responseText} className="mt-1" />
       )}
 
       {isConfirmingDelete && (

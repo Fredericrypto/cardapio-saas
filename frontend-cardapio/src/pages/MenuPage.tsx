@@ -20,7 +20,7 @@ import { TableMenuHeader } from '../components/TableMenuHeader';
 import { PromoCards } from '../components/PromoCards';
 import { SearchBar } from '../components/SearchBar';
 import { CategoryChips } from '../components/CategoryChips';
-import { getCategoryIcon } from '../components/CategoryIcon';
+import { getCategoryIcon, PromocoesIcon } from '../components/CategoryIcon';
 import { ProductCard } from '../components/ProductCard';
 import { CartBar } from '../components/CartBar';
 import { BottomNav } from '../components/BottomNav';
@@ -328,23 +328,23 @@ export function MenuPage() {
       )}
 
       <div className={!isOpenNow ? 'grayscale opacity-70 pointer-events-none select-none' : ''}>
-        <div className="pt-5 pb-1">
-          {/* Sem título/ícone (visual clean, pedido do Felipe 28/09) — só a
-              seta de recolher, a mesma das seções da aba "Todos". */}
-          <div className="flex justify-end px-4 mb-1.5">
-            <button
-              onClick={() => setShowPromotions((v) => !v)}
-              aria-label={showPromotions ? 'Ocultar promoções' : 'Mostrar promoções'}
-              aria-expanded={showPromotions}
-              className="p-1"
-            >
-              <ChevronDown
-                size={16}
-                strokeWidth={1.8}
-                className={`text-gray-400 transition-transform ${showPromotions ? '' : '-rotate-90'}`}
-              />
-            </button>
-          </div>
+        <div className="pt-1 pb-5">
+          {/* Mesmo cabeçalho das categorias da aba "Todos": ícone à
+              esquerda + nome + seta de recolher (decisão do Felipe, 30/09). */}
+          <button
+            onClick={() => setShowPromotions((v) => !v)}
+            aria-label={showPromotions ? 'Ocultar promoções' : 'Mostrar promoções'}
+            aria-expanded={showPromotions}
+            className="w-full flex items-center gap-2 px-4 pt-4 pb-1.5 text-gray-700"
+          >
+            <PromocoesIcon size={16} />
+            <span className="text-sm font-semibold flex-1 text-left">Promoções</span>
+            <ChevronDown
+              size={16}
+              strokeWidth={1.8}
+              className={`text-gray-400 transition-transform ${showPromotions ? '' : '-rotate-90'}`}
+            />
+          </button>
 
           {showPromotions &&
             (promotions.length > 0 ? (

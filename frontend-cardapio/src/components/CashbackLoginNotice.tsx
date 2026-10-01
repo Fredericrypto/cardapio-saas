@@ -1,4 +1,4 @@
-import { Coins } from 'lucide-react';
+import { CircleDollarSign } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 // Decisão final do Felipe (30/09): cashback é exclusivo de quem tem conta.
@@ -21,7 +21,7 @@ export function CashbackLoginNotice({
   return (
     <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-3 flex flex-col gap-2.5">
       <p className="text-sm text-gray-700 flex items-start gap-2">
-        <Coins size={16} className="mt-0.5 shrink-0 text-gray-400" />
+        <CircleDollarSign size={16} className="mt-0.5 shrink-0 text-gray-400" />
         Faça login ou crie uma conta para usufruir dos benefícios do cashback
       </p>
       <button
