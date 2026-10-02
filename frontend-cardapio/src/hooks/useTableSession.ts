@@ -5,26 +5,21 @@ import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { useTenant } from '../contexts/TenantContext';
 import { presetSelectedLocationId } from './useSelectedLocation';
 import type { TableSession } from '../types';
-import { wasLeftLocally } from '../lib/seat';
+import {
+  adoptGuestSession,
+  clearActiveMesaToken,
+  consumeQrScanIntent,
+  getSeatByTable,
+  setActiveMesaToken,
+  wasLeftLocally,
+} from '../lib/seat';
+export { getActiveMesaToken } from '../lib/seat';
 
 // `mesa_ativa_{slug}`: usado SÓ como conveniência pra montar o link do
 // menu de baixo (BottomNav) quando o cliente navega pra uma página que
 // não tem o token na própria URL (ex: "Minha conta", histórico de
 // pedidos). NÃO participa de nenhuma decisão sobre abrir/criar/reabrir
 // sessão — só decide pra onde um link aponta.
-function activeMesaKey(slug: string) {
-  return `mesa_ativa_${slug}`;
-}
-export function getActiveMesaToken(slug: string): string | null {
-  return localStorage.getItem(activeMesaKey(slug));
-}
-function setActiveMesaToken(slug: string, qrCodeToken: string) {
-  localStorage.setItem(activeMesaKey(slug), qrCodeToken);
-}
-export function clearActiveMesaTokenForSlug(slug: string) {
-  localStorage.removeItem(activeMesaKey(slug));
-}
-
 // REGRA ABSOLUTA (30/09, decisão final do Felipe): sessão encerrada ou
 // saída da mesa é DEFINITIVA — por qualquer motivo (cliente, admin,
 // "corrigir sessão", pagamento, prazo, "sair da mesa"). Recarregar,
@@ -61,18 +56,39 @@ function isFreshDocumentLoad(): boolean {
   }
   return true;
 }
-// A "abertura nova" só vale pra PRIMEIRA checagem de cada carga de
-// documento (reaproveitada por 2s pra não quebrar o duplo efeito do
-// React em desenvolvimento). Qualquer checagem depois disso — React
-// remontando o gate ao navegar dentro do app — NÃO é um scan novo.
+// Esta página foi aberta JÁ numa URL de mesa? (vale na hora em que o app
+// carrega, antes do roteador navegar). Só então o tipo de navegação do
+// documento diz algo sobre "escaneou o QR".
+const documentOpenedOnMesaUrl =
+  typeof window !== 'undefined' && /\/mesa\//.test(window.location.pathname);
+
+// Uma "abertura nova" (= escaneamento) vale em DOIS casos, nunca mais:
+//  1) o documento foi aberto por navegação nova NUMA URL de mesa (câmera
+//     do celular, link) — só na PRIMEIRA checagem da carga;
+//  2) o leitor de QR do PRÓPRIO app acabou de ler este QR (intenção em
+//     memória, de uso único e com validade curta, ver lib/seat.ts) —
+//     esse caminho navega sem recarregar a página, então o navegador não
+//     enxerga o scan sozinho (bug de 01/10: escanear de novo pelo app,
+//     depois de sair da mesa, mostrava "sessão já fechada").
+// Qualquer outra checagem — refresh, voltar/avançar, React remontando o
+// gate, troca de conta — NÃO é um scan. Reaproveitada por 2s só pra não
+// quebrar o duplo efeito do React em desenvolvimento.
 let documentLoadConsumed = false;
-let lastFreshDecision: { value: boolean; at: number } | null = null;
-function takeFreshLoadDecision(): boolean {
+let lastFreshDecision: { token: string; value: boolean; at: number } | null = null;
+function takeFreshLoadDecision(qrCodeToken: string): boolean {
   const now = Date.now();
-  if (lastFreshDecision && now - lastFreshDecision.at < 2000) return lastFreshDecision.value;
-  const value = !documentLoadConsumed && isFreshDocumentLoad();
+  if (
+    lastFreshDecision &&
+    lastFreshDecision.token === qrCodeToken &&
+    now - lastFreshDecision.at < 2000
+  ) {
+    return lastFreshDecision.value;
+  }
+  const fromAppScanner = consumeQrScanIntent(qrCodeToken);
+  const fromDocumentLoad = !documentLoadConsumed && documentOpenedOnMesaUrl && isFreshDocumentLoad();
   documentLoadConsumed = true;
-  lastFreshDecision = { value, at: now };
+  const value = fromAppScanner || fromDocumentLoad;
+  lastFreshDecision = { token: qrCodeToken, value, at: now };
   return value;
 }
 
@@ -108,12 +124,25 @@ export function useTableSession(slug: string | undefined, qrCodeToken: string | 
   const [pendingJoinToken, setPendingJoinToken] = useState<string | null>(null);
 
   const doJoin = useCallback(
-    async (token: string) => {
-      const freshSession = await scanTableQrCode(token, customerToken);
-      if (slug) setActiveMesaToken(slug, token);
-      setSession(freshSession);
-      setSessionEnded(false);
-      setPendingJoinToken(null);
+    async (token: string, confirmed = false) => {
+      try {
+        const freshSession = await scanTableQrCode(token, customerToken, confirmed);
+        if (slug) setActiveMesaToken(customerToken, slug, token);
+        setSession(freshSession);
+        setSessionEnded(false);
+        setPendingJoinToken(null);
+      } catch (err) {
+        // O servidor EXIGE confirmação pra entrar numa mesa que já tem
+        // seção aberta (pode ter aberto entre a checagem e o scan):
+        // pergunta em vez de entrar sozinho.
+        const code = (err as { response?: { data?: { code?: string } } })?.response?.data?.code;
+        if (code === 'JOIN_CONFIRMATION_REQUIRED') {
+          setSession(null);
+          setPendingJoinToken(token);
+          return;
+        }
+        throw err;
+      }
     },
     [customerToken, slug],
   );
@@ -130,14 +159,29 @@ export function useTableSession(slug: string | undefined, qrCodeToken: string | 
     setLeftTable(false);
     // Decidido de forma SÍNCRONA, antes de qualquer await — ver a REGRA
     // ABSOLUTA no topo do arquivo.
-    const isNewOpening = takeFreshLoadDecision();
+    const isNewOpening = takeFreshLoadDecision(qrCodeToken);
+    // Visitante que acabou de fazer login leva a seção dele pra conta; o que
+    // é de OUTRA conta nunca é herdado (ver lib/seat.ts).
+    adoptGuestSession(customerToken, slug, qrCodeToken);
 
     function showEnded(left: boolean) {
       setSession(null);
-      if (slug) clearActiveMesaTokenForSlug(slug);
+      if (slug) clearActiveMesaToken(customerToken, slug);
       if (left) setLeftTable(true);
       else setSessionEnded(true);
     }
+    // Esta CONTA nunca teve seção nessa mesa (ex: troquei de conta no mesmo
+    // aparelho e voltei por uma URL de mesa antiga): não é "sessão
+    // encerrada" — simplesmente não é a mesa dela. Vai pro cardápio geral.
+    function goToGeneralMenuSilently() {
+      setSession(null);
+      if (slug) {
+        clearActiveMesaToken(customerToken, slug);
+        navigate(`/${slug}`, { replace: true });
+      }
+    }
+    const neverHadSeat =
+      getSeatByTable(customerToken, qrCodeToken) === null && !wasLeftLocally(customerToken, qrCodeToken);
 
     try {
       const { session: current, recentlyEnded, seat } = await getCurrentTableSession(
@@ -147,13 +191,15 @@ export function useTableSession(slug: string | undefined, qrCodeToken: string | 
       if (current) {
         if (seat === 'active') {
           // O SERVIDOR confirma que o assento é meu e está vivo: retomar.
-          if (slug) setActiveMesaToken(slug, qrCodeToken);
+          if (slug) setActiveMesaToken(customerToken, slug, qrCodeToken);
           setSession(current);
           setPendingJoinToken(null);
         } else if (!isNewOpening) {
-          // Recarregar/voltar/remontar SEM assento vivo (saí da mesa, ou
-          // não tenho prova nenhuma): nunca entra, nunca pergunta.
-          showEnded(seat === 'left' || wasLeftLocally(qrCodeToken));
+          // Recarregar/voltar/remontar SEM assento vivo: nunca entra, nunca
+          // pergunta. Se a conta nunca esteve nessa mesa → cardápio geral;
+          // se saiu/encerrou → tela final.
+          if (seat === 'none' && neverHadSeat) goToGeneralMenuSilently();
+          else showEnded(seat === 'left' || wasLeftLocally(customerToken, qrCodeToken));
         } else {
           // Abertura nova (scan) de uma mesa que já tem conta aberta de
           // outra pessoa — confirmação explícita, como sempre foi.
@@ -162,10 +208,11 @@ export function useTableSession(slug: string | undefined, qrCodeToken: string | 
         }
       } else if (recentlyEnded) {
         // Acabou de encerrar — tela final, sem saída pra recomeçar aqui.
-        showEnded(wasLeftLocally(qrCodeToken));
+        showEnded(wasLeftLocally(customerToken, qrCodeToken));
       } else if (!isNewOpening) {
         // Mesa livre, mas isto é recarregar/voltar: NUNCA abre sessão.
-        showEnded(wasLeftLocally(qrCodeToken));
+        if (neverHadSeat) goToGeneralMenuSilently();
+        else showEnded(wasLeftLocally(customerToken, qrCodeToken));
       } else {
         // Abertura nova (scan) de uma mesa livre — entra direto.
         await doJoin(qrCodeToken);
@@ -176,7 +223,7 @@ export function useTableSession(slug: string | undefined, qrCodeToken: string | 
     } finally {
       setIsLoading(false);
     }
-  }, [qrCodeToken, doJoin, slug, customerToken]);
+  }, [qrCodeToken, doJoin, slug, customerToken, navigate]);
 
   useEffect(() => {
     // Espera `useCustomerAuth` resolver antes do primeiro join — se não
@@ -195,7 +242,7 @@ export function useTableSession(slug: string | undefined, qrCodeToken: string | 
     setIsLoading(true);
     setError(null);
     try {
-      await doJoin(pendingJoinToken);
+      await doJoin(pendingJoinToken, true);
     } catch (err) {
       const backendMessage = extractBackendMessage(err);
       setError(backendMessage ?? FRIENDLY_FALLBACK_MESSAGE);
@@ -236,8 +283,8 @@ export function useTableSession(slug: string | undefined, qrCodeToken: string | 
         // Sessão encerrada, ou o MEU assento saiu/não existe mais: fim,
         // definitivo. (Nunca "reabre" daqui — só um novo scan.)
         setSession(null);
-        if (slug) clearActiveMesaTokenForSlug(slug);
-        if (current && (seat === 'left' || wasLeftLocally(qrCodeToken))) setLeftTable(true);
+        if (slug) clearActiveMesaToken(customerToken, slug);
+        if (current && (seat === 'left' || wasLeftLocally(customerToken, qrCodeToken))) setLeftTable(true);
         else setSessionEnded(true);
       }
     } catch {

@@ -157,6 +157,21 @@ export class TablesService {
       await this.participantRepo.save(seat);
     } catch {
       seat.customerId = null;
+      return;
+    }
+    // Convidado que abriu a mesa e depois fez login: passa a constar como
+    // quem abriu (só o PRIMEIRO assento da sessão — quem apenas entrou
+    // depois nunca vira "quem abriu").
+    const session = await this.sessionRepo.findOne({ where: { id: seat.tableSessionId } });
+    if (session && !session.openedByCustomerId) {
+      const first = await this.participantRepo.findOne({
+        where: { tableSessionId: seat.tableSessionId },
+        order: { joinedAt: 'ASC' },
+      });
+      if (first && first.id === seat.id) {
+        session.openedByCustomerId = customerId;
+        await this.sessionRepo.save(session);
+      }
     }
   }
 
@@ -164,6 +179,45 @@ export class TablesService {
   // que ainda não tem token (app aberto de antes desta versão), pela
   // identidade dele na sessão. Devolve o assento mesmo que já tenha
   // saído (quem chama decide o que fazer com `leftAt`).
+  // Nome de um assento: o da conta, ou — pra visitante — o nome digitado
+  // no pedido mais recente dele ("Visitante" se ainda não pediu nada).
+  private async resolveSeatName(seat: TableSessionParticipant): Promise<string> {
+    if (seat.customerId) {
+      const account = await this.orderRepo.manager
+        .getRepository(Customer)
+        .findOne({ where: { id: seat.customerId } });
+      if (account?.name) return account.name.slice(0, 60);
+    }
+    const lastNamed = await this.orderRepo.findOne({
+      where: { tableParticipantId: seat.id, status: Not('cancelado'), customerName: Not(IsNull()) },
+      order: { createdAt: 'DESC' },
+    });
+    return (lastNamed?.customerName ?? 'Visitante').slice(0, 60);
+  }
+
+  // Rótulos dos assentos de VISITANTE de uma sessão: nome do pedido mais
+  // recente do assento; sem pedido, "Visitante" (numerado se houver vários).
+  private guestSeatLabels(
+    seats: TableSessionParticipant[],
+    orders: Order[],
+  ): Map<string, string> {
+    const labels = new Map<string, string>();
+    let unnamed = 0;
+    for (const seat of seats) {
+      if (seat.customerId) continue;
+      const named = orders
+        .filter((o) => o.tableParticipantId === seat.id && o.status !== 'cancelado' && o.customerName)
+        .sort((x, y) => +new Date(y.createdAt) - +new Date(x.createdAt))[0];
+      if (named?.customerName) {
+        labels.set(seat.id, named.customerName);
+      } else {
+        unnamed += 1;
+        labels.set(seat.id, unnamed === 1 ? 'Visitante' : `Visitante ${unnamed}`);
+      }
+    }
+    return labels;
+  }
+
   private async findSeat(
     sessionId: string,
     seatToken: string | null,
@@ -173,7 +227,12 @@ export class TablesService {
       const bySeat = await this.participantRepo.findOne({
         where: { seatToken, tableSessionId: sessionId },
       });
-      if (bySeat) return bySeat;
+      // ISOLAMENTO ENTRE CONTAS (01/10): um assento que pertence a uma
+      // CONTA só vale pra essa mesma conta — o token sozinho NUNCA basta.
+      // Antes, trocar de conta no mesmo aparelho deixava a conta nova
+      // usar o assento (e os pedidos) da conta anterior. Convidado (sem
+      // dono) continua valendo só com o token.
+      if (bySeat && (!bySeat.customerId || bySeat.customerId === customerId)) return bySeat;
     }
     if (customerId) {
       return this.participantRepo.findOne({ where: { tableSessionId: sessionId, customerId } });
@@ -208,7 +267,7 @@ export class TablesService {
       const presented = await this.participantRepo.findOne({
         where: { seatToken: presentedSeatToken, tableSessionId: sessionId },
       });
-      if (presented && !presented.leftAt) {
+      if (presented && !presented.leftAt && (!presented.customerId || presented.customerId === customerId)) {
         await this.bindSeatToCustomer(presented, customerId);
         return presented;
       }
@@ -333,6 +392,7 @@ export class TablesService {
     qrCodeToken: string,
     customerId?: string | null,
     presentedSeatToken: string | null = null,
+    confirmedJoin = false,
   ): Promise<{ session: TableSession; seat: TableSessionParticipant }> {
     const table = await this.tableRepo.findOne({
       where: { qrCodeToken, isActive: true },
@@ -358,28 +418,18 @@ export class TablesService {
       order: { openedAt: 'DESC' },
     });
     if (existingSession) {
-      // BUG REAL ENCONTRADO 2026-09-13: esse early-return devolvia a sessão
-      // existente tal como estava, mesmo quando `customerId` chegava
-      // preenchido agora e `openedByCustomerId` da sessão ainda era `null`.
-      // Isso significa que qualquer sessão já criada como convidado (por
-      // exemplo, se a primeira chamada aconteceu um instante antes do
-      // AuthContext do cliente resolver, ou uma sessão remanescente de
-      // antes deste próprio deploy) ficava com a identidade travada em
-      // "convidado" pra sempre — nenhuma chamada seguinte, mesmo já
-      // autenticada, jamais atualizava o dono da sessão. É a explicação
-      // mais provável do sintoma "Ninguém identificado ainda" persistir
-      // mesmo depois das duas correções anteriores (findActiveOverview +
-      // race do CustomerAuthContext): aquelas corrigiram como a IDENTIDADE
-      // é lida/detectada, mas não cobriam o caso de uma sessão que já
-      // existia sem identidade nenhuma gravada. Agora, se a sessão ainda
-      // não tem dono e um cliente logado está entrando nela, grava o dono
-      // agora — nunca sobrescreve um openedByCustomerId já preenchido (não
-      // rouba a mesa de quem abriu primeiro).
-      if (customerId && !existingSession.openedByCustomerId) {
-        existingSession.openedByCustomerId = customerId;
-        const seat = await this.enterSeat(existingSession.id, customerId, presentedSeatToken);
-        const savedExisting = await this.sessionRepo.save(existingSession);
-        return { session: savedExisting, seat };
+      // Já tem conta aberta nessa mesa. Quem JÁ tem assento vivo nela só
+      // retoma; quem NÃO tem (outra pessoa, outra conta, ou quem saiu)
+      // só entra depois de confirmar explicitamente "Deseja se juntar?"
+      // — decisão do Felipe (01/10). O servidor exige a confirmação: o
+      // app só manda `confirmedJoin` depois do "Sim".
+      const current = await this.findSeat(existingSession.id, presentedSeatToken, customerId ?? null);
+      const alreadyIn = Boolean(current && !current.leftAt);
+      if (!alreadyIn && !confirmedJoin) {
+        throw new ConflictException({
+          code: 'JOIN_CONFIRMATION_REQUIRED',
+          message: 'Já existe uma seção em aberto nesta mesa. Deseja se juntar?',
+        });
       }
       const seat = await this.enterSeat(existingSession.id, customerId ?? null, presentedSeatToken);
       return { session: existingSession, seat };
@@ -851,6 +901,65 @@ export class TablesService {
       // nenhum pedido seu (cancelado não conta) — é o servidor quem
       // decide, o botão "Sair da mesa" só obedece.
       mySeat: await this.describeMySeat(session, orders, seatToken, customerId),
+      // TODAS as pessoas na mesa (logadas e visitantes), cada uma com os
+      // ids dos pedidos dela — o app mostra os pedidos embaixo de cada
+      // pessoa, e o cupom final também (decisão de 01/10).
+      ...(await this.buildPeople(session, orders, seatToken, customerId)),
+    };
+  }
+
+  private async buildPeople(
+    session: TableSession,
+    orders: Order[],
+    seatToken: string | null,
+    customerId: string | null,
+  ): Promise<{
+    people: Array<{
+      id: string;
+      name: string;
+      avatarUrl: string | null;
+      isOpener: boolean;
+      isGuest: boolean;
+      isMe: boolean;
+      orderIds: string[];
+    }>;
+    unassignedOrderIds: string[];
+  }> {
+    const seats = await this.participantRepo.find({
+      where: { tableSessionId: session.id },
+      order: { joinedAt: 'ASC' },
+    });
+    const ownsOrder = (seat: TableSessionParticipant, o: Order) =>
+      o.tableParticipantId === seat.id || Boolean(seat.customerId && o.customerId === seat.customerId);
+    const shown = seats.filter(
+      (seat) => !seat.leftAt || orders.some((o) => o.status !== 'cancelado' && ownsOrder(seat, o)),
+    );
+    const accountIds = [...new Set(seats.map((x) => x.customerId).filter((id): id is string => Boolean(id)))];
+    const accounts = accountIds.length
+      ? await this.orderRepo.manager.getRepository(Customer).find({ where: { id: In(accountIds) } })
+      : [];
+    const accountById = new Map(accounts.map((c) => [c.id, c]));
+    const guestLabels = this.guestSeatLabels(seats, orders);
+    const mine = await this.findSeat(session.id, seatToken, customerId);
+    const earliestSeatId = seats[0]?.id;
+    const people = shown.map((seat) => {
+      const account = seat.customerId ? accountById.get(seat.customerId) : undefined;
+      return {
+        id: seat.id,
+        name: account?.name ?? guestLabels.get(seat.id) ?? 'Visitante',
+        avatarUrl: account?.avatarUrl ?? null,
+        isOpener: seat.customerId
+          ? seat.customerId === session.openedByCustomerId
+          : !session.openedByCustomerId && seat.id === earliestSeatId,
+        isGuest: !account,
+        isMe: Boolean(mine && mine.id === seat.id),
+        orderIds: orders.filter((o) => ownsOrder(seat, o)).map((o) => o.id),
+      };
+    });
+    const assigned = new Set(people.flatMap((x) => x.orderIds));
+    return {
+      people,
+      unassignedOrderIds: orders.filter((o) => !assigned.has(o.id)).map((o) => o.id),
     };
   }
 
@@ -1314,10 +1423,25 @@ export class TablesService {
       // abriu a mesa (session.openedByCustomerId) — pedido do Felipe
       // pra distinguir visualmente no painel quem começou a conta.
       const participants = participantsBySession.get(session.id) ?? [];
+      const guestLabels = this.guestSeatLabels(participants, orders);
+      const earliestSeatId = participants[0]?.id;
       for (const participant of participants) {
         const account = participant.customerId
           ? accountCustomerById.get(participant.customerId)
           : undefined;
+        if (!participant.customerId) {
+          // Visitante (sem conta) aparece NA HORA em que entra, mesmo antes
+          // do primeiro pedido — como "Visitante" até digitar o nome.
+          upsertCustomer({
+            name: guestLabels.get(participant.id) ?? 'Visitante',
+            avatarUrl: null,
+            hasAccount: false,
+            isVerified: false,
+            isOpener: !session.openedByCustomerId && participant.id === earliestSeatId,
+            hasLeft: Boolean(participant.leftAt),
+          });
+          continue;
+        }
         if (account) {
           upsertCustomer({
             name: account.name,
@@ -1788,7 +1912,7 @@ export class TablesService {
     customerId: string | null = null,
   ): Promise<WaiterCall> {
     const session = await this.findSession(tenantId, sessionId);
-    await this.assertActiveSeat(session.id, seatToken, customerId);
+    const seat = await this.assertActiveSeat(session.id, seatToken, customerId);
     const table = await this.tableRepo.findOne({ where: { id: session.tableId } });
     if (!table) {
       throw new NotFoundException('Mesa não encontrada.');
@@ -1798,6 +1922,8 @@ export class TablesService {
       tenantId,
       tableSessionId: session.id,
       status: 'pendente',
+      tableParticipantId: seat.id,
+      calledByName: await this.resolveSeatName(seat),
     });
     return this.waiterCallRepo.save(call);
   }

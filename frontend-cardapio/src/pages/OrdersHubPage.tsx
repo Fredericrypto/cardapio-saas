@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, ChevronRight, Store } from 'lucide-react';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { useTenant } from '../contexts/TenantContext';
-import { getActiveMesaToken } from '../hooks/useTableSession';
+import { getActiveMesaToken } from '../lib/seat';
 import { fetchMyOrderHistory } from '../lib/customer-api';
 import { groupCustomerOrders } from '../lib/ordersHistory';
 import { BottomNav } from '../components/BottomNav';
@@ -18,12 +18,12 @@ import { BottomNav } from '../components/BottomNav';
 export function OrdersHubPage() {
   const { slug } = useParams<{ slug: string }>();
   // Mesmo bug/correção do CustomerProfilePage — ver comentário lá.
-  const activeMesaToken = slug ? getActiveMesaToken(slug) ?? undefined : undefined;
   const navigate = useNavigate();
   const { tenant } = useTenant();
 
 
   const { token, isLoading: isLoadingAuth } = useCustomerAuth();
+  const activeMesaToken = slug ? getActiveMesaToken(token, slug) ?? undefined : undefined;
   const [orderCount, setOrderCount] = useState<number | null>(null);
   const [lastOrderAt, setLastOrderAt] = useState<string | null>(null);
 

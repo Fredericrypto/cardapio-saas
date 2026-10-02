@@ -227,6 +227,9 @@ export interface WaiterCall {
   tableSessionId: string;
   status: 'pendente' | 'atendido';
   createdAt: string;
+  // Quem chamou (nome no momento do chamado) — vale também pra visitante
+  // sem conta ("Visitante" ou o nome que ele digitou no pedido).
+  calledByName?: string | null;
   tableSession?: {
     table?: {
       number: string;

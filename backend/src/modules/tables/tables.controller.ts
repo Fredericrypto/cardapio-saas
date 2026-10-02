@@ -145,12 +145,14 @@ export class TablesController {
   async scanQrCode(
     @Param('qrCodeToken') qrCodeToken: string,
     @Headers('x-seat-token') seatToken: string | undefined,
+    @Headers('x-confirm-join') confirmJoin: string | undefined,
     @CurrentCustomer() customer: RequestCustomer | null,
   ) {
     const { session, seat } = await this.tablesService.openOrJoinSession(
       qrCodeToken,
       customer?.customerId ?? null,
       seatToken ?? null,
+      confirmJoin === '1',
     );
     // `seatToken` é a credencial secreta do assento (ver TablesService):
     // o app guarda e manda de volta em todo pedido/fechamento/chamado.

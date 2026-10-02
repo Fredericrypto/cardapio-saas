@@ -5,7 +5,8 @@ import { fetchLocations } from '../lib/menu-api';
 import { fetchReviewsSummaryByLocation } from '../lib/customer-api';
 import type { ReviewSummary } from '../lib/customer-api';
 import { useSelectedLocation } from '../hooks/useSelectedLocation';
-import { getActiveMesaToken } from '../hooks/useTableSession';
+import { getActiveMesaToken } from '../lib/seat';
+import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { useTenant } from '../contexts/TenantContext';
 import type { Location } from '../types';
 
@@ -29,6 +30,7 @@ function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): nu
 export function LocationPickerPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+  const { token: customerToken } = useCustomerAuth();
   const { tenant } = useTenant();
   const [locations, setLocations] = useState<Location[] | null>(null);
   const [gpsStatus, setGpsStatus] = useState<'idle' | 'locating' | 'done' | 'denied'>('idle');
@@ -45,11 +47,11 @@ export function LocationPickerPage() {
   // volta pra mesa direto, ANTES de qualquer seleção ser possível.
   useEffect(() => {
     if (!slug) return;
-    const activeMesaToken = getActiveMesaToken(slug);
+    const activeMesaToken = getActiveMesaToken(customerToken, slug);
     if (activeMesaToken) {
       navigate(`/${slug}/mesa/${activeMesaToken}`, { replace: true });
     }
-  }, [slug, navigate]);
+  }, [slug, navigate, customerToken]);
 
   useEffect(() => {
     if (!tenant) return;
@@ -97,7 +99,7 @@ export function LocationPickerPage() {
     // "como se estivesse em casa" — a loja da mesa já está fixa pela
     // própria mesa. Volta pra ela, timer e tudo, em vez do cardápio
     // geral.
-    const activeMesaToken = slug ? getActiveMesaToken(slug) : null;
+    const activeMesaToken = slug ? getActiveMesaToken(customerToken, slug) : null;
     navigate(activeMesaToken ? `/${slug}/mesa/${activeMesaToken}` : `/${slug}`);
   }
 

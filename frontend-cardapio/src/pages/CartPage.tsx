@@ -12,6 +12,7 @@ import { useSelectedLocation } from '../hooks/useSelectedLocation';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { fetchMyCashbackBalance, fetchActiveCashbackSettings } from '../lib/customer-api';
 import { CashbackLoginNotice } from '../components/CashbackLoginNotice';
+import { GUEST_NAME_MAX, validateGuestName } from '../lib/guestName';
 import type { ActiveCashbackSettings } from '../lib/customer-api';
 import { CurrencyInput } from '../components/CurrencyInput';
 import { PhoneInput } from '../components/PhoneInput';
@@ -93,7 +94,9 @@ export function CartPage() {
   // só liga depois de uma tentativa real de continuar sem nome (nunca
   // de cara, isso seria irritante); soma sozinho assim que o cliente
   // digita alguma coisa.
-  const [showNameRequired, setShowNameRequired] = useState(false);  const [customerPhone, setCustomerPhone] = useState('');
+  const [showNameRequired, setShowNameRequired] = useState(false);
+  const [nameTouched, setNameTouched] = useState(false);
+  const [customerPhone, setCustomerPhone] = useState('');
   const [notes, setNotes] = useState('');
 
   // Se o cliente já tem conta e já salvou nome/telefone, usa esses dados
@@ -111,6 +114,9 @@ export function CartPage() {
   }, [customer]);
 
   const hasSavedName = Boolean(customer?.name);
+  // Visitante (sem conta): o nome segue a regra de 01/10 (4–16, começa com
+  // letra, sem especiais, 4 = só letras). Logado usa o nome da conta.
+  const guestNameError = !customerToken && !hasSavedName ? validateGuestName(customerName) : null;
   const hasSavedPhone = Boolean(customer?.phone);
 
   // Saldo de cashback do cliente — só existe pra quem está logado.
@@ -441,7 +447,7 @@ export function CartPage() {
     setIsCallingWaiter(true);
     setCallWaiterError(null);
     try {
-      await callWaiter(tenant.id, session.id);
+      await callWaiter(tenant.id, session.id, customerToken);
       setIsWaiterCallPending(true);
     } catch {
       setCallWaiterError('Não foi possível chamar o garçom agora. Tente novamente.');
@@ -454,7 +460,7 @@ export function CartPage() {
   async function handleCancelWaiterCall() {
     if (!tenant || !session) return;
     try {
-      await cancelWaiterCall(tenant.id, session.id);
+      await cancelWaiterCall(tenant.id, session.id, customerToken);
     } finally {
       setIsWaiterCallPending(false);
     }
@@ -534,6 +540,7 @@ export function CartPage() {
   const canProceedFromForm =
     Boolean(activeLocation?.isOpenNow) &&
     customerName.trim().length > 0 &&
+    !guestNameError &&
     isValidBrazilPhone(customerPhone) &&
     (orderType !== 'entrega' || Boolean(quote));
 
@@ -543,7 +550,7 @@ export function CartPage() {
   // estar na mesma mesa sem conta nenhuma). Telefone continua não
   // pedido na mesa — só faz sentido pra balcão/entrega, onde pode ser
   // usado pra contato.
-  const canProceedMesa = hasSavedName || customerName.trim().length > 0;
+  const canProceedMesa = hasSavedName || (customerName.trim().length > 0 && !guestNameError);
 
   // Mesa não tem etapa de pagamento/revisão — vai direto pro envio, igual
   // sempre foi (o pagamento acontece depois, em pessoa, com o admin).
@@ -1306,16 +1313,19 @@ export function CartPage() {
                     setCustomerName(e.target.value);
                     if (e.target.value.trim()) setShowNameRequired(false);
                   }}
+                  onBlur={() => setNameTouched(true)}
+                  maxLength={GUEST_NAME_MAX}
+                  autoComplete="off"
                   placeholder="Seu nome"
                   className="border rounded-lg px-3 py-2.5 text-sm outline-none"
                   style={
-                    showNameRequired
+                    (showNameRequired || nameTouched) && guestNameError
                       ? { borderColor: '#EF4444' }
                       : { borderColor: '#e5e5e5', color: '#666' }
                   }
                 />
-                {showNameRequired && (
-                  <p className="text-xs text-red-500 px-0.5">Nome obrigatório</p>
+                {(showNameRequired || nameTouched) && guestNameError && (
+                  <p className="text-xs text-red-500 px-0.5">{guestNameError}</p>
                 )}
               </div>
             )}

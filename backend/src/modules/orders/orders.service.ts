@@ -9,6 +9,7 @@ import {
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { Repository, DataSource, EntityManager } from 'typeorm';
 import { Order } from './order.entity';
+import { validateGuestName } from '../../common/utils/guest-name';
 import { OrderItem } from './order-item.entity';
 import { Product } from '../products/product.entity';
 import { Tenant } from '../tenants/tenant.entity';
@@ -516,6 +517,13 @@ export class OrdersService {
     customerId: string | null = null,
     seatToken: string | null = null,
   ): Promise<Order> {
+    // Pedido de visitante (sem conta): o nome é obrigatório e segue a
+    // regra de sempre (4–16, começa com letra, sem especiais; com 4
+    // caracteres só letras). O app valida igual — aqui é quem manda.
+    if (!customerId) {
+      const nameError = validateGuestName(dto.customerName);
+      if (nameError) throw new BadRequestException(nameError);
+    }
     // A geocodificação roda ANTES de abrir a transação de propósito: é uma
     // chamada de rede externa (LocationIQ, até ~8s) e nunca deve segurar uma
     // transação de banco aberta enquanto espera resposta de fora. O valor

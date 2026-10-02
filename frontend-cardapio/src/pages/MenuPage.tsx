@@ -1,3 +1,4 @@
+import { FloatingNotice } from '../components/FloatingNotice';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronDown } from 'lucide-react';
@@ -101,6 +102,9 @@ export function MenuPage() {
   const [isCallingWaiter, setIsCallingWaiter] = useState(false);
   const [isWaiterCallPending, setIsWaiterCallPending] = useState(false);
   const [callWaiterError, setCallWaiterError] = useState<string | null>(null);
+  // Aviso flutuante (mesmo tratamento do aviso do QR cancelado): fica no
+  // topo da tela, sem empurrar nem ser coberto pela aba "Informações".
+  const [showWaiterCalledNotice, setShowWaiterCalledNotice] = useState(false);
 
   useEffect(() => {
     if (!tenant) return;
@@ -179,8 +183,9 @@ export function MenuPage() {
     setIsCallingWaiter(true);
     setCallWaiterError(null);
     try {
-      await callWaiter(tenant.id, session.id);
+      await callWaiter(tenant.id, session.id, customerToken);
       setIsWaiterCallPending(true);
+      setShowWaiterCalledNotice(true);
     } catch (err) {
       const backendMessage =
         err && typeof err === 'object' && 'response' in err
@@ -304,19 +309,17 @@ export function MenuPage() {
         />
       )}
 
-      {isTableFlow && isWaiterCallPending && (
-        <div
-          className="mx-4 -mt-4 mb-2 rounded-lg px-4 py-2.5 text-sm font-medium text-white"
-          style={{ backgroundColor: tenant.secondaryColor }}
-        >
-          Garçom chamado! Alguém vai até sua mesa em instantes.
-        </div>
+      {/* Avisos do garçom: FloatingNotice (portal no body, fixo no topo) em
+          vez de um bloco inline com margem negativa — esse era cortado pela
+          aba "Informações" e se mexia quando ela abria. */}
+      {isTableFlow && showWaiterCalledNotice && (
+        <FloatingNotice
+          message="Garçom chamado! Alguém vai até a sua mesa em instantes."
+          onDone={() => setShowWaiterCalledNotice(false)}
+        />
       )}
-
       {isTableFlow && callWaiterError && (
-        <div className="mx-4 -mt-4 mb-2 rounded-lg px-4 py-2.5 text-sm font-medium bg-red-50 text-red-600 border border-red-200">
-          {callWaiterError}
-        </div>
+        <FloatingNotice message={callWaiterError} onDone={() => setCallWaiterError(null)} />
       )}
 
       {!isOpenNow && (

@@ -4,7 +4,7 @@ import { ChevronRight, Receipt, MapPin, Wallet, CircleDollarSign, Star, Bell, Be
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { useTenant } from '../contexts/TenantContext';
 import { usePushNotifications } from '../hooks/usePushNotifications';
-import { getActiveMesaToken } from '../hooks/useTableSession';
+import { getActiveMesaToken } from '../lib/seat';
 import { IconBadge } from '../components/IconBadge';
 import { BottomNav } from '../components/BottomNav';
 import { VerifiedBadge } from '../components/VerifiedBadge';
@@ -28,10 +28,10 @@ export function CustomerProfilePage() {
   // a mesa ativa desse restaurante salva no localStorage por
   // useTableSession, exatamente pra esse cenário de "voltar pra onde eu
   // estava".
-  const activeMesaToken = slug ? getActiveMesaToken(slug) ?? undefined : undefined;
   const navigate = useNavigate();
   const { tenant } = useTenant();
   const { customer, token, isLoading, logout, setCustomer } = useCustomerAuth();
+  const activeMesaToken = slug ? getActiveMesaToken(token, slug) ?? undefined : undefined;
   const push = usePushNotifications(tenant?.id, token);
 
   // Fluxo de verificação — explicação → câmera → envio. Cada etapa é

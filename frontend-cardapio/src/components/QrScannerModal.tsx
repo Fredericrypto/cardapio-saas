@@ -1,3 +1,4 @@
+import { markQrScanIntent } from '../lib/seat';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import jsQR from 'jsqr';
@@ -100,12 +101,18 @@ export function QrScannerModal({ onClose, onCameraError }: QrScannerModalProps) 
         setError('Esse QR code não é reconhecido. Escaneia o QR code da mesa do restaurante.');
         return;
       }
-      const [, scannedSlug] = match;
+      const [, scannedSlug, scannedQrToken] = match;
       if (scannedSlug !== slug) {
         setError('Esse QR code é de outro restaurante — não dá pra abrir por aqui.');
         return;
       }
       streamRef.current?.getTracks().forEach((t) => t.stop());
+      // Este leitor navega SEM recarregar a página, então o navegador não
+      // sabe que foi um escaneamento. Avisa o gate (em memória, uso único,
+      // validade curta) — só assim escanear de novo pelo app, depois de
+      // sair da mesa, abre a mesa normalmente (bug de 01/10). Recarregar a
+      // página apaga isso, então refresh nunca vira scan.
+      if (scannedQrToken) markQrScanIntent(scannedQrToken);
       navigate(path, { replace: true });
       onClose();
     }

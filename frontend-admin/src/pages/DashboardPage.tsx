@@ -321,6 +321,7 @@ export function DashboardPage() {
                 <div>
                   <p className="text-sm font-semibold text-gray-900">
                     {call.tableSession?.table?.number ?? 'Mesa desconhecida'}
+                    {call.calledByName ? ` — ${call.calledByName}` : ''}
                   </p>
                   <p className="text-xs text-gray-500">
                     {new Date(call.createdAt).toLocaleTimeString('pt-BR', {

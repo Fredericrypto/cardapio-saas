@@ -1,6 +1,8 @@
 import { type ReactNode } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { useTableSession, getActiveMesaToken } from '../hooks/useTableSession';
+import { useTableSession } from '../hooks/useTableSession';
+import { getActiveMesaToken } from '../lib/seat';
+import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { TableSessionProvider } from '../contexts/TableSessionContext';
 import { TableSessionTimer } from './TableSessionTimer';
 import { useTenant } from '../contexts/TenantContext';
@@ -34,6 +36,7 @@ export function TableSessionGate({ children }: { children: ReactNode }) {
   const { slug, qrCodeToken } = useParams<{ slug: string; qrCodeToken: string }>();
   const location = useLocation();
   const navigate = useNavigate();
+  const { token: customerToken } = useCustomerAuth();
   const { tenant } = useTenant();
   const primaryColor = tenant?.primaryColor || '#111827';
   const {
@@ -81,7 +84,7 @@ export function TableSessionGate({ children }: { children: ReactNode }) {
     // mesa, não pro cardápio genérico — `mesa_ativa_{slug}` é seguro
     // pra isso aqui porque só é gravado numa entrada confirmada de
     // verdade (nunca de passagem).
-    const knownActiveToken = slug ? getActiveMesaToken(slug) : null;
+    const knownActiveToken = slug ? getActiveMesaToken(customerToken, slug) : null;
     const hasKnownActiveMesa = knownActiveToken && knownActiveToken !== qrCodeToken;
     return (
       <div className="flex flex-col items-center justify-center h-screen gap-4 px-6 text-center bg-gray-50">
@@ -110,10 +113,11 @@ export function TableSessionGate({ children }: { children: ReactNode }) {
           <Users size={26} className="text-gray-500" />
         </div>
         <div>
-          <p className="text-base font-bold text-gray-900">Essa mesa já tem uma conta aberta</p>
-          <p className="text-sm text-gray-500 mt-1">
-            Já existe uma sessão em aberto nessa mesa. Continuar entra na mesma conta, com
-            todos os pedidos já feitos.
+          {/* Texto exato definido pelo Felipe (01/10). O cliente só entra
+              na mesa — e só aparece pro admin e pros outros — depois do
+              "Sim": o servidor também exige essa confirmação. */}
+          <p className="text-base font-bold text-gray-900">
+            Já existe uma seção em aberto nesta mesa. Deseja se juntar?
           </p>
         </div>
         <div className="flex flex-col gap-2 w-full max-w-xs">
@@ -122,13 +126,13 @@ export function TableSessionGate({ children }: { children: ReactNode }) {
             style={{ backgroundColor: primaryColor }}
             className="py-3 rounded-xl text-white text-sm font-semibold shadow-sm"
           >
-            Sim, continuar nessa mesa
+            Sim
           </button>
           <button
             onClick={declineJoinExisting}
             className="py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600"
           >
-            Não, ver cardápio geral
+            Cancelar
           </button>
         </div>
         <BuildMark />

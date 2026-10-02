@@ -102,7 +102,7 @@ export async function createOrder(
   customerToken?: string | null,
 ): Promise<CreatedOrder> {
   // Pedido de MESA leva o assento (servidor recusa assento que saiu).
-  const seat = payload.tableSessionId ? getSeatBySession(payload.tableSessionId) : null;
+  const seat = payload.tableSessionId ? getSeatBySession(customerToken, payload.tableSessionId) : null;
   const { data } = await api.post<CreatedOrder>(`/orders/public/${tenantId}`, payload, {
     headers: {
       ...(customerToken ? { Authorization: `Bearer ${customerToken}` } : {}),
@@ -155,6 +155,7 @@ export async function fetchTableInfo(qrCodeToken: string): Promise<{ locationId:
 export async function scanTableQrCode(
   qrCodeToken: string,
   customerToken?: string | null,
+  confirmedJoin = false,
 ): Promise<TableSession> {
   const { data } = await api.post<TableSession & { seatToken?: string }>(
     `/table-sessions/public/scan/${qrCodeToken}`,
@@ -162,11 +163,12 @@ export async function scanTableQrCode(
     {
       headers: {
         ...(customerToken ? { Authorization: `Bearer ${customerToken}` } : {}),
-        ...seatHeaders(getSeatByTable(qrCodeToken)),
+        ...seatHeaders(getSeatByTable(customerToken, qrCodeToken)),
+        ...(confirmedJoin ? { 'X-Confirm-Join': '1' } : {}),
       },
     },
   );
-  if (data.seatToken) saveSeat(qrCodeToken, data.id, data.seatToken);
+  if (data.seatToken) saveSeat(customerToken, qrCodeToken, data.id, data.seatToken);
   return data;
 }
 
@@ -182,7 +184,7 @@ export async function leaveTable(
   await api.post(`/table-sessions/public/${qrCodeToken}/leave`, undefined, {
     headers: {
       ...(customerToken ? { Authorization: `Bearer ${customerToken}` } : {}),
-      ...seatHeaders(getSeatByTable(qrCodeToken)),
+      ...seatHeaders(getSeatByTable(customerToken, qrCodeToken)),
     },
   });
 }
@@ -206,14 +208,14 @@ export async function getCurrentTableSession(
     {
       headers: {
         ...(customerToken ? { Authorization: `Bearer ${customerToken}` } : {}),
-        ...seatHeaders(getSeatByTable(qrCodeToken)),
+        ...seatHeaders(getSeatByTable(customerToken, qrCodeToken)),
       },
     },
   );
   // Logada que perdeu o token (ex: outro aparelho): o servidor a
   // reconhece pela conta e devolve o assento dela.
   if (data.seat === 'active' && data.seatToken && data.session) {
-    saveSeat(qrCodeToken, data.session.id, data.seatToken);
+    saveSeat(customerToken, qrCodeToken, data.session.id, data.seatToken);
   }
   return { session: data.session, recentlyEnded: data.recentlyEnded, seat: data.seat ?? 'none' };
 }
@@ -228,7 +230,7 @@ export async function fetchSessionSummary(
     {
       headers: {
         ...(customerToken ? { Authorization: `Bearer ${customerToken}` } : {}),
-        ...seatHeaders(getSeatBySession(sessionId)),
+        ...seatHeaders(getSeatBySession(customerToken, sessionId)),
       },
     },
   );
@@ -274,29 +276,48 @@ export async function requestSessionClosing(
     {
       headers: {
         ...(customerToken ? { Authorization: `Bearer ${customerToken}` } : {}),
-        ...seatHeaders(getSeatBySession(sessionId)),
+        ...seatHeaders(getSeatBySession(customerToken, sessionId)),
       },
     },
   );
   return data;
 }
 
-export async function callWaiter(tenantId: string, sessionId: string) {
+export async function callWaiter(
+  tenantId: string,
+  sessionId: string,
+  customerToken?: string | null,
+) {
+  // O assento vale só junto com a conta dele (isolamento entre contas).
   const { data } = await api.post(
     `/table-sessions/public/${tenantId}/${sessionId}/call-waiter`,
     undefined,
-    { headers: seatHeaders(getSeatBySession(sessionId)) },
+    {
+      headers: {
+        ...(customerToken ? { Authorization: `Bearer ${customerToken}` } : {}),
+        ...seatHeaders(getSeatBySession(customerToken, sessionId)),
+      },
+    },
   );
   return data;
 }
 
 // "Cancelar chamar garçom" — pro caso do cliente ter clicado sem
 // querer. Só desfaz o chamado se o garçom ainda não tiver ido atender.
-export async function cancelWaiterCall(tenantId: string, sessionId: string) {
+export async function cancelWaiterCall(
+  tenantId: string,
+  sessionId: string,
+  customerToken?: string | null,
+) {
   const { data } = await api.post(
     `/table-sessions/public/${tenantId}/${sessionId}/cancel-waiter-call`,
     undefined,
-    { headers: seatHeaders(getSeatBySession(sessionId)) },
+    {
+      headers: {
+        ...(customerToken ? { Authorization: `Bearer ${customerToken}` } : {}),
+        ...seatHeaders(getSeatBySession(customerToken, sessionId)),
+      },
+    },
   );
   return data;
 }

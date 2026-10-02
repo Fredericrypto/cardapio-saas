@@ -252,6 +252,17 @@ export interface TableSession {
   expiresAt?: string | null;
 }
 
+// Uma pessoa na mesa (logada ou visitante) com os pedidos dela.
+export interface SessionPerson {
+  id: string;
+  name: string;
+  avatarUrl: string | null;
+  isOpener: boolean;
+  isGuest: boolean;
+  isMe: boolean;
+  orderIds: string[];
+}
+
 export interface SessionSummary {
   session: TableSession;
   // Situação de quem está olhando (assento): `active` = ainda vale;
@@ -291,6 +302,11 @@ export interface SessionSummary {
   // na mesa (não só quem fez pedido) — pra mostrar no cupom que a conta
   // foi compartilhada e quem abriu. Ver TablesService.getSessionSummary.
   participants: Array<{ name: string; avatarUrl: string | null; isOpener: boolean }>;
+  // Todas as pessoas na mesa, cada uma com os ids dos próprios pedidos
+  // (01/10). `unassignedOrderIds` = pedidos sem dono conhecido (sessões
+  // antigas). Ausente em backend antigo → telas caem na lista plana.
+  people?: SessionPerson[];
+  unassignedOrderIds?: string[];
   // Código de autenticidade — null enquanto a mesa ainda está aberta
   // (o total pode mudar); só existe depois que a sessão fecha de
   // verdade. Ver TablesService.getSessionSummary.

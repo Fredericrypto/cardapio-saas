@@ -39,4 +39,12 @@ export class WaiterCall {
 
   @Column({ name: 'attended_at', type: 'timestamptz', nullable: true })
   attendedAt: Date | null;
+
+  // Quem chamou (assento) e o nome dele NAQUELE momento — o painel mostra
+  // "Mesa X chamou o garçom — Fulano", inclusive pra visitante sem conta.
+  @Column({ name: 'table_participant_id', type: 'uuid', nullable: true })
+  tableParticipantId: string | null;
+
+  @Column({ name: 'called_by_name', type: 'varchar', length: 60, nullable: true })
+  calledByName: string | null;
 }

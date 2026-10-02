@@ -1,8 +1,8 @@
+import { PeopleOrders } from '../components/PeopleOrders';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, Bell, LogOut } from 'lucide-react';
 import { fetchSessionSummary, requestSessionClosing, leaveTable } from '../lib/menu-api';
-import { markLeftLocally } from '../lib/seat';
 import type { RequestClosingPayload } from '../lib/menu-api';
 import { ClosingPaymentSheet } from '../components/ClosingPaymentSheet';
 import { TableSessionPixWaitingPanel } from '../components/TableSessionPixWaitingPanel';
@@ -10,7 +10,7 @@ import type { SessionSummary } from '../types';
 import { useTableSessionContext } from '../contexts/TableSessionContext';
 import { useTenant } from '../contexts/TenantContext';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
-import { clearActiveMesaTokenForSlug } from '../hooks/useTableSession';
+import { clearActiveMesaToken, markLeftLocally } from '../lib/seat';
 
 const STATUS_LABELS: Record<string, string> = {
   aguardando_pagamento: 'Aguardando Pix',
@@ -73,8 +73,8 @@ export function MyAccountPage() {
   // Saída confirmada pelo servidor: o assento morreu. Vai pra tela final
   // "Você saiu desta mesa" (que NÃO tem caminho de volta — só novo QR).
   function finishLeaving() {
-    if (qrCodeToken) markLeftLocally(qrCodeToken);
-    if (slug) clearActiveMesaTokenForSlug(slug);
+    if (qrCodeToken) markLeftLocally(customerToken, qrCodeToken);
+    if (slug) clearActiveMesaToken(customerToken, slug);
     navigate(`/${slug}/mesa/${qrCodeToken}`, { replace: true });
   }
 
@@ -335,14 +335,16 @@ export function MyAccountPage() {
         </div>
       )}
 
-      {summary.orders.length === 0 ? (
-        <p className="text-center text-gray-400 text-sm py-12">
-          Você ainda não fez nenhum pedido nessa mesa.
-        </p>
-      ) : (
-        <div className="p-4 flex flex-col gap-4">
-          {summary.orders.map((order) => (
-            <div key={order.id} className="border border-gray-100 rounded-xl p-3">
+      {/* Pessoas na mesa (decisão de 01/10): todo mundo que está presente,
+          com nome e avatar, e cada pedido logo abaixo de quem fez. */}
+      {summary.people && summary.people.length > 0 ? (
+        <div className="p-4">
+          <PeopleOrders
+            people={summary.people}
+            orders={summary.orders}
+            unassignedOrderIds={summary.unassignedOrderIds ?? []}
+            renderOrder={(order) => (
+              <div className="border border-gray-100 rounded-xl p-3">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-xs font-semibold text-gray-400">
                   {new Date(order.createdAt).toLocaleTimeString('pt-BR', {
@@ -371,6 +373,48 @@ export function MyAccountPage() {
                   </span>
                 </div>
               ))}
+            </div>
+            )}
+          />
+        </div>
+      ) : summary.orders.length === 0 ? (
+        <p className="text-center text-gray-400 text-sm py-12">
+          Você ainda não fez nenhum pedido nessa mesa.
+        </p>
+      ) : (
+        <div className="p-4 flex flex-col gap-4">
+          {summary.orders.map((order) => (
+            <div key={order.id}>
+            <div className="border border-gray-100 rounded-xl p-3">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-xs font-semibold text-gray-400">
+                  {new Date(order.createdAt).toLocaleTimeString('pt-BR', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </span>
+                <span
+                  className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                  style={{
+                    backgroundColor: `${tenant.primaryColor}1A`,
+                    color: tenant.primaryColor,
+                  }}
+                >
+                  {STATUS_LABELS[order.status] ?? order.status}
+                </span>
+              </div>
+
+              {order.items.map((item, idx) => (
+                <div key={idx} className="flex justify-between text-sm py-0.5">
+                  <span className="text-gray-700">
+                    {item.quantity}x {item.productName}
+                  </span>
+                  <span className="text-gray-500">
+                    R$ {Number(item.subtotal).toFixed(2).replace('.', ',')}
+                  </span>
+                </div>
+              ))}
+            </div>
             </div>
           ))}
         </div>
