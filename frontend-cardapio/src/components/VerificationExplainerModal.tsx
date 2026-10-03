@@ -1,3 +1,4 @@
+import { useScrollLock } from '../hooks/useScrollLock';
 import { ShieldCheck } from 'lucide-react';
 
 interface VerificationExplainerModalProps {
@@ -15,6 +16,8 @@ export function VerificationExplainerModal({
   onCancel,
   onContinue,
 }: VerificationExplainerModalProps) {
+  // Com o modal aberto a página atrás NÃO rola (02/10).
+  useScrollLock(true);
   return (
     <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl w-full max-w-sm p-6">

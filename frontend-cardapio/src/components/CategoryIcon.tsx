@@ -21,6 +21,7 @@ import {
   Users,
   BadgePercent,
 } from 'lucide-react';
+import { LINE_CATEGORY_ICONS, CustomCategoryIcon } from './categoryLineIcons';
 import { TodosIcon, LanchesIcon, BebidasIcon } from './MenuIcons';
 
 type IconComponent = (props: { size?: number; className?: string }) => ReactElement;
@@ -79,6 +80,8 @@ export const CATEGORY_ICONS: Record<string, IconComponent> = {
   'menu-degustacao': line(ChefHat),
   combinados: line(Pizza),
   'pratos-compartilhar': line(Users),
+  // Categorias novas (02/10) e o ajuste do "combinados" — ver categoryLineIcons.tsx.
+  ...LINE_CATEGORY_ICONS,
 };
 
 // Nomes do catálogo → chave, só pra achar o ícone de categorias LEGADAS
@@ -108,5 +111,8 @@ export function getCategoryIcon(
 ): IconComponent | undefined {
   if (key && CATEGORY_ICONS[key]) return CATEGORY_ICONS[key];
   const byName = NAME_TO_KEY[normalize(name)];
-  return byName ? CATEGORY_ICONS[byName] : undefined;
+  if (byName) return CATEGORY_ICONS[byName];
+  // Categoria PERSONALIZADA (criada pelo dono, sem chave do catálogo):
+  // ícone genérico de etiqueta, no mesmo traço fino das demais.
+  return key ? undefined : CustomCategoryIcon;
 }

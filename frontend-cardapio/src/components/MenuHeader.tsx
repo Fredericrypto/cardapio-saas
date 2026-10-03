@@ -1,52 +1,14 @@
-import { Bike, ChevronLeft, Star } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { LogoViewer } from './LogoViewer';
+import { Bike, ChevronLeft } from 'lucide-react';
 import type { Tenant, Location } from '../types';
-import { getTodayHoursLabel } from '../lib/openingHours';
 import { RestaurantInfoPanel } from './RestaurantInfoPanel';
 import { QrScanButton } from './QrScanButton';
-import { fetchReviewsSummary } from '../lib/customer-api';
+import { ReviewBadge, OpenStatusRow } from './HeaderStatus';
 
 interface MenuHeaderProps {
   tenant: Tenant;
   location: Location | null;
   onBack?: () => void;
-}
-
-// Badge de nota — sempre aparece, mesmo com 0 avaliações (deixa claro
-// que ainda não tem nenhuma, em vez de sumir e parecer que a loja não
-// tem sistema de avaliação). Busca só o resumo agregado (leve, uma soma
-// no banco), nunca a lista completa de reviews aqui — a lista fica na
-// página própria. Sempre por LOJA (locationId) quando disponível — cada
-// unidade tem sua nota independente, nunca misturada com as outras.
-function useReviewSummary(tenantId: string, locationId: string | undefined) {
-  const [summary, setSummary] = useState<{ average: number; count: number } | null>(null);
-  useEffect(() => {
-    fetchReviewsSummary(tenantId, locationId)
-      .then(setSummary)
-      .catch(() => setSummary(null));
-  }, [tenantId, locationId]);
-  return summary;
-}
-
-// "Fecha em Xh" — sutil, ao lado do selo Aberto/Fechado. Só existe
-// quando falta menos de 1h (closingInMinutes vem null do backend caso
-// contrário). Conta em minutos client-side a partir do valor recebido,
-// sem precisar reconsultar o backend a cada minuto.
-function useClosingSoonLabel(closingInMinutes: number | null | undefined): string | null {
-  const [minutesLeft, setMinutesLeft] = useState(closingInMinutes ?? null);
-
-  useEffect(() => {
-    setMinutesLeft(closingInMinutes ?? null);
-    if (closingInMinutes == null) return;
-    const interval = setInterval(() => {
-      setMinutesLeft((prev) => (prev != null ? Math.max(0, prev - 1) : prev));
-    }, 60000);
-    return () => clearInterval(interval);
-  }, [closingInMinutes]);
-
-  if (minutesLeft == null) return null;
-  return `Fecha em ${minutesLeft} min`;
 }
 
 // Header estilo delivery app de verdade (McDonald's/FoodyPro): banner
@@ -56,11 +18,7 @@ function useClosingSoonLabel(closingInMinutes: number | null | undefined): strin
 // existia antes.
 export function MenuHeader({ tenant, location, onBack }: MenuHeaderProps) {
   const deliveryAvailable = location?.latitude != null && location?.longitude != null;
-  const todayHoursLabel = getTodayHoursLabel(location?.openingHours ?? null);
-  const closingSoonLabel = useClosingSoonLabel(location?.closingInMinutes);
   const isOpenNow = location?.isOpenNow ?? true;
-  const reviewSummary = useReviewSummary(tenant.id, location?.id);
-  const navigate = useNavigate();
 
   return (
     <div className={`transition-[filter] ${!isOpenNow ? 'grayscale' : ''}`}>
@@ -97,18 +55,7 @@ export function MenuHeader({ tenant, location, onBack }: MenuHeaderProps) {
       {/* Sheet branco flutuante */}
       <div className="relative -mt-6 rounded-t-3xl bg-white px-4 pt-3.5 pb-1 z-10">
         <div className="flex flex-col items-center text-center">
-          <div className="w-16 h-16 -mt-10 rounded-2xl border-4 border-white shadow-md bg-white overflow-hidden shrink-0">
-            {tenant.logoUrl ? (
-              <img src={tenant.logoUrl} alt={tenant.name} className="w-full h-full object-cover" />
-            ) : (
-              <div
-                className="w-full h-full flex items-center justify-center text-white font-bold text-lg"
-                style={{ backgroundColor: tenant.primaryColor }}
-              >
-                {tenant.name[0]?.toUpperCase()}
-              </div>
-            )}
-          </div>
+          <LogoViewer tenant={tenant} size="w-16 h-16" />
 
           {/* Nome do restaurante SEM truncar: quebra em quantas linhas
               precisar (text-balance deixa as linhas equilibradas) e
@@ -130,46 +77,10 @@ export function MenuHeader({ tenant, location, onBack }: MenuHeaderProps) {
             </div>
           </div>
           {location && <p className="text-xs text-gray-400 mt-0.5">{location.name}</p>}
-          {reviewSummary && (
-            <button
-              onClick={() => navigate(`/${tenant.slug}/avaliacoes`)}
-              className="flex items-center gap-1 mt-1"
-            >
-              <Star
-                size={13}
-                fill={reviewSummary.count > 0 ? '#F59E0B' : 'transparent'}
-                className={reviewSummary.count > 0 ? 'text-amber-500' : 'text-gray-300'}
-              />
-              {reviewSummary.count > 0 && (
-                <span className="text-xs font-semibold text-gray-700">
-                  {reviewSummary.average.toFixed(1)}
-                </span>
-              )}
-              <span className="text-xs text-gray-400 underline">
-                ({reviewSummary.count} {reviewSummary.count === 1 ? 'avaliação' : 'avaliações'})
-              </span>
-            </button>
-          )}
+          <ReviewBadge tenant={tenant} location={location} />
         </div>
 
-        <div className="flex items-center justify-center gap-1.5 mt-2.5 flex-wrap">
-          <span
-            className={`text-[11px] font-bold px-2 py-0.5 rounded-full text-white ${
-              isOpenNow ? 'bg-green-500' : 'bg-red-500'
-            }`}
-          >
-            {isOpenNow ? 'Aberto' : 'Fechado'}
-          </span>
-          {todayHoursLabel && <span className="text-xs text-gray-400">{todayHoursLabel}</span>}
-          {closingSoonLabel && (
-            <span className="text-xs font-bold text-red-500">{closingSoonLabel}</span>
-          )}
-          {location?.distanceKm != null && (
-            <span className="text-xs text-gray-400">
-              • {location.distanceKm.toFixed(1)} km
-            </span>
-          )}
-        </div>
+        <OpenStatusRow location={location} />
 
         {deliveryAvailable && location && (
           <div className="mt-3 rounded-2xl bg-gray-50 border border-gray-100 px-3.5 py-2.5 flex items-center justify-between">

@@ -1,3 +1,5 @@
+import { useScrollLock } from '../hooks/useScrollLock';
+import { ConfirmModal } from '../components/ConfirmModal';
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ChevronRight, Receipt, MapPin, Wallet, CircleDollarSign, Star, Bell, BellOff, LogOut, User, BadgeCheck, Clock3 } from 'lucide-react';
@@ -31,6 +33,7 @@ export function CustomerProfilePage() {
   const navigate = useNavigate();
   const { tenant } = useTenant();
   const { customer, token, isLoading, logout, setCustomer } = useCustomerAuth();
+  const [confirmingLogout, setConfirmingLogout] = useState(false);
   const activeMesaToken = slug ? getActiveMesaToken(token, slug) ?? undefined : undefined;
   const push = usePushNotifications(tenant?.id, token);
 
@@ -39,6 +42,7 @@ export function CustomerProfilePage() {
   // antes de abrir a próxima.
   const [verificationStep, setVerificationStep] = useState<'explainer' | 'camera' | null>(null);
   const [isSubmittingVerification, setIsSubmittingVerification] = useState(false);
+  useScrollLock(isSubmittingVerification);
   const [verificationError, setVerificationError] = useState<string | null>(null);
 
   async function handleCapturePhoto(photoBlob: Blob) {
@@ -93,7 +97,20 @@ export function CustomerProfilePage() {
         >
           Entrar
         </button>
-        <BottomNav slug={slug!} qrCodeToken={activeMesaToken} tenantId={tenant.id} primaryColor={tenant.primaryColor} />
+        {confirmingLogout && (
+        <ConfirmModal
+          message="Tem certeza que deseja sair da sua conta?"
+          confirmLabel="Sim, sair da conta"
+          destructive
+          onConfirm={() => {
+            setConfirmingLogout(false);
+            logout();
+          }}
+          onCancel={() => setConfirmingLogout(false)}
+        />
+      )}
+
+      <BottomNav slug={slug!} qrCodeToken={activeMesaToken} tenantId={tenant.id} primaryColor={tenant.primaryColor} />
       </div>
     );
   }
@@ -185,8 +202,8 @@ export function CustomerProfilePage() {
           />
           <MenuRow
             icon={CircleDollarSign}
-            iconBg="#FEF3C7"
-            iconColor="#D97706"
+            iconBg="#3d3846"
+            iconColor="#c0bfbc"
             label="Meu Cashback"
             onClick={() => navigate(`/${slug}/conta-cliente/cashback`)}
           />
@@ -259,11 +276,7 @@ export function CustomerProfilePage() {
             iconColor="#DC2626"
             label="Sair da conta"
             labelColor="#DC2626"
-            onClick={() => {
-              if (window.confirm('Tem certeza que deseja sair da sua conta?')) {
-                logout();
-              }
-            }}
+            onClick={() => setConfirmingLogout(true)}
           />
         </div>
       </div>

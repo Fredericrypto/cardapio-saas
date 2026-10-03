@@ -155,8 +155,8 @@ export function EditProfilePage() {
         </button>
         <button
           onClick={() => setShowAvatarPicker(true)}
-          className="text-xs font-semibold mt-2"
-          style={{ color: tenant.primaryColor }}
+          className="mt-3 rounded-xl py-2.5 px-5 inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-white"
+          style={{ backgroundColor: tenant.primaryColor }}
         >
           Alterar foto
         </button>

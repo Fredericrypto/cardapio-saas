@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Plus, Trash2, Image as ImageIcon, Check, ChevronDown } from 'lucide-react';
+import { Plus, Trash2, Image as ImageIcon, SlidersHorizontal } from 'lucide-react';
 import {
   fetchCategories,
-  setCategoryActive,
-  deleteCategory,
   fetchProducts,
   createProduct,
   updateProduct,
@@ -12,8 +10,8 @@ import {
 } from '../lib/admin-api';
 import { ProductOptionsEditor } from '../components/ProductOptionsEditor';
 import type { Category, Product } from '../types';
-import { CATEGORY_CATALOG } from '../lib/categoryCatalog';
 import { getCategoryIcon } from '../components/CategoryIcon';
+import { CategoryManager } from '../components/CategoryManager';
 
 export function MenuManagementPage() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -21,7 +19,7 @@ export function MenuManagementPage() {
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [isManagerOpen, setIsManagerOpen] = useState(false);
   const [isAddingProduct, setIsAddingProduct] = useState(false);
   const [newProduct, setNewProduct] = useState({ name: '', description: '', price: '' });
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -47,28 +45,6 @@ export function MenuManagementPage() {
     loadAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Liga/desliga uma categoria do catálogo fixo. Desligar não apaga os
-  // produtos: eles ficam guardados e voltam se o dono religar.
-  async function handleToggleCatalogCategory(key: string, name: string, isOn: boolean) {
-    if (
-      isOn &&
-      !confirm(
-        `Desativar "${name}"? Ela some do cardápio do cliente, mas os produtos ficam guardados e voltam se você reativar.`,
-      )
-    ) {
-      return;
-    }
-    await setCategoryActive(key, !isOn);
-    await loadAll();
-  }
-
-  async function handleDeleteCategory(id: string) {
-    if (!confirm('Remover esta categoria antiga? Os produtos dentro dela também somem do cardápio.')) return;
-    await deleteCategory(id);
-    if (activeCategoryId === id) setActiveCategoryId(null);
-    loadAll();
-  }
 
   async function handleAddProduct() {
     if (!activeCategoryId || !newProduct.name.trim() || !newProduct.price) return;
@@ -120,7 +96,9 @@ export function MenuManagementPage() {
   }
 
   const activeCategories = categories.filter((c) => c.isActive);
-  const activeKeys = new Set(activeCategories.map((c) => c.key));
+  // Itens por categoria (o gerenciador mostra e usa pra decidir excluir × desativar).
+  const productCounts: Record<string, number> = {};
+  for (const p of products) productCounts[p.categoryId] = (productCounts[p.categoryId] ?? 0) + 1;
   const productsInCategory = products.filter((p) => p.categoryId === activeCategoryId);
 
   if (isLoading) {
@@ -152,65 +130,19 @@ export function MenuManagementPage() {
                     {Icon && <Icon size={18} />}
                   </span>
                   <span className="flex-1 truncate">{category.name}</span>
-                  {!category.key && (
-                    <Trash2
-                      size={13}
-                      className="opacity-0 group-hover:opacity-60 shrink-0"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteCategory(category.id);
-                      }}
-                    />
-                  )}
                 </button>
               );
             })}
           </div>
 
+          {/* Escolher, criar, reordenar e remover categorias: tudo num lugar só. */}
           <button
-            onClick={() => setIsPickerOpen((v) => !v)}
-            className="w-full flex items-center justify-between bg-gray-900 text-white rounded-lg px-3 py-2 text-xs font-semibold"
+            onClick={() => setIsManagerOpen(true)}
+            className="w-full flex items-center justify-center gap-1.5 bg-gray-900 text-white rounded-lg px-3 py-2 text-xs font-semibold"
           >
-            <span className="flex items-center gap-1.5">
-              <Plus size={14} />
-              Escolher categorias
-            </span>
-            <ChevronDown size={14} className={`transition-transform ${isPickerOpen ? 'rotate-180' : ''}`} />
+            <SlidersHorizontal size={14} />
+            Gerenciar categorias
           </button>
-
-          {isPickerOpen && (
-            <div className="mt-2 border border-gray-100 rounded-xl p-2 bg-white flex flex-col gap-0.5">
-              <p className="text-[11px] text-gray-400 px-1.5 pb-1.5">
-                Marque as categorias que o seu cardápio vai ter. Lanches, Bebidas e Sobremesas
-                sempre aparecem primeiro; as demais seguem a ordem em que você marcar.
-              </p>
-              {CATEGORY_CATALOG.map((entry) => {
-                const isOn = activeKeys.has(entry.key);
-                const Icon = getCategoryIcon(entry.key, entry.name);
-                return (
-                  <button
-                    key={entry.key}
-                    onClick={() => handleToggleCatalogCategory(entry.key, entry.name, isOn)}
-                    className={`flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-left text-sm transition-colors ${
-                      isOn ? 'bg-gray-50 text-gray-900 font-semibold' : 'text-gray-500 hover:bg-gray-50'
-                    }`}
-                  >
-                    <span className="w-5 flex justify-center shrink-0">
-                      {Icon && <Icon size={18} />}
-                    </span>
-                    <span className="flex-1 leading-tight">{entry.name}</span>
-                    <span
-                      className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
-                        isOn ? 'bg-gray-900 border-gray-900 text-white' : 'border-gray-300'
-                      }`}
-                    >
-                      {isOn && <Check size={11} strokeWidth={3} />}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
         </div>
 
         <div className="flex-1 min-w-0">
@@ -391,6 +323,15 @@ export function MenuManagementPage() {
             />
           </div>
         </div>
+      )}
+
+      {isManagerOpen && (
+        <CategoryManager
+          categories={categories}
+          productCounts={productCounts}
+          onClose={() => setIsManagerOpen(false)}
+          onChanged={loadAll}
+        />
       )}
     </div>
   );

@@ -1,3 +1,4 @@
+import { useScrollLock } from '../hooks/useScrollLock';
 import { useRef, useState } from 'react';
 import { X, Camera } from 'lucide-react';
 import { AvatarCropModal } from './AvatarCropModal';
@@ -24,6 +25,8 @@ export function AvatarPickerModal({
   accentColor,
   isSaving,
 }: AvatarPickerModalProps) {
+  // Com o modal aberto a página atrás NÃO rola (02/10).
+  useScrollLock(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [pendingImageSrc, setPendingImageSrc] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);

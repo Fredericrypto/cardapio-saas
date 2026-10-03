@@ -102,9 +102,6 @@ export function MenuPage() {
   const [isCallingWaiter, setIsCallingWaiter] = useState(false);
   const [isWaiterCallPending, setIsWaiterCallPending] = useState(false);
   const [callWaiterError, setCallWaiterError] = useState<string | null>(null);
-  // Aviso flutuante (mesmo tratamento do aviso do QR cancelado): fica no
-  // topo da tela, sem empurrar nem ser coberto pela aba "Informações".
-  const [showWaiterCalledNotice, setShowWaiterCalledNotice] = useState(false);
 
   useEffect(() => {
     if (!tenant) return;
@@ -185,7 +182,6 @@ export function MenuPage() {
     try {
       await callWaiter(tenant.id, session.id, customerToken);
       setIsWaiterCallPending(true);
-      setShowWaiterCalledNotice(true);
     } catch (err) {
       const backendMessage =
         err && typeof err === 'object' && 'response' in err
@@ -312,10 +308,13 @@ export function MenuPage() {
       {/* Avisos do garçom: FloatingNotice (portal no body, fixo no topo) em
           vez de um bloco inline com margem negativa — esse era cortado pela
           aba "Informações" e se mexia quando ela abria. */}
-      {isTableFlow && showWaiterCalledNotice && (
+      {/* "Garçom chamado": mesmo visual do aviso do QR, mas FIXO — só some
+          quando o admin dispensa o chamado no painel (o polling abaixo
+          zera isWaiterCallPending). */}
+      {isTableFlow && isWaiterCallPending && (
         <FloatingNotice
+          persistent
           message="Garçom chamado! Alguém vai até a sua mesa em instantes."
-          onDone={() => setShowWaiterCalledNotice(false)}
         />
       )}
       {isTableFlow && callWaiterError && (
@@ -357,7 +356,7 @@ export function MenuPage() {
                 onSelect={(id) => navigate(promotionHref(id))}
               />
             ) : (
-              <p className="text-xs text-gray-400 px-4 pb-1">Não há promoções disponíveis.</p>
+              <p className="text-xs text-gray-400 px-4 pt-1 pb-1">Nenhuma promoção no momento</p>
             ))}
         </div>
 

@@ -1,3 +1,4 @@
+import { useScrollLock } from '../hooks/useScrollLock';
 import { useEffect, useRef, useState } from 'react';
 import { X, RotateCcw, Check, Timer } from 'lucide-react';
 
@@ -23,6 +24,8 @@ export function VerificationCameraCapture({
   onCancel,
   onCapture,
 }: VerificationCameraCaptureProps) {
+  // Com o modal aberto a página atrás NÃO rola (02/10).
+  useScrollLock(true);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);

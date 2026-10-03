@@ -1,3 +1,4 @@
+import { useScrollLock } from '../hooks/useScrollLock';
 import { markQrScanIntent } from '../lib/seat';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -27,6 +28,8 @@ interface QrScannerModalProps {
 const MESA_URL_PATTERN = /^\/([a-z0-9-]+)\/mesa\/([a-f0-9-]+)\/?$/i;
 
 export function QrScannerModal({ onClose, onCameraError }: QrScannerModalProps) {
+  // Com o modal aberto a página atrás NÃO rola (02/10).
+  useScrollLock(true);
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const videoRef = useRef<HTMLVideoElement>(null);

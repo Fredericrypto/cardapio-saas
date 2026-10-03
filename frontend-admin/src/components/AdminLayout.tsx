@@ -112,10 +112,17 @@ function AdminLayoutContent() {
     <div className="min-h-screen flex bg-gray-50">
       <aside className="w-56 bg-white border-r border-gray-100 flex flex-col shrink-0">
         <div className="p-5 border-b border-gray-100">
-          <p className="font-display font-bold text-gray-900 truncate">
+          {/* Nome SEM cortar: quebra em quantas linhas precisar, qualquer que
+              seja o tamanho (overflowWrap pega até palavra gigante sem espaço). */}
+          <p
+            className="font-display font-bold text-gray-900 leading-tight"
+            style={{ overflowWrap: 'anywhere' }}
+          >
             {tenant?.name}
           </p>
-          <p className="text-xs text-gray-400 truncate">{tenant?.slug}</p>
+          <p className="text-xs text-gray-400 mt-0.5" style={{ overflowWrap: 'anywhere' }}>
+            {tenant?.slug}
+          </p>
         </div>
 
         <nav className="flex-1 p-3 flex flex-col gap-1">

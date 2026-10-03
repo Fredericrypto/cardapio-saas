@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import type { SessionPerson } from '../types';
+import { VerifiedBadge } from './VerifiedBadge';
 
 // Pessoas na mesa — mesmo padrão visual do painel do admin (avatar em
 // círculo com anel, nome, selo "Abriu a mesa"), usado na Minha conta e no
@@ -29,17 +30,37 @@ export function PersonAvatar({ person, size = 40 }: { person: SessionPerson; siz
   );
 }
 
-export function PersonHeader({ person, compact = false }: { person: SessionPerson; compact?: boolean }) {
+export function PersonHeader({
+  person,
+  compact = false,
+  dark = false,
+}: {
+  person: SessionPerson;
+  compact?: boolean;
+  dark?: boolean;
+}) {
   return (
     <div className="flex items-center gap-2.5">
       <PersonAvatar person={person} size={compact ? 28 : 40} />
       <div className="min-w-0">
-        <p className={`${compact ? 'text-xs' : 'text-sm'} font-semibold text-gray-900 truncate`}>
-          {person.name}
-          {person.isMe && <span className="ml-1.5 text-[10px] font-medium text-gray-400">(você)</span>}
+        <p
+          className={`${compact ? 'text-xs' : 'text-sm'} font-semibold ${
+            dark ? 'text-white' : 'text-gray-900'
+          } truncate flex items-center gap-1`}
+        >
+          <span className="truncate">{person.name}</span>
+          {/* Cliente verificado leva o tick em TODOS os lugares. */}
+          {person.isVerified && <VerifiedBadge size={compact ? 12 : 14} />}
+          {person.isMe && (
+            <span className={`ml-0.5 text-[10px] font-medium ${dark ? 'text-gray-400' : 'text-gray-400'}`}>
+              (você)
+            </span>
+          )}
         </p>
         {person.isOpener && (
-          <p className="text-[10px] font-semibold text-gray-500">Abriu a mesa</p>
+          <p className={`text-[10px] font-semibold ${dark ? 'text-gray-300' : 'text-gray-500'}`}>
+            Abriu a mesa
+          </p>
         )}
       </div>
     </div>
@@ -53,6 +74,7 @@ export function PeopleOrders<T extends { id: string }>({
   renderOrder,
   emptyLabel = 'Ainda não pediu nada',
   compact = false,
+  dark = false,
 }: {
   people: SessionPerson[];
   orders: T[];
@@ -60,19 +82,29 @@ export function PeopleOrders<T extends { id: string }>({
   renderOrder: (order: T) => ReactNode;
   emptyLabel?: string;
   compact?: boolean;
+  // Estilo preto — mesma paleta dos cards de mesa do painel do admin
+  // (gradiente #27272A → #0A0A0B, texto branco/cinza). Usado na Minha conta.
+  dark?: boolean;
 }) {
   const byId = new Map(orders.map((o) => [o.id, o]));
   const leftover = unassignedOrderIds.map((id) => byId.get(id)).filter((o): o is T => Boolean(o));
-  return (
+  const body = (
     <div className="flex flex-col gap-4">
-      {people.map((person) => {
+      {people.map((person, idx) => {
         const personOrders = person.orderIds.map((id) => byId.get(id)).filter((o): o is T => Boolean(o));
         return (
-          <section key={person.id} className="flex flex-col gap-2">
-            <PersonHeader person={person} compact={compact} />
-            <div className={`flex flex-col gap-2 ${compact ? 'pl-2' : 'pl-3 border-l-2 border-gray-100 ml-5'}`}>
+          <section
+            key={person.id}
+            className={`flex flex-col gap-2 ${dark && idx > 0 ? 'pt-4 border-t border-white/10' : ''}`}
+          >
+            <PersonHeader person={person} compact={compact} dark={dark} />
+            <div
+              className={`flex flex-col gap-2 ${
+                dark ? '' : compact ? 'pl-2' : 'pl-3 border-l-2 border-gray-100 ml-5'
+              }`}
+            >
               {personOrders.length === 0 ? (
-                <p className="text-xs text-gray-400">{emptyLabel}</p>
+                <p className={`text-xs ${dark ? 'text-gray-400' : 'text-gray-400'}`}>{emptyLabel}</p>
               ) : (
                 personOrders.map((o) => <div key={o.id}>{renderOrder(o)}</div>)
               )}
@@ -88,6 +120,15 @@ export function PeopleOrders<T extends { id: string }>({
           ))}
         </section>
       )}
+    </div>
+  );
+  if (!dark) return body;
+  return (
+    <div
+      className="rounded-2xl p-4 text-white"
+      style={{ background: 'linear-gradient(160deg, #27272A 0%, #18181B 55%, #0A0A0B 100%)' }}
+    >
+      {body}
     </div>
   );
 }

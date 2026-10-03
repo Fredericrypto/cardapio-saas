@@ -921,6 +921,7 @@ export class TablesService {
       isOpener: boolean;
       isGuest: boolean;
       isMe: boolean;
+      isVerified: boolean;
       orderIds: string[];
     }>;
     unassignedOrderIds: string[];
@@ -953,6 +954,8 @@ export class TablesService {
           : !session.openedByCustomerId && seat.id === earliestSeatId,
         isGuest: !account,
         isMe: Boolean(mine && mine.id === seat.id),
+        // Cliente verificado leva o tick de verificação em todos os lugares.
+        isVerified: account ? this.verificationService.verifyIntegritySync(account) : false,
         orderIds: orders.filter((o) => ownsOrder(seat, o)).map((o) => o.id),
       };
     });

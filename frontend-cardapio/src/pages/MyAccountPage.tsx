@@ -1,3 +1,4 @@
+import { ConfirmModal } from '../components/ConfirmModal';
 import { PeopleOrders } from '../components/PeopleOrders';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -285,41 +286,27 @@ export function MyAccountPage() {
           direito da tela nessa mesma página, e ficava por cima desse
           botão quando os dois moravam na mesma linha. */}
       {canLeaveTable && (
-        <div className="px-4 pt-3 flex justify-center">
+        <div className="px-4 pt-3 flex">
+          {/* Mesmo visual do botão "Minha conta" do header da mesa. */}
           <button
             onClick={() => setConfirmingLeave(true)}
             disabled={isLeaving}
-            className="flex items-center gap-1.5 text-xs font-semibold text-gray-400 disabled:opacity-50"
+            className="flex-1 rounded-xl py-2.5 flex items-center justify-center gap-1.5 text-xs font-semibold text-gray-700 bg-gray-50 border border-gray-100 disabled:opacity-50"
           >
-            <LogOut size={13} />
+            <LogOut size={14} />
             {isLeaving ? 'Saindo...' : 'Sair da mesa'}
           </button>
         </div>
       )}
       {confirmingLeave && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-6">
-          <div className="bg-white rounded-2xl p-5 max-w-xs w-full flex flex-col gap-4 text-center">
-            <p className="text-sm text-gray-700">
-              Tem certeza que quer sair dessa mesa?
-              {isOpener ? ' Você abriu a mesa, mas a conta continua pra quem ficar.' : ''} Pra voltar,
-              só escaneando o QR code da mesa de novo.
-            </p>
-            <div className="flex flex-col gap-2">
-              <button
-                onClick={handleLeaveTable}
-                className="py-2.5 rounded-xl bg-gray-900 text-white text-sm font-semibold"
-              >
-                Sim, sair da mesa
-              </button>
-              <button
-                onClick={() => setConfirmingLeave(false)}
-                className="py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600"
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConfirmModal
+          message={`Tem certeza que quer sair dessa mesa?${
+            isOpener ? ' Você abriu a mesa, mas a conta continua pra quem ficar.' : ''
+          } Pra voltar, só escaneando o QR code da mesa de novo.`}
+          confirmLabel="Sim, sair da mesa"
+          onConfirm={handleLeaveTable}
+          onCancel={() => setConfirmingLeave(false)}
+        />
       )}
       {leaveError && (
         <p className="px-4 pt-3 text-xs text-red-500 text-center">{leaveError}</p>
@@ -343,8 +330,9 @@ export function MyAccountPage() {
             people={summary.people}
             orders={summary.orders}
             unassignedOrderIds={summary.unassignedOrderIds ?? []}
+            dark
             renderOrder={(order) => (
-              <div className="border border-gray-100 rounded-xl p-3">
+              <div className="bg-white border border-gray-100 rounded-xl p-3">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-xs font-semibold text-gray-400">
                   {new Date(order.createdAt).toLocaleTimeString('pt-BR', {

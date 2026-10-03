@@ -51,8 +51,11 @@ function useCountdownLabel(endsAt: string | null): string | null {
 export function PromoCards({ promotions, primaryColor, onSelect }: PromoCardsProps) {
   if (promotions.length === 0) return null;
 
+  // pb-4 + -mb-3: o container rola na horizontal, o que corta a sombra no
+  // fundo; o respiro embaixo (compensado pela margem negativa, pra o
+  // layout não mudar) deixa a sombra inteira aparecer.
   return (
-    <div className="flex gap-3 px-4 pb-1 overflow-x-auto no-scrollbar snap-x snap-mandatory">
+    <div className="flex gap-3 px-4 pt-1 pb-4 -mb-3 overflow-x-auto no-scrollbar snap-x snap-mandatory">
       {promotions.map((promo) => (
         <PromoCard key={promo.id} promo={promo} primaryColor={primaryColor} onSelect={onSelect} />
       ))}
@@ -74,7 +77,7 @@ function PromoCard({
   return (
     <button
       onClick={() => onSelect(promo.id)}
-      className="shrink-0 w-[270px] snap-start rounded-2xl overflow-hidden relative shadow-[0_4px_16px_rgba(0,0,0,0.12)] text-left active:scale-[0.98] transition-transform"
+      className="shrink-0 w-[270px] snap-start rounded-2xl overflow-hidden relative shadow-[0_2px_10px_rgba(0,0,0,0.04)] text-left active:scale-[0.98] transition-transform"
     >
       <div className="relative h-36 w-full">
         {promo.imageUrl ? (

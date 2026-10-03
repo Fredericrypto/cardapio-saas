@@ -1,3 +1,4 @@
+import { useScrollLock } from '../hooks/useScrollLock';
 import { useState } from 'react';
 import Cropper, { type Area } from 'react-easy-crop';
 import { cropImageToFile } from '../lib/cropImage';
@@ -12,6 +13,8 @@ interface AvatarCropModalProps {
 // Recorte circular igual Instagram/YouTube: arrasta pra reposicionar,
 // desliza pra dar zoom, área de corte sempre redonda.
 export function AvatarCropModal({ imageSrc, onCancel, onConfirm, accentColor }: AvatarCropModalProps) {
+  // Com o modal aberto a página atrás NÃO rola (02/10).
+  useScrollLock(true);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);

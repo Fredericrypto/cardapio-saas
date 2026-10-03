@@ -1,3 +1,4 @@
+import { useScrollLock } from '../hooks/useScrollLock';
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { CashbackLoginNotice } from './CashbackLoginNotice';
@@ -49,6 +50,8 @@ export function ClosingPaymentSheet({
   onCancel,
   onConfirm,
 }: ClosingPaymentSheetProps) {
+  // Com o modal aberto a página atrás NÃO rola (02/10).
+  useScrollLock(true);
   const location = useLocation();
   const [cashbackBalance, setCashbackBalance] = useState<number | null>(null);
   const [useCashback, setUseCashback] = useState(false);

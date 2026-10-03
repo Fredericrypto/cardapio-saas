@@ -260,6 +260,8 @@ export interface SessionPerson {
   isOpener: boolean;
   isGuest: boolean;
   isMe: boolean;
+  // Cliente verificado: tick de verificação em todos os lugares.
+  isVerified?: boolean;
   orderIds: string[];
 }
 

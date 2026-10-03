@@ -1,6 +1,7 @@
+import { useScrollLock } from '../hooks/useScrollLock';
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Minus, Plus, Trash2, MapPin, AlertTriangle, Tag, X } from 'lucide-react';
+import { ArrowLeft, Minus, Plus, Trash2, MapPin, AlertTriangle, Tag, X, ShoppingBag, BookOpen } from 'lucide-react';
 import { createOrder, quoteDeliveryFee, callWaiter, cancelWaiterCall, getWaiterCallStatus, cancelOrder, flagOrderForAttention, fetchLocationById, fetchActivePromotions } from '../lib/menu-api';
 import { computePromotionEligibility, computeSelectedPromotionsEligibility } from '../lib/promotionEligibility';
 import type { Location, DeliveryQuote, CreatedOrder, Promotion } from '../types';
@@ -182,6 +183,8 @@ export function CartPage() {
   const [flagAttentionError, setFlagAttentionError] = useState<string | null>(null);
   const [orderCancelledByCustomer, setOrderCancelledByCustomer] = useState(false);
   const [itemPendingRemoval, setItemPendingRemoval] = useState<string | null>(null);
+  // Modal "Remover item?" aberto: a página atrás não rola.
+  useScrollLock(itemPendingRemoval !== null);
 
   // ---------- Endereço de entrega (estruturado, pra maior precisão na
   // geocodificação) e cotação da taxa por distância ----------
@@ -909,13 +912,19 @@ export function CartPage() {
 
   if (items.length === 0) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center max-w-md mx-auto">
-        <p className="text-gray-400 text-sm">Seu carrinho está vazio.</p>
+      <div className="min-h-screen flex flex-col items-center justify-center px-8 text-center max-w-md mx-auto">
+        <div className="w-16 h-16 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center">
+          <ShoppingBag size={26} strokeWidth={1.5} className="text-gray-300" />
+        </div>
+        <p className="mt-5 text-base font-semibold text-gray-800">Seu carrinho está vazio</p>
+        <p className="mt-1 text-sm text-gray-400">Adicione itens do cardápio pra fazer seu pedido.</p>
+        {/* Mesmo visual do botão "Chamar garçom". */}
         <button
           onClick={() => navigate(isTableFlow ? `/${slug}/mesa/${qrCodeToken}` : `/${slug}`)}
-          className="mt-4 text-sm font-semibold"
-          style={{ color: tenant.primaryColor }}
+          className="mt-6 w-full max-w-[220px] rounded-xl py-2.5 flex items-center justify-center gap-1.5 text-xs font-semibold text-white"
+          style={{ backgroundColor: tenant.primaryColor }}
         >
+          <BookOpen size={14} />
           Ver cardápio
         </button>
       </div>

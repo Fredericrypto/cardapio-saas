@@ -3,8 +3,11 @@ import { createPortal } from 'react-dom';
 
 interface FloatingNoticeProps {
   message: string;
-  onDone: () => void;
+  onDone?: () => void;
   durationMs?: number;
+  // Aviso fixo: NÃO some sozinho — quem renderiza decide quando tirar (ex:
+  // "Garçom chamado" só sai quando o admin dispensa o chamado no painel).
+  persistent?: boolean;
 }
 
 // Aviso estilo notificação push: horizontal, centralizado no topo da
@@ -13,11 +16,12 @@ interface FloatingNoticeProps {
 // pode estar dentro de um ancestral com `transform`/`filter` (ex: o
 // header do cardápio), e nesse caso `position: fixed` deixa de ser
 // relativo à tela e o aviso ficava espremido do lado do ícone.
-export function FloatingNotice({ message, onDone, durationMs = 6000 }: FloatingNoticeProps) {
+export function FloatingNotice({ message, onDone, durationMs = 6000, persistent = false }: FloatingNoticeProps) {
   useEffect(() => {
+    if (persistent || !onDone) return;
     const t = setTimeout(onDone, durationMs);
     return () => clearTimeout(t);
-  }, [onDone, durationMs]);
+  }, [onDone, durationMs, persistent]);
 
   return createPortal(
     <div

@@ -312,18 +312,20 @@ export function DashboardPage() {
             <Bell size={15} />
             Chamados de garçom pendentes
           </h2>
+          {/* Mesma paleta preto/cinza dos cards de mesa (02/10). */}
           <div className="flex flex-col gap-2">
             {waiterCalls.map((call) => (
               <div
                 key={call.id}
-                className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 flex items-center justify-between"
+                className="rounded-2xl px-4 py-3 flex items-center justify-between gap-3 text-white"
+                style={{ background: 'linear-gradient(160deg, #27272A 0%, #18181B 55%, #0A0A0B 100%)' }}
               >
-                <div>
-                  <p className="text-sm font-semibold text-gray-900">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-white">
                     {call.tableSession?.table?.number ?? 'Mesa desconhecida'}
                     {call.calledByName ? ` — ${call.calledByName}` : ''}
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-gray-400">
                     {new Date(call.createdAt).toLocaleTimeString('pt-BR', {
                       hour: '2-digit',
                       minute: '2-digit',
@@ -332,7 +334,7 @@ export function DashboardPage() {
                 </div>
                 <button
                   onClick={() => handleAttendCall(call.id)}
-                  className="text-xs font-semibold bg-gray-900 text-white px-3 py-1.5 rounded-lg"
+                  className="text-xs font-semibold bg-white text-gray-900 px-3 py-1.5 rounded-lg shrink-0"
                 >
                   Marcar como atendido
                 </button>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Table2, ShoppingBag, Bike, FolderClosed, Star } from 'lucide-react';
+import { ArrowLeft, Table2, ShoppingBag, Bike, FolderClosed, Star, ChevronDown } from 'lucide-react';
+import { identityOf } from '../lib/identity';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { useTenant } from '../contexts/TenantContext';
 import { getActiveMesaToken } from '../lib/seat';
@@ -62,6 +63,32 @@ export function OrderHistoryPage() {
       .finally(() => setIsLoadingOrders(false));
   }, [tenant, token]);
 
+  // Datas recolhidas (cada dia minimiza separadamente, igual às categorias
+  // de "Todos"). Persiste no aparelho — sobrevive a sair do perfil e a
+  // fechar o app — por conta e por loja (02/10).
+  const collapseKey = tenant ? `historico_recolhido_${identityOf(token)}_${tenant.id}` : null;
+  const [collapsedDays, setCollapsedDays] = useState<string[]>([]);
+  useEffect(() => {
+    if (!collapseKey) return;
+    try {
+      const raw = localStorage.getItem(collapseKey);
+      setCollapsedDays(raw ? (JSON.parse(raw) as string[]) : []);
+    } catch {
+      setCollapsedDays([]);
+    }
+  }, [collapseKey]);
+  function toggleDay(dateKey: string) {
+    setCollapsedDays((prev) => {
+      const next = prev.includes(dateKey) ? prev.filter((k) => k !== dateKey) : [...prev, dateKey];
+      try {
+        if (collapseKey) localStorage.setItem(collapseKey, JSON.stringify(next));
+      } catch {
+        // armazenamento bloqueado: continua funcionando nesta visita
+      }
+      return next;
+    });
+  }
+
   const isEmpty = useMemo(
     () => !isLoadingOrders && (dayGroups?.length ?? 0) === 0,
     [isLoadingOrders, dayGroups],
@@ -94,6 +121,8 @@ export function OrderHistoryPage() {
           <DayFolder
             key={group.dateKey}
             group={group}
+            collapsed={collapsedDays.includes(group.dateKey)}
+            onToggle={() => toggleDay(group.dateKey)}
             reviewsByOrderId={reviewsByOrderId}
             onOpenMesa={(sessionId) => navigate(`/${slug}/conta-cliente/pedidos/mesa/${sessionId}`)}
             onOpenAvulso={(orderId) => navigate(`/${slug}/conta-cliente/pedidos/avulso/${orderId}`)}
@@ -108,11 +137,15 @@ export function OrderHistoryPage() {
 
 function DayFolder({
   group,
+  collapsed,
+  onToggle,
   reviewsByOrderId,
   onOpenMesa,
   onOpenAvulso,
 }: {
   group: DayGroup;
+  collapsed: boolean;
+  onToggle: () => void;
   reviewsByOrderId: Record<string, MyReview>;
   onOpenMesa: (sessionId: string) => void;
   onOpenAvulso: (orderId: string) => void;
@@ -121,15 +154,27 @@ function DayFolder({
 
   return (
     <div className="flex flex-col gap-2.5">
-      <div className="flex items-center gap-2 text-gray-500 px-1">
-        <FolderClosed size={14} />
-        <h2 className="text-xs font-semibold">{group.label}</h2>
-        <span className="text-[11px] text-gray-400">
+      {/* Mesmo cabeçalho das categorias do cardápio: ícone, nome e seta de
+          recolher/expandir. */}
+      <button
+        onClick={onToggle}
+        aria-expanded={!collapsed}
+        aria-label={collapsed ? `Mostrar pedidos de ${group.label}` : `Esconder pedidos de ${group.label}`}
+        className="w-full flex items-center gap-2 px-1 text-gray-700"
+      >
+        <FolderClosed size={16} />
+        <h2 className="text-sm font-semibold">{group.label}</h2>
+        <span className="text-[11px] text-gray-400 flex-1 text-left">
           {total} {total === 1 ? 'pedido' : 'pedidos'}
         </span>
-      </div>
+        <ChevronDown
+          size={16}
+          strokeWidth={1.8}
+          className={`text-gray-400 transition-transform ${collapsed ? '-rotate-90' : ''}`}
+        />
+      </button>
 
-      <div className="flex flex-col gap-2.5">
+      <div className={`flex flex-col gap-2.5 ${collapsed ? 'hidden' : ''}`}>
         {group.mesaItems.map((item) => (
           <MesaCard key={item.sessionId} item={item} onClick={() => onOpenMesa(item.sessionId)} />
         ))}

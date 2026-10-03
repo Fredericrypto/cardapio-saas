@@ -102,6 +102,36 @@ export async function setCategoryActive(key: string, active: boolean): Promise<C
   return data;
 }
 
+// Ativa várias categorias do catálogo de uma vez (preset de tipo de
+// estabelecimento / "adicionar selecionadas"). Só adiciona.
+export async function activateCategories(keys: string[]): Promise<Category[]> {
+  const { data } = await api.post<Category[]>('/categories/catalog-bulk', { keys });
+  return data;
+}
+
+// Categoria personalizada (sem chave do catálogo).
+export async function createCustomCategory(name: string): Promise<Category> {
+  const { data } = await api.post<Category>('/categories/custom', { name });
+  return data;
+}
+
+export async function renameCategory(id: string, name: string): Promise<Category> {
+  const { data } = await api.patch<Category>(`/categories/${id}`, { name });
+  return data;
+}
+
+// Liga/desliga por id (categorias personalizadas).
+export async function setCategoryActiveById(id: string, active: boolean): Promise<Category> {
+  const { data } = await api.put<Category>(`/categories/${id}/active`, { active });
+  return data;
+}
+
+// Nova ordem do cardápio: ids na ordem desejada.
+export async function reorderCategories(ids: string[]): Promise<Category[]> {
+  const { data } = await api.put<Category[]>('/categories/order', { ids });
+  return data;
+}
+
 export async function deleteCategory(id: string): Promise<void> {
   await api.delete(`/categories/${id}`);
 }

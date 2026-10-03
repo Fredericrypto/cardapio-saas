@@ -1,7 +1,9 @@
+import { LogoViewer } from './LogoViewer';
 import { Bell, Receipt } from 'lucide-react';
 import type { Tenant, Location, TableSession } from '../types';
 import { RestaurantInfoPanel } from './RestaurantInfoPanel';
 import { TableSessionTimer } from './TableSessionTimer';
+import { ReviewBadge, OpenStatusRow } from './HeaderStatus';
 
 interface TableMenuHeaderProps {
   tenant: Tenant;
@@ -47,18 +49,7 @@ export function TableMenuHeader({
 
       <div className="relative -mt-6 rounded-t-3xl bg-white px-4 pt-3.5 pb-1 z-10">
         <div className="flex flex-col items-center text-center">
-          <div className="w-16 h-16 -mt-10 rounded-2xl border-4 border-white shadow-md bg-white overflow-hidden shrink-0">
-            {tenant.logoUrl ? (
-              <img src={tenant.logoUrl} alt={tenant.name} className="w-full h-full object-cover" />
-            ) : (
-              <div
-                className="w-full h-full flex items-center justify-center text-white font-bold text-lg"
-                style={{ backgroundColor: tenant.primaryColor }}
-              >
-                {tenant.name[0]?.toUpperCase()}
-              </div>
-            )}
-          </div>
+          <LogoViewer tenant={tenant} size="w-16 h-16" />
 
           {/* Nome sem truncar (quebra em várias linhas se preciso, sempre
               centralizado — padding simétrico px-14 reserva o espaço do
@@ -102,13 +93,12 @@ export function TableMenuHeader({
                   : `Mesa ${tableNumber}`
               : 'Consumo no local'}
           </p>
+          <ReviewBadge tenant={tenant} location={location} />
         </div>
 
-        {location?.closingInMinutes != null && (
-          <p className="text-xs font-bold text-red-500 mt-2 text-center">
-            Fecha em {location.closingInMinutes} min
-          </p>
-        )}
+        {/* Horário de funcionamento + selo Aberto/Fechado (e "Fecha em X
+            min") continuam visíveis dentro do fluxo de mesa. */}
+        <OpenStatusRow location={location} />
 
         <div className="flex gap-2 mt-3">
           <button

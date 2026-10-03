@@ -62,7 +62,7 @@ export function ReceiptContent({ tenant, summary }: { tenant: Tenant; summary: S
                     </span>
                   )}
                 </span>
-                <span>R$ {Number(item.subtotal).toFixed(2).replace('.', ',')}</span>
+                <span className="whitespace-nowrap pl-3 shrink-0">R$ {Number(item.subtotal).toFixed(2).replace('.', ',')}</span>
               </div>
             ))}
             {orderCashback > 0 && (
@@ -167,7 +167,7 @@ export function ReceiptContent({ tenant, summary }: { tenant: Tenant; summary: S
 
       <div className="flex justify-between">
         <span>Subtotal</span>
-        <span>R$ {total.toFixed(2).replace('.', ',')}</span>
+        <span className="whitespace-nowrap pl-3 shrink-0">R$ {total.toFixed(2).replace('.', ',')}</span>
       </div>
       {discountTotal > 0 && (
         <div className="flex justify-between text-red-600">
@@ -175,30 +175,30 @@ export function ReceiptContent({ tenant, summary }: { tenant: Tenant; summary: S
             Desconto aplicado{promotionTitles.length > 0 ? ` (${promotionTitles.join(', ')})` : ''}
             <span className="block text-[10px] text-gray-400">já refletido no subtotal</span>
           </span>
-          <span>- R$ {discountTotal.toFixed(2).replace('.', ',')}</span>
+          <span className="whitespace-nowrap pl-3 shrink-0">- R$ {discountTotal.toFixed(2).replace('.', ',')}</span>
         </div>
       )}
       {cashbackUsedTotal > 0 && (
         <div className="flex justify-between text-red-600">
           <span>Cashback usado</span>
-          <span>- R$ {cashbackUsedTotal.toFixed(2).replace('.', ',')}</span>
+          <span className="whitespace-nowrap pl-3 shrink-0">- R$ {cashbackUsedTotal.toFixed(2).replace('.', ',')}</span>
         </div>
       )}
       {tipAmount > 0 && (
         <div className="flex justify-between">
           <span>Gorjeta</span>
-          <span>R$ {tipAmount.toFixed(2).replace('.', ',')}</span>
+          <span className="whitespace-nowrap pl-3 shrink-0">R$ {tipAmount.toFixed(2).replace('.', ',')}</span>
         </div>
       )}
       {cashbackApplied > 0 && (
         <div className="flex justify-between text-red-600">
           <span>Cashback usado no fechamento</span>
-          <span>- R$ {cashbackApplied.toFixed(2).replace('.', ',')}</span>
+          <span className="whitespace-nowrap pl-3 shrink-0">- R$ {cashbackApplied.toFixed(2).replace('.', ',')}</span>
         </div>
       )}
       <div className="flex justify-between font-bold text-sm">
         <span>TOTAL</span>
-        <span>R$ {grandTotal.toFixed(2).replace('.', ',')}</span>
+        <span className="whitespace-nowrap pl-3 shrink-0">R$ {grandTotal.toFixed(2).replace('.', ',')}</span>
       </div>
       {cashbackEarnedTotal > 0 && (
         <div className="flex justify-between text-green-600 text-[11px]">
@@ -218,11 +218,11 @@ export function ReceiptContent({ tenant, summary }: { tenant: Tenant; summary: S
             <>
               <div className="flex justify-between">
                 <span>Recebido</span>
-                <span>R$ {Number(session.amountReceived).toFixed(2).replace('.', ',')}</span>
+                <span className="whitespace-nowrap pl-3 shrink-0">R$ {Number(session.amountReceived).toFixed(2).replace('.', ',')}</span>
               </div>
               <div className="flex justify-between">
                 <span>Troco</span>
-                <span>R$ {Number(session.changeGiven ?? 0).toFixed(2).replace('.', ',')}</span>
+                <span className="whitespace-nowrap pl-3 shrink-0">R$ {Number(session.changeGiven ?? 0).toFixed(2).replace('.', ',')}</span>
               </div>
             </>
           )}

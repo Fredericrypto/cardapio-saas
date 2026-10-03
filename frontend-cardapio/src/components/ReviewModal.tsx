@@ -1,3 +1,4 @@
+import { useScrollLock } from '../hooks/useScrollLock';
 import { useState } from 'react';
 import { Star, X, EyeOff } from 'lucide-react';
 import { createReview } from '../lib/customer-api';
@@ -62,6 +63,8 @@ interface ReviewModalProps {
 //      o cliente precisa saber disso ANTES de mandar, não descobrir
 //      depois tentando editar e não conseguindo.
 export function ReviewModal({ tenantId, token, orderId, target, stepLabel, onClose, onSubmitted }: ReviewModalProps) {
+  // Com o modal aberto a página atrás NÃO rola (02/10).
+  useScrollLock(true);
   const [step, setStep] = useState<Step>('form');
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');

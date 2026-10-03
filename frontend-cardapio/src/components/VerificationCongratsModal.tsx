@@ -1,3 +1,4 @@
+import { useScrollLock } from '../hooks/useScrollLock';
 import { VerifiedBadge } from './VerifiedBadge';
 
 interface VerificationCongratsModalProps {
@@ -9,6 +10,8 @@ interface VerificationCongratsModalProps {
 // controlado pelo campo `verificationCongratsPending` do perfil (some
 // pra sempre assim que `onClose` chama o endpoint de "já vi").
 export function VerificationCongratsModal({ primaryColor, onClose }: VerificationCongratsModalProps) {
+  // Com o modal aberto a página atrás NÃO rola (02/10).
+  useScrollLock(true);
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl w-full max-w-sm p-6 text-center">
