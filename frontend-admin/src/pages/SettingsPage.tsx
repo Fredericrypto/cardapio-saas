@@ -17,8 +17,8 @@ export function SettingsPage() {
   const [twitterHandle, setTwitterHandle] = useState(tenant?.twitterHandle ?? '');
   const [messengerUsername, setMessengerUsername] = useState(tenant?.messengerUsername ?? '');
   const [gmailAddress, setGmailAddress] = useState(tenant?.gmailAddress ?? '');
-  const [primaryColor, setPrimaryColor] = useState(tenant?.primaryColor ?? '#E63946');
-  const [secondaryColor, setSecondaryColor] = useState(tenant?.secondaryColor ?? '#1D3557');
+  const [primaryColor, setPrimaryColor] = useState(tenant?.primaryColor ?? '#3d3846');
+  const [secondaryColor, setSecondaryColor] = useState(tenant?.secondaryColor ?? '#c0bfbc');
   const [pixKeyType, setPixKeyType] = useState(tenant?.pixKeyType ?? '');
   const [pixKey, setPixKey] = useState(tenant?.pixKey ?? '');
   const [pixMerchantCity, setPixMerchantCity] = useState(tenant?.pixMerchantCity ?? '');
@@ -52,8 +52,8 @@ export function SettingsPage() {
     setTwitterHandle(tenant.twitterHandle ?? '');
     setMessengerUsername(tenant.messengerUsername ?? '');
     setGmailAddress(tenant.gmailAddress ?? '');
-    setPrimaryColor(tenant.primaryColor ?? '#E63946');
-    setSecondaryColor(tenant.secondaryColor ?? '#1D3557');
+    setPrimaryColor(tenant.primaryColor ?? '#3d3846');
+    setSecondaryColor(tenant.secondaryColor ?? '#c0bfbc');
     setPixKeyType(tenant.pixKeyType ?? '');
     setPixKey(tenant.pixKey ?? '');
     setPixMerchantCity(tenant.pixMerchantCity ?? '');

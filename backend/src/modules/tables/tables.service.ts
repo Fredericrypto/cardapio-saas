@@ -1263,6 +1263,12 @@ export class TablesService {
         hasAccount: boolean;
         isVerified: boolean;
         isOpener: boolean;
+        hasLeft: boolean;
+        // Pronomes ("ela/dela") — só contas, só pro painel do admin.
+        pronouns: string | null;
+        // Pedidos (não cancelados) dessa pessoa — o painel mostra cada
+        // pedido logo abaixo de quem pediu.
+        orderIds: string[];
       }>;
       waiterCallCount: number;
     }> = [];
@@ -1388,6 +1394,8 @@ export class TablesService {
         isVerified: boolean;
         isOpener: boolean;
         hasLeft: boolean;
+        pronouns: string | null;
+        orderIds: string[];
       }> = [];
       function upsertCustomer(entry: {
         name: string;
@@ -1396,23 +1404,45 @@ export class TablesService {
         isVerified: boolean;
         isOpener: boolean;
         hasLeft?: boolean;
+        pronouns?: string | null;
+        orderId?: string;
       }) {
-        const key = entry.name.trim().toLowerCase();
+        const { orderId, ...data } = entry;
+        const key = data.name.trim().toLowerCase();
         const idx = customers.findIndex((c) => c.name.trim().toLowerCase() === key);
+        let target: number;
         if (idx === -1) {
-          customers.push({ ...entry, hasLeft: entry.hasLeft ?? false });
-        } else if (entry.hasAccount && !customers[idx].hasAccount) {
+          customers.push({
+            ...data,
+            hasLeft: data.hasLeft ?? false,
+            pronouns: data.pronouns ?? null,
+            orderIds: [],
+          });
+          target = customers.length - 1;
+        } else if (data.hasAccount && !customers[idx].hasAccount) {
           // Nunca perde o selo de "abriu a mesa" numa fusão — se a
           // entrada que já estava lá era a que abriu, mantém isso
           // mesmo trocando o resto dos dados por uma versão mais
           // completa (ex: convidado que depois logou).
           customers[idx] = {
-            ...entry,
-            isOpener: entry.isOpener || customers[idx].isOpener,
-            hasLeft: entry.hasLeft ?? customers[idx].hasLeft,
+            ...data,
+            isOpener: data.isOpener || customers[idx].isOpener,
+            hasLeft: data.hasLeft ?? customers[idx].hasLeft,
+            pronouns: data.pronouns ?? null,
+            orderIds: customers[idx].orderIds,
           };
-        } else if (entry.isOpener && !customers[idx].isOpener) {
-          customers[idx] = { ...customers[idx], isOpener: true };
+          target = idx;
+        } else {
+          if (data.isOpener && !customers[idx].isOpener) {
+            customers[idx] = { ...customers[idx], isOpener: true };
+          }
+          if (!customers[idx].pronouns && data.pronouns) {
+            customers[idx] = { ...customers[idx], pronouns: data.pronouns };
+          }
+          target = idx;
+        }
+        if (orderId && !customers[target].orderIds.includes(orderId)) {
+          customers[target].orderIds.push(orderId);
         }
       }
       // Pedido do Felipe (14/09, sessão I): todo participante ainda
@@ -1453,6 +1483,7 @@ export class TablesService {
             isVerified: this.verificationService.verifyIntegritySync(account),
             isOpener: participant.customerId === session.openedByCustomerId,
             hasLeft: Boolean(participant.leftAt),
+            pronouns: account.pronouns ?? null,
           });
         }
       }
@@ -1468,6 +1499,7 @@ export class TablesService {
             hasAccount: true,
             isVerified: this.verificationService.verifyIntegritySync(account),
             isOpener: true,
+            pronouns: account.pronouns ?? null,
           });
         }
       }
@@ -1481,6 +1513,8 @@ export class TablesService {
             hasAccount: true,
             isVerified: account ? this.verificationService.verifyIntegritySync(account) : false,
             isOpener: order.customerId === session.openedByCustomerId,
+            pronouns: account?.pronouns ?? null,
+            orderId: order.id,
           });
         } else if (order.customerName) {
           upsertCustomer({
@@ -1489,6 +1523,7 @@ export class TablesService {
             hasAccount: false,
             isVerified: false,
             isOpener: false,
+            orderId: order.id,
           });
         }
       }

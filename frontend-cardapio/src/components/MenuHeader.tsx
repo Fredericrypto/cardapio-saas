@@ -1,4 +1,4 @@
-import { LogoViewer } from './LogoViewer';
+import { BannerViewer, LogoViewer } from './LogoViewer';
 import { Bike, ChevronLeft } from 'lucide-react';
 import type { Tenant, Location } from '../types';
 import { RestaurantInfoPanel } from './RestaurantInfoPanel';
@@ -33,13 +33,7 @@ export function MenuHeader({ tenant, location, onBack }: MenuHeaderProps) {
               }
         }
       >
-        {tenant.coverImageUrl && (
-          <img
-            src={tenant.coverImageUrl}
-            alt={tenant.name}
-            className="w-full h-full object-cover"
-          />
-        )}
+        <BannerViewer tenant={tenant} />
 
         {onBack && (
           <button

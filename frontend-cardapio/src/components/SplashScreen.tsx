@@ -26,7 +26,7 @@ export function SplashScreen({ tenant, onFinish }: SplashScreenProps) {
     };
   }, [tenant, onFinish]);
 
-  const primaryColor = tenant?.primaryColor || '#E63946';
+  const primaryColor = tenant?.primaryColor || '#3d3846';
 
   return (
     <div

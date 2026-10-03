@@ -1,4 +1,7 @@
-import { IsIn, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import { ArrayMaxSize, ArrayUnique, IsArray, IsIn, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+
+// Lista fechada de pronomes pessoais (ordem canônica = ordem de exibição).
+export const PRONOUN_OPTIONS = ['ela', 'dela', 'elas', 'delas', 'ele', 'dele', 'eles', 'deles'] as const;
 
 const GENDER_OPTIONS = ['masculino', 'feminino', 'outro', 'prefiro_nao_dizer'] as const;
 
@@ -30,4 +33,12 @@ export class UpdateCustomerProfileDto {
   @IsString()
   @IsIn(GENDER_OPTIONS)
   gender?: (typeof GENDER_OPTIONS)[number];
+
+  // Até 2 pronomes da lista fechada. `[]` limpa; omitir não mexe.
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(2)
+  @ArrayUnique()
+  @IsIn(PRONOUN_OPTIONS, { each: true })
+  pronouns?: Array<(typeof PRONOUN_OPTIONS)[number]>;
 }

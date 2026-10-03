@@ -22,6 +22,8 @@ interface ActiveOverviewItem {
     // Saiu da mesa (assento encerrado): só visual pro admin acompanhar
     // quem esteve nela — o cliente em si não volta sem novo QR Code.
     hasLeft: boolean;
+    pronouns: string | null;
+    orderIds: string[];
   }>;
   waiterCallCount: number;
 }

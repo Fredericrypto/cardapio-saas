@@ -13,7 +13,7 @@ import {
   Utensils,
   type LucideIcon,
 } from 'lucide-react';
-import { BowlIcon, SushiIcon, TakeoutBoxIcon } from '../components/categoryLineIcons';
+import { FlagCN, FlagJP, FlagKR } from '../components/FlagIcons';
 
 // Tipos de estabelecimento (preset de categorias). Escolher um tipo só
 // MARCA as categorias mais relevantes na tela de categorias — o dono
@@ -56,13 +56,13 @@ export const ESTABLISHMENT_TYPES: EstablishmentType[] = [
   {
     id: 'japones',
     label: 'Japonês',
-    icon: SushiIcon,
+    icon: FlagJP,
     keys: ['sushi', 'nigiri', 'uramaki', 'hossomaki', 'temaki', 'hot-roll', 'yakissoba', 'donburi', 'combinados', 'rodizio', 'molhos-extras'],
   },
   {
     id: 'chines',
     label: 'Chinês',
-    icon: TakeoutBoxIcon,
+    icon: FlagCN,
     keys: [
       'entradas-chinesas', 'dumplings-pasteis', 'rolinhos-primavera', 'sopas-chinesas', 'arroz-chao-fan',
       'yakisoba-chines', 'frango-xadrez-kung-pao', 'porco-agridoce', 'pato-especialidades',
@@ -72,7 +72,7 @@ export const ESTABLISHMENT_TYPES: EstablishmentType[] = [
   {
     id: 'coreano',
     label: 'Coreano',
-    icon: BowlIcon,
+    icon: FlagKR,
     keys: [
       'entradas-coreanas', 'kimchi-banchan', 'mandu', 'bibimbap', 'bulgogi', 'japchae', 'ramyeon',
       'tteokbokki', 'frango-frito-coreano', 'combinados-coreanos', 'vegetarianos-coreanos',

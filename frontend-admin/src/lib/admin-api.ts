@@ -269,6 +269,10 @@ export async function fetchActiveOverview(): Promise<
       // Saiu da mesa (assento encerrado): só visual pro admin acompanhar
       // quem esteve nela — o cliente em si não volta sem novo QR Code.
       hasLeft: boolean;
+      // Pronomes ("ela/dela") — só contas; visível só ao lado do nome.
+      pronouns: string | null;
+      // Pedidos dessa pessoa (aparecem logo abaixo dela no card da mesa).
+      orderIds: string[];
     }>;
     waiterCallCount: number;
   }>

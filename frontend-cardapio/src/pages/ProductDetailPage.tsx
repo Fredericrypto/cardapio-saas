@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Check, ChevronRight, Star } from 'lucide-react';
+import { ArrowLeft, Ban, Check, ChevronRight, Star } from 'lucide-react';
 import { fetchProducts } from '../lib/menu-api';
 import { fetchItemReviewsSummary } from '../lib/customer-api';
 import type { ReviewSummary } from '../lib/customer-api';
@@ -140,7 +140,7 @@ export function ProductDetailPage() {
   const subtotal = displayPrice * quantity;
 
   function handleAddToCart() {
-    if (!product) return;
+    if (!product || product.isAvailable === false) return;
 
     // Confere grupos obrigatórios antes de deixar adicionar — mesma
     // regra que o backend também confere (defesa em profundidade: aqui
@@ -168,7 +168,7 @@ export function ProductDetailPage() {
           <img
             src={product.imageUrl}
             alt={product.name}
-            className="w-full h-full object-cover"
+            className={`w-full h-full object-cover ${product.isAvailable === false ? 'grayscale opacity-60' : ''}`}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-300">
@@ -306,17 +306,29 @@ export function ProductDetailPage() {
         // truque padrão e bem documentado pra esse exato sintoma.
         style={{ transform: 'translateZ(0)' }}
       >
+        {product.isAvailable === false ? (
+          <button
+            type="button"
+            disabled
+            aria-disabled="true"
+            className="w-full py-3.5 rounded-xl bg-gray-200 text-gray-500 font-semibold flex justify-center items-center gap-2 px-5 cursor-not-allowed"
+          >
+            <Ban size={16} />
+            Indisponível
+          </button>
+        ) : (
         <button
-          onClick={handleAddToCart}
-          className="w-full py-3.5 rounded-xl text-white font-semibold flex justify-between items-center px-5"
-          style={{ backgroundColor: tenant.primaryColor }}
-        >
-          <span className="flex items-center gap-2">
-            <CartIcon size={16} />
-            Adicionar
-          </span>
-          <span>R$ {subtotal.toFixed(2).replace('.', ',')}</span>
-        </button>
+            onClick={handleAddToCart}
+            className="w-full py-3.5 rounded-xl text-white font-semibold flex justify-between items-center px-5"
+            style={{ backgroundColor: tenant.primaryColor }}
+          >
+            <span className="flex items-center gap-2">
+              <CartIcon size={16} />
+              Adicionar
+            </span>
+            <span>R$ {subtotal.toFixed(2).replace('.', ',')}</span>
+          </button>
+        )}
       </div>
     </div>
   );

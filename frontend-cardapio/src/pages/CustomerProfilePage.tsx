@@ -97,19 +97,6 @@ export function CustomerProfilePage() {
         >
           Entrar
         </button>
-        {confirmingLogout && (
-        <ConfirmModal
-          message="Tem certeza que deseja sair da sua conta?"
-          confirmLabel="Sim, sair da conta"
-          destructive
-          onConfirm={() => {
-            setConfirmingLogout(false);
-            logout();
-          }}
-          onCancel={() => setConfirmingLogout(false)}
-        />
-      )}
-
       <BottomNav slug={slug!} qrCodeToken={activeMesaToken} tenantId={tenant.id} primaryColor={tenant.primaryColor} />
       </div>
     );
@@ -138,6 +125,10 @@ export function CustomerProfilePage() {
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
             <p className="font-display font-bold text-gray-900 truncate">{customer.name}</p>
+            {/* Pronomes na frente do nome, estilo Instagram. */}
+            {customer.pronouns && (
+              <span className="text-xs font-normal text-gray-400 shrink-0">{customer.pronouns}</span>
+            )}
           </div>
           {/* "Cliente Verificado" por extenso só aparece aqui e no "Aí na
               Mesa" do admin, por decisão explícita do Felipe — em
@@ -280,6 +271,22 @@ export function CustomerProfilePage() {
           />
         </div>
       </div>
+
+      {/* O modal precisa estar no retorno PRINCIPAL (cliente logado). Estava
+          dentro do ramo "não logado", então o botão mudava o estado mas o
+          modal nunca renderizava — "Sair da conta" parecia morto. */}
+      {confirmingLogout && (
+        <ConfirmModal
+          message="Tem certeza que deseja sair da sua conta?"
+          confirmLabel="Sim, sair da conta"
+          destructive
+          onConfirm={() => {
+            setConfirmingLogout(false);
+            logout();
+          }}
+          onCancel={() => setConfirmingLogout(false)}
+        />
+      )}
 
       <BottomNav slug={slug!} qrCodeToken={activeMesaToken} tenantId={tenant.id} primaryColor={tenant.primaryColor} />
 

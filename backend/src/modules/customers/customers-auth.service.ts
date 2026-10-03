@@ -12,7 +12,7 @@ import * as bcrypt from 'bcrypt';
 import { Customer } from './customer.entity';
 import { RegisterCustomerDto } from './dto/register-customer.dto';
 import { LoginCustomerDto } from './dto/login-customer.dto';
-import { UpdateCustomerProfileDto } from './dto/update-customer-profile.dto';
+import { PRONOUN_OPTIONS, UpdateCustomerProfileDto } from './dto/update-customer-profile.dto';
 import { ConfirmCustomerAddressDto } from './dto/confirm-customer-address.dto';
 import { GeocodingService } from '../geocoding/geocoding.service';
 import { CustomerVerificationService } from './customer-verification.service';
@@ -128,6 +128,11 @@ export class CustomersAuthService {
     if (dto.name !== undefined) customer.name = dto.name.trim();
     if (dto.phone !== undefined) customer.phone = dto.phone;
     if (dto.gender !== undefined) customer.gender = dto.gender;
+    if (dto.pronouns !== undefined) {
+      // Guarda na ordem canônica (ex.: ['dela','ela'] vira "ela/dela").
+      const chosen = PRONOUN_OPTIONS.filter((p) => dto.pronouns!.includes(p));
+      customer.pronouns = chosen.length > 0 ? chosen.join('/') : null;
+    }
 
     await this.customerRepo.save(customer);
     return this.toProfileDto(customer);
@@ -259,6 +264,7 @@ export class CustomersAuthService {
       name: customer.name,
       phone: customer.phone,
       gender: customer.gender,
+      pronouns: customer.pronouns,
       avatarUrl: customer.avatarUrl,
       pixKeyType: customer.pixKeyType,
       pixKey: customer.pixKey,

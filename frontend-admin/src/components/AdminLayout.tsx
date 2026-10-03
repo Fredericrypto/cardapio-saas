@@ -151,11 +151,13 @@ function AdminLayoutContent() {
         </nav>
 
         <div className="p-3 border-t border-gray-100">
+          {/* Mesmo estilo do "Chamar garçom" do cardápio, centralizado. */}
           <button
             onClick={handleLogout}
-            className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-500 hover:bg-gray-100 w-full"
+            className="w-full rounded-xl py-2.5 flex items-center justify-center gap-1.5 text-xs font-semibold text-white hover:opacity-90"
+            style={{ backgroundColor: tenant?.primaryColor ?? '#3d3846' }}
           >
-            <LogOut size={18} />
+            <LogOut size={14} />
             Sair
           </button>
           <p className="text-[10px] text-gray-300 text-center mt-2 select-all">

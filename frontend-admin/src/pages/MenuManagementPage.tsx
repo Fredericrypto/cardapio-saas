@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Trash2, Image as ImageIcon, SlidersHorizontal } from 'lucide-react';
+import { Plus, Trash2, Image as ImageIcon, Info, SlidersHorizontal } from 'lucide-react';
 import {
   fetchCategories,
   fetchProducts,
@@ -106,13 +106,13 @@ export function MenuManagementPage() {
   }
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <div className="p-6 pl-4 max-w-6xl">
       <h1 className="font-display text-xl font-bold text-gray-900 mb-6">
         Cardápio
       </h1>
 
       <div className="flex gap-6">
-        <div className="w-60 shrink-0">
+        <div className="w-80 shrink-0">
           <div className="flex flex-col gap-1 mb-3">
             {activeCategories.map((category) => {
               const Icon = getCategoryIcon(category.key, category.name);
@@ -120,7 +120,8 @@ export function MenuManagementPage() {
                 <button
                   key={category.id}
                   onClick={() => setActiveCategoryId(category.id)}
-                  className={`text-left px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2.5 group ${
+                  title={category.name}
+                  className={`text-left px-3 py-2 rounded-lg text-[13px] font-medium flex items-center gap-2.5 group ${
                     activeCategoryId === category.id
                       ? 'bg-gray-900 text-white'
                       : 'text-gray-600 hover:bg-gray-100'
@@ -129,7 +130,7 @@ export function MenuManagementPage() {
                   <span className="w-5 flex justify-center shrink-0">
                     {Icon && <Icon size={18} />}
                   </span>
-                  <span className="flex-1 truncate">{category.name}</span>
+                  <span className="flex-1 whitespace-nowrap">{category.name}</span>
                 </button>
               );
             })}
@@ -152,6 +153,15 @@ export function MenuManagementPage() {
             </p>
           ) : (
             <>
+              <div className="flex items-start gap-2 bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 mb-3 text-xs text-gray-500 leading-relaxed">
+                <Info size={14} className="shrink-0 mt-0.5 text-gray-400" />
+                <p>
+                  <span className="font-semibold text-gray-700">Foto do item:</span> use uma imagem{' '}
+                  <span className="font-semibold text-gray-700">quadrada (1:1), de 1080 × 1080 px</span> — mínimo 800 × 800 px.
+                  Formatos JPG, PNG ou WebP, até 5 MB. Deixe o prato bem no centro: no cardápio do cliente a foto é
+                  cortada nas bordas, principalmente em cima e embaixo na tela do item. Para trocar, clique na miniatura.
+                </p>
+              </div>
               <div className="flex flex-col gap-3 mb-4">
                 {productsInCategory.map((product) => (
                   <div

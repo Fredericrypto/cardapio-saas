@@ -1,4 +1,4 @@
-import { LogoViewer } from './LogoViewer';
+import { BannerViewer, LogoViewer } from './LogoViewer';
 import { Bell, Receipt } from 'lucide-react';
 import type { Tenant, Location, TableSession } from '../types';
 import { RestaurantInfoPanel } from './RestaurantInfoPanel';
@@ -42,9 +42,7 @@ export function TableMenuHeader({
             : { background: `linear-gradient(135deg, ${tenant.primaryColor}, ${tenant.secondaryColor})` }
         }
       >
-        {tenant.coverImageUrl && (
-          <img src={tenant.coverImageUrl} alt={tenant.name} className="w-full h-full object-cover" />
-        )}
+        <BannerViewer tenant={tenant} />
       </div>
 
       <div className="relative -mt-6 rounded-t-3xl bg-white px-4 pt-3.5 pb-1 z-10">

@@ -63,6 +63,8 @@ interface ActiveTableGroup {
     // Saiu da mesa (assento encerrado): só visual pro admin acompanhar
     // quem esteve nela — o cliente em si não volta sem novo QR Code.
     hasLeft: boolean;
+    pronouns: string | null;
+    orderIds: string[];
   }>;
   // Quantas vezes o garçom foi chamado NESSA sessão em aberto — zera
   // sozinho quando a mesa fecha e abre de novo (é por sessão, não por
@@ -313,7 +315,9 @@ export function DashboardPage() {
             Chamados de garçom pendentes
           </h2>
           {/* Mesma paleta preto/cinza dos cards de mesa (02/10). */}
-          <div className="flex flex-col gap-2">
+          {/* Mesma grade (2 colunas) dos cards de mesa — cada chamado fica
+              com a MESMA largura de uma mesa (03/10). */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {waiterCalls.map((call) => (
               <div
                 key={call.id}
@@ -812,6 +816,11 @@ function ActiveTableCard({
   // bloco dentro do card. Paleta trocada de propósito pra tons de
   // cinza/preto/branco (nada de cor "fofa") — like um cartão de perfil
   // verificado de rede social de verdade (referência dele: Twitter/X).
+  // Pedidos que não casaram com ninguém do roster (ex.: sessões antigas,
+  // de antes dos assentos) — continuam visíveis numa lista à parte.
+  const linkedOrderIds = new Set(group.customers.flatMap((c) => c.orderIds));
+  const unlinkedOrders = group.orders.filter((o) => !linkedOrderIds.has(o.id));
+
   // O selo de verificado usa o azul clássico do Twitter (#1D9BF0) —
   // única cor de destaque em todo o cartão, de propósito, pra não
   // competir com o resto.
@@ -877,67 +886,98 @@ function ActiveTableCard({
           Twitter. */}
       <div className="rounded-xl bg-white/5 p-3.5 flex flex-col gap-2.5">
         {group.customers.length > 0 ? (
-          group.customers.map((c, i) => (
-            <div
-              key={`${c.name}-${i}`}
-              className={`flex items-center gap-3 ${c.hasLeft ? 'opacity-50' : ''}`}
-            >
-              <div className="relative shrink-0">
-                <span
-                  className={`block w-14 h-14 rounded-full overflow-hidden ring-[3px] ring-white/20 shadow-md bg-white/10 flex items-center justify-center ${
-                    c.hasLeft ? 'grayscale' : ''
-                  }`}
-                >
-                  {c.avatarUrl ? (
-                    <img src={c.avatarUrl} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="text-lg font-bold text-gray-400">
-                      {c.name[0]?.toUpperCase()}
+          group.customers.map((c, i) => {
+            // Pedidos ativos DESTA pessoa — aparecem logo abaixo dela
+            // (mesmo padrão do "Minha conta" no celular do cliente).
+            const personOrders = group.orders.filter((o) => c.orderIds.includes(o.id));
+            return (
+              <div
+                key={`${c.name}-${i}`}
+                className={`flex flex-col gap-2.5 ${i > 0 ? 'pt-3 border-t border-white/10' : ''}`}
+              >
+                <div className={`flex items-center gap-3 ${c.hasLeft ? 'opacity-50' : ''}`}>
+                  <div className="relative shrink-0">
+                    <span
+                      className={`block w-14 h-14 rounded-full overflow-hidden ring-[3px] ring-white/20 shadow-md bg-white/10 flex items-center justify-center ${
+                        c.hasLeft ? 'grayscale' : ''
+                      }`}
+                    >
+                      {c.avatarUrl ? (
+                        <img src={c.avatarUrl} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-lg font-bold text-gray-400">
+                          {c.name[0]?.toUpperCase()}
+                        </span>
+                      )}
                     </span>
-                  )}
-                </span>
-                {c.isVerified && (
-                  <span
-                    className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full ring-2 flex items-center justify-center"
-                    style={{ backgroundColor: '#1D9BF0', ['--tw-ring-color' as any]: '#18181B' }}
-                    title="Cliente verificado"
-                  >
-                    <Check size={11} className="text-white" strokeWidth={3.5} />
-                  </span>
-                )}
-              </div>
-              <div className="min-w-0">
-                <p className="font-bold text-[15px] text-white leading-tight truncate">
-                  {c.name}
-                </p>
-                <p
-                  className={`text-[11px] font-semibold mt-0.5 flex items-center gap-1 ${
-                    c.isVerified ? '' : 'text-gray-500'
-                  }`}
-                  style={c.isVerified ? { color: '#1D9BF0' } : undefined}
-                >
-                  {c.isVerified && <Check size={11} strokeWidth={3.5} />}
-                  {c.isVerified ? 'Cliente verificado' : c.hasAccount ? 'Cliente' : 'Visitante'}
-                </p>
-                {/* Decisão do Felipe (30/09): quem saiu da mesa fica cinza
-                    (só visual, pro admin controlar o fluxo e ver quem
-                    esteve ali) — o selo de quem abriu a mesa continua. */}
-                {c.hasLeft && (
-                  <p className="text-[11px] font-semibold text-gray-300 mt-0.5">
-                    Cliente saiu da mesa
+                    {c.isVerified && (
+                      <span
+                        className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full ring-2 flex items-center justify-center"
+                        style={{ backgroundColor: '#1D9BF0', ['--tw-ring-color' as any]: '#18181B' }}
+                        title="Cliente verificado"
+                      >
+                        <Check size={11} className="text-white" strokeWidth={3.5} />
+                      </span>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    {/* Pronomes na frente do nome, estilo Instagram (03/10) —
+                        só aqui no painel e na página Conta do cliente. */}
+                    <p className="font-bold text-[15px] text-white leading-tight flex items-baseline gap-1.5 min-w-0">
+                      <span className="truncate">{c.name}</span>
+                      {c.pronouns && (
+                        <span className="text-xs font-normal text-gray-400 shrink-0">{c.pronouns}</span>
+                      )}
+                    </p>
+                    <p
+                      className={`text-[11px] font-semibold mt-0.5 flex items-center gap-1 ${
+                        c.isVerified ? '' : 'text-gray-500'
+                      }`}
+                      style={c.isVerified ? { color: '#1D9BF0' } : undefined}
+                    >
+                      {c.isVerified && <Check size={11} strokeWidth={3.5} />}
+                      {c.isVerified ? 'Cliente verificado' : c.hasAccount ? 'Cliente' : 'Visitante'}
+                    </p>
+                    {/* Decisão do Felipe (30/09): quem saiu da mesa fica cinza
+                        (só visual, pro admin controlar o fluxo e ver quem
+                        esteve ali) — o selo de quem abriu a mesa continua. */}
+                    {c.hasLeft && (
+                      <p className="text-[11px] font-semibold text-gray-300 mt-0.5">
+                        Cliente saiu da mesa
+                      </p>
+                    )}
+                    {/* Pedido do Felipe (14/09): destacar quem abriu a
+                        mesa/balcão, separado de quem só se juntou depois. */}
+                    {c.isOpener && (
+                      <p className="text-[11px] font-semibold text-amber-400 mt-0.5 flex items-center gap-1">
+                        <DoorOpen size={11} />
+                        Abriu a mesa
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {personOrders.length > 0 ? (
+                  <div className="flex flex-col gap-2.5 pl-3 ml-7 border-l-2 border-white/10">
+                    {personOrders.map((order) => (
+                      <OrderRow
+                        key={order.id}
+                        order={order}
+                        actions={actions}
+                        dark
+                        isNew={!dismissedOrderIds.has(order.id)}
+                        onDismiss={() => onDismissOrder(order.id)}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-gray-500 pl-3 ml-7 border-l-2 border-white/10">
+                    Nenhum pedido em preparo
                   </p>
                 )}
-                {/* Pedido do Felipe (14/09): destacar quem abriu a
-                    mesa/balcão, separado de quem só se juntou depois. */}
-                {c.isOpener && (
-                  <p className="text-[11px] font-semibold text-amber-400 mt-0.5 flex items-center gap-1">
-                    <DoorOpen size={11} />
-                    Abriu a mesa
-                  </p>
-                )}
               </div>
-            </div>
-          ))
+            );
+          })
         ) : (
           <p className="text-xs text-gray-500 italic">Ninguém identificado ainda.</p>
         )}
@@ -965,19 +1005,22 @@ function ActiveTableCard({
       {group.orders.length === 0 ? (
         <p className="text-xs text-gray-500 italic">Nenhum pedido em preparo agora.</p>
       ) : (
-        <div className="flex flex-col gap-2.5">
-          {group.orders.map((order) => (
-            <OrderRow
-              key={order.id}
-              order={order}
-              actions={actions}
-              dark
-              isNew={!dismissedOrderIds.has(order.id)}
-              onDismiss={() => onDismissOrder(order.id)}
-              showCustomerName
-            />
-          ))}
-        </div>
+        unlinkedOrders.length > 0 && (
+          <div className="flex flex-col gap-2.5">
+            <p className="text-[11px] font-semibold text-gray-400">Outros pedidos</p>
+            {unlinkedOrders.map((order) => (
+              <OrderRow
+                key={order.id}
+                order={order}
+                actions={actions}
+                dark
+                isNew={!dismissedOrderIds.has(order.id)}
+                onDismiss={() => onDismissOrder(order.id)}
+                showCustomerName
+              />
+            ))}
+          </div>
+        )
       )}
     </div>
   );

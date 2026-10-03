@@ -104,6 +104,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   // começar.
   const addItem = useCallback(
     (product: Product, selectedOptions: SelectedCartOption[] = [], quantity: number = 1) => {
+      if (product.isAvailable === false) return; // item indisponível nunca entra no carrinho
       const lineKey = buildLineKey(product.id, selectedOptions);
       setItems((prev) => {
         const existing = prev.find((item) => item.lineKey === lineKey);

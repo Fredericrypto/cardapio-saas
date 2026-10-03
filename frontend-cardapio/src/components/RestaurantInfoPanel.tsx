@@ -291,9 +291,10 @@ export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelPro
               {location?.contactPhoneNumber && (
                 <a
                   href={buildPhoneLink(location.contactPhoneNumber)}
-                  className="flex items-center gap-1.5 font-medium text-gray-600 active:opacity-70"
+                  className="w-full rounded-xl py-2.5 flex items-center justify-center gap-1.5 text-xs font-semibold text-white active:opacity-80"
+                  style={{ backgroundColor: tenant.primaryColor }}
                 >
-                  <Phone size={13} className="shrink-0" />
+                  <Phone size={14} className="shrink-0" />
                   <span>{location.contactPhoneNumber}</span>
                 </a>
               )}

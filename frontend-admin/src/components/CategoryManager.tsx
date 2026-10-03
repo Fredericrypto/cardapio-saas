@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import type { ComponentType } from 'react';
 import {
   ArrowDown,
   ArrowUp,
@@ -6,7 +7,6 @@ import {
   ChevronDown,
   GripVertical,
   Pencil,
-  Plus,
   Search,
   Trash2,
   X,
@@ -25,6 +25,19 @@ import { CATALOG_GROUPS, CATEGORY_CATALOG } from '../lib/categoryCatalog';
 import type { CatalogGroupId } from '../lib/categoryCatalog';
 import { ESTABLISHMENT_TYPES } from '../lib/establishmentTypes';
 import { getCategoryIcon } from './CategoryIcon';
+import { FlagCN, FlagJP, FlagKR } from './FlagIcons';
+
+// A criação de categoria personalizada está OCULTA por enquanto (pedido do
+// Felipe em 03/10) — a lógica toda continua aqui (aba, CustomCreator, endpoint
+// e service no backend). Para reativar no futuro, basta trocar para `true`.
+const SHOW_CUSTOM_CATEGORY_TAB = false;
+
+// Bandeira no cabeçalho dos grupos de especialidade por país.
+const GROUP_FLAGS: Partial<Record<CatalogGroupId, ComponentType<{ size?: number }>>> = {
+  japones: FlagJP,
+  chines: FlagCN,
+  coreano: FlagKR,
+};
 
 // Tela única de gerenciamento de categorias (02/10), em 3 abas:
 //   1. Minhas categorias — a lista na ordem do cardápio: reordenar
@@ -38,6 +51,13 @@ type Tab = 'minhas' | 'catalogo' | 'personalizada';
 
 function messageOf(err: unknown, fallback: string): string {
   return (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? fallback;
+}
+
+function applySummary(added: number, removed: number): string {
+  const parts: string[] = [];
+  if (added > 0) parts.push(`${added} ${added === 1 ? 'categoria adicionada' : 'categorias adicionadas'}`);
+  if (removed > 0) parts.push(`${removed} ${removed === 1 ? 'removida' : 'removidas'} do cardápio`);
+  return parts.length ? `${parts.join(' · ')}.` : 'Nada para alterar.';
 }
 
 function normalize(s: string): string {
@@ -108,7 +128,7 @@ export function CategoryManager({
             [
               ['minhas', `Minhas categorias (${active.length})`],
               ['catalogo', 'Catálogo e tipos'],
-              ['personalizada', 'Criar personalizada'],
+              ...(SHOW_CUSTOM_CATEGORY_TAB ? [['personalizada', 'Criar personalizada']] : []),
             ] as Array<[Tab, string]>
           ).map(([id, label]) => (
             <button
@@ -151,15 +171,15 @@ export function CategoryManager({
             <CatalogPicker
               activeKeys={activeKeys}
               busy={busy}
-              onAdd={(keys) =>
-                run(
-                  () => activateCategories(keys),
-                  `${keys.length} ${keys.length === 1 ? 'categoria adicionada' : 'categorias adicionadas'}. Reordene ou remova em "Minhas categorias".`,
-                )
+              onApply={(add, remove) =>
+                run(async () => {
+                  if (add.length > 0) await activateCategories(add);
+                  for (const key of remove) await setCategoryActive(key, false);
+                }, applySummary(add.length, remove.length))
               }
             />
           )}
-          {tab === 'personalizada' && (
+          {SHOW_CUSTOM_CATEGORY_TAB && tab === 'personalizada' && (
             <CustomCreator
               busy={busy}
               onCreate={async (name) => {
@@ -198,11 +218,21 @@ function MyCategories({
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   // Sincroniza com o servidor quando a lista muda (e não no meio de um arrasto).
   useEffect(() => {
     if (!draggingId) setOrder(active.map((c) => c.id));
   }, [active, draggingId]);
+
+  // Tira da seleção o que deixou de existir na lista (removida, desativada…).
+  useEffect(() => {
+    setSelected((prev) => {
+      const ids = new Set(active.map((c) => c.id));
+      const next = new Set([...prev].filter((id) => ids.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [active]);
 
   const byId = new Map(active.map((c) => [c.id, c]));
   const rows = order.map((id) => byId.get(id)).filter((c): c is Category => Boolean(c));
@@ -232,32 +262,45 @@ function MyCategories({
     });
   }
 
-  async function remove(category: Category) {
-    const items = productCounts[category.id] ?? 0;
-    if (category.key) {
-      if (
-        !confirm(
-          `Remover "${category.name}" do cardápio? Ela some do cardápio do cliente${
-            items ? `, mas os ${items} itens ficam guardados` : ''
-          } e você pode adicionar de novo quando quiser.`,
-        )
-      )
-        return;
-      await run(() => setCategoryActive(category.key as string, false));
-      return;
+  function toggleSelected(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  // Exclusão em lote: UMA lixeira no topo para tudo que estiver marcado.
+  //  - categoria do catálogo → sai do cardápio (itens ficam guardados);
+  //  - personalizada com itens → desativada (itens ficam guardados);
+  //  - personalizada vazia → excluída de verdade.
+  async function removeSelected() {
+    const chosen = rows.filter((c) => selected.has(c.id));
+    if (chosen.length === 0) return;
+    const hide = chosen.filter((c) => c.key || (productCounts[c.id] ?? 0) > 0);
+    const erase = chosen.filter((c) => !c.key && (productCounts[c.id] ?? 0) === 0);
+    const itemsKept = hide.reduce((sum, c) => sum + (productCounts[c.id] ?? 0), 0);
+    const lines = [`Remover ${chosen.length} ${chosen.length === 1 ? 'categoria' : 'categorias'} do cardápio?`];
+    if (hide.length > 0) {
+      lines.push(
+        `${hide.length} ${hide.length === 1 ? 'some' : 'somem'} do cardápio do cliente${
+          itemsKept ? ` (os ${itemsKept} itens ficam guardados)` : ''
+        } e podem ser adicionadas de novo quando quiser.`,
+      );
     }
-    if (items > 0) {
-      if (
-        !confirm(
-          `"${category.name}" tem ${items} ${items === 1 ? 'item' : 'itens'}, então não dá pra excluir. Desativar? Ela some do cardápio do cliente e os itens ficam guardados.`,
-        )
-      )
-        return;
-      await run(() => setCategoryActiveById(category.id, false));
-      return;
+    if (erase.length > 0) {
+      lines.push(`${erase.length} ${erase.length === 1 ? 'personalizada vazia será excluída' : 'personalizadas vazias serão excluídas'} de vez.`);
     }
-    if (!confirm(`Excluir a categoria "${category.name}"?`)) return;
-    await run(() => deleteCategory(category.id));
+    if (!confirm(lines.join('\n\n'))) return;
+    const done = await run(async () => {
+      for (const c of chosen) {
+        if (c.key) await setCategoryActive(c.key, false);
+        else if ((productCounts[c.id] ?? 0) > 0) await setCategoryActiveById(c.id, false);
+        else await deleteCategory(c.id);
+      }
+    }, applySummary(0, chosen.length));
+    if (done) setSelected(new Set());
   }
 
   async function saveRename(id: string) {
@@ -280,9 +323,36 @@ function MyCategories({
         </div>
       ) : (
         <>
-          <p className="text-xs text-gray-400 mb-3">
-            Arraste (ou use as setas) para mudar a ordem em que as categorias aparecem no cardápio.
-          </p>
+          <div className="flex items-center gap-3 mb-3">
+            <label className="flex items-center gap-2 text-xs font-semibold text-gray-600 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={selected.size > 0 && selected.size === rows.length}
+                ref={(el) => {
+                  if (el) el.indeterminate = selected.size > 0 && selected.size < rows.length;
+                }}
+                onChange={() =>
+                  setSelected(selected.size === rows.length ? new Set() : new Set(rows.map((c) => c.id)))
+                }
+                className="w-4 h-4 accent-gray-900"
+              />
+              {selected.size > 0
+                ? `${selected.size} ${selected.size === 1 ? 'selecionada' : 'selecionadas'}`
+                : 'Selecionar todas'}
+            </label>
+            <p className="flex-1 text-[11px] text-gray-400 text-right leading-tight">
+              Arraste (ou use as setas) para mudar a ordem no cardápio.
+            </p>
+            <button
+              onClick={() => void removeSelected()}
+              disabled={busy || selected.size === 0}
+              aria-label="Remover categorias selecionadas"
+              title="Remover categorias selecionadas"
+              className="p-2 rounded-lg border border-gray-200 text-gray-500 hover:bg-red-50 hover:text-red-600 hover:border-red-200 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-gray-500 disabled:hover:border-gray-200"
+            >
+              <Trash2 size={16} />
+            </button>
+          </div>
           <ul className="flex flex-col gap-1.5">
             {rows.map((category, index) => {
               const Icon = getCategoryIcon(category.key, category.name);
@@ -305,6 +375,13 @@ function MyCategories({
                   }`}
                 >
                   <GripVertical size={16} className="text-gray-300 cursor-grab shrink-0" />
+                  <input
+                    type="checkbox"
+                    checked={selected.has(category.id)}
+                    onChange={() => toggleSelected(category.id)}
+                    aria-label={`Selecionar ${category.name}`}
+                    className="w-4 h-4 accent-gray-900 shrink-0 cursor-pointer"
+                  />
                   <span className="w-6 flex justify-center text-gray-700 shrink-0">{Icon && <Icon size={18} />}</span>
                   <div className="flex-1 min-w-0">
                     {editingId === category.id ? (
@@ -377,14 +454,6 @@ function MyCategories({
                           <Pencil size={14} />
                         </button>
                       )}
-                      <button
-                        onClick={() => void remove(category)}
-                        disabled={busy}
-                        aria-label={`Remover ${category.name}`}
-                        className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600"
-                      >
-                        <Trash2 size={14} />
-                      </button>
                     </>
                   )}
                 </li>
@@ -437,47 +506,59 @@ function MyCategories({
 }
 
 // ---------------------------------------------------------------- aba 2
+// O catálogo reflete o cardápio de verdade: marcada = está (ou vai estar) no
+// cardápio. Escolher um TIPO marca as categorias dele; desmarcar uma
+// categoria (ou o tipo) a REMOVE do cardápio quando o dono aplica. Nada é
+// gravado antes de "Aplicar ao cardápio" — a barra de baixo mostra o que vai
+// entrar e o que vai sair. Itens de categorias removidas ficam guardados.
 function CatalogPicker({
   activeKeys,
   busy,
-  onAdd,
+  onApply,
 }: {
   activeKeys: Set<string>;
   busy: boolean;
-  onAdd: (keys: string[]) => Promise<boolean>;
+  onApply: (add: string[], remove: string[]) => Promise<boolean>;
 }) {
-  const [types, setTypes] = useState<Set<string>>(new Set());
-  // Escolhas manuais por cima dos tipos: true = marcou, false = desmarcou.
-  const [manual, setManual] = useState<Record<string, boolean>>({});
+  const [desired, setDesired] = useState<Set<string>>(() => new Set(activeKeys));
   const [query, setQuery] = useState('');
   const [openGroups, setOpenGroups] = useState<Set<CatalogGroupId>>(
     new Set(CATALOG_GROUPS.filter((g) => g.core).map((g) => g.id)),
   );
 
-  const typeKeys = useMemo(() => {
-    const keys = new Set<string>();
-    ESTABLISHMENT_TYPES.filter((t) => types.has(t.id)).forEach((t) => t.keys.forEach((k) => keys.add(k)));
-    return keys;
-  }, [types]);
+  // Depois de aplicar (o servidor devolve o cardápio novo), volta a refletir o real.
+  useEffect(() => {
+    setDesired(new Set(activeKeys));
+  }, [activeKeys]);
 
-  const isSelected = (key: string) => !activeKeys.has(key) && (manual[key] ?? typeKeys.has(key));
-  const selectedKeys = CATEGORY_CATALOG.filter((e) => isSelected(e.key)).map((e) => e.key);
+  const toAdd = CATEGORY_CATALOG.filter((e) => desired.has(e.key) && !activeKeys.has(e.key)).map((e) => e.key);
+  const toRemove = CATEGORY_CATALOG.filter((e) => !desired.has(e.key) && activeKeys.has(e.key)).map((e) => e.key);
+  const hasChanges = toAdd.length + toRemove.length > 0;
+
+  const typeOn = (keys: string[]) => keys.length > 0 && keys.every((k) => desired.has(k));
 
   function toggleType(id: string) {
-    const next = new Set(types);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    setTypes(next);
-    // Abre os grupos de especialidade que o tipo escolhido usa.
     const preset = ESTABLISHMENT_TYPES.find((t) => t.id === id);
-    if (preset && next.has(id)) {
+    if (!preset) return;
+    const next = new Set(desired);
+    if (typeOn(preset.keys)) {
+      preset.keys.forEach((k) => next.delete(k));
+    } else {
+      preset.keys.forEach((k) => next.add(k));
+      // Abre os grupos de especialidade que o tipo escolhido usa.
       const groups = new Set(openGroups);
       CATEGORY_CATALOG.filter((e) => preset.keys.includes(e.key)).forEach((e) => groups.add(e.group));
       setOpenGroups(groups);
     }
+    setDesired(next);
   }
   function toggleKey(key: string) {
-    setManual((prev) => ({ ...prev, [key]: !isSelected(key) }));
+    setDesired((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
   }
   function toggleGroup(id: CatalogGroupId) {
     setOpenGroups((prev) => {
@@ -495,13 +576,15 @@ function CatalogPicker({
     const entries = CATEGORY_CATALOG.filter((e) => e.group === id && matches(e.name));
     if (entries.length === 0) return null;
     const open = openGroups.has(id) || Boolean(q);
-    const chosen = entries.filter((e) => isSelected(e.key)).length;
+    const chosen = entries.filter((e) => desired.has(e.key)).length;
+    const GroupFlag = GROUP_FLAGS[id];
     return (
       <section key={id} className="border border-gray-100 rounded-xl overflow-hidden">
         <button
           onClick={() => toggleGroup(id)}
           className="w-full flex items-center gap-2 px-3 py-2.5 bg-gray-50 text-left"
         >
+          {GroupFlag && <GroupFlag size={20} />}
           <span className="flex-1 text-sm font-semibold text-gray-800">{label}</span>
           <span className="text-[11px] text-gray-400">
             {chosen > 0 ? `${chosen} marcada${chosen > 1 ? 's' : ''} · ` : ''}
@@ -512,35 +595,32 @@ function CatalogPicker({
         {open && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-2 gap-y-0.5 p-2">
             {entries.map((entry) => {
-              const already = activeKeys.has(entry.key);
-              const on = isSelected(entry.key);
+              const on = desired.has(entry.key);
+              const was = activeKeys.has(entry.key);
               const Icon = getCategoryIcon(entry.key, entry.name);
               return (
                 <button
                   key={entry.key}
-                  onClick={() => !already && toggleKey(entry.key)}
-                  disabled={already}
+                  onClick={() => toggleKey(entry.key)}
+                  aria-pressed={on}
                   className={`flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-left text-sm transition-colors ${
-                    already
-                      ? 'text-gray-300 cursor-default'
-                      : on
-                        ? 'bg-gray-50 text-gray-900 font-semibold'
-                        : 'text-gray-600 hover:bg-gray-50'
+                    on
+                      ? 'bg-gray-900/[0.07] text-gray-900 font-semibold ring-1 ring-gray-900/15'
+                      : 'text-gray-600 hover:bg-gray-50'
                   }`}
                 >
                   <span className="w-5 flex justify-center shrink-0">{Icon && <Icon size={17} />}</span>
                   <span className="flex-1 leading-tight">{entry.name}</span>
-                  {already ? (
-                    <span className="text-[10px] font-semibold text-gray-400">No cardápio</span>
-                  ) : (
-                    <span
-                      className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
-                        on ? 'bg-gray-900 border-gray-900 text-white' : 'border-gray-300'
-                      }`}
-                    >
-                      {on && <Check size={11} strokeWidth={3} />}
-                    </span>
-                  )}
+                  {on && !was && <span className="text-[10px] font-semibold text-emerald-600">Adicionar</span>}
+                  {!on && was && <span className="text-[10px] font-semibold text-red-500">Remover</span>}
+                  {on && was && <span className="text-[10px] font-semibold text-gray-400">No cardápio</span>}
+                  <span
+                    className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
+                      on ? 'bg-gray-900 border-gray-900 text-white' : 'border-gray-300'
+                    }`}
+                  >
+                    {on && <Check size={11} strokeWidth={3} />}
+                  </span>
                 </button>
               );
             })}
@@ -556,12 +636,12 @@ function CatalogPicker({
         <section>
           <h3 className="text-sm font-semibold text-gray-800">Tipo de estabelecimento</h3>
           <p className="text-xs text-gray-400 mt-0.5 mb-2.5">
-            Escolher um tipo marca as categorias mais comuns dele. É só um ponto de partida: você
-            continua podendo marcar mais, desmarcar o que não quiser — e remover ou reordenar depois.
+            Escolher um tipo marca as categorias dele; tocar de novo desmarca (e remove do cardápio ao
+            aplicar). Você também pode marcar ou desmarcar categorias uma a uma.
           </p>
           <div className="flex flex-wrap gap-2">
             {ESTABLISHMENT_TYPES.map((type) => {
-              const on = types.has(type.id);
+              const on = typeOn(type.keys);
               const Icon = type.icon;
               return (
                 <button
@@ -574,6 +654,7 @@ function CatalogPicker({
                 >
                   <Icon size={15} />
                   {type.label}
+                  {on && <Check size={12} strokeWidth={3} />}
                 </button>
               );
             })}
@@ -608,33 +689,40 @@ function CatalogPicker({
 
       <div className="border-t border-gray-100 px-5 py-3 flex items-center gap-3">
         <p className="flex-1 text-xs text-gray-500">
-          {selectedKeys.length === 0
-            ? 'Marque categorias ou escolha um tipo de estabelecimento.'
-            : `${selectedKeys.length} ${selectedKeys.length === 1 ? 'categoria marcada' : 'categorias marcadas'}`}
+          {!hasChanges ? (
+            'Marque ou desmarque categorias, ou escolha um tipo de estabelecimento.'
+          ) : (
+            <>
+              {toAdd.length > 0 && <span className="text-emerald-600 font-semibold">+{toAdd.length} a adicionar</span>}
+              {toAdd.length > 0 && toRemove.length > 0 && ' · '}
+              {toRemove.length > 0 && <span className="text-red-500 font-semibold">−{toRemove.length} a remover</span>}
+            </>
+          )}
         </p>
-        {selectedKeys.length > 0 && (
+        {hasChanges && (
           <button
-            onClick={() => {
-              setTypes(new Set());
-              setManual({});
-            }}
+            onClick={() => setDesired(new Set(activeKeys))}
             className="text-xs font-semibold text-gray-500 hover:underline"
           >
-            Limpar
+            Desfazer
           </button>
         )}
         <button
-          disabled={busy || selectedKeys.length === 0}
+          disabled={busy || !hasChanges}
           onClick={async () => {
-            if (await onAdd(selectedKeys)) {
-              setTypes(new Set());
-              setManual({});
-            }
+            if (
+              toRemove.length > 0 &&
+              !confirm(
+                `Remover ${toRemove.length} ${toRemove.length === 1 ? 'categoria' : 'categorias'} do cardápio? Elas somem do cardápio do cliente e os itens ficam guardados — dá para adicionar de novo quando quiser.`,
+              )
+            )
+              return;
+            await onApply(toAdd, toRemove);
           }}
           className="bg-gray-900 text-white text-sm font-semibold rounded-lg px-4 py-2 disabled:opacity-40 flex items-center gap-1.5"
         >
-          <Plus size={14} />
-          Adicionar ao cardápio
+          <Check size={14} />
+          Aplicar ao cardápio
         </button>
       </div>
     </>

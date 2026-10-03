@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { History, Flag, ShoppingBag, Bike, Table2, Search, FolderClosed, Gift } from 'lucide-react';
+import { History, Flag, ShoppingBag, Bike, Table2, Search, FolderClosed, Gift, ChevronDown } from 'lucide-react';
 import { usePolling } from '../hooks/usePolling';
 import {
   fetchHistory,
@@ -391,6 +391,19 @@ function ArchiveSearchPanel({ onOpenReceipt }: { onOpenReceipt: (item: ReceiptIt
   );
 }
 
+// Dias recolhidos do histórico (mesma seta de esconder/mostrar do histórico
+// de pedidos do cliente). Persiste no navegador do admin.
+const COLLAPSED_DAYS_KEY = 'admin_historico_recolhido';
+
+function readCollapsedDays(): string[] {
+  try {
+    const raw = localStorage.getItem(COLLAPSED_DAYS_KEY);
+    return raw ? (JSON.parse(raw) as string[]) : [];
+  } catch {
+    return [];
+  }
+}
+
 function DayFolder({
   group,
   togglingKey,
@@ -403,18 +416,42 @@ function DayFolder({
   onToggleFlag: (item: ReceiptItem, event: React.MouseEvent) => void;
 }) {
   const total = group.mesaItems.length + group.avulsoItems.length;
+  const [collapsed, setCollapsed] = useState(() => readCollapsedDays().includes(group.dateKey));
+
+  function toggle() {
+    setCollapsed((prev) => {
+      const next = !prev;
+      try {
+        const others = readCollapsedDays().filter((k) => k !== group.dateKey);
+        localStorage.setItem(COLLAPSED_DAYS_KEY, JSON.stringify(next ? [...others, group.dateKey] : others));
+      } catch {
+        // armazenamento bloqueado: continua funcionando nesta visita
+      }
+      return next;
+    });
+  }
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-2 text-gray-500">
+      <button
+        onClick={toggle}
+        aria-expanded={!collapsed}
+        aria-label={collapsed ? `Mostrar cupons de ${group.label}` : `Esconder cupons de ${group.label}`}
+        className="w-full flex items-center gap-2 text-gray-500 text-left"
+      >
         <FolderClosed size={15} />
         <h2 className="text-sm font-semibold">{group.label}</h2>
-        <span className="text-xs text-gray-400">
+        <span className="text-xs text-gray-400 flex-1">
           {total} {total === 1 ? 'cupom' : 'cupons'}
         </span>
-      </div>
+        <ChevronDown
+          size={16}
+          strokeWidth={1.8}
+          className={`text-gray-400 transition-transform ${collapsed ? '-rotate-90' : ''}`}
+        />
+      </button>
 
-      {group.mesaItems.length > 0 && (
+      {!collapsed && group.mesaItems.length > 0 && (
         <div className="flex flex-col gap-2 pl-1">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Mesas</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -431,7 +468,7 @@ function DayFolder({
         </div>
       )}
 
-      {group.avulsoItems.length > 0 && (
+      {!collapsed && group.avulsoItems.length > 0 && (
         <div className="flex flex-col gap-2 pl-1">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
             Balcão / Entrega

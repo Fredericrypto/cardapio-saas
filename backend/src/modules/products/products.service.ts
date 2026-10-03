@@ -25,13 +25,16 @@ export class ProductsService {
     });
   }
 
-  // Cardápio público: só produtos disponíveis (o dono desligou o que acabou hoje).
-  // Opções/adicionais marcados como indisponíveis também somem daqui —
+  // Cardápio público: devolve TODOS os produtos, inclusive os marcados como
+  // indisponíveis — o app do cliente os mostra acinzentados (dá pra ler a
+  // descrição, mas não adicionar). O pedido em si continua barrado no
+  // OrdersService (só aceita isAvailable: true).
+  // Opções/adicionais marcados como indisponíveis continuam sumindo daqui —
   // mas continuam existindo de verdade (só filtrados na resposta), pro
   // admin poder reativar sem recriar nada.
   async findAllForPublic(tenantId: string): Promise<Product[]> {
     const products = await this.productRepo.find({
-      where: { tenantId, isAvailable: true },
+      where: { tenantId },
       order: { displayOrder: 'ASC' },
       relations: { options: { values: true } },
     });

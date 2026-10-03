@@ -23,11 +23,11 @@ export class UpdateTenantDto {
   coverImageUrl?: string;
 
   @IsOptional()
-  @Matches(/^#[0-9A-Fa-f]{6}$/, { message: 'primaryColor deve ser um hex válido, ex: #E63946' })
+  @Matches(/^#[0-9A-Fa-f]{6}$/, { message: 'primaryColor deve ser um hex válido, ex: #3d3846' })
   primaryColor?: string;
 
   @IsOptional()
-  @Matches(/^#[0-9A-Fa-f]{6}$/, { message: 'secondaryColor deve ser um hex válido, ex: #1D3557' })
+  @Matches(/^#[0-9A-Fa-f]{6}$/, { message: 'secondaryColor deve ser um hex válido, ex: #c0bfbc' })
   secondaryColor?: string;
 
   @IsOptional()

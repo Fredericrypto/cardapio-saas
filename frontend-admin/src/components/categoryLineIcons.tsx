@@ -29,8 +29,6 @@ import {
   Hamburger,
   IceCreamBowl,
   Infinity as InfinityIcon,
-  Droplet,
-  LayoutGrid,
   Lollipop,
   Martini,
   Milk,
@@ -190,6 +188,26 @@ export const TakeoutBoxIcon = drawn(
   </>,
 );
 
+// Pote de kimchi (onggi): tampa com puxador, corpo bojudo e uma folha de
+// acelga dentro.
+const KimchiJarIcon = drawn(
+  <>
+    <path d="M5.5 7.5h13v2.5h-13z" />
+    <path d="M10.5 7.5V5.6h3v1.9" />
+    <path d="M6.6 10 5.8 18a2.6 2.6 0 0 0 2.6 2.6h7.2a2.6 2.6 0 0 0 2.6-2.6L17.4 10" />
+    <path d="M12 11.8c-3.4 2-3.4 6 0 7.9 3.4-1.9 3.4-5.9 0-7.9z" />
+  </>,
+);
+// Molheira (gravy boat): bojo com bico para despejar, alça e pires.
+const GravyBoatIcon = drawn(
+  <>
+    <path d="M4.4 9.2h13c0 4.1-2.7 7.1-6.5 7.1S4.8 13.3 4.4 9.2z" />
+    <path d="M4.4 9.2 2.4 6.6c2.7.1 4.7 1 6 2.6" />
+    <path d="M17.2 10h1.1a2.3 2.3 0 0 1 0 4.6h-2" />
+    <path d="M10.9 16.3v2.2M6.5 19.4c1.3-.9 2.9-.9 4.4-.9s3.1 0 4.4.9z" />
+  </>,
+);
+
 export { SushiIcon, DumplingIcon, NoodleBowlIcon, BowlIcon, RollIcon };
 
 // Fallback de categoria PERSONALIZADA (criada pelo dono, sem chave).
@@ -249,7 +267,7 @@ export const LINE_CATEGORY_ICONS: Record<string, LineIconComponent> = {
   yakissoba: line(Waves),
   donburi: RiceBowlIcon,
   rodizio: line(InfinityIcon),
-  'molhos-extras': line(Droplet),
+  'molhos-extras': GravyBoatIcon,
   // chinês
   'entradas-chinesas': line(Utensils),
   'dumplings-pasteis': DumplingIcon,
@@ -265,7 +283,7 @@ export const LINE_CATEGORY_ICONS: Record<string, LineIconComponent> = {
   'bebidas-chinesas-chas': line(Flower2),
   // coreano
   'entradas-coreanas': line(Utensils),
-  'kimchi-banchan': line(LayoutGrid),
+  'kimchi-banchan': KimchiJarIcon,
   mandu: DumplingIcon,
   bibimbap: BowlIcon,
   bulgogi: line(Beef),

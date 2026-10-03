@@ -28,6 +28,8 @@ export interface CustomerProfile {
   name: string;
   phone: string | null;
   gender: string | null;
+  // "ela/dela", "ele/dele"… — só aparece em Meus dados e na Conta.
+  pronouns: string | null;
   avatarUrl: string | null;
   pixKeyType: string | null;
   pixKey: string | null;
@@ -81,7 +83,7 @@ export async function fetchMyCustomerProfile(
 export async function updateMyCustomerProfile(
   tenantId: string,
   token: string,
-  payload: { name?: string; phone?: string; gender?: string },
+  payload: { name?: string; phone?: string; gender?: string; pronouns?: string[] },
 ): Promise<CustomerProfile> {
   const { data } = await api.patch<CustomerProfile>(
     `/customers/${tenantId}/auth/me`,

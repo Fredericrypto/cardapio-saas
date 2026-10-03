@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-react';
+import { Ban, Plus } from 'lucide-react';
 import type { Product } from '../types';
 import { useCart } from '../contexts/CartContext';
 
@@ -17,19 +17,20 @@ export function ProductCard({ product, primaryColor, onClick }: ProductCardProps
   const { addItem } = useCart();
   const displayPrice = product.promoPrice ?? product.price;
   const hasPromo = product.promoPrice != null;
+  const isUnavailable = product.isAvailable === false;
   const hasRequiredOptions = (product.options ?? []).some((g) => g.minSelect > 0);
 
   return (
     <button
       onClick={onClick}
-      className="text-left rounded-2xl overflow-hidden bg-white border border-gray-100 shadow-[0_2px_10px_rgba(0,0,0,0.04)] active:scale-[0.985] transition-transform"
+      className={`text-left rounded-2xl overflow-hidden bg-white border border-gray-100 shadow-[0_2px_10px_rgba(0,0,0,0.04)] active:scale-[0.985] transition-transform ${isUnavailable ? 'opacity-90' : ''}`}
     >
       <div className="relative aspect-square bg-gray-100">
         {product.imageUrl ? (
           <img
             src={product.imageUrl}
             alt={product.name}
-            className="w-full h-full object-cover"
+            className={`w-full h-full object-cover ${isUnavailable ? 'grayscale opacity-60' : ''}`}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-300 text-xs">
@@ -37,32 +38,47 @@ export function ProductCard({ product, primaryColor, onClick }: ProductCardProps
           </div>
         )}
 
-        {hasPromo && (
+        {isUnavailable && (
+          <span className="absolute top-2 left-2 bg-gray-800/85 text-[10px] font-bold px-2 py-0.5 rounded-full text-white shadow-sm">
+            Indisponível
+          </span>
+        )}
+
+        {hasPromo && !isUnavailable && (
           <span className="absolute top-2 left-2 bg-white text-[10px] font-bold px-2 py-0.5 rounded-full text-red-600 shadow-sm">
             Promoção
           </span>
         )}
 
+        {isUnavailable ? (
+          <span
+            aria-label={`${product.name} indisponível`}
+            className="absolute -bottom-3 right-2.5 w-8 h-8 rounded-full flex items-center justify-center text-white shadow-md border-2 border-white bg-gray-400 cursor-not-allowed"
+          >
+            <Ban size={15} strokeWidth={2.5} />
+          </span>
+        ) : (
         <span
-          role="button"
-          aria-label={`Adicionar ${product.name}`}
-          onClick={(e) => {
-            e.stopPropagation();
-            if (hasRequiredOptions) {
-              onClick(); // tem escolha obrigatória — precisa passar pela tela de detalhe
-            } else {
-              addItem(product);
-            }
-          }}
-          className="absolute -bottom-3 right-2.5 w-8 h-8 rounded-full flex items-center justify-center text-white shadow-md active:scale-90 transition-transform border-2 border-white"
-          style={{ backgroundColor: primaryColor }}
-        >
-          <Plus size={16} strokeWidth={2.75} />
-        </span>
+            role="button"
+            aria-label={`Adicionar ${product.name}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (hasRequiredOptions) {
+                onClick(); // tem escolha obrigatória — precisa passar pela tela de detalhe
+              } else {
+                addItem(product);
+              }
+            }}
+            className="absolute -bottom-3 right-2.5 w-8 h-8 rounded-full flex items-center justify-center text-white shadow-md active:scale-90 transition-transform border-2 border-white"
+            style={{ backgroundColor: primaryColor }}
+          >
+            <Plus size={16} strokeWidth={2.75} />
+          </span>
+        )}
       </div>
 
       <div className="px-2.5 pt-2.5 pb-3">
-        <p className="font-display font-bold text-[13px] text-gray-900 leading-tight line-clamp-1">
+        <p className={`font-display font-bold text-[13px] leading-tight line-clamp-1 ${isUnavailable ? 'text-gray-400' : 'text-gray-900'}`}>
           {product.name}
         </p>
         {product.description && (
@@ -76,7 +92,7 @@ export function ProductCard({ product, primaryColor, onClick }: ProductCardProps
               R$ {Number(product.price).toFixed(2).replace('.', ',')}
             </span>
           )}
-          <span className="font-bold text-sm" style={{ color: hasPromo ? primaryColor : '#111827' }}>
+          <span className="font-bold text-sm" style={{ color: isUnavailable ? '#9ca3af' : hasPromo ? primaryColor : '#111827' }}>
             R$ {Number(displayPrice).toFixed(2).replace('.', ',')}
           </span>
         </div>

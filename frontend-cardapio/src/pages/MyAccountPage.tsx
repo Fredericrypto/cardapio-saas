@@ -332,7 +332,7 @@ export function MyAccountPage() {
             unassignedOrderIds={summary.unassignedOrderIds ?? []}
             dark
             renderOrder={(order) => (
-              <div className="bg-white border border-gray-100 rounded-xl p-3">
+              <div className="bg-white/[0.06] border border-white/10 rounded-xl p-3">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-xs font-semibold text-gray-400">
                   {new Date(order.createdAt).toLocaleTimeString('pt-BR', {
@@ -343,8 +343,8 @@ export function MyAccountPage() {
                 <span
                   className="text-xs font-semibold px-2 py-0.5 rounded-full"
                   style={{
-                    backgroundColor: `${tenant.primaryColor}1A`,
-                    color: tenant.primaryColor,
+                    backgroundColor: 'rgba(255,255,255,0.12)',
+                    color: '#E5E7EB',
                   }}
                 >
                   {STATUS_LABELS[order.status] ?? order.status}
@@ -353,10 +353,10 @@ export function MyAccountPage() {
 
               {order.items.map((item, idx) => (
                 <div key={idx} className="flex justify-between text-sm py-0.5">
-                  <span className="text-gray-700">
+                  <span className="text-gray-100">
                     {item.quantity}x {item.productName}
                   </span>
-                  <span className="text-gray-500">
+                  <span className="text-gray-400">
                     R$ {Number(item.subtotal).toFixed(2).replace('.', ',')}
                   </span>
                 </div>

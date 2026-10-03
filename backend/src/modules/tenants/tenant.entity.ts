@@ -24,10 +24,10 @@ export class Tenant {
   @Column({ name: 'cover_image_url', type: 'text', nullable: true })
   coverImageUrl: string | null;
 
-  @Column({ name: 'primary_color', length: 7, default: '#E63946' })
+  @Column({ name: 'primary_color', length: 7, default: '#3d3846' })
   primaryColor: string;
 
-  @Column({ name: 'secondary_color', length: 7, default: '#1D3557' })
+  @Column({ name: 'secondary_color', length: 7, default: '#c0bfbc' })
   secondaryColor: string;
 
   // Só o usuário do Instagram (sem @ nem URL) — usado pra montar o link

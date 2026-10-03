@@ -48,6 +48,13 @@ export class Customer {
   @Column({ type: 'varchar', length: 20, nullable: true })
   gender: string | null;
 
+  // Pronomes pessoais ("ela/dela", "ele/dele", "elas/delas"…): 1 ou 2
+  // palavras da lista fechada abaixo, unidas por "/" na ordem canônica.
+  // Só aparecem em 3 lugares (Conta: abaixo do avatar e ao lado do nome;
+  // painel do admin: ao lado do nome do cliente na mesa) — nunca em outro.
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  pronouns: string | null;
+
   @Column({ name: 'avatar_url', type: 'text', nullable: true })
   avatarUrl: string | null;
 
