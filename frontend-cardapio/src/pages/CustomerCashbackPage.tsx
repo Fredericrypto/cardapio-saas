@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, CircleDollarSign, ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { useTenant } from '../contexts/TenantContext';
-import { fetchMyCashbackBalance, fetchMyCashbackHistory } from '../lib/customer-api';
+import { fetchMyCashbackHistory, fetchMyCashbackWallet, type CashbackWallet } from '../lib/customer-api';
 import type { CashbackHistoryEntry } from '../lib/customer-api';
 
 function formatDateTime(dateStr: string): string {
@@ -20,11 +20,31 @@ function formatDateTime(dateStr: string): string {
 // explicar de onde veio nem pra onde foi). Mesmo princípio visual do
 // extrato de qualquer carteira digital (Uber Cash, PicPay): lista
 // cronológica, verde pra entrada, vermelho pra saída.
+// "3 dias e 4h", "5h 20min", "12 min" — tempo que falta até `iso`.
+function timeLeftLabel(iso: string, now: number): string {
+  const ms = new Date(iso).getTime() - now;
+  if (ms <= 0) return 'venceu';
+  const mins = Math.floor(ms / 60_000);
+  const days = Math.floor(mins / 1440);
+  const hours = Math.floor((mins % 1440) / 60);
+  const rest = mins % 60;
+  if (days >= 1) return hours > 0 ? `${days} ${days === 1 ? 'dia' : 'dias'} e ${hours}h` : `${days} ${days === 1 ? 'dia' : 'dias'}`;
+  if (hours >= 1) return `${hours}h ${rest}min`;
+  return `${Math.max(1, rest)} min`;
+}
+
 export function CustomerCashbackPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { tenant } = useTenant();
-  const [balance, setBalance] = useState<number | null>(null);
+  const [wallet, setWallet] = useState<CashbackWallet | null>(null);
+  const balance = wallet ? wallet.balance : null;
+  // Relógio para o tempo restante andar sozinho (a cada 30s).
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, []);
   const [history, setHistory] = useState<CashbackHistoryEntry[] | null>(null);
 
 
@@ -32,7 +52,7 @@ export function CustomerCashbackPage() {
 
   useEffect(() => {
     if (!tenant || !token) return;
-    fetchMyCashbackBalance(tenant.id, token).then(setBalance);
+    fetchMyCashbackWallet(tenant.id, token).then(setWallet);
     fetchMyCashbackHistory(tenant.id, token).then(setHistory);
   }, [tenant, token]);
 
@@ -65,6 +85,12 @@ export function CustomerCashbackPage() {
           <p className="text-3xl font-bold">
             {balance == null ? '...' : `R$ ${balance.toFixed(2).replace('.', ',')}`}
           </p>
+          {wallet?.nextExpiresAt && wallet.balance > 0 && (
+            <p className="text-xs font-semibold bg-white/20 rounded-lg px-2.5 py-1.5 mt-1 inline-block self-start">
+              R$ {wallet.expiringAmount.toFixed(2).replace('.', ',')} vence em{' '}
+              {timeLeftLabel(wallet.nextExpiresAt, now)}
+            </p>
+          )}
           <p className="text-xs opacity-80 mt-1">
             Use no carrinho quando quiser — marque a caixinha "Usar meu saldo de cashback" no
             checkout.
@@ -95,6 +121,19 @@ export function CustomerCashbackPage() {
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-gray-800 truncate">{entry.description}</p>
                 <p className="text-xs text-gray-400">{formatDateTime(entry.createdAt)}</p>
+                {entry.type === 'earned' && entry.expired && (
+                  <p className="text-[11px] font-semibold text-red-500">
+                    Expirou — R$ {Number(entry.remainingAmount ?? 0).toFixed(2).replace('.', ',')} não usados
+                  </p>
+                )}
+                {entry.type === 'earned' &&
+                  !entry.expired &&
+                  entry.expiresAt &&
+                  Number(entry.remainingAmount ?? 0) > 0 && (
+                    <p className="text-[11px] font-semibold text-amber-600">
+                      Vence em {timeLeftLabel(entry.expiresAt, now)}
+                    </p>
+                  )}
               </div>
               <p
                 className={`text-sm font-bold shrink-0 ${

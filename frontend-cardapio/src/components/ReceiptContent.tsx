@@ -1,4 +1,4 @@
-import { PeopleOrders, PersonHeader } from './PeopleOrders';
+import { PersonHeader } from './PeopleOrders';
 import type { Tenant, SessionSummary } from '../types';
 import { ReceiptAuthenticityCode } from './ReceiptAuthenticityCode';
 
@@ -6,7 +6,15 @@ import { ReceiptAuthenticityCode } from './ReceiptAuthenticityCode';
 // propósito idêntico, char por char no essencial, pra que se o cliente e
 // o restaurante precisarem comparar recibos, os dois batam exatamente.
 export function ReceiptContent({ tenant, summary }: { tenant: Tenant; summary: SessionSummary }) {
-  const { session, orders, total, tipAmount, grandTotal, cashbackApplied, customerName, participants, people, unassignedOrderIds, receiptVerificationCode } = summary;
+  const { session, orders, total, tipAmount, grandTotal, cashbackApplied, customerName, participants, people: rawPeople, receiptVerificationCode } = summary;
+  // UM avatar por cliente em "Mesa compartilhada por": o mesmo cliente podia
+  // vir duas vezes (assento de convidado + conta) — dedupe por id e por nome.
+  const people = rawPeople
+    ? rawPeople.filter(
+        (p, i, all) =>
+          all.findIndex((q) => q.id === p.id || q.name.trim().toLowerCase() === p.name.trim().toLowerCase()) === i,
+      )
+    : rawPeople;
   const isClosed = session.status === 'fechada';
 
   const discountTotal = orders
@@ -36,21 +44,16 @@ export function ReceiptContent({ tenant, summary }: { tenant: Tenant; summary: S
   );
 
   const renderOrder = (order: (typeof orders)[number]) => {
-        const orderedByName = order.customer?.name ?? order.customerName ?? null;
         const orderCashback = Number(order.cashbackEarned ?? 0);
+        const createdAt = new Date(order.createdAt);
         return (
           <div className="flex flex-col gap-0.5">
+            {/* Na listagem dos pedidos: só hora e data — nada de foto ou
+                nome do cliente (quem é quem já está em "Mesa compartilhada
+                por"). */}
             <p className="text-[10px] text-gray-400 flex justify-between">
-              <span>
-                {new Date(order.createdAt).toLocaleTimeString('pt-BR', {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
-              </span>
-              {/* Pedido do Felipe: de quem foi esse pedido, numa mesa
-                  compartilhada — ajuda a conferir a conta e a bater com
-                  o cashback individual logo abaixo. */}
-              {participants.length > 1 && orderedByName && <span>{orderedByName}</span>}
+              <span>{createdAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+              <span>{createdAt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
             </p>
             {(order.items ?? []).map((item, idx) => (
               <div key={idx} className="flex justify-between">
@@ -68,7 +71,6 @@ export function ReceiptContent({ tenant, summary }: { tenant: Tenant; summary: S
             {orderCashback > 0 && (
               <p className="text-[10px] text-green-600 text-right">
                 + R$ {orderCashback.toFixed(2).replace('.', ',')} de cashback
-                {orderedByName ? ` pra ${orderedByName}` : ''}
               </p>
             )}
           </div>
@@ -149,16 +151,9 @@ export function ReceiptContent({ tenant, summary }: { tenant: Tenant; summary: S
 
       <div className="border-t border-dashed border-gray-300 my-1" />
 
-      {people && people.length > 0 ? (
-        // Cupom por pessoa: cada pedido fica embaixo de quem fez (01/10).
-        <PeopleOrders
-          people={people}
-          orders={orders}
-          unassignedOrderIds={unassignedOrderIds ?? []}
-          renderOrder={renderOrder}
-          emptyLabel="Sem pedidos"
-          compact
-        />
+      {/* Lista simples dos pedidos (itens, hora e data) — sem repetir foto/nome. */}
+      {orders.length === 0 ? (
+        <p className="text-center text-gray-400">Sem pedidos</p>
       ) : (
         orders.map((order) => <div key={order.id}>{renderOrder(order)}</div>)
       )}

@@ -1,98 +1,145 @@
-// Combina o toggle manual ("Estabelecimento aberto") com o horário de
-// funcionamento configurado — os dois eram tratados como coisas
-// separadas antes (o toggle manual mandava sozinho, o horário era só
-// texto informativo), o que causava exatamente a confusão de "diz que tá
-// dentro do horário mas aparece fechado": o admin configurava o horário
-// mas o toggle continuava desligado de antes, sem ligação nenhuma entre
-// os dois.
+// Horário de funcionamento + toggle "Loja aberta".
 //
-// Regra: se não tem horário configurado pra hoje, vale só o toggle manual
-// (comportamento antigo, compatível com quem não configurou nada ainda).
-// Se tem horário configurado, só fica "aberto de verdade" quando o toggle
-// manual ESTÁ ligado E o horário de agora está dentro da janela de hoje —
-// o toggle manual continua servindo pra fechar excepcionalmente mesmo
-// dentro do horário (ex: acabou o insumo, precisa fechar mais cedo hoje).
-const DAY_KEYS = [
-  'domingo',
-  'segunda',
-  'terca',
-  'quarta',
-  'quinta',
-  'sexta',
-  'sabado',
-];
+// FUSO: tudo é calculado em America/Sao_Paulo (horário do Brasil), nunca no
+// fuso do servidor (que no Render/cloud é UTC — daí o "Fecha em 54 min" errado
+// e o dia da semana virando antes da hora). O Brasil não tem horário de verão
+// desde 2019; mesmo assim usamos Intl com o fuso nomeado, sem somar offset na mão.
+//
+// FORMATO (inalterado, o cardápio já lê assim): { segunda: "18:00-23:00",
+// domingo: "fechado", ... }.
+//   - "00:00-00:00" (abre == fecha) significa ABERTO 24 HORAS naquele dia;
+//   - fecha < abre (ex.: 18:00-02:00) cruza a meia-noite: a madrugada seguinte
+//     ainda pertence à janela do dia anterior.
+//
+// TOGGLE x HORÁRIO (pedido do Felipe, 03/10): o toggle acompanha o horário
+// sozinho — fechou pelo horário → vira Fechado; abriu pelo horário → vira
+// Aberto — e o admin pode inverter manualmente a qualquer momento (abrir fora
+// do horário ou fechar dentro dele). O ajuste manual vale até a PRÓXIMA
+// transição do horário. Para saber "houve transição?" guardamos o último estado
+// do horário (`scheduleOpenState`); quem persiste isso é o LocationsService
+// (cron de 1 min). Enquanto a persistência não rodou, a transição pendente já
+// vale aqui (o horário vence o toggle), então nada depende de o cron ter rodado.
 
-function isWithinTodaySchedule(openingHours: Record<string, string> | null): boolean {
-  if (!openingHours) return true;
+export const SCHEDULE_TIMEZONE = 'America/Sao_Paulo';
 
-  const key = DAY_KEYS[new Date().getDay()];
-  const raw = openingHours[key];
-  if (!raw || raw === 'fechado') return false;
+const DAY_KEYS = ['domingo', 'segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado'];
+const WEEKDAY_INDEX: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
 
-  const [openStr, closeStr] = raw.split('-');
-  if (!openStr || !closeStr) return true; // formato inesperado — não bloqueia por engano
+const formatter = new Intl.DateTimeFormat('en-US', {
+  timeZone: SCHEDULE_TIMEZONE,
+  weekday: 'short',
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+});
 
-  const [openH, openM] = openStr.split(':').map(Number);
-  const [closeH, closeM] = closeStr.split(':').map(Number);
-  if ([openH, openM, closeH, closeM].some((n) => Number.isNaN(n))) return true;
-
-  const now = new Date();
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
-  const openMinutes = openH * 60 + openM;
-  const closeMinutes = closeH * 60 + closeM;
-
-  if (closeMinutes > openMinutes) {
-    return nowMinutes >= openMinutes && nowMinutes < closeMinutes;
-  }
-  // Fecha depois da meia-noite (ex: 18:00-02:00) — janela cruza a virada do dia.
-  return nowMinutes >= openMinutes || nowMinutes < closeMinutes;
+export interface ClockNow {
+  dayIndex: number; // 0 = domingo
+  minutes: number; // minutos desde 00:00 (horário de Brasília)
 }
 
-// Combina o toggle manual ("Estabelecimento aberto") com o horário de
-// funcionamento configurado. Pedido explícito do Felipe: "fecha
-// automaticamente quando bate a hora, mas o toggle também funciona
-// independente pra abrir e fechar". As duas coisas juntas só têm uma
-// leitura consistente: o toggle é a autoridade pra FECHAR a qualquer
-// momento (inclusive dentro do horário — ex: acabou o insumo) e pra
-// ABRIR dentro da janela configurada; já o horário É quem decide o
-// fechamento automático no fim do expediente, mesmo com o toggle ligado
-// — sem isso, "fecha sozinho no horário" e "toggle manda" seriam
-// contraditórios (o toggle ligado sempre venceria e nunca fecharia
-// sozinho). Se o admin quiser atender fora do horário configurado de
-// propósito (evento especial etc.), o caminho é ajustar o horário de
-// hoje em Configurações, não só ligar o toggle.
+export function getBrazilClock(now: Date = new Date()): ClockNow {
+  const parts = formatter.formatToParts(now);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
+  const hour = Number(get('hour')) % 24;
+  const minute = Number(get('minute'));
+  return { dayIndex: WEEKDAY_INDEX[get('weekday')] ?? 0, minutes: hour * 60 + minute };
+}
+
+interface Window {
+  open: number;
+  close: number;
+  is24h: boolean;
+  crossesMidnight: boolean;
+}
+
+function parseWindow(raw: string | undefined): Window | 'closed' | null {
+  if (!raw || raw === 'fechado') return 'closed';
+  const [openStr, closeStr] = raw.split('-');
+  if (!openStr || !closeStr) return null; // formato inesperado — não bloqueia por engano
+  const [oh, om] = openStr.split(':').map(Number);
+  const [ch, cm] = closeStr.split(':').map(Number);
+  if ([oh, om, ch, cm].some((n) => Number.isNaN(n))) return null;
+  const open = oh * 60 + om;
+  const close = ch * 60 + cm;
+  if (open === close) return { open, close, is24h: true, crossesMidnight: false };
+  return { open, close, is24h: false, crossesMidnight: close < open };
+}
+
+// Janela do dia `dayIndex` em que `minutes` cai dentro? Considera também a
+// janela do DIA ANTERIOR que cruzou a meia-noite.
+function findActiveWindow(
+  openingHours: Record<string, string>,
+  clock: ClockNow,
+): { window: Window; startedYesterday: boolean } | null {
+  const today = parseWindow(openingHours[DAY_KEYS[clock.dayIndex]]);
+  if (today && today !== 'closed') {
+    if (today.is24h) return { window: today, startedYesterday: false };
+    if (!today.crossesMidnight && clock.minutes >= today.open && clock.minutes < today.close) {
+      return { window: today, startedYesterday: false };
+    }
+    if (today.crossesMidnight && clock.minutes >= today.open) {
+      return { window: today, startedYesterday: false };
+    }
+  }
+  const yesterday = parseWindow(openingHours[DAY_KEYS[(clock.dayIndex + 6) % 7]]);
+  if (yesterday && yesterday !== 'closed' && yesterday.crossesMidnight && clock.minutes < yesterday.close) {
+    return { window: yesterday, startedYesterday: true };
+  }
+  return null;
+}
+
+// "Estou dentro do horário configurado agora?" (sem olhar o toggle).
+// Sem horário configurado = sem restrição.
+export function isWithinSchedule(openingHours: Record<string, string> | null, now: Date = new Date()): boolean {
+  if (!openingHours) return true;
+  const clock = getBrazilClock(now);
+  const today = parseWindow(openingHours[DAY_KEYS[clock.dayIndex]]);
+  // Formato inesperado hoje: não bloqueia por engano.
+  if (today === null) return true;
+  return findActiveWindow(openingHours, clock) !== null;
+}
+
 export function computeIsOpenNow(
   manualIsOpen: boolean,
   openingHours: Record<string, string> | null,
+  scheduleOpenState?: boolean | null,
+  now: Date = new Date(),
 ): boolean {
-  return manualIsOpen && isWithinTodaySchedule(openingHours);
+  if (!openingHours) return manualIsOpen;
+  const within = isWithinSchedule(openingHours, now);
+  // Estado ainda desconhecido (loja antiga, cron não rodou): comportamento
+  // anterior — aberto só se o toggle está ligado E dentro do horário.
+  if (scheduleOpenState == null) return manualIsOpen && within;
+  // Houve transição do horário que ainda não foi persistida: o horário vence.
+  if (scheduleOpenState !== within) return within;
+  // Sem transição pendente: o toggle manda (abre/fecha fora do horário à vontade).
+  return manualIsOpen;
 }
 
-// Minutos até fechar, se já está aberto e o fechamento é HOJE (não cruza
-// a virada da meia-noite de forma ambígua) — usado pra mostrar o aviso
-// "Fecha em Xh" no cardápio quando faltar menos de 1h. null quando não
-// há horário configurado, está fechado, ou o fechamento é longe.
+// Loja aberta 24h hoje (não faz sentido mostrar "fecha em X").
+export function isOpen24hNow(openingHours: Record<string, string> | null, now: Date = new Date()): boolean {
+  if (!openingHours) return false;
+  const clock = getBrazilClock(now);
+  const active = findActiveWindow(openingHours, clock);
+  return Boolean(active?.window.is24h);
+}
+
+// Minutos até fechar pelo horário, se está aberto agora. null = sem horário,
+// fechado, 24h, ou sem fechamento previsto.
 export function getMinutesUntilClose(
   isOpenNow: boolean,
   openingHours: Record<string, string> | null,
+  now: Date = new Date(),
 ): number | null {
   if (!isOpenNow || !openingHours) return null;
-
-  const key = DAY_KEYS[new Date().getDay()];
-  const raw = openingHours[key];
-  if (!raw || raw === 'fechado') return null;
-
-  const [, closeStr] = raw.split('-');
-  if (!closeStr) return null;
-  const [closeH, closeM] = closeStr.split(':').map(Number);
-  if ([closeH, closeM].some((n) => Number.isNaN(n))) return null;
-
-  const now = new Date();
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
-  const closeMinutes = closeH * 60 + closeM;
-
-  const minutesUntilClose =
-    closeMinutes >= nowMinutes ? closeMinutes - nowMinutes : closeMinutes + 1440 - nowMinutes;
-
-  return minutesUntilClose;
+  const clock = getBrazilClock(now);
+  const active = findActiveWindow(openingHours, clock);
+  if (!active || active.window.is24h) return null;
+  const { close } = active.window;
+  if (close >= clock.minutes && !(active.window.crossesMidnight && !active.startedYesterday)) {
+    return close - clock.minutes;
+  }
+  // Janela de hoje que cruza a meia-noite: fecha amanhã às `close`.
+  return close + 1440 - clock.minutes;
 }

@@ -4,7 +4,9 @@ import {
   IsEmail,
   IsBoolean,
   IsInt,
+  IsNumber,
   Min,
+  Max,
   Matches,
   IsIn,
 } from 'class-validator';
@@ -101,4 +103,29 @@ export class UpdateTenantDto {
   @IsInt()
   @Min(1)
   tableSessionTimeoutMinutes?: number | null;
+
+  // % de CMV estimado quando o produto não tem custo cadastrado (0–100).
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  defaultCmvPercent?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  cardFeePercent?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  pixFeePercent?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  taxPercent?: number;
 }

@@ -30,3 +30,22 @@ h1, h2, h3, .font-display {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Proteção de conteúdo (ver lib/protectContent.ts): sem seleção de texto, sem
+   menu de toque longo do iOS ("Salvar imagem"/"Abrir link"), sem arrastar
+   imagem. Campos de digitação continuam selecionáveis/editáveis. */
+html, body {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+input, textarea, select, [contenteditable="true"], [contenteditable=""] {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+img, svg, video, a {
+  -webkit-user-drag: none;
+  user-drag: none;
+  -webkit-touch-callout: none;
+}

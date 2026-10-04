@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Req,
   Body,
   Param,
   Query,
@@ -201,8 +202,9 @@ export class OrdersController {
     @CurrentTenant() tenantId: string,
     @Param('id') id: string,
     @Body() dto: UpdateOrderStatusDto,
+    @Req() req: { user?: { userId?: string } },
   ) {
-    return this.ordersService.updateStatus(tenantId, id, dto);
+    return this.ordersService.updateStatus(tenantId, id, dto, req.user?.userId ?? null);
   }
 
   // Botão "Confirmar pagamento" do admin pro Pix de balcão/entrega — só

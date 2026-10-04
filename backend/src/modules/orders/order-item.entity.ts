@@ -40,6 +40,14 @@ export class OrderItem {
   @Column({ name: 'unit_price', type: 'numeric', precision: 10, scale: 2, transformer: numericTransformer })
   unitPrice: number;
 
+  // Custo unitário no momento do pedido (snapshot de Product.costPrice) — o
+  // CMV histórico não muda se o custo do produto for editado depois. null =
+  // produto sem custo cadastrado na época (analytics usa o % padrão).
+  // select:false → NUNCA vai para as respostas de pedido/cupom que o cliente
+  // vê (dado de gestão do dono); só o SQL da aba Análise lê esta coluna.
+  @Column({ name: 'unit_cost', type: 'numeric', precision: 10, scale: 2, nullable: true, select: false, transformer: numericTransformer })
+  unitCost: number | null;
+
   @Column({ name: 'selected_options', type: 'jsonb', nullable: true })
   selectedOptions: Record<string, any> | null;
 

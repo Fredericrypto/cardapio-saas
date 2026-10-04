@@ -1,4 +1,5 @@
 import { api } from './api';
+import type { Analytics, AnalyticsPeriod } from '../types/analytics';
 import type {
   Tenant,
   Location,
@@ -148,6 +149,7 @@ export async function createProduct(payload: {
   description?: string;
   price: number;
   promoPrice?: number;
+  costPrice?: number | null;
 }): Promise<Product> {
   const { data } = await api.post<Product>('/products', payload);
   return data;
@@ -197,8 +199,12 @@ export async function fetchOrders(): Promise<Order[]> {
 export async function updateOrderStatus(
   id: string,
   status: Order['status'],
+  cancelReason?: string,
 ): Promise<Order> {
-  const { data } = await api.patch<Order>(`/orders/${id}/status`, { status });
+  const { data } = await api.patch<Order>(`/orders/${id}/status`, {
+    status,
+    ...(status === 'cancelado' && cancelReason ? { cancelReason } : {}),
+  });
   return data;
 }
 
@@ -669,4 +675,21 @@ export async function suspendCustomer(customerId: string, reason: string): Promi
 
 export async function unsuspendCustomer(customerId: string): Promise<void> {
   await api.post(`/verifications/${customerId}/unsuspend`);
+}
+
+// ---------- Análise (analytics) ----------
+export interface AnalyticsQuery {
+  period: AnalyticsPeriod;
+  from?: string; // AAAA-MM-DD (só period=custom)
+  to?: string;
+  locationId?: string;
+}
+
+export async function fetchAnalytics(query: AnalyticsQuery, signal?: AbortSignal): Promise<Analytics> {
+  const { data } = await api.get<Analytics>('/analytics', { params: query, signal });
+  return data;
+}
+
+export async function fetchAnalyticsLocations(): Promise<Location[]> {
+  return fetchLocations();
 }

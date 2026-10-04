@@ -1,10 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Wallet, Plus, Trash2, Pencil } from 'lucide-react';
+import { Wallet, Pencil } from 'lucide-react';
 import {
   fetchCashbackSettings,
-  createCashbackSettings,
   updateCashbackSettings,
-  deleteCashbackSettings,
   fetchLocations,
 } from '../lib/admin-api';
 import type { CashbackSettings, CashbackSettingsPayload, Location } from '../types';
@@ -14,14 +12,14 @@ import { CashAmountInput, OptionalCashAmountInput } from '../components/CashAmou
 // SEPARADA de Fidelidade de propósito: cashback é automático e imediato
 // (todo pedido pago credita %), fidelidade é manual e por acúmulo
 // (carimbo por carimbo, staff confirma). Podem existir várias
-// configurações ativas ao mesmo tempo com escopos de loja diferentes —
+// configurações ativas ao mesmo tempo com escopos de loja diferentes (não há
+// mais "nova configuração" nem exclusão: o admin só EDITA, 03/10) —
 // ver CashbackService.findApplicableSettings no backend pra entender
 // como a mais específica vence quando há sobreposição.
 export function CashbackSettingsPage() {
   const [settingsList, setSettingsList] = useState<CashbackSettings[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isCreating, setIsCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
   async function load() {
@@ -38,11 +36,6 @@ export function CashbackSettingsPage() {
   async function handleToggleActive(settings: CashbackSettings) {
     const updated = await updateCashbackSettings(settings.id, { isActive: !settings.isActive });
     setSettingsList((prev) => prev.map((s) => (s.id === settings.id ? updated : s)));
-  }
-
-  async function handleDelete(id: string) {
-    await deleteCashbackSettings(id);
-    setSettingsList((prev) => prev.filter((s) => s.id !== id));
   }
 
   if (isLoading) {
@@ -126,9 +119,6 @@ export function CashbackSettingsPage() {
                   <button onClick={() => setEditingId(settings.id)} className="text-gray-400">
                     <Pencil size={15} />
                   </button>
-                  <button onClick={() => handleDelete(settings.id)} className="text-gray-400">
-                    <Trash2 size={15} />
-                  </button>
                 </div>
               </div>
             </div>
@@ -136,25 +126,11 @@ export function CashbackSettingsPage() {
         ),
       )}
 
-      {isCreating ? (
-        <SettingsForm
-          locations={locations}
-          onCancel={() => setIsCreating(false)}
-          onSave={(payload) => createCashbackSettings(payload)}
-          onDone={async () => {
-            setIsCreating(false);
-            await load();
-          }}
-        />
-      ) : (
-        <button
-          onClick={() => setIsCreating(true)}
-          className="w-full py-3 rounded-xl border-2 border-dashed border-gray-200 text-gray-500 font-semibold text-sm flex items-center justify-center gap-1.5"
-        >
-          <Plus size={16} />
-          Nova configuração de cashback
-        </button>
-      )}
+      <p className="text-[11px] text-gray-400 text-center px-4">
+        As configurações ficam sempre aqui, mesmo depois que o cashback vence — edite quando quiser. Mudar
+        a validade vale na hora para todo o app (inclusive o saldo que o cliente já tem), sem alterar nenhum
+        saldo: crédito já vencido continua vencido, e quem ainda não venceu ganha o novo prazo.
+      </p>
     </div>
   );
 }

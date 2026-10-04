@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { DataSource } from 'typeorm';
+import { CashTransaction } from '../modules/cash/cash-transaction.entity';
 import { Tenant } from '../modules/tenants/tenant.entity';
 import { Location } from '../modules/locations/location.entity';
 import { AdminUser } from '../modules/auth/admin-user.entity';
@@ -38,6 +39,7 @@ export const AppDataSource = new DataSource({
   url: process.env.DATABASE_URL,
   entities: [
     Tenant,
+    CashTransaction,
     Location,
     AdminUser,
     Category,

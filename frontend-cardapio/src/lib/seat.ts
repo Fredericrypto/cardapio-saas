@@ -125,6 +125,13 @@ let scanIntent: { qrCodeToken: string; at: number } | null = null;
 export function markQrScanIntent(qrCodeToken: string) {
   scanIntent = { qrCodeToken, at: Date.now() };
 }
+// Só espia (não consome): usado pelo hook para saber se acabou de chegar um
+// scan novo enquanto a tela "sessão encerrada" ainda está montada.
+export function peekQrScanIntent(qrCodeToken: string): boolean {
+  return Boolean(
+    scanIntent && scanIntent.qrCodeToken === qrCodeToken && Date.now() - scanIntent.at < 15_000,
+  );
+}
 export function consumeQrScanIntent(qrCodeToken: string): boolean {
   const intent = scanIntent;
   scanIntent = null;

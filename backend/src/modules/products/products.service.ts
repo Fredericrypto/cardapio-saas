@@ -43,6 +43,8 @@ export class ProductsService {
         group.values = group.values.filter((v) => v.isAvailable);
       }
     }
+    // Custo é dado de gestão do dono — nunca sai no cardápio público.
+    for (const product of products) product.costPrice = null;
     return products;
   }
 

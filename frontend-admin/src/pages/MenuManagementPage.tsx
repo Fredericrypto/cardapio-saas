@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { CurrencyField } from '../components/MaskedNumberField';
 import { Plus, Trash2, Image as ImageIcon, Info, SlidersHorizontal } from 'lucide-react';
 import {
   fetchCategories,
@@ -21,9 +22,9 @@ export function MenuManagementPage() {
 
   const [isManagerOpen, setIsManagerOpen] = useState(false);
   const [isAddingProduct, setIsAddingProduct] = useState(false);
-  const [newProduct, setNewProduct] = useState({ name: '', description: '', price: '' });
+  const [newProduct, setNewProduct] = useState({ name: '', description: '', price: '', costPrice: '' });
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [editForm, setEditForm] = useState({ name: '', description: '', price: '' });
+  const [editForm, setEditForm] = useState({ name: '', description: '', price: '', costPrice: '' });
 
   async function loadAll() {
     const [categoriesData, productsData] = await Promise.all([
@@ -53,8 +54,9 @@ export function MenuManagementPage() {
       name: newProduct.name.trim(),
       description: newProduct.description.trim() || undefined,
       price: Number(newProduct.price),
+      costPrice: newProduct.costPrice ? Number(newProduct.costPrice) : undefined,
     });
-    setNewProduct({ name: '', description: '', price: '' });
+    setNewProduct({ name: '', description: '', price: '', costPrice: '' });
     setIsAddingProduct(false);
     loadAll();
   }
@@ -65,6 +67,7 @@ export function MenuManagementPage() {
       name: product.name,
       description: product.description ?? '',
       price: String(product.price),
+      costPrice: product.costPrice != null ? String(product.costPrice) : '',
     });
   }
 
@@ -74,6 +77,7 @@ export function MenuManagementPage() {
       name: editForm.name.trim(),
       description: editForm.description.trim() || undefined,
       price: Number(editForm.price),
+      costPrice: editForm.costPrice ? Number(editForm.costPrice) : null,
     } as Partial<Product>);
     setEditingProduct(null);
     loadAll();
@@ -244,14 +248,16 @@ export function MenuManagementPage() {
                     placeholder="Descrição (opcional)"
                     className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none"
                   />
-                  <input
-                    type="number"
-                    step="0.01"
+                  <CurrencyField
                     value={newProduct.price}
-                    onChange={(e) =>
-                      setNewProduct((p) => ({ ...p, price: e.target.value }))
-                    }
-                    placeholder="Preço (ex: 24.90)"
+                    onChange={(raw) => setNewProduct((p) => ({ ...p, price: raw }))}
+                    placeholder="Preço (ex: R$ 24,90)"
+                    className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none"
+                  />
+                  <CurrencyField
+                    value={newProduct.costPrice}
+                    onChange={(raw) => setNewProduct((p) => ({ ...p, costPrice: raw }))}
+                    placeholder="Custo (opcional) — para o CMV real na Análise"
                     className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none"
                   />
                   <div className="flex gap-2 mt-1">
@@ -300,12 +306,16 @@ export function MenuManagementPage() {
               placeholder="Descrição (opcional)"
               className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none"
             />
-            <input
-              type="number"
-              step="0.01"
+            <CurrencyField
               value={editForm.price}
-              onChange={(e) => setEditForm((p) => ({ ...p, price: e.target.value }))}
+              onChange={(raw) => setEditForm((p) => ({ ...p, price: raw }))}
               placeholder="Preço"
+              className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none"
+            />
+            <CurrencyField
+              value={editForm.costPrice}
+              onChange={(raw) => setEditForm((p) => ({ ...p, costPrice: raw }))}
+              placeholder="Custo (opcional) — para o CMV real na Análise"
               className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none"
             />
 

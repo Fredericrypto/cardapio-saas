@@ -274,7 +274,10 @@ export function DashboardPage() {
   async function handleCancel(order: Order) {
     const label = order.tableNumber ?? (order.orderType === 'entrega' ? 'Entrega' : 'Balcão');
     if (!confirm(`Cancelar o pedido de ${label}? Essa ação não pode ser desfeita.`)) return;
-    await updateOrderStatus(order.id, 'cancelado');
+    // Motivo (opcional) — alimenta "Motivos de cancelamento" na aba Análise.
+    // Cancelar o prompt (null) ou deixar vazio cancela o pedido sem motivo.
+    const reason = window.prompt('Motivo do cancelamento (opcional — aparece na aba Análise):', '');
+    await updateOrderStatus(order.id, 'cancelado', reason?.trim() || undefined);
     refetchOrders();
   }
 

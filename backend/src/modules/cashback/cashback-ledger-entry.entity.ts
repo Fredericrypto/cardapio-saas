@@ -78,6 +78,20 @@ export class CashbackLedgerEntry {
   @Column({ name: 'expires_at', type: 'timestamptz', nullable: true })
   expiresAt: Date | null;
 
+  // Configuração que gerou o crédito (só informativo): permite que uma edição
+  // da configuração (ex.: mais dias de validade) alcance os créditos que já
+  // estão na carteira dos clientes, sem mexer em nenhum saldo.
+  @Column({ name: 'settings_id', type: 'uuid', nullable: true })
+  settingsId: string | null;
+
+  // Controle dos avisos de vencimento (1 semana / 2 dias) — cada aviso sai UMA
+  // vez por crédito. Voltam a null se o prazo for estendido.
+  @Column({ name: 'notified_week_at', type: 'timestamptz', nullable: true })
+  notifiedWeekAt: Date | null;
+
+  @Column({ name: 'notified_two_days_at', type: 'timestamptz', nullable: true })
+  notifiedTwoDaysAt: Date | null;
+
   // Nota livre só pra ajuste manual do admin (ex: "compensação por
   // atraso na entrega") — sempre null pros outros dois tipos de origem.
   @Column({ type: 'varchar', length: 300, nullable: true })

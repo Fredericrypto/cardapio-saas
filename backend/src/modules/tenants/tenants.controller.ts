@@ -32,6 +32,18 @@ function toSafeTenant(tenant: Tenant) {
   };
 }
 
+// Rota PÚBLICA (cardápio do cliente): além dos segredos, tira os parâmetros
+// financeiros da aba Análise (CMV estimado, taxas de pagamento, imposto) —
+// são dados de gestão do dono, nunca do cliente final.
+function toPublicTenant(tenant: Tenant) {
+  const { defaultCmvPercent, cardFeePercent, pixFeePercent, taxPercent, ...rest } = toSafeTenant(tenant);
+  void defaultCmvPercent;
+  void cardFeePercent;
+  void pixFeePercent;
+  void taxPercent;
+  return rest;
+}
+
 @Controller('tenants')
 export class TenantsController {
   constructor(
@@ -56,7 +68,7 @@ export class TenantsController {
   @Header('Cache-Control', 'no-store')
   async findPublicBySlug(@Param('slug') slug: string) {
     const tenant = await this.tenantsService.findBySlug(slug);
-    return toSafeTenant(tenant);
+    return toPublicTenant(tenant);
   }
 
   // Rota PROTEGIDA: o dono logado vendo os próprios dados no painel admin.

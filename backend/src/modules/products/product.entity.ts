@@ -48,6 +48,12 @@ export class Product {
   @Column({ name: 'promo_price', type: 'numeric', precision: 10, scale: 2, nullable: true, transformer: numericTransformer })
   promoPrice: number | null;
 
+  // Custo direto de aquisição/produção (opcional) — base do CMV REAL na aba
+  // Análise. Sem custo preenchido, o CMV é estimado pelo percentual padrão do
+  // estabelecimento (Tenant.defaultCmvPercent). Nunca aparece no cardápio público.
+  @Column({ name: 'cost_price', type: 'numeric', precision: 10, scale: 2, nullable: true, transformer: numericTransformer })
+  costPrice: number | null;
+
   @Column({ name: 'image_url', type: 'text', nullable: true })
   imageUrl: string | null;
 

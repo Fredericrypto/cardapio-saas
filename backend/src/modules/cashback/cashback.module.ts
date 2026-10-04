@@ -4,6 +4,8 @@ import { CashbackSettings } from './cashback-settings.entity';
 import { CashbackLedgerEntry } from './cashback-ledger-entry.entity';
 import { CashbackConsumption } from './cashback-consumption.entity';
 import { Location } from '../locations/location.entity';
+import { Tenant } from '../tenants/tenant.entity';
+import { PushModule } from '../push/push.module';
 import { CashbackService } from './cashback.service';
 import { CashbackController } from './cashback.controller';
 
@@ -12,7 +14,10 @@ import { CashbackController } from './cashback.controller';
 // (pra ganhar/gastar cashback nos pontos certos do fluxo). Mantê-lo sem
 // dependências evita qualquer risco de import circular entre os quatro.
 @Module({
-  imports: [TypeOrmModule.forFeature([CashbackSettings, CashbackLedgerEntry, CashbackConsumption, Location])],
+  imports: [
+    TypeOrmModule.forFeature([CashbackSettings, CashbackLedgerEntry, CashbackConsumption, Location, Tenant]),
+    PushModule,
+  ],
   controllers: [CashbackController],
   providers: [CashbackService],
   exports: [CashbackService],

@@ -7,7 +7,7 @@ import {
   confirmLocationAddress,
   deleteLocation,
 } from '../lib/admin-api';
-import { MaskedNumberField } from '../components/MaskedNumberField';
+import { CurrencyField, MaskedNumberField } from '../components/MaskedNumberField';
 import { formatBrPhoneInput } from '../lib/phoneFormat';
 import type { Location } from '../types';
 
@@ -50,14 +50,15 @@ function hoursToPayload(hours: Record<string, DayHours>): Record<string, string>
   return result;
 }
 
+// "00:00-00:00" = aberto 24 horas (mesmo formato que o cardápio e o backend leem).
+const ALL_DAY: DayHours = { closed: false, open: '00:00', close: '00:00' };
+function is24hDay(d: DayHours): boolean {
+  return !d.closed && d.open === d.close;
+}
+const WEEKEND_KEYS = ['sabado', 'domingo'];
+
 function feeToFieldValue(value: number | null | undefined): string {
   return value ? String(value) : '';
-}
-
-function formatCurrency(raw: string): string {
-  const num = Number(raw);
-  if (Number.isNaN(num)) return '';
-  return `R$ ${num.toFixed(2).replace('.', ',')}`;
 }
 
 function formatKm(raw: string): string {
@@ -87,6 +88,17 @@ export function LocationsSettingsPage() {
 
   useEffect(() => {
     load();
+  }, []);
+
+  // O toggle "Loja aberta" acompanha o horário sozinho (o servidor abre/fecha
+  // na hora marcada) — recarrega o status a cada minuto para a tela refletir.
+  useEffect(() => {
+    const id = setInterval(() => {
+      fetchLocations()
+        .then((data) => setLocations(data))
+        .catch(() => undefined);
+    }, 60_000);
+    return () => clearInterval(id);
   }, []);
 
   async function handleCreateLocation() {
@@ -201,6 +213,10 @@ function LocationEditor({
     location.contactPhoneNumber ?? '',
   );
   const [isOpen, setIsOpen] = useState(location.isOpen);
+  // Quando o servidor abre/fecha pelo horário, a tela acompanha.
+  useEffect(() => {
+    setIsOpen(location.isOpen);
+  }, [location.isOpen]);
   const [openingHours, setOpeningHours] = useState<Record<string, DayHours>>(
     initHours(location.openingHours),
   );
@@ -277,7 +293,8 @@ function LocationEditor({
         <div>
           <p className="text-sm font-semibold text-gray-900">Loja aberta</p>
           <p className="text-xs text-gray-400">
-            Quando desligado, clientes não conseguem pedir nesta loja.
+            Acompanha o horário abaixo sozinho (abre e fecha na hora marcada). Você pode ligar ou desligar
+            manualmente quando quiser — vale até o próximo abre/fecha do horário.
           </p>
           <p
             className={`text-xs font-semibold mt-1.5 ${
@@ -285,7 +302,7 @@ function LocationEditor({
             }`}
           >
             Status agora, pro cliente: {location.isOpenNow ? 'Aberto' : 'Fechado'}
-            {isOpen && !location.isOpenNow && ' (fora do horário configurado abaixo)'}
+            {location.isOpen24h && ' · aberto 24h'}
           </p>
           {isTogglingOpen && <p className="text-xs text-gray-400 mt-1">Salvando...</p>}
         </div>
@@ -305,7 +322,41 @@ function LocationEditor({
       </div>
 
       <div className="border-t border-gray-100 pt-4">
-        <p className="text-sm font-semibold text-gray-900 mb-3">Horário de funcionamento</p>
+        <p className="text-sm font-semibold text-gray-900 mb-2">Horário de funcionamento</p>
+        <div className="flex flex-wrap items-center gap-2 mb-3">
+          <button
+            type="button"
+            onClick={() =>
+              setOpeningHours(Object.fromEntries(WEEK_DAYS.map((d) => [d.key, { ...ALL_DAY }])))
+            }
+            className={`text-xs font-semibold px-3 py-1.5 rounded-full border ${
+              WEEK_DAYS.every((d) => is24hDay(openingHours[d.key]))
+                ? 'bg-gray-900 text-white border-gray-900'
+                : 'border-gray-200 text-gray-600'
+            }`}
+          >
+            Aberto 24h
+          </button>
+          <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-600">
+            <input
+              type="checkbox"
+              checked={WEEKEND_KEYS.every((k) => !openingHours[k].closed)}
+              onChange={(e) =>
+                setOpeningHours((prev) => {
+                  const next = { ...prev };
+                  for (const k of WEEKEND_KEYS) {
+                    // Ligar: copia o horário de sexta (ou 18h–23h); desligar: fecha sáb/dom.
+                    next[k] = e.target.checked
+                      ? { ...(prev.sexta && !prev.sexta.closed ? prev.sexta : { closed: false, open: '18:00', close: '23:00' }) }
+                      : { ...prev[k], closed: true };
+                  }
+                  return next;
+                })
+              }
+            />
+            Aberto nos fins de semana
+          </label>
+        </div>
         <div className="flex flex-col gap-2">
           {WEEK_DAYS.map((day) => {
             const value = openingHours[day.key];
@@ -325,7 +376,24 @@ function LocationEditor({
                   />
                   <span className="text-xs text-gray-400">Aberto</span>
                 </label>
-                {!value.closed && (
+                {is24hDay(value) && (
+                  <>
+                    <span className="text-xs font-semibold text-green-600">24 horas</span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setOpeningHours((prev) => ({
+                          ...prev,
+                          [day.key]: { closed: false, open: '08:00', close: '18:00' },
+                        }))
+                      }
+                      className="text-[11px] text-gray-400 underline"
+                    >
+                      definir horário
+                    </button>
+                  </>
+                )}
+                {!value.closed && !is24hDay(value) && (
                   <>
                     <input
                       type="time"
@@ -454,18 +522,16 @@ function LocationEditor({
 
         <div className="flex gap-3 mt-3">
           <Field label="Taxa base (R$)">
-            <MaskedNumberField
+            <CurrencyField
               value={deliveryFee}
               onChange={setDeliveryFee}
-              formatDisplay={formatCurrency}
               className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none w-full"
             />
           </Field>
           <Field label="Taxa por km (R$/km)">
-            <MaskedNumberField
+            <CurrencyField
               value={deliveryFeePerKm}
               onChange={setDeliveryFeePerKm}
-              formatDisplay={formatCurrency}
               className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none w-full"
             />
           </Field>
@@ -483,10 +549,9 @@ function LocationEditor({
         </div>
         <div className="mt-3">
           <Field label="Valor mínimo do pedido pra entrega (R$) — deixe 0 pra não exigir mínimo">
-            <MaskedNumberField
+            <CurrencyField
               value={minOrderValue}
               onChange={setMinOrderValue}
-              formatDisplay={formatCurrency}
               className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none w-full"
             />
           </Field>

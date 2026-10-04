@@ -27,6 +27,11 @@ export interface Tenant {
   mercadoPagoConfigured: boolean;
   mercadoPagoWebhookSecretConfigured: boolean;
   tableSessionTimeoutMinutes: number | null;
+  // Parâmetros financeiros da aba Análise (em %).
+  defaultCmvPercent?: number;
+  cardFeePercent?: number;
+  pixFeePercent?: number;
+  taxPercent?: number;
 }
 
 // Uma loja física (filial) — endereço/horário/entrega são por Location
@@ -49,6 +54,8 @@ export interface Location {
   deliveryMaxRadiusKm: number | null;
   minOrderValue: number;
   closingInMinutes: number | null;
+  // Aberto 24h agora — o cardápio nunca mostra "fecha em X min" nesse caso.
+  isOpen24h?: boolean;
 }
 
 export interface Category {
@@ -84,6 +91,8 @@ export interface Product {
   description: string | null;
   price: number;
   promoPrice: number | null;
+  // Custo do item (opcional) — alimenta o CMV real na aba Análise.
+  costPrice?: number | null;
   imageUrl: string | null;
   isAvailable: boolean;
   displayOrder: number;

@@ -58,7 +58,7 @@ export class TablesService {
     if (!location) {
       throw new NotFoundException('Loja não encontrada.');
     }
-    if (!computeIsOpenNow(location.isOpen, location.openingHours)) {
+    if (!computeIsOpenNow(location.isOpen, location.openingHours, location.scheduleOpenState)) {
       throw new BadRequestException('Esta loja não está aberta no momento.');
     }
   }
@@ -468,7 +468,7 @@ export class TablesService {
       where: {
         tableId: table.id,
         closedAt: MoreThan(
-          new Date(Date.now() - TablesService.RECENTLY_ENDED_WINDOW_MINUTES * 60_000),
+          new Date(Date.now() - TablesService.RECENTLY_ENDED_WINDOW_SECONDS * 1_000),
         ),
         // Mesma exceção do getCurrentSession: encerramento forçado pelo
         // admin libera a mesa na hora.
@@ -480,7 +480,7 @@ export class TablesService {
     });
     if (recentlyClosed) {
       throw new ConflictException(
-        'Essa mesa acabou de ser encerrada. Aguarde alguns minutos e escaneie o QR code de novo.',
+        'Essa mesa acabou de ser encerrada. Aguarde alguns segundos e escaneie o QR code de novo.',
       );
     }
 
@@ -630,7 +630,11 @@ export class TablesService {
   // última sessão dessa mesa fechou há poucos minutos, trata como "acabei
   // de fechar, não deixa reabrir sozinho". Se já fechou há mais tempo (ou
   // nunca existiu), trata como mesa realmente livre agora — entra direto.
-  private static readonly RECENTLY_ENDED_WINDOW_MINUTES = 2;
+  // 03/10/2026: a janela caiu de 2 minutos para 5 SEGUNDOS. Com 2 minutos,
+  // quem tinha a sessão expirada por tempo e reescaneava o QR da mesma mesa
+  // caía sempre em "sessão encerrada" e não conseguia reabrir. 5s ainda
+  // barra o refresh imediato após fechar a conta, sem prender ninguém.
+  private static readonly RECENTLY_ENDED_WINDOW_SECONDS = 5;
 
   async getTableInfo(qrCodeToken: string): Promise<{ locationId: string }> {
     const table = await this.tableRepo.findOne({ where: { qrCodeToken, isActive: true } });
@@ -677,7 +681,7 @@ export class TablesService {
       }
     }
     const cutoff = new Date(
-      Date.now() - TablesService.RECENTLY_ENDED_WINDOW_MINUTES * 60_000,
+      Date.now() - TablesService.RECENTLY_ENDED_WINDOW_SECONDS * 1_000,
     );
     // Sessão encerrada à força pelo admin ("corrigir sessão") NÃO conta
     // como "recém-encerrada": a trava de poucos minutos existe pra

@@ -67,8 +67,8 @@ export class CashbackController {
     if (customer.tenantId !== tenantId) {
       throw new ForbiddenException('Essa conta não pertence a este restaurante.');
     }
-    const balance = await this.cashbackService.getBalance(tenantId, customer.customerId);
-    return { balance };
+    // `balance` continua igual (compatível); o resto traz o tempo restante.
+    return this.cashbackService.getWallet(tenantId, customer.customerId);
   }
 
   // ---------- Extrato do cliente logado (área "Cashback" da conta) ----------

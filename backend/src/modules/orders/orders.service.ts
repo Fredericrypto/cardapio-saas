@@ -123,9 +123,17 @@ export class OrdersService {
     return seat;
   }
 
-  private async markCancelled(order: Order): Promise<void> {
+  private async markCancelled(
+    order: Order,
+    reason?: string | null,
+    canceledByUserId?: string | null,
+  ): Promise<void> {
     if (order.status === 'cancelado') return;
     order.status = 'cancelado';
+    // Análise de cancelamento (aba Análise): motivo, instante e operador.
+    order.cancelReason = reason?.trim() ? reason.trim().slice(0, 300) : null;
+    order.canceledAt = new Date();
+    order.canceledByUserId = canceledByUserId ?? null;
     const promotionIds = order.promotionIds ?? (order.promotionId ? [order.promotionId] : []);
     await Promise.all(
       promotionIds.map((id) => this.promotionsService.releaseRedemption(this.orderRepo.manager, id)),
@@ -451,7 +459,7 @@ export class OrdersService {
     );
     if (expiredOrders.length > 0) {
       for (const order of expiredOrders) {
-        await this.markCancelled(order);
+        await this.markCancelled(order, 'Pix expirado sem pagamento');
         order.paymentStatus = 'falhou';
         await this.cancelGatewayPaymentQuietly(tenantId, order.mpPaymentId);
       }
@@ -492,7 +500,7 @@ export class OrdersService {
         'Esse pedido já está sendo preparado e não pode mais ser cancelado por aqui — fale com o estabelecimento.',
       );
     }
-    await this.markCancelled(order);
+    await this.markCancelled(order, 'Cancelado pelo cliente');
     if (order.paymentStatus === 'pendente') {
       order.paymentStatus = 'falhou';
     }
@@ -648,6 +656,7 @@ export class OrdersService {
           productName: product.name, // snapshot: nome não muda se o produto for editado depois
           quantity: itemDto.quantity,
           unitPrice,
+          unitCost: product.costPrice ?? null,
           selectedOptions: chosenSnapshot.length > 0 ? chosenSnapshot : null,
           subtotal: fromCents(subtotalCents),
         });
@@ -809,7 +818,7 @@ export class OrdersService {
       if (!location) {
         throw new NotFoundException('Loja não encontrada.');
       }
-      if (!computeIsOpenNow(location.isOpen, location.openingHours)) {
+      if (!computeIsOpenNow(location.isOpen, location.openingHours, location.scheduleOpenState)) {
         throw new BadRequestException('Esta loja não está aceitando pedidos no momento.');
       }
 
@@ -1081,10 +1090,11 @@ export class OrdersService {
     tenantId: string,
     id: string,
     dto: UpdateOrderStatusDto,
+    canceledByUserId?: string | null,
   ): Promise<Order> {
     const order = await this.findOne(tenantId, id);
     if (dto.status === 'cancelado') {
-      await this.markCancelled(order);
+      await this.markCancelled(order, dto.cancelReason, canceledByUserId);
     } else {
       order.status = dto.status;
     }
@@ -1150,7 +1160,7 @@ export class OrdersService {
       // Antes, quando era o polling do CLIENTE que percebia o prazo
       // estourado primeiro, isso não era devolvido e o painel nunca mais
       // via o pedido como "aguardando" pra corrigir.
-      await this.markCancelled(order);
+      await this.markCancelled(order, 'Pix expirado sem pagamento');
       order.paymentStatus = 'falhou';
       await this.orderRepo.save(order);
       await this.cancelGatewayPaymentQuietly(tenantId, order.mpPaymentId);
@@ -1174,7 +1184,7 @@ export class OrdersService {
       await this.creditCashbackForPaidOrder(order);
       await this.notifyPaymentCompleted(order);
     } else if (mpStatus === 'rejected' || mpStatus === 'cancelled') {
-      await this.markCancelled(order);
+      await this.markCancelled(order, 'Pagamento recusado/cancelado no Mercado Pago');
       order.paymentStatus = 'falhou';
     }
     // 'pending'/'in_process' — continua aguardando, nada muda.

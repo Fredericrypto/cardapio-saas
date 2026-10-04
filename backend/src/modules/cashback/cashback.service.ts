@@ -1,10 +1,13 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In, EntityManager, QueryFailedError } from 'typeorm';
 import { CashbackSettings } from './cashback-settings.entity';
 import { CashbackLedgerEntry, CashbackSourceType } from './cashback-ledger-entry.entity';
 import { CashbackConsumption } from './cashback-consumption.entity';
 import { Location } from '../locations/location.entity';
+import { Tenant } from '../tenants/tenant.entity';
+import { PushService } from '../push/push.service';
 import { CreateCashbackSettingsDto } from './dto/create-cashback-settings.dto';
 import { UpdateCashbackSettingsDto } from './dto/update-cashback-settings.dto';
 import { toCents, fromCents } from '../../common/utils/money';
@@ -16,6 +19,8 @@ export interface CashbackCreditResult {
 
 @Injectable()
 export class CashbackService {
+  private readonly logger = new Logger(CashbackService.name);
+
   constructor(
     @InjectRepository(CashbackSettings)
     private readonly settingsRepo: Repository<CashbackSettings>,
@@ -25,11 +30,34 @@ export class CashbackService {
     private readonly consumptionRepo: Repository<CashbackConsumption>,
     @InjectRepository(Location)
     private readonly locationRepo: Repository<Location>,
+    @InjectRepository(Tenant)
+    private readonly tenantRepo: Repository<Tenant>,
+    private readonly pushService: PushService,
   ) {}
 
   // ---------- Configurações (CRUD do admin) ----------
 
   async findAllSettings(tenantId: string): Promise<CashbackSettings[]> {
+    // O admin só EDITA configurações (não cria "novas" nem apaga): se o
+    // restaurante ainda não tem nenhuma, nasce uma padrão — pausada, para não
+    // creditar nada até o dono revisar e ativar.
+    const existing = await this.settingsRepo.count({ where: { tenantId } });
+    if (existing === 0) {
+      await this.settingsRepo.save(
+        this.settingsRepo.create({
+          tenantId,
+          name: 'Cashback',
+          percentage: 5,
+          minOrderValue: 0,
+          maxCashbackPerOrder: null,
+          maxCashbackPerCustomerPerDay: null,
+          expirationDays: null,
+          promoText: null,
+          isActive: false,
+          locations: [],
+        }),
+      );
+    }
     return this.settingsRepo.find({
       where: { tenantId },
       relations: { locations: true },
@@ -47,6 +75,11 @@ export class CashbackService {
   }
 
   async createSettings(tenantId: string, dto: CreateCashbackSettingsDto): Promise<CashbackSettings> {
+    if ((await this.settingsRepo.count({ where: { tenantId } })) > 0) {
+      throw new BadRequestException(
+        'O cashback já tem configuração — edite a existente em vez de criar outra.',
+      );
+    }
     const locations = await this.resolveLocations(tenantId, dto.locationIds);
     const settings = this.settingsRepo.create({
       tenantId,
@@ -82,12 +115,60 @@ export class CashbackService {
     if (dto.locationIds !== undefined) {
       settings.locations = await this.resolveLocations(tenantId, dto.locationIds);
     }
-    return this.settingsRepo.save(settings);
+    const expirationChanged = dto.expirationDays !== undefined;
+    const saved = await this.settingsRepo.save(settings);
+    // A validade editada vale para TODO o app na hora: também alcança os
+    // créditos que já estão na carteira dos clientes (sem tocar em saldo).
+    if (expirationChanged) await this.applyExpirationPolicy(tenantId, saved);
+    return saved;
   }
 
-  async deleteSettings(tenantId: string, id: string): Promise<void> {
-    const settings = await this.findOneSettings(tenantId, id);
-    await this.settingsRepo.remove(settings);
+  // Aplica a validade da configuração aos créditos de PEDIDO ainda abertos
+  // (restante > 0) que ela gerou. Regras que protegem o saldo:
+  //  - o saldo (remaining_amount) nunca é alterado aqui, e crédito que JÁ
+  //    venceu continua vencido (editar a configuração não ressuscita saldo);
+  //  - validade = data do crédito + dias; se isso já ficou no passado, a
+  //    contagem recomeça de hoje (editar a configuração nunca "queima" saldo);
+  //  - "nunca expira" (null) limpa a validade;
+  //  - prazo estendido → os avisos de vencimento voltam a poder ser enviados.
+  private async applyExpirationPolicy(tenantId: string, settings: CashbackSettings): Promise<void> {
+    const days = settings.expirationDays;
+    const locationIds = (settings.locations ?? []).map((l) => l.id);
+    const scopeSql =
+      locationIds.length > 0
+        ? `(e.settings_id = $2 OR (e.settings_id IS NULL AND e.location_id = ANY($3::uuid[])))`
+        : `(e.settings_id = $2 OR e.settings_id IS NULL)`;
+    const params: unknown[] = [tenantId, settings.id];
+    if (locationIds.length > 0) params.push(locationIds);
+    const daysParam = `$${params.length + 1}`;
+    params.push(days);
+
+    await this.ledgerRepo.query(
+      `UPDATE cashback_ledger_entries e
+          SET settings_id = $2,
+              expires_at = CASE
+                WHEN ${daysParam}::int IS NULL THEN NULL
+                WHEN e.created_at + (${daysParam}::int * INTERVAL '1 day') > now()
+                  THEN e.created_at + (${daysParam}::int * INTERVAL '1 day')
+                ELSE now() + (${daysParam}::int * INTERVAL '1 day')
+              END,
+              notified_week_at = NULL,
+              notified_two_days_at = NULL
+        WHERE e.tenant_id = $1
+          AND e.source_type = 'order'
+          AND e.remaining_amount > 0
+          AND (e.expires_at IS NULL OR e.expires_at > now())
+          AND ${scopeSql}`,
+      params,
+    );
+  }
+
+  // As configurações nunca somem do painel: nem mesmo depois que o cashback
+  // expirou — o dono sempre pode ajustar, estender ou reativar.
+  async deleteSettings(_tenantId: string, _id: string): Promise<void> {
+    throw new ForbiddenException(
+      'As configurações de cashback não podem ser apagadas — edite ou pause a existente.',
+    );
   }
 
   private async resolveLocations(tenantId: string, locationIds?: string[]): Promise<Location[]> {
@@ -220,6 +301,7 @@ export class CashbackService {
         originalAmount: fromCents(creditCents),
         remainingAmount: fromCents(creditCents),
         expiresAt,
+        settingsId: settings.id,
       });
     } catch (err) {
       if (this.isUniqueViolation(err)) {
@@ -569,7 +651,17 @@ export class CashbackService {
     tenantId: string,
     customerId: string,
   ): Promise<
-    { id: string; type: 'earned' | 'spent'; amount: number; description: string; createdAt: Date }[]
+    {
+      id: string;
+      type: 'earned' | 'spent';
+      amount: number;
+      description: string;
+      createdAt: Date;
+      // Só nos créditos: quanto ainda resta, quando vence e se já venceu sem uso.
+      remainingAmount?: number;
+      expiresAt?: Date | null;
+      expired?: boolean;
+    }[]
   > {
     const credits = await this.ledgerRepo.find({
       where: { tenantId, customerId },
@@ -592,6 +684,9 @@ export class CashbackService {
       amount: c.originalAmount,
       description: SOURCE_LABELS[c.sourceType],
       createdAt: c.createdAt,
+      remainingAmount: c.remainingAmount,
+      expiresAt: c.expiresAt,
+      expired: c.expiresAt != null && c.expiresAt.getTime() <= Date.now() && c.remainingAmount > 0,
     }));
     const spent = consumptions.map((c) => ({
       id: c.id,
@@ -602,5 +697,134 @@ export class CashbackService {
     }));
 
     return [...earned, ...spent].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+
+  // ---------- Carteira do cliente: saldo + tempo restante ----------
+
+  // Saldo que ainda vale + o que vence primeiro. O frontend mostra o tempo
+  // restante a partir de `nextExpiresAt` (e de cada crédito em `credits`).
+  async getWallet(
+    tenantId: string,
+    customerId: string,
+  ): Promise<{
+    balance: number;
+    nextExpiresAt: Date | null;
+    expiringAmount: number;
+    credits: { id: string; remainingAmount: number; expiresAt: Date | null }[];
+  }> {
+    const open = await this.ledgerRepo
+      .createQueryBuilder('e')
+      .where('e.tenantId = :tenantId', { tenantId })
+      .andWhere('e.customerId = :customerId', { customerId })
+      .andWhere('e.remainingAmount > 0')
+      .andWhere('(e.expiresAt IS NULL OR e.expiresAt > :now)', { now: new Date() })
+      .orderBy('e.expiresAt', 'ASC', 'NULLS LAST')
+      .getMany();
+
+    let totalCents = 0;
+    for (const e of open) totalCents += toCents(e.remainingAmount);
+    const withExpiry = open.filter((e) => e.expiresAt != null);
+    const nextExpiresAt = withExpiry.length > 0 ? withExpiry[0].expiresAt : null;
+    let expiringCents = 0;
+    if (nextExpiresAt) {
+      for (const e of withExpiry) {
+        if (e.expiresAt!.getTime() === nextExpiresAt.getTime()) expiringCents += toCents(e.remainingAmount);
+      }
+    }
+    return {
+      balance: fromCents(totalCents),
+      nextExpiresAt,
+      expiringAmount: fromCents(expiringCents),
+      credits: open.map((e) => ({ id: e.id, remainingAmount: e.remainingAmount, expiresAt: e.expiresAt })),
+    };
+  }
+
+  // ---------- Avisos de vencimento (1 semana e 2 dias) ----------
+
+  // Roda a cada 30 min. Cada crédito gera no máximo UM aviso de cada tipo.
+  // Se o crédito já entra direto na janela de 2 dias, só o aviso de 2 dias
+  // sai (o de 1 semana é marcado como já feito). Os avisos de um cliente no
+  // mesmo ciclo são somados numa notificação só. O clique leva à área de
+  // cashback (/conta-cliente/cashback).
+  @Cron(CronExpression.EVERY_30_MINUTES)
+  async notifyExpiringCredits(): Promise<void> {
+    try {
+      const now = new Date();
+      const inTwoDays = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000);
+      const inWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+      const candidates = await this.ledgerRepo
+        .createQueryBuilder('e')
+        .where('e.remainingAmount > 0')
+        .andWhere('e.expiresAt IS NOT NULL')
+        .andWhere('e.expiresAt > :now', { now })
+        .andWhere('e.expiresAt <= :inWeek', { inWeek })
+        .andWhere('(e.notifiedWeekAt IS NULL OR (e.notifiedTwoDaysAt IS NULL AND e.expiresAt <= :inTwoDays))', {
+          inTwoDays,
+        })
+        .getMany();
+      if (candidates.length === 0) return;
+
+      type Bucket = { tenantId: string; customerId: string; twoDays: CashbackLedgerEntry[]; week: CashbackLedgerEntry[] };
+      const buckets = new Map<string, Bucket>();
+      for (const e of candidates) {
+        const key = `${e.tenantId}:${e.customerId}`;
+        const b = buckets.get(key) ?? { tenantId: e.tenantId, customerId: e.customerId, twoDays: [], week: [] };
+        const inTwoDayWindow = e.expiresAt!.getTime() <= inTwoDays.getTime();
+        if (inTwoDayWindow && !e.notifiedTwoDaysAt) b.twoDays.push(e);
+        else if (!inTwoDayWindow && !e.notifiedWeekAt) b.week.push(e);
+        buckets.set(key, b);
+      }
+
+      const slugCache = new Map<string, { slug: string; logoUrl: string | null } | null>();
+      for (const b of buckets.values()) {
+        if (b.twoDays.length === 0 && b.week.length === 0) continue;
+        let tenant = slugCache.get(b.tenantId);
+        if (tenant === undefined) {
+          const t = await this.tenantRepo.findOne({ where: { id: b.tenantId } });
+          tenant = t ? { slug: t.slug, logoUrl: t.logoUrl ?? null } : null;
+          slugCache.set(b.tenantId, tenant);
+        }
+        if (!tenant) continue;
+        const url = `/${tenant.slug}/conta-cliente/cashback`;
+        const sum = (list: CashbackLedgerEntry[]) =>
+          fromCents(list.reduce((acc, e) => acc + toCents(e.remainingAmount), 0));
+        const brl = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
+
+        if (b.twoDays.length > 0) {
+          await this.pushService.sendToCustomer(b.tenantId, b.customerId, {
+            title: 'Seu cashback vence em 2 dias',
+            body: `${brl(sum(b.twoDays))} de cashback expiram em até 2 dias. Use no próximo pedido!`,
+            url,
+            tag: 'cashback',
+            groupTag: 'cashback-expiring-2d',
+            icon: tenant.logoUrl ?? undefined,
+          });
+        }
+        if (b.week.length > 0) {
+          await this.pushService.sendToCustomer(b.tenantId, b.customerId, {
+            title: 'Seu cashback vence em 1 semana',
+            body: `${brl(sum(b.week))} de cashback expiram em até 7 dias. Aproveite antes que acabe!`,
+            url,
+            tag: 'cashback',
+            groupTag: 'cashback-expiring-7d',
+            icon: tenant.logoUrl ?? undefined,
+          });
+        }
+        const stamp = new Date();
+        const twoIds = b.twoDays.map((e) => e.id);
+        const weekIds = b.week.map((e) => e.id);
+        // Quem entrou direto na janela de 2 dias não precisa mais do aviso de 1 semana.
+        if (twoIds.length > 0) {
+          await this.ledgerRepo.update(
+            { id: In(twoIds) },
+            { notifiedTwoDaysAt: stamp, notifiedWeekAt: stamp },
+          );
+        }
+        if (weekIds.length > 0) await this.ledgerRepo.update({ id: In(weekIds) }, { notifiedWeekAt: stamp });
+      }
+    } catch (err) {
+      this.logger.error('Falha ao enviar avisos de vencimento de cashback', err as Error);
+    }
   }
 }

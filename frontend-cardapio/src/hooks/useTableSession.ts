@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { getCurrentTableSession, scanTableQrCode, fetchTableInfo } from '../lib/menu-api';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { useTenant } from '../contexts/TenantContext';
@@ -10,6 +10,7 @@ import {
   clearActiveMesaToken,
   consumeQrScanIntent,
   getSeatByTable,
+  peekQrScanIntent,
   setActiveMesaToken,
   wasLeftLocally,
 } from '../lib/seat';
@@ -104,12 +105,13 @@ function takeFreshLoadDecision(qrCodeToken: string): boolean {
 // A única forma honesta de diferenciar isso, sem depender de nada
 // guardado no navegador, é por TEMPO no servidor (ver
 // `TablesService.getCurrentSession` — campo `recentlyEnded`, poucos
-// minutos de janela): fechou agorinha = tela final sem saída; fechou faz
+// segundos de janela (5s)): fechou agorinha = tela final sem saída; fechou faz
 // tempo (ou nunca existiu) = mesa genuinamente livre, entra direto.
 export function useTableSession(slug: string | undefined, qrCodeToken: string | undefined) {
   const { token: customerToken, isLoading: isAuthLoading } = useCustomerAuth();
   const { tenant } = useTenant();
   const navigate = useNavigate();
+  const location = useLocation();
   const [session, setSession] = useState<TableSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -234,6 +236,18 @@ export function useTableSession(slug: string | undefined, qrCodeToken: string | 
     if (isAuthLoading) return;
     checkCurrent();
   }, [checkCurrent, isAuthLoading]);
+
+  // Reescanear o QR da MESMA mesa pelo leitor do app, estando ainda na tela
+  // "sessão encerrada" dessa mesa (ex.: a seção expirou por tempo e a pessoa
+  // ficou na mesma aba): o leitor navega para a mesma URL, o componente não
+  // remonta e `checkCurrent` não roda de novo — a tela de encerrada ficava
+  // para sempre. Um scan novo (location.key muda) refaz a checagem; o
+  // servidor decide (trava de 5s) e o scan abre/entra na mesa normalmente.
+  useEffect(() => {
+    if (!qrCodeToken || isAuthLoading) return;
+    if ((sessionEnded || leftTable) && peekQrScanIntent(qrCodeToken)) checkCurrent();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.key]);
 
   // AÇÕES EXPLÍCITAS — só chamadas a partir de um toque real do cliente
   // num botão, nunca automaticamente.

@@ -7,6 +7,12 @@ import { useAuth } from '../contexts/AuthContext';
 // endereço, horário, entrega e WhatsApp agora são por LOJA (ver
 // LocationsSettingsPage), porque um restaurante pode ter mais de uma
 // filial física, cada uma com esses dados próprios.
+// Percentual digitado → número entre 0 e 100 (vazio/inválido vira 0).
+function clampPercent(raw: string): number {
+  const n = Number(raw.replace(',', '.'));
+  return Number.isFinite(n) ? Math.min(100, Math.max(0, Math.round(n * 100) / 100)) : 0;
+}
+
 export function SettingsPage() {
   const { tenant, updateTenant } = useAuth();
   const [name, setName] = useState(tenant?.name ?? '');
@@ -29,6 +35,10 @@ export function SettingsPage() {
   const [showWebhookSecretField, setShowWebhookSecretField] = useState(
     !tenant?.mercadoPagoWebhookSecretConfigured,
   );
+  const [defaultCmvPercent, setDefaultCmvPercent] = useState(String(tenant?.defaultCmvPercent ?? 30));
+  const [cardFeePercent, setCardFeePercent] = useState(String(tenant?.cardFeePercent ?? 0));
+  const [pixFeePercent, setPixFeePercent] = useState(String(tenant?.pixFeePercent ?? 0));
+  const [taxPercent, setTaxPercent] = useState(String(tenant?.taxPercent ?? 0));
   const [tableSessionTimeoutMinutes, setTableSessionTimeoutMinutes] = useState<number | null>(
     tenant?.tableSessionTimeoutMinutes ?? null,
   );
@@ -116,6 +126,10 @@ export function SettingsPage() {
         mercadoPagoAccessToken: mercadoPagoAccessToken.trim() || undefined,
         mercadoPagoWebhookSecret: mercadoPagoWebhookSecret.trim() || undefined,
         tableSessionTimeoutMinutes,
+        defaultCmvPercent: clampPercent(defaultCmvPercent),
+        cardFeePercent: clampPercent(cardFeePercent),
+        pixFeePercent: clampPercent(pixFeePercent),
+        taxPercent: clampPercent(taxPercent),
       });
       setMercadoPagoAccessToken('');
       setShowMercadoPagoField(!updated.mercadoPagoConfigured);
@@ -497,6 +511,39 @@ export function SettingsPage() {
             <option value="60">1 hora</option>
             <option value="120">2 horas</option>
           </select>
+        </div>
+
+        {/* Parâmetros que a aba Análise usa nos cálculos financeiros. */}
+        <div className="bg-white rounded-2xl p-5 border border-gray-100 flex flex-col gap-3">
+          <p className="text-sm font-bold text-gray-900">Parâmetros financeiros (Análise)</p>
+          <p className="text-xs text-gray-400">
+            O CMV estimado vale só para itens sem custo cadastrado (o custo real, quando existe, sempre
+            vence). Taxas e imposto em 0% não são deduzidos da receita líquida.
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            {(
+              [
+                ['CMV estimado (%)', defaultCmvPercent, setDefaultCmvPercent],
+                ['Imposto médio (%)', taxPercent, setTaxPercent],
+                ['Taxa do cartão (%)', cardFeePercent, setCardFeePercent],
+                ['Taxa do Pix (%)', pixFeePercent, setPixFeePercent],
+              ] as Array<[string, string, (v: string) => void]>
+            ).map(([label, value, set]) => (
+              <label key={label} className="flex flex-col gap-1 text-xs font-semibold text-gray-500">
+                {label}
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  max={100}
+                  step="0.01"
+                  value={value}
+                  onChange={(e) => set(e.target.value)}
+                  className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none font-normal text-gray-900"
+                />
+              </label>
+            ))}
+          </div>
         </div>
 
         {savedMessage && (

@@ -6,6 +6,7 @@ import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { MenuManagementPage } from './pages/MenuManagementPage';
 import { TablesPage } from './pages/TablesPage';
+import { AnalyticsPage } from './pages/AnalyticsPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { LocationsSettingsPage } from './pages/LocationsSettingsPage';
@@ -38,6 +39,7 @@ function App() {
             <Route path="/fidelidade" element={<LoyaltySettingsPage />} />
             <Route path="/cashback" element={<CashbackSettingsPage />} />
             <Route path="/avaliacoes" element={<ReviewsPage />} />
+            <Route path="/analise" element={<AnalyticsPage />} />
             <Route path="/historico" element={<HistoryPage />} />
             <Route path="/verificar-cupom" element={<VerifyReceiptPage />} />
             <Route path="/verificacoes" element={<VerificationsPage />} />

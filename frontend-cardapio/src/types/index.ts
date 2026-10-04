@@ -41,6 +41,8 @@ export interface Location {
   // Só vem preenchido quando falta menos de 1h pra fechar — usado no
   // aviso "Fecha em Xh".
   closingInMinutes: number | null;
+  // Aberto 24h agora — o cardápio nunca mostra "fecha em X min" nesse caso.
+  isOpen24h?: boolean;
   // Calculado no cliente (não vem do backend) — distância até o GPS do
   // usuário, só usada pra ordenar/mostrar na tela de escolha de loja.
   distanceKm?: number;

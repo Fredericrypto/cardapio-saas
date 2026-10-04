@@ -1,3 +1,4 @@
+import { numericTransformer } from '../../common/utils/numeric-transformer';
 import {
   Entity,
   Column,
@@ -117,6 +118,24 @@ export class Tenant {
   // TablesService.expireStaleSessionIfNeeded).
   @Column({ name: 'table_session_timeout_minutes', type: 'int', nullable: true })
   tableSessionTimeoutMinutes: number | null;
+
+  // % de CMV (custo da mercadoria vendida) usado como ESTIMATIVA quando o
+  // produto não tem `costPrice`. Padrão 30%. Ex.: 30 → custo = 30% do preço.
+  @Column({ name: 'default_cmv_percent', type: 'numeric', precision: 5, scale: 2, default: 30, transformer: numericTransformer })
+  defaultCmvPercent: number;
+
+  // Parâmetros financeiros da aba Análise (todos em %, padrão 0 = não deduz):
+  //  - taxa média da maquininha/gateway sobre pagamentos em cartão;
+  //  - taxa média sobre pagamentos Pix (ex.: Mercado Pago);
+  //  - imposto médio sobre o faturamento (ex.: Simples Nacional).
+  @Column({ name: 'card_fee_percent', type: 'numeric', precision: 5, scale: 2, default: 0, transformer: numericTransformer })
+  cardFeePercent: number;
+
+  @Column({ name: 'pix_fee_percent', type: 'numeric', precision: 5, scale: 2, default: 0, transformer: numericTransformer })
+  pixFeePercent: number;
+
+  @Column({ name: 'tax_percent', type: 'numeric', precision: 5, scale: 2, default: 0, transformer: numericTransformer })
+  taxPercent: number;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;

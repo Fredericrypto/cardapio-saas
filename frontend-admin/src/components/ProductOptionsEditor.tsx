@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { CurrencyField } from './MaskedNumberField';
 import { Plus, Trash2 } from 'lucide-react';
 import { setProductOptions } from '../lib/admin-api';
 import type { Product, ProductOptionGroup } from '../types';
@@ -200,13 +201,11 @@ export function ProductOptionsEditor({
                     !value.isAvailable ? 'opacity-40' : ''
                   }`}
                 />
-                <input
-                  type="number"
-                  step="0.01"
+                <CurrencyField
                   value={value.priceDelta}
-                  onChange={(e) => updateValue(gi, vi, { priceDelta: e.target.value })}
+                  onChange={(raw) => updateValue(gi, vi, { priceDelta: raw })}
                   placeholder="+R$"
-                  className={`w-16 border border-gray-200 rounded-lg px-2 py-1.5 text-xs outline-none ${
+                  className={`w-20 border border-gray-200 rounded-lg px-2 py-1.5 text-xs outline-none ${
                     !value.isAvailable ? 'opacity-40' : ''
                   }`}
                 />

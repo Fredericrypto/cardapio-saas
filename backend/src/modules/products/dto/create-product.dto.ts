@@ -28,6 +28,12 @@ export class CreateProductDto {
   @Min(0)
   promoPrice?: number;
 
+  // Custo do item (opcional) — alimenta o CMV real na aba Análise. null limpa.
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  costPrice?: number | null;
+
   @IsOptional()
   @IsString()
   imageUrl?: string;

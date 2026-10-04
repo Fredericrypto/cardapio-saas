@@ -282,11 +282,25 @@ export async function fetchMyOrderById(
 
 // ---------- Cashback ----------
 
-export async function fetchMyCashbackBalance(tenantId: string, token: string): Promise<number> {
-  const { data } = await api.get<{ balance: number }>(`/cashback/public/${tenantId}/balance`, {
+export interface CashbackWallet {
+  balance: number;
+  // Quando vence o crédito que vence primeiro (null = nada com validade).
+  nextExpiresAt: string | null;
+  // Quanto vence nessa mesma data.
+  expiringAmount: number;
+  credits: { id: string; remainingAmount: number; expiresAt: string | null }[];
+}
+
+export async function fetchMyCashbackWallet(tenantId: string, token: string): Promise<CashbackWallet> {
+  const { data } = await api.get<CashbackWallet>(`/cashback/public/${tenantId}/balance`, {
     headers: { Authorization: `Bearer ${token}` },
   });
-  return data.balance;
+  return data;
+}
+
+export async function fetchMyCashbackBalance(tenantId: string, token: string): Promise<number> {
+  const { balance } = await fetchMyCashbackWallet(tenantId, token);
+  return balance;
 }
 
 export interface CashbackHistoryEntry {
@@ -295,6 +309,10 @@ export interface CashbackHistoryEntry {
   amount: number;
   description: string;
   createdAt: string;
+  // Só nos créditos ("earned"): quanto ainda resta, validade e se já venceu.
+  remainingAmount?: number;
+  expiresAt?: string | null;
+  expired?: boolean;
 }
 
 export async function fetchMyCashbackHistory(

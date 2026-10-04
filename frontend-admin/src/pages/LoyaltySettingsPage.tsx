@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { CurrencyField } from '../components/MaskedNumberField';
 import { Gift, Plus, Trash2, Pencil, Users } from 'lucide-react';
 import {
   fetchLoyaltyPrograms,
@@ -362,12 +363,9 @@ function ProgramForm({
 
       {rewardType === 'cashback' && (
         <Field label="Valor do cashback (R$)">
-          <input
-            type="number"
-            step="0.01"
-            min={0.01}
+          <CurrencyField
             value={cashbackAmount}
-            onChange={(e) => setCashbackAmount(e.target.value)}
+            onChange={setCashbackAmount}
             className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none w-full"
           />
         </Field>
@@ -386,25 +384,31 @@ function ProgramForm({
             </select>
           </Field>
           <Field label="Valor">
-            <input
-              type="number"
-              step="0.01"
-              min={0.01}
-              value={discountValue}
-              onChange={(e) => setDiscountValue(e.target.value)}
-              className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none w-full"
-            />
+            {discountType === 'fixed' ? (
+              <CurrencyField
+                value={discountValue}
+                onChange={setDiscountValue}
+                className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none w-full"
+              />
+            ) : (
+              <input
+                type="number"
+                step="0.01"
+                min={0.01}
+                max={100}
+                value={discountValue}
+                onChange={(e) => setDiscountValue(e.target.value)}
+                className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none w-full"
+              />
+            )}
           </Field>
         </div>
       )}
 
       <Field label="Pedido mínimo pra contar carimbo (opcional)">
-        <input
-          type="number"
-          step="0.01"
-          min={0}
+        <CurrencyField
           value={minOrderValue}
-          onChange={(e) => setMinOrderValue(e.target.value)}
+          onChange={setMinOrderValue}
           placeholder="Sem mínimo"
           className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none w-full"
         />

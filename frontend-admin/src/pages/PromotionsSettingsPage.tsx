@@ -16,7 +16,7 @@ import {
   resetPromotionAllUsage,
 } from '../lib/admin-api';
 import type { PromotionPayload } from '../lib/admin-api';
-import { MaskedNumberField } from '../components/MaskedNumberField';
+import { CurrencyField, MaskedNumberField } from '../components/MaskedNumberField';
 import type {
   Promotion,
   Category,
@@ -26,13 +26,11 @@ import type {
   PromotionCustomerUsage,
 } from '../types';
 
-function money(value: number): string {
-  return `R$ ${Number(value).toFixed(2).replace('.', ',')}`;
-}
-
-function formatCurrency(raw: string): string {
-  const num = Number(raw);
-  return Number.isNaN(num) ? '' : money(num);
+function money(value: number | null | undefined): string {
+  // Nunca "R$ NaN": valor ausente/inválido (ex.: promoção recém-editada sem
+  // o total calculado) vira R$ 0,00.
+  const num = Number(value);
+  return `R$ ${(Number.isFinite(num) ? num : 0).toFixed(2).replace('.', ',')}`;
 }
 
 function formatPercent(raw: string): string {
@@ -356,7 +354,15 @@ export function PromotionsSettingsPage() {
 
   async function handleToggleActive(promo: Promotion) {
     const updated = await updatePromotion(promo.id, { isActive: !promo.isActive });
-    setPromotions((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+    // A resposta do PATCH não traz `totalDiscountGiven` (só a listagem
+    // calcula) — preserva o total já conhecido em vez de virar NaN.
+    setPromotions((prev) =>
+      prev.map((p) =>
+        p.id === updated.id
+          ? { ...p, ...updated, totalDiscountGiven: p.totalDiscountGiven ?? 0 }
+          : p,
+      ),
+    );
   }
 
   async function handleDelete(id: string) {
@@ -783,22 +789,30 @@ function PromotionForm({
           </select>
         </Field>
         <Field label={discountType === 'percentage' ? 'Percentual' : 'Valor (R$)'}>
-          <MaskedNumberField
-            value={discountValue}
-            onChange={setDiscountValue}
-            formatDisplay={discountType === 'percentage' ? formatPercent : formatCurrency}
-            placeholder={discountType === 'percentage' ? '50' : '10'}
-            className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none w-full"
-          />
+          {discountType === 'percentage' ? (
+            <MaskedNumberField
+              value={discountValue}
+              onChange={setDiscountValue}
+              formatDisplay={formatPercent}
+              placeholder="50"
+              className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none w-full"
+            />
+          ) : (
+            <CurrencyField
+              value={discountValue}
+              onChange={setDiscountValue}
+              placeholder="R$ 10,00"
+              className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none w-full"
+            />
+          )}
         </Field>
       </div>
 
       {discountType === 'percentage' && (
         <Field label="Desconto máximo (R$) — obrigatório, evita desconto sem limite em pedidos grandes">
-          <MaskedNumberField
+          <CurrencyField
             value={maxDiscountAmount}
             onChange={setMaxDiscountAmount}
-            formatDisplay={formatCurrency}
             placeholder="Ex: 15"
             className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none w-full"
           />
@@ -806,10 +820,9 @@ function PromotionForm({
       )}
 
       <Field label="Pedido mínimo (R$) — vale sobre o carrinho inteiro, não só o item elegível">
-        <MaskedNumberField
+        <CurrencyField
           value={minOrderValue}
           onChange={setMinOrderValue}
-          formatDisplay={formatCurrency}
           placeholder="Sem mínimo"
           className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none w-full"
         />

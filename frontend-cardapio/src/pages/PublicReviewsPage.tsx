@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useCustomerAuth } from '../contexts/CustomerAuthContext';
+import { getActiveMesaToken } from '../lib/seat';
 import { fetchPublicReviews, fetchReviewsSummary } from '../lib/customer-api';
 import type { PublicReview, ReviewSummary } from '../lib/customer-api';
 import { useSelectedLocation } from '../hooks/useSelectedLocation';
@@ -16,6 +18,23 @@ import { ReviewsPageLayout } from '../components/ReviewsShared';
 export function PublicReviewsPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+  const routerLocation = useLocation();
+  const { token: customerToken } = useCustomerAuth();
+
+  // Voltar SEMPRE para de onde a pessoa veio (mesa ou cardápio geral). Antes
+  // o botão ia fixo para o cardápio geral, enquanto o voltar do aparelho
+  // (histórico) ia para a mesa — daí "às vezes uma seção, às vezes outra",
+  // 2 ou 3 tentativas. Agora os dois fazem o mesmo: se há histórico
+  // (routerLocation.key != 'default'), volta exatamente uma entrada; se abriu o
+  // link direto, cai na mesa ativa (se houver) ou no cardápio geral.
+  function goBack() {
+    if (routerLocation.key !== 'default') {
+      navigate(-1);
+      return;
+    }
+    const activeMesa = slug ? getActiveMesaToken(customerToken, slug) : null;
+    navigate(activeMesa ? `/${slug}/mesa/${activeMesa}` : `/${slug}`, { replace: true });
+  }
   const { tenant } = useTenant();
   const { location } = useSelectedLocation(tenant?.id);
   const [summary, setSummary] = useState<ReviewSummary | null>(null);
@@ -48,7 +67,7 @@ export function PublicReviewsPage() {
 
   return (
     <ReviewsPageLayout
-      onBack={() => navigate(`/${slug}`)}
+      onBack={goBack}
       summary={summary}
       reviews={reviews}
       total={total}

@@ -219,6 +219,18 @@ export class Order {
   @Column({ type: 'text', nullable: true })
   notes: string | null;
 
+  // Análise de cancelamento: motivo, instante e quem cancelou. Preenchidos em
+  // markCancelled (ponto único de cancelamento). null = pedido nunca cancelado
+  // (ou cancelado antes desta coluna existir: aí só `status` diz).
+  @Column({ name: 'cancel_reason', type: 'varchar', length: 300, nullable: true })
+  cancelReason: string | null;
+
+  @Column({ name: 'canceled_at', type: 'timestamptz', nullable: true })
+  canceledAt: Date | null;
+
+  @Column({ name: 'canceled_by_user_id', type: 'uuid', nullable: true })
+  canceledByUserId: string | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 

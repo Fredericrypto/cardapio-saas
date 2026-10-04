@@ -109,18 +109,14 @@ export function ReceiptContent({ tenant, summary }: ReceiptContentProps) {
       <div className="border-t border-dashed border-gray-300 my-1" />
 
       {orders.map((order) => {
-        const orderedByName = order.customer?.name ?? order.customerName ?? null;
         const orderCashback = Number(order.cashbackEarned ?? 0);
+        const createdAt = new Date(order.createdAt);
         return (
           <div key={order.id} className="flex flex-col gap-0.5">
+            {/* Só hora e data — sem nome/foto do cliente na listagem. */}
             <p className="text-[10px] text-gray-400 flex justify-between">
-              <span>
-                {new Date(order.createdAt).toLocaleTimeString('pt-BR', {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
-              </span>
-              {participants.length > 1 && orderedByName && <span>{orderedByName}</span>}
+              <span>{createdAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+              <span>{createdAt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
             </p>
             {(order.items ?? []).map((item, idx) => (
               <div key={idx} className="flex justify-between">
@@ -140,7 +136,6 @@ export function ReceiptContent({ tenant, summary }: ReceiptContentProps) {
             {orderCashback > 0 && (
               <p className="text-[10px] text-green-600 text-right">
                 + R$ {orderCashback.toFixed(2).replace('.', ',')} de cashback
-                {orderedByName ? ` pra ${orderedByName}` : ''}
               </p>
             )}
           </div>

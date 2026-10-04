@@ -3,6 +3,11 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 import { ErrorBoundary } from './components/ErrorBoundary.tsx'
+import { installContentProtection } from './lib/protectContent'
+
+// Bloqueia botão direito/toque longo, salvar imagem, nova guia e copiar texto
+// (campos de digitação continuam normais) — ver lib/protectContent.ts.
+installContentProtection()
 
 // Registra o Service Worker cedo, sem pedir NENHUMA permissão — isso é
 // puramente técnico (nunca mostra prompt pro usuário). Precisa

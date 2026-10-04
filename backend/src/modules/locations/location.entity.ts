@@ -67,6 +67,13 @@ export class Location {
   @Column({ name: 'opening_hours', type: 'jsonb', nullable: true })
   openingHours: Record<string, string> | null;
 
+  // Último estado do HORÁRIO (dentro/fora) já refletido no toggle `isOpen`.
+  // Serve para detectar a transição (abriu/fechou pelo horário) e só então
+  // mexer no toggle — o ajuste manual do admin vale até a próxima transição.
+  // null = ainda não sincronizado (ver common/utils/schedule.ts).
+  @Column({ name: 'schedule_open_state', type: 'boolean', nullable: true })
+  scheduleOpenState: boolean | null;
+
   @Column({ name: 'delivery_fee', type: 'numeric', precision: 10, scale: 2, default: 0, transformer: numericTransformer })
   deliveryFee: number;
 

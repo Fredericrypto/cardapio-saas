@@ -22,7 +22,10 @@ import { LoyaltyModule } from './modules/loyalty/loyalty.module';
 import { CashbackModule } from './modules/cashback/cashback.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
 import { PushModule } from './modules/push/push.module';
+import { CashModule } from './modules/cash/cash.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
 
+import { CashTransaction } from './modules/cash/cash-transaction.entity';
 import { Tenant } from './modules/tenants/tenant.entity';
 import { Location } from './modules/locations/location.entity';
 import { AdminUser } from './modules/auth/admin-user.entity';
@@ -89,6 +92,7 @@ import { PushSubscription } from './modules/push/push-subscription.entity';
         url: config.get<string>('DATABASE_URL'),
         entities: [
           Tenant,
+          CashTransaction,
           Location,
           AdminUser,
           Category,
@@ -136,6 +140,8 @@ import { PushSubscription } from './modules/push/push-subscription.entity';
     CashbackModule,
     ReviewsModule,
     PushModule,
+    CashModule,
+    AnalyticsModule,
   ],
   controllers: [AppController],
   providers: [
