@@ -23,8 +23,14 @@ import { CashbackModule } from './modules/cashback/cashback.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
 import { PushModule } from './modules/push/push.module';
 import { CashModule } from './modules/cash/cash.module';
+import { NotesModule } from './modules/notes/notes.module';
+import { InternalNotificationsModule } from './modules/internal-notifications/internal-notifications.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 
+import { Note } from './modules/notes/note.entity';
+import { InternalNotification } from './modules/internal-notifications/internal-notification.entity';
+import { InternalNotificationRead } from './modules/internal-notifications/internal-notification-read.entity';
+import { UserPushSubscription } from './modules/internal-notifications/user-push-subscription.entity';
 import { CashTransaction } from './modules/cash/cash-transaction.entity';
 import { Tenant } from './modules/tenants/tenant.entity';
 import { Location } from './modules/locations/location.entity';
@@ -93,6 +99,10 @@ import { PushSubscription } from './modules/push/push-subscription.entity';
         entities: [
           Tenant,
           CashTransaction,
+          Note,
+          InternalNotification,
+          InternalNotificationRead,
+          UserPushSubscription,
           Location,
           AdminUser,
           Category,
@@ -142,6 +152,8 @@ import { PushSubscription } from './modules/push/push-subscription.entity';
     PushModule,
     CashModule,
     AnalyticsModule,
+    InternalNotificationsModule,
+    NotesModule,
   ],
   controllers: [AppController],
   providers: [

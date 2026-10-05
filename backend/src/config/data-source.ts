@@ -1,5 +1,9 @@
 import 'dotenv/config';
 import { DataSource } from 'typeorm';
+import { Note } from '../modules/notes/note.entity';
+import { InternalNotification } from '../modules/internal-notifications/internal-notification.entity';
+import { InternalNotificationRead } from '../modules/internal-notifications/internal-notification-read.entity';
+import { UserPushSubscription } from '../modules/internal-notifications/user-push-subscription.entity';
 import { CashTransaction } from '../modules/cash/cash-transaction.entity';
 import { Tenant } from '../modules/tenants/tenant.entity';
 import { Location } from '../modules/locations/location.entity';
@@ -40,6 +44,10 @@ export const AppDataSource = new DataSource({
   entities: [
     Tenant,
     CashTransaction,
+    Note,
+    InternalNotification,
+    InternalNotificationRead,
+    UserPushSubscription,
     Location,
     AdminUser,
     Category,

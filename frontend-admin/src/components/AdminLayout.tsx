@@ -11,6 +11,8 @@ import {
   Star,
   History,
   TrendingUp,
+  StickyNote,
+  Menu,
   ScanLine,
   Settings,
   LogOut,
@@ -21,6 +23,9 @@ import { fetchMyTenant } from '../lib/admin-api';
 import { BUILD_VERSION } from '../buildInfo';
 import { useAttentionStatus } from '../hooks/useAttentionStatus';
 import { DashboardDataProvider, useDashboardData } from '../contexts/DashboardDataContext';
+import { InternalNotificationsProvider } from '../contexts/InternalNotificationsContext';
+import { NotificationBell } from './notifications/NotificationBell';
+import { disableDevicePush, enableDevicePush, getPermission, registerPanelServiceWorker, wantsDevicePush } from '../lib/internalPush';
 
 const NAV_ITEMS = [
   { to: '/', label: 'Painel', icon: LayoutDashboard, end: true },
@@ -33,6 +38,7 @@ const NAV_ITEMS = [
   { to: '/avaliacoes', label: 'Avaliações', icon: Star },
   { to: '/verificacoes', label: 'Verificações', icon: BadgeCheck },
   { to: '/analise', label: 'Análise', icon: TrendingUp },
+  { to: '/anotacoes', label: 'Anotações', icon: StickyNote },
   { to: '/historico', label: 'Histórico', icon: History },
   { to: '/verificar-cupom', label: 'Verificar cupom', icon: ScanLine },
   { to: '/configuracoes', label: 'Configurações', icon: Settings },
@@ -46,7 +52,9 @@ const NAV_ITEMS = [
 export function AdminLayout() {
   return (
     <DashboardDataProvider>
+      <InternalNotificationsProvider>
       <AdminLayoutContent />
+      </InternalNotificationsProvider>
     </DashboardDataProvider>
   );
 }
@@ -104,15 +112,55 @@ function AdminLayoutContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function handleLogout() {
+  // Service worker do painel (push interno): registra sempre; se a pessoa já
+  // tinha ativado neste aparelho, religa em silêncio ao entrar (sem pedir
+  // permissão outra vez).
+  useEffect(() => {
+    void registerPanelServiceWorker().then(() => {
+      if (wantsDevicePush() && getPermission() === 'granted') void enableDevicePush({ silent: true });
+    });
+    // Toque na notificação com o painel aberto: a SPA navega sem recarregar.
+    const onMessage = (e: MessageEvent) => {
+      if (e.data?.type !== 'navigate' || typeof e.data.url !== 'string') return;
+      const url = new URL(e.data.url, window.location.origin);
+      if (url.origin === window.location.origin) navigate(url.pathname + url.search);
+    };
+    navigator.serviceWorker?.addEventListener('message', onMessage);
+    return () => navigator.serviceWorker?.removeEventListener('message', onMessage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const [menuOpen, setMenuOpen] = useState(false);
+  const routeLocation = useLocation();
+  useEffect(() => setMenuOpen(false), [routeLocation.pathname, routeLocation.search]);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setMenuOpen(false);
+    document.addEventListener('keydown', esc);
+    return () => document.removeEventListener('keydown', esc);
+  }, [menuOpen]);
+
+  async function handleLogout() {
     if (!window.confirm('Tem certeza que deseja sair?')) return;
+    // Para de receber push neste aparelho enquanto a sessão não existe mais
+    // (a preferência fica guardada: ao entrar de novo, religa sozinho).
+    await disableDevicePush({ keepPreference: true }).catch(() => undefined);
     logout();
     navigate('/login');
   }
 
   return (
     <div className="min-h-screen flex bg-gray-50">
-      <aside className="w-56 bg-white border-r border-gray-100 flex flex-col shrink-0">
+      {/* Celular: o menu lateral vira uma gaveta (botão no topo); a partir de
+          md (768px) continua fixo na lateral, como sempre foi. */}
+      {menuOpen && (
+        <div className="md:hidden fixed inset-0 z-40 bg-black/40" onClick={() => setMenuOpen(false)} aria-hidden />
+      )}
+      <aside
+        className={`bg-white border-r border-gray-100 flex flex-col shrink-0 fixed inset-y-0 left-0 z-50 w-64 overflow-y-auto transition-transform duration-200 md:static md:z-auto md:w-56 md:translate-x-0 md:overflow-visible ${
+          menuOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
         <div className="p-5 border-b border-gray-100">
           {/* Nome SEM cortar: quebra em quantas linhas precisar, qualquer que
               seja o tamanho (overflowWrap pega até palavra gigante sem espaço). */}
@@ -168,9 +216,22 @@ function AdminLayoutContent() {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-y-auto">
-        <Outlet />
-      </main>
+      <div className="flex-1 min-w-0 flex flex-col">
+        <header className="sticky top-0 z-30 h-14 px-4 md:px-6 flex items-center justify-between gap-3 bg-gray-50/90 backdrop-blur border-b border-gray-100">
+          <button
+            onClick={() => setMenuOpen(true)}
+            aria-label="Abrir menu"
+            className="md:hidden w-9 h-9 rounded-xl border border-gray-200 bg-white flex items-center justify-center text-gray-600"
+          >
+            <Menu size={18} />
+          </button>
+          <span className="hidden md:block" />
+          <NotificationBell />
+        </header>
+        <main className="flex-1 overflow-y-auto">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }

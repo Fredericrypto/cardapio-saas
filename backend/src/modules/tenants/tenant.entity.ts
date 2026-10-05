@@ -124,6 +124,11 @@ export class Tenant {
   @Column({ name: 'default_cmv_percent', type: 'numeric', precision: 5, scale: 2, default: 30, transformer: numericTransformer })
   defaultCmvPercent: number;
 
+  // Quem recebe os alertas INTERNOS (anotações): 'owner' = só o dono;
+  // 'owner_manager' = dono e gerentes; 'all' = toda a equipe. Só o dono altera.
+  @Column({ name: 'internal_notification_target', type: 'varchar', length: 20, default: 'all' })
+  internalNotificationTarget: string;
+
   // Parâmetros financeiros da aba Análise (todos em %, padrão 0 = não deduz):
   //  - taxa média da maquininha/gateway sobre pagamentos em cartão;
   //  - taxa média sobre pagamentos Pix (ex.: Mercado Pago);

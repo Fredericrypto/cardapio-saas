@@ -1,5 +1,6 @@
 import { api } from './api';
 import type { Analytics, AnalyticsPeriod } from '../types/analytics';
+import type { InternalNotification, LayoutItem, Note, NoteDraft, NotificationTarget } from '../types/notes';
 import type {
   Tenant,
   Location,
@@ -692,4 +693,90 @@ export async function fetchAnalytics(query: AnalyticsQuery, signal?: AbortSignal
 
 export async function fetchAnalyticsLocations(): Promise<Location[]> {
   return fetchLocations();
+}
+
+// ---------- Anotações (mural da equipe) ----------
+export async function fetchNotes(): Promise<Note[]> {
+  const { data } = await api.get<Note[]>('/notes');
+  return data;
+}
+
+export async function fetchNoteTags(): Promise<string[]> {
+  const { data } = await api.get<{ tags: string[] }>('/notes/meta');
+  return data.tags;
+}
+
+export async function createNote(payload: NoteDraft): Promise<Note> {
+  const { data } = await api.post<Note>('/notes', payload);
+  return data;
+}
+
+export async function updateNote(id: string, payload: NoteDraft): Promise<Note> {
+  const { data } = await api.patch<Note>(`/notes/${id}`, payload);
+  return data;
+}
+
+export async function updateNotesLayout(items: LayoutItem[]): Promise<void> {
+  await api.patch('/notes/layout', { items });
+}
+
+export async function deleteNote(id: string): Promise<void> {
+  await api.delete(`/notes/${id}`);
+}
+
+// ---------- Notificações INTERNAS da equipe ----------
+export async function fetchInternalNotifications(opts: { unreadOnly?: boolean; limit?: number } = {}): Promise<{
+  items: InternalNotification[];
+  unreadCount: number;
+}> {
+  const { data } = await api.get('/internal-notifications', {
+    params: { unread: opts.unreadOnly ? 'true' : undefined, limit: opts.limit },
+  });
+  return data;
+}
+
+export async function fetchInternalUnreadCount(): Promise<number> {
+  const { data } = await api.get<{ unreadCount: number }>('/internal-notifications/unread-count');
+  return data.unreadCount;
+}
+
+export async function markInternalNotificationRead(id: string): Promise<void> {
+  await api.patch(`/internal-notifications/${id}/read`);
+}
+
+export async function markAllInternalNotificationsRead(): Promise<void> {
+  await api.patch('/internal-notifications/read-all');
+}
+
+export async function fetchInternalPreferences(): Promise<{ target: NotificationTarget }> {
+  const { data } = await api.get('/internal-notifications/preferences');
+  return data;
+}
+
+export async function updateInternalPreferences(target: NotificationTarget): Promise<{ target: NotificationTarget }> {
+  const { data } = await api.patch('/internal-notifications/preferences', { target });
+  return data;
+}
+
+export async function subscribeInternalPush(sub: { endpoint: string; keys: { p256dh: string; auth: string } }): Promise<void> {
+  await api.post('/internal-notifications/push/subscribe', { ...sub, userAgent: navigator.userAgent.slice(0, 280) });
+}
+
+export async function unsubscribeInternalPush(endpoint: string): Promise<void> {
+  await api.delete('/internal-notifications/push/subscribe', { data: { endpoint } });
+}
+
+export async function fetchInternalPushStatus(endpoint: string): Promise<boolean> {
+  const { data } = await api.post<{ subscribed: boolean }>('/internal-notifications/push/status', { endpoint });
+  return data.subscribed;
+}
+
+export async function sendInternalPushTest(): Promise<{ sent: number }> {
+  const { data } = await api.post<{ sent: number }>('/internal-notifications/push/test');
+  return data;
+}
+
+export async function fetchVapidPublicKey(): Promise<string | null> {
+  const { data } = await api.get<{ publicKey: string | null }>('/push/vapid-public-key');
+  return data.publicKey;
 }

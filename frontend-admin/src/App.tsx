@@ -7,6 +7,8 @@ import { DashboardPage } from './pages/DashboardPage';
 import { MenuManagementPage } from './pages/MenuManagementPage';
 import { TablesPage } from './pages/TablesPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
+import { NotesPage } from './pages/NotesPage';
+import { NotificationsPage } from './pages/NotificationsPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { LocationsSettingsPage } from './pages/LocationsSettingsPage';
@@ -40,6 +42,8 @@ function App() {
             <Route path="/cashback" element={<CashbackSettingsPage />} />
             <Route path="/avaliacoes" element={<ReviewsPage />} />
             <Route path="/analise" element={<AnalyticsPage />} />
+            <Route path="/anotacoes" element={<NotesPage />} />
+            <Route path="/notificacoes" element={<NotificationsPage />} />
             <Route path="/historico" element={<HistoryPage />} />
             <Route path="/verificar-cupom" element={<VerifyReceiptPage />} />
             <Route path="/verificacoes" element={<VerificationsPage />} />
