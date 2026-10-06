@@ -2,13 +2,50 @@ import { Area, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, 
 import type { Analytics } from '../../types/analytics';
 import { brl } from './format';
 
+interface ChartRow {
+  label: string;
+  isForecast: boolean;
+  revenueValue: number;
+  profitValue: number;
+  revenue: number | null;
+  profit: number | null;
+  revenueForecast: number | null;
+  profitForecast: number | null;
+}
+
+// Tooltip: o lucro (real ou projetado) fica VERMELHO se < 0 e verde se >= 0.
+function ChartTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: ChartRow }> }) {
+  const row = active ? payload?.[0]?.payload : undefined;
+  if (!row) return null;
+  return (
+    <div data-testid="chart-tooltip" className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs shadow-sm">
+      <p className="font-semibold text-gray-900 mb-1">
+        {row.label}
+        {row.isForecast && <span className="ml-1.5 font-normal text-gray-400">(projeção)</span>}
+      </p>
+      <p className="text-gray-600">
+        Receita líquida: <span className="font-semibold text-gray-900">{brl(row.revenueValue)}</span>
+      </p>
+      <p className="text-gray-600">
+        Lucro bruto:{' '}
+        <span data-testid="tooltip-profit" className={`font-semibold ${row.profitValue < 0 ? 'text-red-500' : 'text-emerald-600'}`}>
+          {brl(row.profitValue)}
+        </span>
+      </p>
+    </div>
+  );
+}
+
 const TREND_LABEL = { alta: 'tendência de alta', queda: 'tendência de queda', estavel: 'tendência estável' } as const;
 
 export function RevenueChart({ data }: { data: Analytics }) {
   const actual = data.series.filter((p) => !p.forecast);
   const lastActual = actual[actual.length - 1];
-  const rows = data.series.map((p) => ({
+  const rows: ChartRow[] = data.series.map((p) => ({
     label: p.label,
+    isForecast: Boolean(p.forecast),
+    revenueValue: p.revenue,
+    profitValue: p.profit,
     revenue: p.forecast ? null : p.revenue,
     profit: p.forecast ? null : p.profit,
     // A projeção nasce do último ponto real para a linha tracejada emendar.
@@ -42,7 +79,7 @@ export function RevenueChart({ data }: { data: Analytics }) {
             <CartesianGrid strokeDasharray="3 3" stroke="#eee" vertical={false} />
             <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#9ca3af' }} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={18} />
             <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} tickLine={false} axisLine={false} width={56} tickFormatter={(v: number) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(v))} />
-            <Tooltip formatter={(v) => (typeof v === 'number' ? brl(v) : String(v ?? ''))} />
+            <Tooltip content={<ChartTooltip />} />
             <Legend wrapperStyle={{ fontSize: 12 }} />
             <Area type="monotone" dataKey="revenue" name="Receita líquida" stroke="#18181B" strokeWidth={2} fill="url(#gRev)" connectNulls={false} />
             <Line type="monotone" dataKey="profit" name="Lucro bruto" stroke="#16a34a" strokeWidth={2} dot={false} connectNulls={false} />

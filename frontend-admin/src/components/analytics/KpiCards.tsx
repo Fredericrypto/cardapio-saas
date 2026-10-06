@@ -52,7 +52,7 @@ export function KpiCards({ data }: { data: Analytics }) {
           title="Faturamento líquido"
           tone="dark"
           value={brl(kpis.netRevenue)}
-          sub={`− cupons ${brl(kpis.discounts)} · − cancel. ${brl(kpis.cancellations)}`}
+          sub={`– cupons ${brl(kpis.discounts)} · – taxas ${brl(kpis.paymentFees)} · – impostos ${brl(kpis.taxes)}`}
         />
         <Card
           title="Margem bruta estimada"
@@ -66,8 +66,8 @@ export function KpiCards({ data }: { data: Analytics }) {
           value={brl(kpis.cogs)}
           sub={`${pct(kpis.cmvPercent)} da receita · custo real em ${pct(kpis.cmvRealCoveragePercent)} das vendas (resto: ${params.defaultCmvPercent}% estimado)`}
         />
-        <Card title="Ticket médio / pedido" value={brl(kpis.averageTicketPerOrder)} />
-        <Card title="Ticket médio / cliente" value={brl(kpis.averageTicketPerCustomer)} />
+        <Card title="Ticket médio / pedido" value={brl(kpis.averageTicketPerOrder)} sub={`Bruto ÷ ${int(kpis.orders)} pedidos válidos`} />
+        <Card title="Ticket médio / cliente" value={brl(kpis.averageTicketPerCustomer)} sub={`Bruto ÷ ${int(crm.customersServed)} clientes atendidos`} />
         <Card title="Taxas de pagamento" value={brl(kpis.paymentFees)} sub={`Cartão ${params.cardFeePercent}% · Pix ${params.pixFeePercent}%`} />
         <Card title="Impostos estimados" value={brl(kpis.taxes)} sub={`${params.taxPercent}% do faturamento`} />
       </Section>

@@ -21,12 +21,15 @@ export interface FinancialParams {
 }
 
 export interface Kpis {
-  grossRevenue: number; // itens de pedidos não abandonados (inclui os cancelados)
-  discounts: number; // cupons de desconto
-  cancellations: number; // valor dos itens de pedidos cancelados
-  cashbackRedeemed: number; // cashback usado como desconto nos pedidos
+  // Bruto = soma dos itens dos pedidos VÁLIDOS (não cancelados, não aguardando
+  // pagamento), antes de cupons. Pedido cancelado NUNCA entra aqui: ele é
+  // perda operacional e aparece só em `losses`.
+  grossRevenue: number;
+  discounts: number; // cupons de desconto (pedidos válidos)
+  cashbackRedeemed: number; // cashback usado como forma de pagamento (informativo)
   paymentFees: number; // taxas de cartão/Pix
   taxes: number; // impostos estimados
+  // Líquido = bruto − cupons − taxas de pagamento − impostos (sem cancelamentos).
   netRevenue: number;
   cogs: number; // CMV
   grossProfit: number; // receita líquida - CMV
@@ -34,8 +37,8 @@ export interface Kpis {
   cmvPercent: number | null;
   cmvRealCoveragePercent: number; // % das vendas com custo real (restante estimado)
   orders: number; // pedidos válidos
-  averageTicketPerOrder: number | null;
-  averageTicketPerCustomer: number | null;
+  averageTicketPerOrder: number | null; // bruto ÷ pedidos válidos
+  averageTicketPerCustomer: number | null; // bruto ÷ clientes únicos atendidos
 }
 
 export interface Losses {
@@ -116,8 +119,10 @@ export interface Analytics {
   bottomProducts: MenuItemStat[];
   matrix: {
     items: MatrixItem[];
-    popularityThresholdUnits: number;
-    marginThresholdValue: number;
+    // V̄ = unidades vendidas ÷ itens com venda · M̄ = lucro de cardápio ÷
+    // unidades vendidas (média da loja, ponderada pelo volume).
+    averageVolume: number;
+    averageMargin: number;
   };
   heatmap: { weekday: number; hour: number; orders: number; revenue: number }[];
   channels: { channel: 'mesa' | 'balcao' | 'entrega'; label: string; orders: number; revenue: number }[];

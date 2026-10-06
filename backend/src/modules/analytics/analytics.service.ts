@@ -4,7 +4,8 @@ import { DataSource, Repository } from 'typeorm';
 import { Customer } from '../customers/customer.entity';
 import { CustomerVerificationService } from '../customers/customer-verification.service';
 import { ANALYTICS_TZ, resolveRange } from './analytics.range';
-import { buildForecast, classifyMenu } from './analytics.math';
+import { buildCatalog, buildForecast, classifyMenu, rankBottom, rankTop } from './analytics.math';
+import type { CatalogRow } from './analytics.math';
 import type {
   Analytics,
   AnalyticsRange,
@@ -18,6 +19,8 @@ import type {
 } from './analytics.types';
 
 const r2 = (v: unknown): number => Math.round((Number(v) || 0) * 100) / 100;
+// Valor monetário (numeric do Postgres, já em centavos exatos) -> centavos inteiros.
+const c = (v: unknown): number => Math.round((Number(v) || 0) * 100);
 const pct = (num: number, den: number): number | null => (den > 0 ? r2((num / den) * 100) : null);
 
 // Pedido "válido" = venda de verdade (não cancelado e não aguardando pagamento).
@@ -51,7 +54,7 @@ WITH priced AS (
   LEFT JOIN LATERAL (
     SELECT
       SUM(oi.subtotal) AS items_total,
-      SUM(oi.quantity * COALESCE(oi.unit_cost, p.cost_price, oi.unit_price * $5::numeric / 100)) AS cogs,
+      SUM(oi.quantity * COALESCE(oi.unit_cost, p.cost_price, ROUND(oi.unit_price * $5::numeric / 100, 2))) AS cogs,
       SUM(CASE WHEN COALESCE(oi.unit_cost, p.cost_price) IS NOT NULL THEN oi.subtotal ELSE 0 END) AS real_sales
     FROM order_items oi
     LEFT JOIN products p ON p.id = oi.product_id
@@ -106,33 +109,41 @@ export class AnalyticsService {
       params.taxPercent,
     ];
 
-    const [kpiBundle, series, products, heatmap, channels, cash, crm, bottom] = await Promise.all([
+    const [kpiBundle, series, catalogRows, heatmap, channels, cash, crm] = await Promise.all([
       this.queryKpisAndLosses(p),
       this.querySeries(p, range),
-      this.queryProducts(p),
+      this.queryCatalogRows(p),
       this.queryHeatmap(p),
       this.queryChannels(p),
       this.queryCash(p),
       this.queryCrm(p),
-      this.queryBottomProducts(p),
     ]);
 
     const { kpis, losses } = kpiBundle;
     kpis.cashbackRedeemed = cash.cashbackRedeemed;
+    // Ticket por cliente = bruto ÷ clientes únicos atendidos (mesma base do card de CRM).
     kpis.averageTicketPerCustomer =
-      crm.customersServed > 0 ? r2((kpis.grossRevenue - kpis.cancellations - kpis.discounts) / crm.customersServed) : null;
+      crm.customersServed > 0 ? r2(c(kpis.grossRevenue) / crm.customersServed / 100) : null;
 
     const forecast = buildForecast(series, range.granularity);
-    const matrix = classifyMenu(products);
+    // UMA lista de itens alimenta Top 10, Menos vendidos, matriz, pontos do gráfico e cards.
+    const catalog = buildCatalog(catalogRows, params.defaultCmvPercent);
+    const topProducts = rankTop(catalog);
+    const bottomProducts = rankBottom(catalog, topProducts);
+    const matrix = classifyMenu(catalog.filter((i) => i.units > 0));
 
-    const ranked = [...products].sort((a, b) => b.units - a.units || b.revenue - a.revenue);
     const notes = [
       'Valores em R$ com 2 casas. Fuso: America/Sao_Paulo (Brasília).',
-      'Faturamento bruto = itens dos pedidos (inclui os cancelados). Líquido = bruto − cupons − cancelamentos − taxas de pagamento − impostos. Gorjeta e taxa de entrega não entram.',
+      'Faturamento bruto = soma dos valores dos pedidos concluídos/válidos. Líquido = bruto – cupons – taxas de pagamento – impostos (gorjeta e taxa de entrega não entram).',
+      'Pedido válido = qualquer pedido que não foi cancelado nem está aguardando pagamento (inclui os que ainda estão em preparo). Pedidos cancelados aparecem somente em "Perdas e desperdício": não entram no bruto nem são deduzidos do líquido.',
+      'Ticket médio por pedido = faturamento bruto ÷ pedidos válidos. Ticket médio por cliente = faturamento bruto ÷ clientes únicos atendidos.',
       'Cashback resgatado é forma de pagamento: não é deduzido da receita líquida (aparece em Conciliação).',
       `CMV: custo real do produto quando cadastrado; senão estimativa de ${params.defaultCmvPercent}% do preço. Cobertura de custo real nas vendas: ${kpis.cmvRealCoveragePercent}%.`,
       'Taxas de cartão/Pix e imposto usam os percentuais configurados em "Parâmetros financeiros" (0% = não deduz).',
       'Pedidos com cobrança não concluída (Pix expirado/recusado) não contam como venda nem como perda.',
+      'Matriz do cardápio: volume médio = unidades vendidas ÷ itens com venda; margem média = lucro de cardápio ÷ unidades vendidas. Estrela/burro de carga/puzzle/cão comparam cada item com essas duas médias.',
+      'Menos vendidos: ordem crescente de unidades (zero venda primeiro), sem repetir os itens do Top 10.',
+      'Projeção: regressão linear; receita nunca negativa e, se a receita projetada for zero, o lucro projetado é zero.',
       'Estorno por prato e sangria só têm dados após os lançamentos no sistema ("Sem dados" até lá).',
       'Clientes novos/recorrentes consideram só clientes identificados (com conta); visitantes entram apenas no total atendido.',
     ];
@@ -146,8 +157,8 @@ export class AnalyticsService {
       crm,
       series: [...series, ...(forecast?.points ?? [])],
       forecast: forecast?.forecast ?? null,
-      topProducts: ranked.slice(0, 10),
-      bottomProducts: bottom,
+      topProducts,
+      bottomProducts,
       matrix,
       heatmap,
       channels,
@@ -156,11 +167,17 @@ export class AnalyticsService {
   }
 
   // ---------------------------------------------------------------- KPIs
+  // REGRAS (DRE):
+  //   Bruto    = Σ itens dos pedidos VÁLIDOS (cancelado nunca entra)
+  //   Líquido  = Bruto − cupons − taxas de pagamento − impostos
+  //   Ticket/pedido  = Bruto ÷ pedidos válidos
+  //   Ticket/cliente = Bruto ÷ clientes únicos atendidos (calculado em getAnalytics)
+  // Cancelamentos vivem SÓ em `losses` (não entram no bruto nem são deduzidos do líquido).
   private async queryKpisAndLosses(p: Params): Promise<{ kpis: Kpis; losses: Losses }> {
     const [agg]: Array<Record<string, string>> = await this.ds.query(
       `${BASE_CTE}
        SELECT
-         COALESCE(SUM(items_total) FILTER (WHERE (is_valid OR (status = 'cancelado' AND NOT is_abandoned))), 0) AS gross,
+         COALESCE(SUM(items_total) FILTER (WHERE is_valid), 0) AS gross,
          COALESCE(SUM(items_total) FILTER (WHERE status = 'cancelado' AND NOT is_abandoned), 0) AS canc_value,
          COUNT(*) FILTER (WHERE status = 'cancelado' AND NOT is_abandoned) AS canc_orders,
          COUNT(*) FILTER (WHERE is_abandoned) AS abandoned,
@@ -169,7 +186,6 @@ export class AnalyticsService {
          COALESCE(SUM(tax) FILTER (WHERE is_valid), 0) AS taxes,
          COALESCE(SUM(cogs) FILTER (WHERE is_valid), 0) AS cogs,
          COALESCE(SUM(real_sales) FILTER (WHERE is_valid), 0) AS real_sales,
-         COALESCE(SUM(items_total) FILTER (WHERE is_valid), 0) AS valid_items,
          COUNT(*) FILTER (WHERE is_valid) AS orders
        FROM priced`,
       p,
@@ -180,44 +196,42 @@ export class AnalyticsService {
               COUNT(*) AS orders, COALESCE(SUM(items_total), 0) AS value
        FROM priced
        WHERE status = 'cancelado' AND NOT is_abandoned
-       GROUP BY 1 ORDER BY value DESC, orders DESC`,
+       GROUP BY 1 ORDER BY value DESC, orders DESC, reason ASC`,
       p,
     );
 
-    const gross = r2(agg.gross);
-    const cancellations = r2(agg.canc_value);
-    const discounts = r2(agg.discounts);
-    const paymentFees = r2(agg.fees);
-    const taxes = r2(agg.taxes);
-    const cogs = r2(agg.cogs);
+    // Tudo em centavos inteiros: nenhuma soma de ponto flutuante.
+    const grossC = c(agg.gross);
+    const discountsC = c(agg.discounts);
+    const feesC = c(agg.fees);
+    const taxesC = c(agg.taxes);
+    const cogsC = c(agg.cogs);
+    const netC = grossC - discountsC - feesC - taxesC;
+    const profitC = netC - cogsC;
     const orders = Number(agg.orders) || 0;
-    const validItems = Number(agg.valid_items) || 0;
-    const netRevenue = r2(gross - cancellations - discounts - paymentFees - taxes);
-    const grossProfit = r2(netRevenue - cogs);
 
     const kpis: Kpis = {
-      grossRevenue: gross,
-      discounts,
-      cancellations,
+      grossRevenue: grossC / 100,
+      discounts: discountsC / 100,
       cashbackRedeemed: 0, // preenchido em getAnalytics a partir de `cash`
-      paymentFees,
-      taxes,
-      netRevenue,
-      cogs,
-      grossProfit,
-      grossMarginPercent: pct(grossProfit, netRevenue),
-      cmvPercent: pct(cogs, netRevenue),
-      cmvRealCoveragePercent: validItems > 0 ? r2((Number(agg.real_sales) / validItems) * 100) : 0,
+      paymentFees: feesC / 100,
+      taxes: taxesC / 100,
+      netRevenue: netC / 100,
+      cogs: cogsC / 100,
+      grossProfit: profitC / 100,
+      grossMarginPercent: netC > 0 ? r2((profitC / netC) * 100) : null,
+      cmvPercent: netC > 0 ? r2((cogsC / netC) * 100) : null,
+      cmvRealCoveragePercent: grossC > 0 ? r2((c(agg.real_sales) / grossC) * 100) : 0,
       orders,
-      averageTicketPerOrder: orders > 0 ? r2((validItems - discounts) / orders) : null,
+      averageTicketPerOrder: orders > 0 ? r2(grossC / orders / 100) : null,
       averageTicketPerCustomer: null,
     };
     const losses: Losses = {
       cancelledOrders: Number(agg.canc_orders) || 0,
-      cancelledValue: cancellations,
+      cancelledValue: c(agg.canc_value) / 100,
       abandonedUnpaidOrders: Number(agg.abandoned) || 0,
       refundedDishes: null,
-      byReason: reasons.map((r) => ({ reason: r.reason, orders: Number(r.orders), value: r2(r.value) })),
+      byReason: reasons.map((r) => ({ reason: r.reason, orders: Number(r.orders), value: c(r.value) / 100 })),
     };
     return { kpis, losses };
   }
@@ -251,33 +265,15 @@ export class AnalyticsService {
     }));
   }
 
-  // ---------------------------------------------------------------- Produtos
-  private async queryProducts(p: Params): Promise<MenuItemStat[]> {
-    const rows: Array<Record<string, string | boolean>> = await this.ds.query(
-      `SELECT oi.product_id,
-              MAX(oi.product_name) AS name,
-              SUM(oi.quantity) AS units,
-              SUM(oi.subtotal) AS revenue,
-              SUM(oi.quantity * COALESCE(oi.unit_cost, pr.cost_price, oi.unit_price * $5::numeric / 100)) AS cost,
-              BOOL_AND(COALESCE(oi.unit_cost, pr.cost_price) IS NOT NULL) AS all_real
-         FROM orders o
-         JOIN order_items oi ON oi.order_id = o.id
-         LEFT JOIN products pr ON pr.id = oi.product_id
-        WHERE o.tenant_id = $1 AND o.created_at >= $2 AND o.created_at < $3
-          AND ($4::uuid IS NULL OR o.location_id = $4)
-          AND o.status NOT IN ('cancelado', 'aguardando_pagamento')
-        GROUP BY oi.product_id`,
-      p.slice(0, 5), // esta query só usa $1..$5 (o Postgres exige contagem exata)
-    );
-    return rows.map((r) => toMenuItem(r));
-  }
-
-  // 10 menos vendidos — inclui produtos ativos SEM nenhuma venda no período.
-  private async queryBottomProducts(p: Params): Promise<MenuItemStat[]> {
-    const rows: Array<Record<string, string | boolean>> = await this.ds.query(
+  // ---------------------------------------------------------------- Catálogo (fonte única)
+  // Uma linha por produto: vendas (pedidos válidos do período) + todo produto
+  // ativo do catálogo (mesmo sem vendas) + produto já excluído que vendeu no
+  // período (para a soma dos itens bater com o faturamento bruto).
+  private async queryCatalogRows(p: Params): Promise<CatalogRow[]> {
+    const rows: Array<Record<string, string | boolean | null>> = await this.ds.query(
       `WITH sales AS (
-         SELECT oi.product_id, SUM(oi.quantity) AS units, SUM(oi.subtotal) AS revenue,
-                SUM(oi.quantity * COALESCE(oi.unit_cost, pr.cost_price, oi.unit_price * $5::numeric / 100)) AS cost,
+         SELECT oi.product_id, MAX(oi.product_name) AS name, SUM(oi.quantity) AS units, SUM(oi.subtotal) AS revenue,
+                SUM(oi.quantity * COALESCE(oi.unit_cost, pr.cost_price, ROUND(oi.unit_price * $5::numeric / 100, 2))) AS cost,
                 BOOL_AND(COALESCE(oi.unit_cost, pr.cost_price) IS NOT NULL) AS all_real
            FROM orders o
            JOIN order_items oi ON oi.order_id = o.id
@@ -287,35 +283,31 @@ export class AnalyticsService {
             AND o.status NOT IN ('cancelado', 'aguardando_pagamento')
           GROUP BY oi.product_id
        )
-       SELECT p.id AS product_id, p.name,
-              COALESCE(s.units, 0) AS units, COALESCE(s.revenue, 0) AS revenue,
-              COALESCE(s.cost, 0) AS cost, COALESCE(s.all_real, p.cost_price IS NOT NULL) AS all_real,
-              p.price AS list_price, p.cost_price AS list_cost
-         FROM products p
-         LEFT JOIN sales s ON s.product_id = p.id
-        WHERE p.tenant_id = $1 AND p.deleted_at IS NULL AND p.is_available = TRUE
-        ORDER BY COALESCE(s.units, 0) ASC, p.name ASC
-        LIMIT 10`,
-      p.slice(0, 5),
+       SELECT COALESCE(s.product_id, p.id) AS product_id,
+              COALESCE(p.name, s.name) AS name,
+              COALESCE(s.units, 0) AS units,
+              COALESCE(s.revenue, 0) AS revenue,
+              COALESCE(s.cost, 0) AS cost,
+              COALESCE(s.all_real, p.cost_price IS NOT NULL) AS all_real,
+              p.price AS list_price,
+              p.cost_price AS list_cost,
+              (p.id IS NOT NULL AND p.deleted_at IS NULL) AS active
+         FROM sales s
+         FULL OUTER JOIN products p ON p.id = s.product_id AND p.tenant_id = $1
+        WHERE s.product_id IS NOT NULL OR (p.tenant_id = $1 AND p.deleted_at IS NULL)`,
+      p.slice(0, 5), // esta query só usa $1..$5 (o Postgres exige contagem exata)
     );
-    return rows.map((r) => {
-      const item = toMenuItem(r);
-      if (item.units === 0) {
-        // Sem vendas: mostra preço de tabela e custo (real ou estimado) como referência.
-        const price = r2(r.list_price);
-        const hasCost = r.list_cost != null;
-        const cost = hasCost ? r2(r.list_cost) : r2((price * Number(p[4])) / 100);
-        return {
-          ...item,
-          unitPrice: price,
-          unitCost: cost,
-          unitMargin: r2(price - cost),
-          marginPercent: pct(price - cost, price),
-          costSource: hasCost ? 'real' : 'estimada',
-        };
-      }
-      return item;
-    });
+    return rows.map((r) => ({
+      productId: String(r.product_id),
+      name: String(r.name),
+      units: Number(r.units) || 0,
+      revenue: Number(r.revenue) || 0,
+      cost: Number(r.cost) || 0,
+      allReal: Boolean(r.all_real),
+      listPrice: r.list_price == null ? null : Number(r.list_price),
+      listCost: r.list_cost == null ? null : Number(r.list_cost),
+      active: Boolean(r.active),
+    }));
   }
 
   // ---------------------------------------------------------------- Heatmap / canais
@@ -471,25 +463,6 @@ export class AnalyticsService {
       verifiedPercent: pct(verified, identified),
     };
   }
-}
-
-function toMenuItem(r: Record<string, string | boolean>): MenuItemStat {
-  const units = Number(r.units) || 0;
-  const revenue = r2(r.revenue);
-  const cost = r2(r.cost);
-  const unitPrice = units > 0 ? r2(revenue / units) : 0;
-  const unitCost = units > 0 ? r2(cost / units) : 0;
-  return {
-    productId: String(r.product_id),
-    name: String(r.name),
-    units,
-    revenue,
-    unitPrice,
-    unitCost,
-    unitMargin: r2(unitPrice - unitCost),
-    marginPercent: pct(unitPrice - unitCost, unitPrice),
-    costSource: r.all_real ? 'real' : 'estimada',
-  };
 }
 
 function bucketLabel(bucket: string, g: 'hour' | 'day' | 'month', range: AnalyticsRange): string {

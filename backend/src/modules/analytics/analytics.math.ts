@@ -1,6 +1,7 @@
 import type { Forecast, Granularity, MatrixClass, MatrixItem, MenuItemStat, SeriesPoint } from './analytics.types';
 
-const r2 = (v: number): number => Math.round(v * 100) / 100;
+const r2 = (v: number): number => Math.round((v + Number.EPSILON) * 100) / 100;
+const cents = (v: number): number => Math.round(v * 100);
 
 // ---------------------------------------------------------------------------
 // Projeção de tendência: regressão linear simples (mínimos quadrados) sobre o
@@ -44,6 +45,18 @@ function labelOf(bucket: string, g: Granularity): string {
   return `${months[Number(m) - 1]}/${y.slice(2)}`;
 }
 
+// Trava de segurança de cada ponto projetado (pedido do Felipe, 05/10):
+//  - receita projetada nunca é negativa;
+//  - receita projetada zerada => lucro projetado obrigatoriamente 0;
+//  - lucro projetado nunca é negativo (não há custos fixos modelados) e nunca
+//    passa da própria receita (lucro = receita − CMV, e CMV >= 0).
+// Vale só para a PROJEÇÃO — os valores reais do histórico nunca são alterados.
+export function lockProjectedPoint(regressionRevenue: number, regressionProfit: number): { revenue: number; profit: number } {
+  const revenue = r2(Math.max(0, regressionRevenue));
+  const profit = revenue === 0 ? 0 : Math.min(revenue, r2(Math.max(0, regressionProfit)));
+  return { revenue, profit };
+}
+
 export function buildForecast(
   series: SeriesPoint[],
   g: Granularity,
@@ -58,15 +71,14 @@ export function buildForecast(
   const horizon = g === 'hour' ? 6 : g === 'day' ? 7 : 3;
   const points: SeriesPoint[] = [];
   let bucket = series[series.length - 1].bucket;
-  let nextRevenue = 0;
-  let nextProfit = 0;
+  let nextRevenueCents = 0;
+  let nextProfitCents = 0;
   for (let step = 1; step <= horizon; step++) {
     bucket = nextBucket(bucket, g);
     const idx = fitSeries.length - 1 + step + (series.length - fitSeries.length);
-    const revenue = Math.max(0, r2(rev.intercept + rev.slope * idx));
-    const profit = r2(prof.intercept + prof.slope * idx);
-    nextRevenue += revenue;
-    nextProfit += profit;
+    const { revenue, profit } = lockProjectedPoint(rev.intercept + rev.slope * idx, prof.intercept + prof.slope * idx);
+    nextRevenueCents += cents(revenue);
+    nextProfitCents += cents(profit);
     points.push({ bucket, label: labelOf(bucket, g), revenue, profit, forecast: true });
   }
 
@@ -78,8 +90,9 @@ export function buildForecast(
     forecast: {
       method: 'linear-regression',
       horizon,
-      nextPeriodRevenue: r2(nextRevenue),
-      nextPeriodProfit: r2(nextProfit),
+      // Soma EXATA (em centavos) dos pontos que o gráfico desenha.
+      nextPeriodRevenue: nextRevenueCents / 100,
+      nextPeriodProfit: nextProfitCents / 100,
       trend,
       r2: r2(rev.r2),
       lowConfidence: fitSeries.length < 6 || rev.r2 < 0.2,
@@ -88,27 +101,121 @@ export function buildForecast(
 }
 
 // ---------------------------------------------------------------------------
-// Engenharia de cardápio (matriz 2x2 — método de Kasavana & Smith):
-//  - volume ALTO  = unidades ≥ 70% da média de unidades por item vendido;
-//  - margem ALTA  = margem unitária (R$) ≥ margem média ponderada pelo volume.
-//  Estrela = alto volume + alta margem · Burro de carga = alto volume + baixa
-//  margem · Puzzle = baixo volume + alta margem · Cão = baixo volume + baixa margem.
-// Só entram itens com venda no período.
+// FONTE ÚNICA do cardápio. Todas as visões (Top 10, Menos vendidos, matriz 2x2,
+// pontos do gráfico e cards dos quadrantes) saem da MESMA lista, calculada aqui.
+// ---------------------------------------------------------------------------
+export interface CatalogRow {
+  productId: string;
+  name: string;
+  units: number;
+  revenue: number; // soma dos itens vendidos (pedidos válidos) — antes de cupons
+  cost: number; // custo total das unidades vendidas (real ou estimado, em centavos exatos)
+  allReal: boolean;
+  listPrice: number | null; // preço de tabela atual
+  listCost: number | null; // custo cadastrado atual
+  active: boolean; // existe no catálogo hoje (não excluído)
+}
+
+export type CatalogItem = MenuItemStat & { active: boolean };
+
+export function buildCatalog(rows: CatalogRow[], defaultCmvPercent: number): CatalogItem[] {
+  return rows.map((r): CatalogItem => {
+    if (r.units > 0) {
+      const revenueC = cents(r.revenue);
+      const costC = cents(r.cost);
+      const unitPrice = r2(revenueC / r.units / 100);
+      // Margem unitária EXATA ((receita − custo) ÷ unidades), arredondada uma
+      // vez só; o custo unitário é derivado dela para preço − custo = margem.
+      const unitMargin = r2((revenueC - costC) / r.units / 100);
+      return {
+        productId: r.productId,
+        name: r.name,
+        units: r.units,
+        revenue: r2(revenueC / 100),
+        unitPrice,
+        unitCost: r2(unitPrice - unitMargin),
+        unitMargin,
+        marginPercent: revenueC > 0 ? r2(((revenueC - costC) / revenueC) * 100) : null,
+        costSource: r.allReal ? 'real' : 'estimada',
+        active: r.active,
+      };
+    }
+    // Sem vendas no período: referência com o preço de tabela e o custo
+    // (real se cadastrado, senão o % padrão).
+    const price = r2(r.listPrice ?? 0);
+    const hasCost = r.listCost != null;
+    const cost = hasCost ? r2(r.listCost as number) : r2((price * defaultCmvPercent) / 100);
+    const margin = r2(price - cost);
+    return {
+      productId: r.productId,
+      name: r.name,
+      units: 0,
+      revenue: 0,
+      unitPrice: price,
+      unitCost: cost,
+      unitMargin: margin,
+      marginPercent: price > 0 ? r2((margin / price) * 100) : null,
+      costSource: hasCost ? 'real' : 'estimada',
+      active: r.active,
+    };
+  });
+}
+
+const byName = (a: MenuItemStat, b: MenuItemStat) => a.name.localeCompare(b.name, 'pt-BR');
+
+// Top 10: mais unidades primeiro (desempate: maior receita, depois nome).
+export function rankTop(items: CatalogItem[], limit = 10): MenuItemStat[] {
+  return items
+    .filter((i) => i.units > 0)
+    .sort((a, b) => b.units - a.units || b.revenue - a.revenue || byName(a, b))
+    .slice(0, limit)
+    .map(stripActive);
+}
+
+// Menos vendidos: ordem CRESCENTE de unidades (zero venda primeiro), só itens
+// que existem no catálogo e que NÃO estão no Top 10 — um campeão de vendas
+// nunca aparece aqui (com catálogo de até 10 itens a lista fica vazia).
+export function rankBottom(items: CatalogItem[], top: MenuItemStat[], limit = 10): MenuItemStat[] {
+  const inTop = new Set(top.map((t) => t.productId));
+  return items
+    .filter((i) => i.active && !inTop.has(i.productId))
+    .sort((a, b) => a.units - b.units || a.revenue - b.revenue || byName(a, b))
+    .slice(0, limit)
+    .map(stripActive);
+}
+
+function stripActive(i: CatalogItem): MenuItemStat {
+  const { active: _active, ...rest } = i;
+  void _active;
+  return rest;
+}
+
+// ---------------------------------------------------------------------------
+// Matriz de engenharia de cardápio (2x2), sobre os itens COM venda no período:
+//   V̄ = unidades vendidas ÷ nº de itens vendidos      (volume médio)
+//   M̄ = Σ(margem unitária × unidades) ÷ Σ unidades    (margem média da loja)
+//   Estrela        : volume >= V̄  E  margem >= M̄
+//   Burro de carga : volume >= V̄  E  margem <  M̄
+//   Puzzle         : volume <  V̄  E  margem >= M̄
+//   Cão            : volume <  V̄  E  margem <  M̄
+// As comparações são feitas em aritmética INTEIRA (unidades e centavos, por
+// multiplicação cruzada), então a classificação é exata e idêntica ao que o
+// painel mostra: nada de erro de ponto flutuante nem de arredondamento.
 // ---------------------------------------------------------------------------
 export function classifyMenu(items: MenuItemStat[]): {
   items: MatrixItem[];
-  popularityThresholdUnits: number;
-  marginThresholdValue: number;
+  averageVolume: number;
+  averageMargin: number;
 } {
   const sold = items.filter((i) => i.units > 0);
-  if (sold.length === 0) return { items: [], popularityThresholdUnits: 0, marginThresholdValue: 0 };
+  if (sold.length === 0) return { items: [], averageVolume: 0, averageMargin: 0 };
+  const n = sold.length;
   const totalUnits = sold.reduce((a, i) => a + i.units, 0);
-  const popularityThresholdUnits = r2(0.7 * (totalUnits / sold.length));
-  const marginThresholdValue = r2(sold.reduce((a, i) => a + i.unitMargin * i.units, 0) / totalUnits);
+  const weightedMarginCents = sold.reduce((a, i) => a + cents(i.unitMargin) * i.units, 0);
 
   const classify = (i: MenuItemStat): MatrixClass => {
-    const highVolume = i.units >= popularityThresholdUnits;
-    const highMargin = i.unitMargin >= marginThresholdValue;
+    const highVolume = i.units * n >= totalUnits; // units >= totalUnits / n
+    const highMargin = cents(i.unitMargin) * totalUnits >= weightedMarginCents; // margem >= média ponderada
     if (highVolume && highMargin) return 'estrela';
     if (highVolume) return 'burro_de_carga';
     if (highMargin) return 'puzzle';
@@ -116,7 +223,7 @@ export function classifyMenu(items: MenuItemStat[]): {
   };
   return {
     items: sold.map((i) => ({ ...i, classification: classify(i) })),
-    popularityThresholdUnits,
-    marginThresholdValue,
+    averageVolume: r2(totalUnits / n),
+    averageMargin: r2(weightedMarginCents / totalUnits / 100),
   };
 }
