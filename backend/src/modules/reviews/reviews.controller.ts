@@ -1,5 +1,4 @@
 import { Controller, Get, Post, Delete, Body, Param, Query, UseGuards, ForbiddenException } from '@nestjs/common';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 import { CurrentAdminUser } from '../../common/decorators/current-admin-user.decorator';
 import type { RequestAdminUser } from '../../common/decorators/current-admin-user.decorator';
@@ -9,6 +8,7 @@ import type { RequestCustomer } from '../../common/decorators/current-customer.d
 import { ReviewsService } from './reviews.service';
 import { CreateReviewDto } from './dto/create-review.dto';
 import { RespondReviewDto } from './dto/respond-review.dto';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 
 @Controller()
 export class ReviewsController {
@@ -129,13 +129,13 @@ export class ReviewsController {
 
   // ---------- Admin ----------
 
-  @UseGuards(JwtAuthGuard)
+  @RequirePermission('reviews:view')
   @Get('reviews/admin')
   async findAllForAdmin(@CurrentTenant() tenantId: string, @Query('locationId') locationId?: string) {
     return this.reviewsService.findAllForAdmin(tenantId, { locationId });
   }
 
-  @UseGuards(JwtAuthGuard)
+  @RequirePermission('reviews:view')
   @Get('reviews/admin/summary')
   async getAdminSummary(@CurrentTenant() tenantId: string) {
     return this.reviewsService.getAdminSummary(tenantId);
@@ -143,7 +143,7 @@ export class ReviewsController {
 
   // Responder continua permitido — só ocultar/editar a review do
   // cliente é que foi removido do sistema (decisão de produto).
-  @UseGuards(JwtAuthGuard)
+  @RequirePermission('reviews:manage')
   @Post('reviews/admin/:id/respond')
   async respondToReview(
     @CurrentTenant() tenantId: string,

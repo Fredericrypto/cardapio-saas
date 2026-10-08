@@ -6,6 +6,124 @@
   --tenant-secondary: #1D3557;
 }
 
+/* ============================================================
+   MODO ESCURO (alternável pelo botão do cabeçalho — lib/theme.ts)
+   Padrão da aplicação = CLARO. O escuro vale quando <html> tem a
+   classe `dark` (e só na TELA: na impressão o cupom continua claro).
+
+   Paleta:
+     fundo principal   #131314      texto principal    #E3E2E6
+     superfícies/cards #1E1E20      texto secundário   #8E918F / #C4C7C5
+     superfície 2      #282A2C      bordas             #333537
+
+   Como funciona (sem editar página por página):
+   1) os tons de cinza 400–900 e as famílias coloridas (red, amber,
+      green…) são REMAPEADOS pelas variáveis do Tailwind — todo
+      `text-gray-900`, `border-red-200`, `bg-green-50` etc. acompanha;
+   2) os cinzas CLAROS (50–300) e `bg-white` têm regras explícitas
+      porque também aparecem como TEXTO claro sobre os cards escuros
+      do Painel (text-gray-300) e como `bg-white/10` — não podem ser
+      invertidos em bloco.
+   Para uma cor nova específica, use a variante `dark:` (habilitada abaixo),
+   ex.: `bg-white dark:bg-[#1E1E20]`.
+   ============================================================ */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@media not print {
+  .dark {
+    color-scheme: dark;
+
+    /* Cinzas (400–900: texto, ícones, botões escuros) */
+    --color-gray-400: #8E918F;
+    --color-gray-500: #A3A6A4;
+    --color-gray-600: #C4C7C5;
+    --color-gray-700: #D2D4D3;
+    --color-gray-800: #DCDBDF;
+    --color-gray-900: #E3E2E6;
+
+    /* Famílias coloridas: fundos claros (50–300) viram tons escuros
+       translúcidos; textos escuros (700–800) viram tons claros.
+       400–600 (botões, ícones, destaques) ficam como estão. */
+    --color-red-50: #2b1517;     --color-red-100: #3b1a1d;     --color-red-200: #5c2429;
+    --color-red-300: #8a3a40;    --color-red-700: #fca5a5;     --color-red-800: #fecaca;
+    --color-amber-50: #2a2010;   --color-amber-100: #3a2a0e;   --color-amber-200: #5a4010;
+    --color-amber-300: #7a5a14;  --color-amber-700: #fcd34d;   --color-amber-800: #fde68a;
+    --color-orange-50: #2b1a0f;  --color-orange-100: #3b2312;  --color-orange-200: #5c3517;
+    --color-orange-300: #86481c; --color-orange-700: #fdba74;  --color-orange-800: #fed7aa;
+    --color-green-50: #112419;   --color-green-100: #163222;   --color-green-200: #1f4a31;
+    --color-green-300: #2f6b47;  --color-green-700: #86efac;   --color-green-800: #bbf7d0;
+    --color-emerald-50: #10251f; --color-emerald-100: #14322a; --color-emerald-200: #1c4a3f;
+    --color-emerald-700: #6ee7b7;
+    --color-blue-50: #121d33;    --color-blue-100: #172647;    --color-blue-200: #223a6b;
+    --color-blue-300: #3355a0;   --color-blue-700: #93c5fd;    --color-blue-800: #bfdbfe;
+    --color-sky-50: #0f2230;     --color-sky-100: #133046;     --color-sky-700: #7dd3fc;
+    --color-purple-100: #2b1d45; --color-purple-700: #d8b4fe;
+
+    /* Piscar de atenção (pedido/chamado/verificação): mesmo efeito, cores escuras */
+    --blink-bg-on: #3a2a0e;
+    --blink-border-on: #f59e0b;
+    --blink-bg-off: #1E1E20;
+    --blink-border-off: #333537;
+    --nav-blink-bg-on: #3a2a0e;
+    --nav-blink-text-on: #fcd34d;
+  }
+
+  .dark body {
+    background-color: #131314;
+    color: #E3E2E6;
+  }
+
+  /* Campos de formulário sem classe de fundo própria (camada base: qualquer
+     utilitário `bg-*` do componente continua tendo prioridade). */
+  @layer base {
+    .dark input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='file']),
+    .dark select,
+    .dark textarea {
+      background-color: #131314;
+      color: #E3E2E6;
+    }
+  }
+
+  /* Superfícies */
+  .dark .bg-white { background-color: #1E1E20; }
+  .dark .bg-white\/70 { background-color: color-mix(in srgb, #1E1E20 70%, transparent); }
+  .dark .bg-gray-50 { background-color: #131314; }
+  .dark .bg-gray-50\/90 { background-color: rgb(19 19 20 / 0.9); }
+  .dark .bg-gray-100 { background-color: #282A2C; }
+  .dark .bg-gray-200 { background-color: #333537; }
+  .dark .bg-gray-300 { background-color: #444746; }
+  .dark .bg-zinc-800 { background-color: #E3E2E6; } /* barra de progresso (Engenharia de cardápio) */
+  .dark .hover\:bg-gray-50:hover { background-color: #282A2C; }
+  .dark .hover\:bg-gray-100:hover { background-color: #2f3133; }
+  .dark .hover\:bg-gray-200:hover { background-color: #38393B; }
+
+  /* Bordas e divisores */
+  .dark .border-gray-50,
+  .dark .divide-gray-50 > :not(:last-child) { border-color: #26282A; }
+  .dark .border-gray-100,
+  .dark .divide-gray-100 > :not(:last-child) { border-color: #2a2c2e; }
+  .dark .border-gray-200,
+  .dark .disabled\:hover\:border-gray-200:disabled:hover { border-color: #38393B; }
+  .dark .border-gray-300,
+  .dark .hover\:border-gray-300:hover { border-color: #4a4c4e; }
+  @media (min-width: 40rem) {
+    .dark .sm\:border-gray-100 { border-color: #2a2c2e; }
+  }
+
+  /* Botão escuro com texto branco (ex.: item ativo do menu, botão primário):
+     no escuro o fundo vira off-white, então o texto precisa escurecer. */
+  .dark .bg-gray-900.text-white,
+  .dark .bg-gray-800.text-white { color: #131314; }
+
+  /* Tooltips do recharts (o padrão é branco) */
+  .dark .recharts-default-tooltip {
+    background-color: #282A2C !important;
+    border-color: #38393B !important;
+  }
+  .dark .recharts-tooltip-label,
+  .dark .recharts-tooltip-item { color: #E3E2E6 !important; }
+}
+
 * {
   box-sizing: border-box;
 }

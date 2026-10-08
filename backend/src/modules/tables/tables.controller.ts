@@ -9,7 +9,6 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { SkipThrottle } from '@nestjs/throttler';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 import { CurrentAdminUser } from '../../common/decorators/current-admin-user.decorator';
 import type { RequestAdminUser } from '../../common/decorators/current-admin-user.decorator';
@@ -22,6 +21,7 @@ import { CreateTableDto } from './dto/create-table.dto';
 import { RequestClosingDto } from './dto/request-closing.dto';
 import { CloseSessionDto } from './dto/close-session.dto';
 import { ForceResetSessionDto } from './dto/force-reset-session.dto';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 
 @Controller()
 export class TablesController {
@@ -29,19 +29,19 @@ export class TablesController {
 
   // ---------- Painel admin: gestão de mesas ----------
 
-  @UseGuards(JwtAuthGuard)
+  @RequirePermission('tables:view')
   @Get('tables')
   async findAll(@CurrentTenant() tenantId: string) {
     return this.tablesService.findAllForAdmin(tenantId);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @RequirePermission('tables:manage')
   @Post('tables')
   async create(@CurrentTenant() tenantId: string, @Body() dto: CreateTableDto) {
     return this.tablesService.create(tenantId, dto);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @RequirePermission('tables:manage')
   @Delete('tables/:id')
   async remove(@CurrentTenant() tenantId: string, @Param('id') id: string) {
     await this.tablesService.remove(tenantId, id);
@@ -53,14 +53,14 @@ export class TablesController {
   // @SkipThrottle: já exige JWT de admin, e compete por 4s/vez pelo
   // mesmo balde global que o app do cliente usa — ver comentário em
   // app.module.ts.
-  @UseGuards(JwtAuthGuard)
+  @RequirePermission('tables:view')
   @SkipThrottle()
   @Get('waiter-calls')
   async findPendingWaiterCalls(@CurrentTenant() tenantId: string) {
     return this.tablesService.findPendingWaiterCalls(tenantId);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @RequirePermission('tables:manage')
   @Post('waiter-calls/:id/attend')
   async attendWaiterCall(
     @CurrentTenant() tenantId: string,
@@ -71,7 +71,7 @@ export class TablesController {
 
   // Painel admin: mesas que já solicitaram fechamento, aguardando o garçom
   // confirmar o pagamento.
-  @UseGuards(JwtAuthGuard)
+  @RequirePermission('tables:view')
   @Get('table-sessions/awaiting-closing')
   async findSessionsAwaitingClosing(@CurrentTenant() tenantId: string) {
     return this.tablesService.findSessionsAwaitingClosing(tenantId);
@@ -82,14 +82,14 @@ export class TablesController {
   // pro garçom identificar qualquer mesa que não devia estar ativa.
   // @SkipThrottle: mesmo motivo do endpoint de waiter-calls acima —
   // polling frequente e já autenticado.
-  @UseGuards(JwtAuthGuard)
+  @RequirePermission('tables:view')
   @SkipThrottle()
   @Get('table-sessions/active-overview')
   async findActiveOverview(@CurrentTenant() tenantId: string) {
     return this.tablesService.findActiveOverview(tenantId);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @RequirePermission('tables:view')
   @Get('table-sessions/:id/summary')
   async getSessionSummaryAdmin(
     @CurrentTenant() tenantId: string,
@@ -98,7 +98,7 @@ export class TablesController {
     return this.tablesService.getSessionSummary(tenantId, id);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @RequirePermission('tables:manage')
   @Post('table-sessions/:id/close')
   async closeSession(
     @CurrentTenant() tenantId: string,
@@ -115,7 +115,7 @@ export class TablesController {
 
   // Encerramento forçado (sem cobrança) — pra corrigir sessões presas ou
   // confusas sem precisar simular um pagamento.
-  @UseGuards(JwtAuthGuard)
+  @RequirePermission('tables:manage')
   @Post('table-sessions/:id/force-reset')
   async forceResetSession(
     @CurrentTenant() tenantId: string,

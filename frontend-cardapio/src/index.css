@@ -10,6 +10,41 @@
   box-sizing: border-box;
 }
 
+/* ============================================================
+   CURSOR INTERATIVO (mãozinha) em tudo que é clicável.
+   O Tailwind v4 reseta <button> para `cursor: default`; aqui devolvemos o
+   `pointer` de forma GLOBAL (um lugar só, sem repetir `cursor-pointer` em
+   cada componente). Fica em @layer base: qualquer utilitário
+   (`cursor-default`, `cursor-not-allowed`, `cursor-grab`...) continua
+   ganhando — por isso o arrastar do mural de Anotações não é afetado.
+   Desabilitado = `not-allowed`. Para um elemento NÃO nativo que reage a clique
+   (ex.: <div onClick>), use `cursor-pointer` ou role="button".
+   ============================================================ */
+@layer base {
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  [role='tab'],
+  [role='switch'],
+  [role='menuitem'],
+  [role='option'],
+  a[href],
+  summary,
+  select:not(:disabled),
+  label[for],
+  input:is([type='checkbox'], [type='radio'], [type='color'], [type='file'], [type='range'], [type='button'], [type='submit'], [type='reset']):not(:disabled),
+  label:has(> input:is([type='checkbox'], [type='radio']):not(:disabled)) {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  [role='button'][aria-disabled='true'],
+  select:disabled,
+  input:disabled {
+    cursor: not-allowed;
+  }
+}
+
+
 html, body {
   margin: 0;
   padding: 0;

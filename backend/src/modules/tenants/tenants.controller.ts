@@ -17,6 +17,7 @@ import { TenantsService } from './tenants.service';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { Tenant } from './tenant.entity';
 import { StorageService } from '../../common/services/storage.service';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 
 // mercadoPagoAccessTokenEncrypted/mercadoPagoWebhookSecretEncrypted
 // NUNCA saem daqui — nem criptografados. O frontend só precisa saber SE
@@ -87,7 +88,7 @@ export class TenantsController {
   }
 
   // Rota PROTEGIDA: o dono editando nome, logo, cores, pagamento, etc.
-  @UseGuards(JwtAuthGuard)
+  @RequirePermission('settings:manage')
   @Patch('me')
   async updateMe(
     @CurrentTenant() tenantId: string,
@@ -99,7 +100,7 @@ export class TenantsController {
 
   // Logo — aparece sobrepondo a capa no header do cardápio, e nos
   // avatares onde a foto do estabelecimento é mostrada.
-  @UseGuards(JwtAuthGuard)
+  @RequirePermission('settings:manage')
   @Post('me/logo')
   @UseInterceptors(FileInterceptor('file'))
   async uploadLogo(
@@ -113,7 +114,7 @@ export class TenantsController {
 
   // Banner/capa — a foto grande no topo do header do cardápio, atrás do
   // logo.
-  @UseGuards(JwtAuthGuard)
+  @RequirePermission('settings:manage')
   @Post('me/cover')
   @UseInterceptors(FileInterceptor('file'))
   async uploadCover(

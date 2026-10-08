@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
+import { AccessControlService } from '../roles/access-control.service';
 
 export interface JwtPayload {
   sub: string; // adminUser.id
@@ -13,7 +14,10 @@ export interface JwtPayload {
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(config: ConfigService) {
+  constructor(
+    config: ConfigService,
+    private readonly access: AccessControlService,
+  ) {
     const secret = config.get<string>('JWT_SECRET');
     if (!secret) {
       throw new Error('JWT_SECRET não está definido no .env');
@@ -34,11 +38,22 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (payload.type !== 'admin') {
       throw new UnauthorizedException('Token inválido para esta área.');
     }
+    // Cargo e permissões vêm SEMPRE do banco (com cache curto), nunca do token
+    // nem da requisição: promoção/rebaixamento/exclusão valem em segundos.
+    const ctx = await this.access.getContext(payload.sub);
+    if (!ctx || ctx.tenantId !== payload.tenantId) {
+      throw new UnauthorizedException('Sessão inválida. Entre novamente.');
+    }
     return {
-      userId: payload.sub,
-      tenantId: payload.tenantId,
-      email: payload.email,
-      role: payload.role,
+      userId: ctx.userId,
+      tenantId: ctx.tenantId,
+      email: ctx.email,
+      name: ctx.name,
+      role: ctx.role,
+      roleId: ctx.roleId,
+      roleSlug: ctx.roleSlug,
+      roleName: ctx.roleName,
+      permissions: ctx.permissions,
     };
   }
 }

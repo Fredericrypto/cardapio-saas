@@ -1,12 +1,5 @@
 import { api } from './api';
 import type { Analytics, AnalyticsPeriod } from '../types/analytics';
-import type {
-  BackupAuditItem,
-  BackupOverview,
-  BackupSettingsView,
-  RestorePreview,
-  RestoreSummary,
-} from '../types/backups';
 import type { InternalNotification, LayoutItem, Note, NoteDraft, NotificationTarget } from '../types/notes';
 import type {
   Tenant,
@@ -31,6 +24,13 @@ import type {
   AdminReview,
   ReviewSummary,
 } from '../types';
+import type {
+  BackupAuditItem,
+  BackupOverview,
+  BackupSettingsView,
+  RestorePreview,
+  RestoreSummary,
+} from '../types/backups';
 
 // ---------- Tenant ----------
 export async function fetchMyTenant(): Promise<Tenant> {
@@ -823,7 +823,6 @@ export async function fetchBackupAudit(): Promise<BackupAuditItem[]> {
   const { data } = await api.get<BackupAuditItem[]>('/backups/audit-log');
   return data;
 }
-// Baixa o arquivo CRIPTOGRAFADO (blob) e dispara o download no navegador.
 export async function downloadBackupFile(id: string, fileName: string): Promise<void> {
   const res = await api.get<Blob>(`/backups/${id}/download`, { responseType: 'blob' });
   const url = URL.createObjectURL(res.data);

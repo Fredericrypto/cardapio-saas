@@ -18,6 +18,7 @@ import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { SetProductOptionsDto } from './dto/set-product-options.dto';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 
 @Controller('products')
 export class ProductsController {
@@ -44,7 +45,7 @@ export class ProductsController {
     return this.productsService.findOne(tenantId, id);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @RequirePermission('menu:manage')
   @Post()
   async create(
     @CurrentTenant() tenantId: string,
@@ -55,7 +56,7 @@ export class ProductsController {
 
   // Upload de imagem separado da criação/edição do produto: o dono tira a
   // foto, recebe a URL, e só então salva o produto com essa URL no campo imageUrl.
-  @UseGuards(JwtAuthGuard)
+  @RequirePermission('menu:manage')
   @Post(':id/image')
   @UseInterceptors(FileInterceptor('file'))
   async uploadImage(
@@ -68,7 +69,7 @@ export class ProductsController {
     return this.productsService.update(tenantId, id, { imageUrl });
   }
 
-  @UseGuards(JwtAuthGuard)
+  @RequirePermission('menu:manage')
   @Patch(':id')
   async update(
     @CurrentTenant() tenantId: string,
@@ -81,7 +82,7 @@ export class ProductsController {
   // Substitui todos os grupos de opções/adicionais desse produto de uma
   // vez (ver ProductsService.setOptions) — usado pela seção "Opções e
   // adicionais" na edição do produto no admin.
-  @UseGuards(JwtAuthGuard)
+  @RequirePermission('menu:manage')
   @Patch(':id/options')
   async setOptions(
     @CurrentTenant() tenantId: string,
@@ -91,7 +92,7 @@ export class ProductsController {
     return this.productsService.setOptions(tenantId, id, dto);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @RequirePermission('menu:manage')
   @Delete(':id')
   async remove(@CurrentTenant() tenantId: string, @Param('id') id: string) {
     await this.productsService.remove(tenantId, id);
