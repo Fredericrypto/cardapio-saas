@@ -1,7 +1,8 @@
 import { Body, Controller, Get, Post, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { CurrentAdminUser, RequestAdminUser } from '../../common/decorators/current-admin-user.decorator';
+import { CurrentAdminUser } from '../../common/decorators/current-admin-user.decorator';
+import type { RequestAdminUser } from '../../common/decorators/current-admin-user.decorator';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
