@@ -18,6 +18,12 @@ import type { QueryRunner } from 'typeorm';
 //    reverter credenciais/configurações de segurança.
 //  - admin_users: restaurar usuários reviveria senhas antigas e funcionários
 //    já removidos (e poderia trancar o próprio dono pra fora).
+//  - roles / role_permissions / permissions: controle de acesso (RBAC). Os cargos
+//    são referenciados por admin_users (excluída, FK RESTRICT) e restaurá-los
+//    reverteria permissões já alteradas ou poderia trancar o dono pra fora —
+//    mesma razão de admin_users. `permissions` é um catálogo global (sem
+//    tenant_id), mantido pelo sistema. Sem esta exclusão o plano recusa TODO
+//    backup ("admin_users referencia roles").
 //  - user_push_subscriptions / internal_notifications /
 //    internal_notification_reads: aparelhos e alertas internos da equipe —
 //    efêmeros, ligados a usuários (que não são restaurados).
@@ -27,6 +33,9 @@ export const EXCLUDED_TABLES: ReadonlySet<string> = new Set([
   'migrations',
   'tenants',
   'admin_users',
+  'roles',
+  'role_permissions',
+  'permissions',
   'user_push_subscriptions',
   'internal_notifications',
   'internal_notification_reads',

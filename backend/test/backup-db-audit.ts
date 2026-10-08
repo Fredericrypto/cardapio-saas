@@ -69,7 +69,7 @@ const PASSWORD = 'SenhaForte#123';
   ].sort().join(','), 'lista de tabelas incluídas = lista esperada (se uma tabela nova entrar/sair, este teste avisa)');
   const excluded = (await q(`SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'`))
     .map((r: any) => r.table_name).filter((n: string) => !docA.tables.some((t) => t.name === n)).sort();
-  ok(same(excluded, ['admin_users', 'backup_audit_logs', 'internal_notification_reads', 'internal_notifications', 'migrations', 'tenant_backup_settings', 'tenant_backups', 'tenants', 'user_push_subscriptions']), `tabelas fora do backup = exatamente as excluídas de propósito (${excluded.join(',')})`);
+  ok(same(excluded, ['admin_users', 'backup_audit_logs', 'internal_notification_reads', 'internal_notifications', 'migrations', 'permissions', 'role_permissions', 'roles', 'tenant_backup_settings', 'tenant_backups', 'tenants', 'user_push_subscriptions']), `tabelas fora do backup = exatamente as excluídas de propósito (${excluded.join(',')})`);
 
   console.log('2) Restauração ida-e-volta (estado alterado → volta exatamente ao snapshot)');
   const beforeA = await hashes(A.id);

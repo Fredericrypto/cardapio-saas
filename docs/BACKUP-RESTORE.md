@@ -13,7 +13,7 @@ Painel: **Configurações → Segurança e Backups** (somente administrador/"own
 
 ## O que entra no backup
 Todas as tabelas do restaurante, descobertas automaticamente pelo catálogo do banco (hoje 32: pedidos, itens, clientes, mesas/sessões, cashback, caixa, cardápio, promoções, fidelidade, avaliações, anotações…). Uma tabela nova com `tenant_id` entra sozinha; uma tabela nova que o sistema não sabe isolar por restaurante **faz o backup falhar de propósito** (nunca ignora dado em silêncio).
-**Fora** (de propósito): `tenants` (guarda as credenciais criptografadas do Mercado Pago), `admin_users`, inscrições push da equipe, notificações internas, e o próprio histórico/auditoria de backups.
+**Fora** (de propósito): `tenants` (guarda as credenciais criptografadas do Mercado Pago), `admin_users`, cargos e permissões (`roles`, `role_permissions`, `permissions`), inscrições push da equipe, notificações internas, e o próprio histórico/auditoria de backups.
 
 ## Garantias
 - Foto consistente (transação REPEATABLE READ): nenhum pedido "pela metade".
@@ -34,7 +34,7 @@ Confere a integridade e grava um JSON legível (apague depois: fica em texto abe
 - Restaurar também volta as **mesas abertas** (e seus QR codes de entrada) ao que eram naquele momento.
 - Durante a restauração (segundos), escritas nas tabelas incluídas esperam (vale para todos os restaurantes); se não liberar em 15 s a operação aborta sem alterar nada.
 - O agendador roda dentro do servidor: no plano grátis do Render, se o servidor estiver dormindo no horário, o backup sai quando ele acordar (recuperação automática, sem rajada de backups).
-- Dados de `tenants`/`admin_users` (logo, cores, Pix, Mercado Pago, usuários) **não** são restaurados.
+- Dados de `tenants`/`admin_users` (logo, cores, Pix, Mercado Pago, usuários, cargos e permissões) **não** são restaurados.
 - O IP da auditoria depende de o Render acrescentar o `X-Forwarded-For` (usa a última entrada, a do proxy).
 
 ## Testes
