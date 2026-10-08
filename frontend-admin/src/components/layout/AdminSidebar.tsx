@@ -20,26 +20,51 @@ export function AdminSidebar({ menuOpen, blinking, onLogout }: AdminSidebarProps
   const { tenant, admin, hasPermission, permissionsReady } = useAuth();
 
   const visibleItems = SIDEBAR_ITEMS.filter(
-    (item) => !item.permission || (permissionsReady && hasPermission(item.permission)),
+    (item) =>
+      item.ownerOnly
+        ? admin?.role === 'owner'
+        : !item.permission || (permissionsReady && hasPermission(item.permission)),
   );
 
   return (
     <aside
-      className={`bg-white border-r border-gray-100 flex flex-col shrink-0 fixed inset-y-0 left-0 z-50 w-64 overflow-y-auto transition-transform duration-200 md:static md:z-auto md:w-56 md:translate-x-0 md:overflow-y-auto ${
+      className={`bg-white border-r border-gray-100 flex flex-col shrink-0 fixed inset-y-0 left-0 z-50 w-72 overflow-y-auto transition-transform duration-200 md:static md:z-auto md:w-64 md:translate-x-0 md:overflow-y-auto ${
         menuOpen ? 'translate-x-0' : '-translate-x-full'
       }`}
     >
       <div className="p-5 border-b border-gray-100">
-        {/* Nome SEM cortar: quebra em quantas linhas precisar. */}
-        <p className="font-display font-bold text-gray-900 leading-tight" style={{ overflowWrap: 'anywhere' }}>
-          {tenant?.name}
-        </p>
-        <p className="text-xs text-gray-400 mt-0.5" style={{ overflowWrap: 'anywhere' }}>
-          {tenant?.slug}
-        </p>
+        {/* Logo + nome REAL do restaurante (sem slug). A logo usa o mesmo
+            formato do cardápio público: quadrado de cantos arredondados; sem
+            logo, a inicial do nome sobre a cor principal da marca. */}
+        <div className="flex items-center gap-3">
+          <div
+            className="w-12 h-12 shrink-0 rounded-xl overflow-hidden border-2 border-white shadow-sm dark:border-[#282A2C]"
+            style={{ backgroundColor: tenant?.primaryColor ?? '#3d3846' }}
+          >
+            {tenant?.logoUrl ? (
+              <img
+                src={tenant.logoUrl}
+                alt={tenant.name ? `Logo de ${tenant.name}` : 'Logo do restaurante'}
+                className="w-full h-full object-cover"
+                draggable={false}
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-white font-display font-bold text-lg">
+                {tenant?.name?.trim()?.[0]?.toUpperCase() ?? ''}
+              </div>
+            )}
+          </div>
+          {/* Nome SEM cortar: quebra em quantas linhas precisar. */}
+          <p
+            className="min-w-0 flex-1 font-display font-bold text-gray-900 leading-tight"
+            style={{ overflowWrap: 'anywhere' }}
+          >
+            {tenant?.name}
+          </p>
+        </div>
         {admin?.roleName && (
           <span
-            className="mt-2 inline-block max-w-full rounded-md border border-gray-200 bg-gray-50 px-2 py-0.5 text-[11px] font-medium text-gray-600"
+            className="mt-3 inline-block max-w-full rounded-md border border-gray-200 bg-gray-50 px-2 py-0.5 text-[11px] font-medium text-gray-600"
             style={{ overflowWrap: 'anywhere' }}
           >
             {admin.roleName}
@@ -64,7 +89,7 @@ export function AdminSidebar({ menuOpen, blinking, onLogout }: AdminSidebarProps
               }
             >
               <Icon size={18} strokeWidth={1.5} />
-              <span className="flex-1">{item.label}</span>
+              <span className="flex-1 min-w-0 leading-tight">{item.label}</span>
               {item.badge && (
                 <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-600">
                   {item.badge}

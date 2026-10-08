@@ -1,6 +1,6 @@
 # Backup & Restauração (Segurança e Backups)
 
-Painel: **Configurações → Segurança e Backups** (somente administrador/"owner").
+Painel: aba própria **Segurança e Backups** no menu lateral, rota `/seguranca` (somente administrador/"owner" — o item some do menu para os demais cargos e a URL digitada à mão mostra "Acesso negado").
 
 ## Variáveis de ambiente (Render e local)
 | Variável | Obrigatória | O que é |

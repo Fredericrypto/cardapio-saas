@@ -15,6 +15,7 @@ import { NotesPage } from './pages/NotesPage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { BackupsPage } from './pages/BackupsPage';
 import { LocationsSettingsPage } from './pages/LocationsSettingsPage';
 import { PromotionsSettingsPage } from './pages/PromotionsSettingsPage';
 import { LoyaltySettingsPage } from './pages/LoyaltySettingsPage';
@@ -68,6 +69,7 @@ function App() {
             <Route path="/verificar-cupom" element={guarded('/verificar-cupom', <VerifyReceiptPage />)} />
             <Route path="/verificacoes" element={guarded('/verificacoes', <VerificationsPage />)} />
             <Route path="/cargos" element={guarded('/cargos', <RoleManagementPage />)} />
+            <Route path="/seguranca" element={guarded('/seguranca', <BackupsPage />)} />
             <Route path="/configuracoes" element={guarded('/configuracoes', <SettingsPage />)} />
             <Route path="/acesso-negado" element={<AccessDeniedView />} />
           </Route>

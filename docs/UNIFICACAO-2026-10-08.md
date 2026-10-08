@@ -21,3 +21,11 @@ Merge de 3 vias (base × RBAC × Backups) em: `app.module.ts`, `config/data-sour
 ## Regra para as próximas sessões
 Antes de gerar um zip, partir SEMPRE do último zip COMPLETO unificado (este) — nunca da
 base antiga —, para que as frentes paralelas não se sobrescrevam.
+
+## z6-05 — patch "ajustes-sidebar-config-mesas" reaplicado + aba própria de backups
+- Reaplicado por cima da unificação (a unificação tinha devolvido essas telas ao estado anterior): sidebar sem slug/com logo/mais larga,
+  Configurações em sub-abas por categoria, Mesas (copiar link contido, lixeira vermelha, QR sobre bloco branco, impressão do QR),
+  cursor pointer global (admin e cardápio). Detalhes: docs/AJUSTES-Z6-03.md.
+- "Segurança e Backups" saiu de dentro de Configurações e virou aba própria no menu lateral (rota /seguranca),
+  só para o Administrador (role 'owner'): item some do menu para os demais cargos e a URL digitada à mão mostra "Acesso negado".
+  Backend inalterado (OwnerOnlyGuard continua conferindo no servidor).
