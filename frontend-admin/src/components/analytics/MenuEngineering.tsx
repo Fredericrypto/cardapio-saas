@@ -1,6 +1,7 @@
 import { CartesianGrid, ReferenceLine, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis } from 'recharts';
 import type { Analytics, MatrixClass, MatrixItem, MenuItemStat } from '../../types/analytics';
 import { brl, int, pct } from './format';
+import { useChartPalette } from '../../hooks/useTheme';
 
 // Definições formais dos quadrantes (V̄ = volume médio, M̄ = margem média).
 export const CLASS_META: Record<MatrixClass, { label: string; color: string; hint: string }> = {
@@ -57,6 +58,7 @@ interface DotProps {
   payload?: MatrixItem;
 }
 function Dot({ cx, cy, payload }: DotProps) {
+  const palette = useChartPalette();
   if (cx == null || cy == null || !payload) return null;
   return (
     <circle
@@ -65,7 +67,7 @@ function Dot({ cx, cy, payload }: DotProps) {
       r={6}
       fill={CLASS_META[payload.classification].color}
       fillOpacity={0.9}
-      stroke="#fff"
+      stroke={palette.surface}
       strokeWidth={1.5}
       data-testid="matrix-dot"
       data-name={payload.name}
@@ -86,6 +88,7 @@ const niceCeil = (v: number): number => {
 };
 
 export function MenuEngineering({ data }: { data: Analytics }) {
+  const palette = useChartPalette();
   const { matrix } = data;
   // UMA lista: os pontos do gráfico, os cards dos quadrantes e a contagem usam
   // exatamente os mesmos `matrix.items` (x = unidades, y = margem unitária).
@@ -126,27 +129,27 @@ export function MenuEngineering({ data }: { data: Analytics }) {
             <div className="h-72" data-testid="matrix-chart">
               <ResponsiveContainer width="100%" height="100%">
                 <ScatterChart margin={{ top: 8, right: 16, left: 0, bottom: 12 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={palette.grid} />
                   <XAxis
                     type="number"
                     dataKey="units"
                     name="Unidades"
                     domain={[0, xMax]}
                     allowDecimals={false}
-                    tick={{ fontSize: 11, fill: '#9ca3af' }}
-                    label={{ value: 'Volume (unidades)', position: 'insideBottom', offset: -6, fontSize: 11, fill: '#9ca3af' }}
+                    tick={{ fontSize: 11, fill: palette.tick }}
+                    label={{ value: 'Volume (unidades)', position: 'insideBottom', offset: -6, fontSize: 11, fill: palette.tick }}
                   />
                   <YAxis
                     type="number"
                     dataKey="unitMargin"
                     name="Margem"
                     domain={[yMin, yMax]}
-                    tick={{ fontSize: 11, fill: '#9ca3af' }}
+                    tick={{ fontSize: 11, fill: palette.tick }}
                     width={86}
                     tickFormatter={(v: number) => brl(v)}
                   />
-                  <ReferenceLine x={matrix.averageVolume} stroke="#9ca3af" strokeDasharray="4 4" />
-                  <ReferenceLine y={matrix.averageMargin} stroke="#9ca3af" strokeDasharray="4 4" />
+                  <ReferenceLine x={matrix.averageVolume} stroke={palette.tick} strokeDasharray="4 4" />
+                  <ReferenceLine y={matrix.averageMargin} stroke={palette.tick} strokeDasharray="4 4" />
                   <Tooltip
                     cursor={{ strokeDasharray: '3 3' }}
                     content={({ payload }) => {

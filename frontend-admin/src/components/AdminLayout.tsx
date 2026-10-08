@@ -8,6 +8,7 @@ import { useAttentionStatus } from '../hooks/useAttentionStatus';
 import { DashboardDataProvider, useDashboardData } from '../contexts/DashboardDataContext';
 import { InternalNotificationsProvider } from '../contexts/InternalNotificationsContext';
 import { NotificationBell } from './notifications/NotificationBell';
+import { ThemeToggle } from './ThemeToggle';
 import { disableDevicePush, enableDevicePush, getPermission, registerPanelServiceWorker, wantsDevicePush } from '../lib/internalPush';
 
 // O DashboardDataProvider precisa envolver TUDO que usa useAttentionStatus
@@ -138,7 +139,10 @@ function AdminLayoutContent() {
             <Menu size={18} />
           </button>
           <span className="hidden md:block" />
-          <NotificationBell />
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <NotificationBell />
+          </div>
         </header>
         <main className="flex-1 overflow-y-auto">
           <Outlet />

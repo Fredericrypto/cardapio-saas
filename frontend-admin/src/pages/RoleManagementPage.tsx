@@ -40,12 +40,12 @@ function sameDraft(a: Draft, b: Draft): boolean {
   );
 }
 
-// ───────── peças visuais (tema Dracula) ─────────
+// ───────── peças visuais ─────────
 
 function WildcardBadge() {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-dracula-purple bg-dracula-pink/15 px-3 py-1 text-xs font-semibold text-dracula-pink">
-      <Zap size={14} strokeWidth={1.5} className="text-dracula-purple" />
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-300 bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-900">
+      <Zap size={14} strokeWidth={1.5} className="text-gray-900" />
       Acesso Universal Wildcard Ativo
     </span>
   );
@@ -53,14 +53,14 @@ function WildcardBadge() {
 
 function Alert({ tone, children }: { tone: 'red' | 'yellow' | 'green' | 'orange'; children: ReactNode }) {
   const styles = {
-    red: 'border-dracula-red/60 text-dracula-red',
-    yellow: 'border-dracula-yellow/60 text-dracula-yellow',
-    green: 'border-dracula-green/60 text-dracula-green',
-    orange: 'border-dracula-orange/60 text-dracula-orange',
+    red: 'border-red-200 bg-red-50 text-red-700',
+    yellow: 'border-amber-200 bg-amber-50 text-amber-700',
+    green: 'border-green-200 bg-green-50 text-green-700',
+    orange: 'border-orange-200 bg-orange-50 text-orange-700',
   }[tone];
   const Icon = tone === 'green' ? Check : AlertTriangle;
   return (
-    <div role={tone === 'green' ? 'status' : 'alert'} className={`flex items-start gap-2 rounded-lg border bg-dracula-bg px-3 py-2.5 text-sm ${styles}`}>
+    <div role={tone === 'green' ? 'status' : 'alert'} className={`flex items-start gap-2 rounded-lg border px-3 py-2.5 text-sm ${styles}`}>
       <Icon size={16} strokeWidth={1.5} className="mt-0.5 shrink-0" />
       <div>{children}</div>
     </div>
@@ -88,28 +88,28 @@ function ConfirmDialog(props: {
         role="dialog"
         aria-modal="true"
         aria-labelledby="confirm-title"
-        className="w-full max-w-sm rounded-2xl border border-dracula-comment bg-dracula-bg p-6 shadow-2xl"
+        className="w-full max-w-sm rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center gap-2 text-dracula-red">
+        <div className="flex items-center gap-2 text-red-600">
           <AlertTriangle size={20} strokeWidth={1.5} />
           <h2 id="confirm-title" className="font-display text-base font-semibold">
             {title}
           </h2>
         </div>
-        <p className="mt-3 text-sm text-dracula-fg">{message}</p>
+        <p className="mt-3 text-sm text-gray-900">{message}</p>
         <div className="mt-6 flex justify-end gap-2">
           <button
             onClick={onCancel}
             disabled={busy}
-            className="rounded-lg border border-dracula-comment px-4 py-2 text-sm text-dracula-fg hover:bg-dracula-current disabled:opacity-50"
+            className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-900 hover:bg-gray-100 disabled:opacity-50"
           >
             Cancelar
           </button>
           <button
             onClick={onConfirm}
             disabled={busy}
-            className="rounded-lg bg-dracula-red px-4 py-2 text-sm font-semibold text-dracula-bg hover:opacity-90 disabled:opacity-50"
+            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
           >
             {busy ? 'Excluindo...' : confirmLabel}
           </button>
@@ -213,7 +213,7 @@ function RolesTab(props: {
       <div className="flex flex-col gap-2">
         <button
           onClick={() => select('new')}
-          className="flex items-center justify-center gap-2 rounded-xl bg-dracula-pink px-4 py-2.5 text-sm font-semibold text-dracula-bg hover:opacity-90"
+          className="flex items-center justify-center gap-2 rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90"
         >
           <Plus size={16} strokeWidth={1.5} />
           Novo cargo
@@ -225,22 +225,22 @@ function RolesTab(props: {
               key={role.id}
               onClick={() => select(role.id)}
               className={`rounded-xl border p-3 text-left transition-colors ${
-                active ? 'border-dracula-pink bg-dracula-current' : 'border-dracula-comment/50 bg-dracula-current/40 hover:bg-dracula-current/70'
+                active ? 'border-gray-900 bg-gray-100' : 'border-gray-200 bg-white hover:bg-gray-100'
               }`}
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="font-medium text-dracula-fg" style={{ overflowWrap: 'anywhere' }}>
+                <span className="font-medium text-gray-900" style={{ overflowWrap: 'anywhere' }}>
                   {role.name}
                 </span>
                 {role.permissions.includes(WILDCARD) && (
-                  <Zap size={15} strokeWidth={1.5} className="shrink-0 text-dracula-purple" aria-label="Acesso universal" />
+                  <Zap size={15} strokeWidth={1.5} className="shrink-0 text-gray-900" aria-label="Acesso universal" />
                 )}
               </div>
               <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px]">
                 {role.isSystemDefault && (
-                  <span className="rounded border border-dracula-cyan/40 px-1.5 py-0.5 text-dracula-cyan">Sistema</span>
+                  <span className="rounded border border-blue-200 px-1.5 py-0.5 text-blue-600">Sistema</span>
                 )}
-                <span className="text-dracula-comment">
+                <span className="text-gray-500">
                   {role.userCount} {role.userCount === 1 ? 'usuário' : 'usuários'} · {role.permissions.length}{' '}
                   {role.permissions.length === 1 ? 'permissão' : 'permissões'}
                 </span>
@@ -251,13 +251,13 @@ function RolesTab(props: {
       </div>
 
       {/* Editor + matriz */}
-      <div className="rounded-2xl border border-dracula-comment/50 bg-dracula-current/40 p-4 md:p-6">
+      <div className="rounded-2xl border border-gray-200 bg-white p-4 md:p-6">
         {selection === null ? (
-          <p className="text-sm text-dracula-comment">Selecione um cargo ou crie um novo.</p>
+          <p className="text-sm text-gray-500">Selecione um cargo ou crie um novo.</p>
         ) : (
           <div className="flex flex-col gap-5">
             <div className="grid gap-3 md:grid-cols-2">
-              <label className="flex flex-col gap-1 text-xs text-dracula-comment">
+              <label className="flex flex-col gap-1 text-xs text-gray-500">
                 Nome do cargo
                 <input
                   value={draft.name}
@@ -265,17 +265,17 @@ function RolesTab(props: {
                   disabled={readOnly || (!isNew && selectedRole?.isSystemDefault)}
                   onChange={(e) => setDraft({ ...draft, name: e.target.value })}
                   placeholder="Ex.: Supervisor de Salão"
-                  className="rounded-lg border border-dracula-comment bg-dracula-bg px-3 py-2 text-sm text-dracula-fg outline-none focus:border-dracula-purple disabled:opacity-60"
+                  className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-900 disabled:opacity-60"
                 />
               </label>
-              <label className="flex flex-col gap-1 text-xs text-dracula-comment">
+              <label className="flex flex-col gap-1 text-xs text-gray-500">
                 Descrição (opcional)
                 <input
                   value={draft.description}
                   maxLength={200}
                   disabled={readOnly}
                   onChange={(e) => setDraft({ ...draft, description: e.target.value })}
-                  className="rounded-lg border border-dracula-comment bg-dracula-bg px-3 py-2 text-sm text-dracula-fg outline-none focus:border-dracula-purple disabled:opacity-60"
+                  className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-900 disabled:opacity-60"
                 />
               </label>
             </div>
@@ -300,8 +300,8 @@ function RolesTab(props: {
             {/* Matriz por módulo */}
             <div className="flex flex-col gap-4">
               {groups.map((group) => (
-                <fieldset key={group.module} className="rounded-xl border border-dracula-comment/50 bg-dracula-bg/60 p-3">
-                  <legend className="px-2 font-display text-sm font-semibold text-dracula-purple">{group.module}</legend>
+                <fieldset key={group.module} className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+                  <legend className="px-2 font-display text-sm font-semibold text-gray-900">{group.module}</legend>
                   <div className="grid gap-1 md:grid-cols-2">
                     {group.permissions.map((perm) => {
                       const checked = wildcardOn || draft.permissions.includes(perm.slug);
@@ -312,7 +312,7 @@ function RolesTab(props: {
                           key={perm.slug}
                           title={blockedByRule ? 'O seu cargo não possui esta permissão, então você não pode concedê-la.' : perm.description}
                           className={`flex items-start gap-2.5 rounded-lg px-2 py-2 text-sm ${
-                            disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-dracula-current/60'
+                            disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-gray-50'
                           }`}
                         >
                           <input
@@ -320,15 +320,15 @@ function RolesTab(props: {
                             checked={checked}
                             disabled={disabled}
                             onChange={() => toggle(perm.slug)}
-                            className="mt-0.5 h-4 w-4 accent-dracula-pink"
+                            className="mt-0.5 h-4 w-4 accent-gray-900"
                           />
                           <span className="min-w-0 flex-1">
-                            <span className={`flex items-center gap-1.5 ${checked ? 'text-dracula-green' : 'text-dracula-fg'}`}>
+                            <span className={`flex items-center gap-1.5 ${checked ? 'text-green-600' : 'text-gray-900'}`}>
                               {perm.name}
-                              {blockedByRule && !readOnly && <Lock size={12} strokeWidth={1.5} className="text-dracula-orange" />}
+                              {blockedByRule && !readOnly && <Lock size={12} strokeWidth={1.5} className="text-amber-600" />}
                             </span>
-                            <code className="text-[11px] text-dracula-cyan">{perm.slug}</code>
-                            <span className="block text-[11px] text-dracula-comment">{perm.description}</span>
+                            <code className="text-[11px] text-blue-600">{perm.slug}</code>
+                            <span className="block text-[11px] text-gray-500">{perm.description}</span>
                           </span>
                         </label>
                       );
@@ -346,7 +346,7 @@ function RolesTab(props: {
                 <button
                   onClick={save}
                   disabled={saving || !dirty || !valid}
-                  className="flex items-center gap-2 rounded-xl bg-dracula-pink px-5 py-2.5 text-sm font-semibold text-dracula-bg hover:opacity-90 disabled:opacity-40"
+                  className="flex items-center gap-2 rounded-xl bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-40"
                 >
                   <Save size={16} strokeWidth={1.5} />
                   {saving ? 'Salvando...' : isNew ? 'Criar cargo' : 'Salvar alterações'}
@@ -354,7 +354,7 @@ function RolesTab(props: {
                 {selectedRole?.deletable && (
                   <button
                     onClick={() => setConfirmDelete(true)}
-                    className="flex items-center gap-2 rounded-xl border border-dracula-red/70 px-4 py-2.5 text-sm font-medium text-dracula-red hover:bg-dracula-red/10"
+                    className="flex items-center gap-2 rounded-xl border border-red-200 px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50"
                   >
                     <Trash2 size={16} strokeWidth={1.5} />
                     Excluir cargo
@@ -411,23 +411,23 @@ function TeamTab(props: { team: TeamMember[]; roles: RoleItem[]; onChanged: () =
     <div className="flex flex-col gap-3">
       {error && <Alert tone="red">{error}</Alert>}
       {notice && <Alert tone="green">{notice}</Alert>}
-      <div className="overflow-x-auto rounded-2xl border border-dracula-comment/50 bg-dracula-current/40">
+      <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white">
         <table className="w-full min-w-[32rem] text-left text-sm">
           <thead>
-            <tr className="border-b border-dracula-comment/50 text-xs text-dracula-purple">
+            <tr className="border-b border-gray-200 text-xs text-gray-900">
               <th className="px-4 py-3 font-semibold">Usuário</th>
               <th className="px-4 py-3 font-semibold">Cargo</th>
             </tr>
           </thead>
           <tbody>
             {team.map((m) => (
-              <tr key={m.id} className="border-b border-dracula-comment/30 last:border-0">
+              <tr key={m.id} className="border-b border-gray-200 last:border-0">
                 <td className="px-4 py-3">
-                  <div className="text-dracula-fg" style={{ overflowWrap: 'anywhere' }}>
+                  <div className="text-gray-900" style={{ overflowWrap: 'anywhere' }}>
                     {m.name ?? m.email}
-                    {m.isSelf && <span className="ml-2 rounded border border-dracula-cyan/40 px-1.5 py-0.5 text-[10px] text-dracula-cyan">você</span>}
+                    {m.isSelf && <span className="ml-2 rounded border border-blue-200 px-1.5 py-0.5 text-[10px] text-blue-600">você</span>}
                   </div>
-                  {m.name && <div className="text-xs text-dracula-comment">{m.email}</div>}
+                  {m.name && <div className="text-xs text-gray-500">{m.email}</div>}
                 </td>
                 <td className="px-4 py-3">
                   <select
@@ -435,7 +435,7 @@ function TeamTab(props: { team: TeamMember[]; roles: RoleItem[]; onChanged: () =
                     disabled={!m.canChangeRole || busyId === m.id}
                     onChange={(e) => e.target.value && change(m, e.target.value)}
                     title={m.isSelf ? 'Você não pode alterar o seu próprio cargo.' : undefined}
-                    className="w-full max-w-xs rounded-lg border border-dracula-comment bg-dracula-bg px-3 py-2 text-sm text-dracula-fg outline-none focus:border-dracula-purple disabled:opacity-50"
+                    className="w-full max-w-xs rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-900 disabled:opacity-50"
                   >
                     {!m.role && <option value="">Sem cargo</option>}
                     {m.role && !assignable.some((r) => r.id === m.role!.id) && <option value={m.role.id}>{m.role.name}</option>}
@@ -484,19 +484,19 @@ export function RoleManagementPage() {
   const canManage = hasPermission('roles:manage');
 
   return (
-    <div className="min-h-full bg-dracula-bg p-4 text-dracula-fg md:p-8">
+    <div className="min-h-full bg-gray-50 p-4 text-gray-900 md:p-8">
       <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <ShieldCheck size={28} strokeWidth={1.25} className="text-dracula-purple" />
+          <ShieldCheck size={28} strokeWidth={1.25} className="text-gray-900" />
           <div>
-            <h1 className="font-display text-xl font-semibold text-dracula-purple">Cargos e acessos</h1>
-            <p className="text-xs text-dracula-comment">
+            <h1 className="font-display text-xl font-semibold text-gray-900">Cargos e acessos</h1>
+            <p className="text-xs text-gray-500">
               Defina o que cada cargo pode ver e fazer. Você só concede permissões que o seu próprio cargo possui.
             </p>
           </div>
         </div>
         {!canManage && (
-          <span className="rounded-full border border-dracula-orange/60 px-3 py-1 text-xs text-dracula-orange">Somente leitura</span>
+          <span className="rounded-full border border-amber-200 px-3 py-1 text-xs text-amber-600">Somente leitura</span>
         )}
       </header>
 
@@ -514,8 +514,8 @@ export function RoleManagementPage() {
             onClick={() => setTab(id)}
             className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${
               tab === id
-                ? 'border-dracula-pink bg-dracula-current text-dracula-pink'
-                : 'border-dracula-comment/50 text-dracula-fg/80 hover:bg-dracula-current/50'
+                ? 'border-gray-900 bg-gray-100 text-gray-900'
+                : 'border-gray-200 text-gray-600 hover:bg-gray-50'
             }`}
           >
             <Icon size={16} strokeWidth={1.5} />
@@ -529,7 +529,7 @@ export function RoleManagementPage() {
           <Alert tone="red">{error}</Alert>
         </div>
       )}
-      {!roles && !error && <p className="text-sm text-dracula-comment">Carregando...</p>}
+      {!roles && !error && <p className="text-sm text-gray-500">Carregando...</p>}
 
       {roles && tab === 'cargos' && <RolesTab roles={roles} groups={groups} onChanged={load} />}
       {roles && tab === 'equipe' && <TeamTab team={team} roles={roles} onChanged={load} />}
