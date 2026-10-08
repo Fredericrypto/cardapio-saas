@@ -22,3 +22,9 @@
 - Cor nova fora desse mapa: use a variante `dark:` (ex.: `bg-white dark:bg-[#1E1E20]`).
 - Gráficos (recharts/SVG) não leem classes: usam `useChartPalette()`.
 - Na impressão (cupom) o tema escuro é ignorado de propósito (`@media not print`).
+
+## Layout do painel (sidebar fixa + scroll só no conteúdo)
+- `AdminLayout`: raiz `h-dvh overflow-hidden` → a janela nunca rola. A sidebar fica parada e só o
+  `<main id="admin-main-scroll">` rola. Use `scrollMainToTop()` (`src/lib/layout.ts`) em vez de `window.scrollTo`.
+- Centralização: o `<main>` aplica `mx-auto` ao filho direto (a raiz de cada página). Página nova com
+  `max-w-*` já nasce centralizada; sem `max-w-*` ocupa a largura toda.

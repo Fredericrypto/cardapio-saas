@@ -25,7 +25,7 @@ export function AdminSidebar({ menuOpen, blinking, onLogout }: AdminSidebarProps
 
   return (
     <aside
-      className={`bg-white border-r border-gray-100 flex flex-col shrink-0 fixed inset-y-0 left-0 z-50 w-64 overflow-y-auto transition-transform duration-200 md:static md:z-auto md:w-56 md:translate-x-0 md:overflow-visible ${
+      className={`bg-white border-r border-gray-100 flex flex-col shrink-0 fixed inset-y-0 left-0 z-50 w-64 overflow-y-auto transition-transform duration-200 md:static md:z-auto md:w-56 md:translate-x-0 md:overflow-y-auto ${
         menuOpen ? 'translate-x-0' : '-translate-x-full'
       }`}
     >

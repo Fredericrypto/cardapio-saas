@@ -9,6 +9,7 @@ import { DashboardDataProvider, useDashboardData } from '../contexts/DashboardDa
 import { InternalNotificationsProvider } from '../contexts/InternalNotificationsContext';
 import { NotificationBell } from './notifications/NotificationBell';
 import { ThemeToggle } from './ThemeToggle';
+import { MAIN_SCROLL_ID } from '../lib/layout';
 import { disableDevicePush, enableDevicePush, getPermission, registerPanelServiceWorker, wantsDevicePush } from '../lib/internalPush';
 
 // O DashboardDataProvider precisa envolver TUDO que usa useAttentionStatus
@@ -117,7 +118,8 @@ function AdminLayoutContent() {
   }
 
   return (
-    <div className="min-h-screen flex bg-gray-50">
+    // Altura EXATA da tela e sem scroll global: a sidebar fica parada e só o <main> rola.
+    <div className="h-dvh overflow-hidden flex bg-gray-50">
       {/* Celular: o menu lateral vira uma gaveta (botão no topo); a partir de
           md (768px) continua fixo na lateral, como sempre foi. */}
       {menuOpen && (
@@ -129,8 +131,8 @@ function AdminLayoutContent() {
         onLogout={handleLogout}
       />
 
-      <div className="flex-1 min-w-0 flex flex-col">
-        <header className="sticky top-0 z-30 h-14 px-4 md:px-6 flex items-center justify-between gap-3 bg-gray-50/90 backdrop-blur border-b border-gray-100">
+      <div className="flex-1 min-w-0 min-h-0 flex flex-col">
+        <header className="shrink-0 z-30 h-14 px-4 md:px-6 flex items-center justify-between gap-3 bg-gray-50/90 backdrop-blur border-b border-gray-100">
           <button
             onClick={() => setMenuOpen(true)}
             aria-label="Abrir menu"
@@ -144,7 +146,10 @@ function AdminLayoutContent() {
             <NotificationBell />
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto">
+        {/* Única área com rolagem. Cada página fica CENTRALIZADA aqui: o filho direto
+            ganha margens automáticas (as páginas que têm max-w-* centralizam sozinhas;
+            as de largura total não mudam). */}
+        <main id={MAIN_SCROLL_ID} className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain [&>*]:mx-auto">
           <Outlet />
         </main>
       </div>

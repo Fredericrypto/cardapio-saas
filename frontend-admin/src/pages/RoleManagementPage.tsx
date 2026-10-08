@@ -484,7 +484,7 @@ export function RoleManagementPage() {
   const canManage = hasPermission('roles:manage');
 
   return (
-    <div className="min-h-full bg-gray-50 p-4 text-gray-900 md:p-8">
+    <div className="mx-auto w-full max-w-6xl p-4 text-gray-900 md:p-8">
       <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <ShieldCheck size={28} strokeWidth={1.25} className="text-gray-900" />

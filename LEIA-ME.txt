@@ -7,9 +7,11 @@ Backend
 - Migration nova 1757200000000-RbacRolesPermissions -> migration:run ANTES do push.
 
 Frontend-admin
+- Layout: sidebar FIXA (tela sem scroll global); so o <main> rola (id admin-main-scroll, lib/layout.ts).
+- Conteudo das abas CENTRALIZADO na area da direita (main aplica mx-auto no filho direto).
 - Tema Dracula REMOVIDO (sidebar, acesso negado, cargos e acessos voltaram ao visual original).
 - Modo escuro alternavel (botao no cabecalho), padrao claro, persiste em localStorage. Ver docs/TEMA.md.
-- BUILD_VERSION: 2026-10-08-sessao-z6-01 (admin e cardapio).
+- BUILD_VERSION: 2026-10-08-sessao-z6-02 (admin e cardapio).
 
 REMOVER manualmente: frontend-admin/src/components/ProtectedRoute.tsx
   (movido para components/auth/ProtectedRoute.tsx)
