@@ -7,6 +7,9 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './modules/auth/auth.module';
+import { RolesModule } from './modules/roles/roles.module';
+import { Role } from './modules/roles/entities/role.entity';
+import { Permission } from './modules/roles/entities/permission.entity';
 import { TenantsModule } from './modules/tenants/tenants.module';
 import { LocationsModule } from './modules/locations/locations.module';
 import { CategoriesModule } from './modules/categories/categories.module';
@@ -129,12 +132,15 @@ import { PushSubscription } from './modules/push/push-subscription.entity';
           Review,
           ReviewResponse,
           PushSubscription,
+          Role,
+          Permission,
         ],
         synchronize: false, // NUNCA true em produção — schema controlado só por migrations
         logging: config.get<string>('NODE_ENV') === 'development',
       }),
     }),
     AuthModule,
+    RolesModule,
     TenantsModule,
     LocationsModule,
     CategoriesModule,

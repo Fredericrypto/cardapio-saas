@@ -19,6 +19,7 @@ import {
   RenameCategoryDto,
   ReorderCategoriesDto,
 } from './dto/category-dtos';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 
 @Controller('categories')
 export class CategoriesController {
@@ -39,7 +40,7 @@ export class CategoriesController {
 
   // Liga/desliga uma categoria do catálogo fixo (não existe mais criar
   // categoria com nome digitado).
-  @UseGuards(JwtAuthGuard)
+  @RequirePermission('menu:manage')
   @Put('catalog/:key')
   async setActive(
     @CurrentTenant() tenantId: string,
@@ -51,14 +52,14 @@ export class CategoriesController {
 
   // Ativa várias do catálogo de uma vez (preset de tipo / adicionar
   // selecionadas). Só adiciona, nunca desliga.
-  @UseGuards(JwtAuthGuard)
+  @RequirePermission('menu:manage')
   @Post('catalog-bulk')
   async activateMany(@CurrentTenant() tenantId: string, @Body() dto: ActivateManyDto) {
     return this.categoriesService.activateMany(tenantId, dto.keys);
   }
 
   // Categoria personalizada (sem chave do catálogo).
-  @UseGuards(JwtAuthGuard)
+  @RequirePermission('menu:manage')
   @Post('custom')
   async createCustom(@CurrentTenant() tenantId: string, @Body() dto: CreateCustomCategoryDto) {
     return this.categoriesService.createCustom(tenantId, dto.name);
@@ -66,7 +67,7 @@ export class CategoriesController {
 
   // Nova ordem do cardápio (ids na ordem desejada). Rota estática ANTES
   // das de `:id`.
-  @UseGuards(JwtAuthGuard)
+  @RequirePermission('menu:manage')
   @Put('order')
   async reorder(@CurrentTenant() tenantId: string, @Body() dto: ReorderCategoriesDto) {
     return this.categoriesService.reorder(tenantId, dto.ids);
@@ -78,7 +79,7 @@ export class CategoriesController {
     return this.categoriesService.findOne(tenantId, id);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @RequirePermission('menu:manage')
   @Patch(':id')
   async rename(
     @CurrentTenant() tenantId: string,
@@ -88,7 +89,7 @@ export class CategoriesController {
     return this.categoriesService.renameCustom(tenantId, id, dto.name);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @RequirePermission('menu:manage')
   @Put(':id/active')
   async setActiveById(
     @CurrentTenant() tenantId: string,
@@ -99,7 +100,7 @@ export class CategoriesController {
   }
 
   // Exclui categoria PERSONALIZADA (vazia). As do catálogo só desativam.
-  @UseGuards(JwtAuthGuard)
+  @RequirePermission('menu:manage')
   @Delete(':id')
   async remove(@CurrentTenant() tenantId: string, @Param('id') id: string) {
     await this.categoriesService.removeCustom(tenantId, id);

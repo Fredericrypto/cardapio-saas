@@ -22,7 +22,13 @@
     "migration:generate": "npm run typeorm -- migration:generate",
     "migration:run": "npm run typeorm -- migration:run",
     "migration:revert": "npm run typeorm -- migration:revert",
-    "test:analytics": "ts-node --transpile-only test/analytics-audit.ts"
+    "test:analytics": "ts-node --transpile-only test/analytics-audit.ts",
+    "test:schedule": "ts-node --transpile-only test/schedule-audit.ts",
+    "test:cashback": "ts-node --transpile-only test/cashback-expiry-audit.ts",
+    "test:notes": "ts-node --transpile-only test/notes-internal-audit.ts",
+    "test:push": "ts-node --transpile-only test/push-real-audit.ts",
+    "test:rbac": "ts-node --transpile-only test/rbac-audit.ts",
+    "test:all": "npm run test:schedule && npm run test:cashback && npm run test:notes && npm run test:push && npm run test:analytics && npm run test:rbac"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

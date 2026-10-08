@@ -1,0 +1,1 @@
+REMOVER: frontend-admin/src/components/ProtectedRoute.tsx (movido para components/auth/ProtectedRoute.tsx)

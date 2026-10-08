@@ -12,7 +12,6 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { SkipThrottle } from '@nestjs/throttler';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 import { CurrentCustomer } from '../../common/decorators/current-customer.decorator';
 import type { RequestCustomer } from '../../common/decorators/current-customer.decorator';
@@ -23,6 +22,7 @@ import { TablesService } from '../tables/tables.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { ConcludeOrderDto } from './dto/conclude-order.dto';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 
 @Controller('orders')
 export class OrdersController {
@@ -55,7 +55,7 @@ export class OrdersController {
     );
   }
 
-  @UseGuards(JwtAuthGuard)
+  @RequirePermission('orders:view')
   // Já exige JWT de admin — o risco que o Throttler existe pra mitigar
   // (força bruta/anônimo) não se aplica aqui. E esse endpoint é
   // pollado a cada 5s pelo painel (DashboardDataContext) — deixar ele
@@ -154,7 +154,7 @@ export class OrdersController {
     return this.ordersService.flagForAttention(tenantId, id);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @RequirePermission('orders:view')
   @Get(':id')
   async findOne(@CurrentTenant() tenantId: string, @Param('id') id: string) {
     return this.ordersService.attachReceiptCode(await this.ordersService.findOne(tenantId, id));
@@ -166,7 +166,7 @@ export class OrdersController {
   // dois (o formato do código é idêntico nos dois casos, só muda o que
   // ele referencia — ver OrdersService.verifyReceiptCode e
   // TablesService.verifySessionReceiptCode).
-  @UseGuards(JwtAuthGuard)
+  @RequirePermission('receipts:verify')
   @Post('verify-receipt')
   async verifyReceipt(@CurrentTenant() tenantId: string, @Body('code') code: string) {
     if (!code) return { valid: false, kind: null, order: null, session: null, sessionGrandTotal: null };
@@ -196,7 +196,7 @@ export class OrdersController {
     return { valid: false, kind: null, order: null, session: null, sessionGrandTotal: null };
   }
 
-  @UseGuards(JwtAuthGuard)
+  @RequirePermission('orders:manage')
   @Patch(':id/status')
   async updateStatus(
     @CurrentTenant() tenantId: string,
@@ -210,14 +210,14 @@ export class OrdersController {
   // Botão "Confirmar pagamento" do admin pro Pix de balcão/entrega — só
   // libera o pedido pra cozinha depois que o admin viu o Pix cair de
   // verdade no banco. Ver comentário no service.
-  @UseGuards(JwtAuthGuard)
+  @RequirePermission('orders:manage')
   @Patch(':id/confirm-pix-payment')
   async confirmPixPayment(@CurrentTenant() tenantId: string, @Param('id') id: string) {
     return this.ordersService.confirmPixPayment(tenantId, id);
   }
 
   // Só pra pedidos avulsos (Balcão/Entrega) — ver comentário no service.
-  @UseGuards(JwtAuthGuard)
+  @RequirePermission('orders:manage')
   @Patch(':id/conclude')
   async conclude(
     @CurrentTenant() tenantId: string,

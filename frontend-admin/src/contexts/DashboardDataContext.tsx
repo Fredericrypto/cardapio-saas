@@ -1,5 +1,6 @@
 import { createContext, useContext, type ReactNode } from 'react';
 import { usePolling } from '../hooks/usePolling';
+import { useAuth } from './AuthContext';
 import {
   fetchOrders,
   fetchPendingWaiterCalls,
@@ -65,12 +66,19 @@ const DashboardDataContext = createContext<DashboardDataValue | null>(null);
 // Agora só existe UM polling de cada endpoint, no AdminLayout, e tanto o
 // menu quanto as páginas leem os mesmos dados daqui.
 export function DashboardDataProvider({ children }: { children: ReactNode }) {
-  const { data: orders, refetch: refetchOrders } = usePolling(fetchOrders, 5000);
-  const { data: waiterCalls, refetch: refetchWaiterCalls } = usePolling(fetchPendingWaiterCalls, 4000);
-  const { data: activeTables, refetch: refetchActiveTables } = usePolling(fetchActiveOverview, 5000);
+  // Só consulta o que o cargo do usuário pode ver (o servidor responderia 403).
+  const { hasPermission, permissionsReady } = useAuth();
+  const canOrders = permissionsReady && hasPermission('orders:view');
+  const canTables = permissionsReady && hasPermission('tables:view');
+  const canVerifications = permissionsReady && hasPermission('verifications:view');
+
+  const { data: orders, refetch: refetchOrders } = usePolling(fetchOrders, 5000, canOrders);
+  const { data: waiterCalls, refetch: refetchWaiterCalls } = usePolling(fetchPendingWaiterCalls, 4000, canTables);
+  const { data: activeTables, refetch: refetchActiveTables } = usePolling(fetchActiveOverview, 5000, canTables);
   const { data: pendingVerifications, refetch: refetchPendingVerifications } = usePolling(
     fetchPendingVerifications,
     10000,
+    canVerifications,
   );
 
   return (
