@@ -14,19 +14,6 @@ const MENU_BASE_URL = import.meta.env.VITE_MENU_BASE_URL || 'http://localhost:51
 // código, sem relação com o texto/nome da mesa.
 const SCAN_QR_LEVEL = 'M';
 
-// QR Code sempre sobre um bloco BRANCO com margem (a "zona de silêncio" que a
-// norma exige: ~4 módulos). No modo escuro o card vira grafite e, sem isso, a
-// câmera do celular não distingue a matriz do fundo. O branco é inline de
-// propósito: as classes `bg-white` são remapeadas pelo tema escuro (index.css),
-// o `style` não. Cores explícitas (preto sobre branco) = contraste máximo.
-function QrBox({ value, size, padding }: { value: string; size: number; padding: number }) {
-  return (
-    <div className="shrink-0 rounded-lg" style={{ backgroundColor: '#FFFFFF', padding }}>
-      <QRCodeSVG value={value} size={size} level={SCAN_QR_LEVEL} bgColor="#FFFFFF" fgColor="#000000" />
-    </div>
-  );
-}
-
 export function TablesPage() {
   const { tenant } = useAuth();
   const [tables, setTables] = useState<RestaurantTable[]>([]);
@@ -186,51 +173,40 @@ export function TablesPage() {
                       {kindTables.map((table) => (
                         <div
                           key={table.id}
-                          className="bg-white border border-gray-100 rounded-xl p-4 flex flex-col items-center gap-3 min-w-0 overflow-hidden"
+                          className="bg-white border border-gray-100 rounded-xl p-4 flex flex-col items-center gap-3"
                         >
-                          <QrBox value={tableUrl(table)} size={100} padding={10} />
-                          <p className="text-sm font-semibold text-gray-900 max-w-full truncate">{table.number}</p>
-                          {/* Duas linhas, tudo dentro do card: o "Copiar link" ocupa a
-                              largura inteira (antes, três botões lado a lado estouravam
-                              o card e o ícone vazava pra fora). */}
-                          <div className="flex flex-col gap-2 w-full min-w-0">
+                          <QRCodeSVG value={tableUrl(table)} size={100} level={SCAN_QR_LEVEL} />
+                          <p className="text-sm font-semibold text-gray-900">{table.number}</p>
+                          <div className="flex gap-2 w-full">
                             <button
-                              type="button"
                               onClick={() => handleCopyLink(table)}
-                              className="w-full min-w-0 py-1.5 px-2 rounded-lg bg-gray-100 text-xs font-semibold text-gray-600 flex items-center justify-center gap-1.5 whitespace-nowrap hover:bg-gray-200 transition-colors"
+                              className="flex-1 py-1.5 rounded-lg bg-gray-100 text-xs font-semibold text-gray-600 flex items-center justify-center gap-1"
                             >
                               {copiedTableId === table.id ? (
                                 <>
-                                  <Check size={13} className="shrink-0" />
+                                  <Check size={13} />
                                   Copiado
                                 </>
                               ) : (
                                 <>
-                                  <Copy size={13} className="shrink-0" />
+                                  <Copy size={13} />
                                   Copiar link
                                 </>
                               )}
                             </button>
-                            <div className="flex gap-2 w-full min-w-0">
-                              <button
-                                type="button"
-                                onClick={() => setPrintingTable(table)}
-                                className="flex-1 min-w-0 py-1.5 px-2 rounded-lg bg-gray-100 text-xs font-semibold text-gray-600 flex items-center justify-center gap-1.5 whitespace-nowrap hover:bg-gray-200 transition-colors"
-                              >
-                                <Printer size={13} className="shrink-0" />
-                                Imprimir
-                              </button>
-                              {/* Ação destrutiva: vermelha. */}
-                              <button
-                                type="button"
-                                onClick={() => handleDelete(table.id)}
-                                aria-label={`Remover ${table.number}`}
-                                title="Remover"
-                                className="shrink-0 py-1.5 px-2.5 rounded-lg bg-red-50 hover:bg-red-100 transition-colors"
-                              >
-                                <Trash2 size={13} className="text-red-500" />
-                              </button>
-                            </div>
+                            <button
+                              onClick={() => setPrintingTable(table)}
+                              className="flex-1 py-1.5 rounded-lg bg-gray-100 text-xs font-semibold text-gray-600 flex items-center justify-center gap-1"
+                            >
+                              <Printer size={13} />
+                              Imprimir
+                            </button>
+                            <button
+                              onClick={() => handleDelete(table.id)}
+                              className="py-1.5 px-2.5 rounded-lg bg-gray-100"
+                            >
+                              <Trash2 size={13} className="text-gray-400" />
+                            </button>
                           </div>
                         </div>
                       ))}
@@ -273,11 +249,9 @@ function PrintQrModal({
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-40 p-4">
       <div className="bg-white rounded-2xl p-8 flex flex-col items-center gap-4 max-w-xs w-full">
-        {/* #qr-print-area: é o ÚNICO trecho que o CSS de impressão mostra (index.css);
-            o QR impresso é sempre preto sobre branco, em qualquer tema. */}
-        <div id="qr-print-area" className="flex flex-col items-center gap-3">
+        <div className="flex flex-col items-center gap-3">
           <p className="text-sm text-gray-500">{tenantName}</p>
-          <QrBox value={url} size={220} padding={20} />
+          <QRCodeSVG value={url} size={220} level={SCAN_QR_LEVEL} />
           <p className="font-display text-lg font-bold text-gray-900">
             {table.number}
           </p>

@@ -22,6 +22,7 @@ import { DeliveryModule } from './modules/delivery/delivery.module';
 import { CustomersModule } from './modules/customers/customers.module';
 import { PromotionsModule } from './modules/promotions/promotions.module';
 import { LoyaltyModule } from './modules/loyalty/loyalty.module';
+import { BackupsModule } from './modules/backups/backups.module';
 import { CashbackModule } from './modules/cashback/cashback.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
 import { PushModule } from './modules/push/push.module';
@@ -62,6 +63,10 @@ import { CashbackConsumption } from './modules/cashback/cashback-consumption.ent
 import { Review } from './modules/reviews/review.entity';
 import { ReviewResponse } from './modules/reviews/review-response.entity';
 import { PushSubscription } from './modules/push/push-subscription.entity';
+
+import { TenantBackup } from './modules/backups/tenant-backup.entity';
+import { TenantBackupSettings } from './modules/backups/tenant-backup-settings.entity';
+import { BackupAuditLog } from './modules/backups/backup-audit-log.entity';
 
 @Module({
   imports: [
@@ -134,6 +139,9 @@ import { PushSubscription } from './modules/push/push-subscription.entity';
           PushSubscription,
           Role,
           Permission,
+          TenantBackup,
+          TenantBackupSettings,
+          BackupAuditLog,
         ],
         synchronize: false, // NUNCA true em produção — schema controlado só por migrations
         logging: config.get<string>('NODE_ENV') === 'development',
@@ -157,6 +165,7 @@ import { PushSubscription } from './modules/push/push-subscription.entity';
     ReviewsModule,
     PushModule,
     CashModule,
+    BackupsModule,
     AnalyticsModule,
     InternalNotificationsModule,
     NotesModule,
