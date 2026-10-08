@@ -2,13 +2,7 @@ export interface Admin {
   id: string;
   email: string;
   name: string | null;
-  // Legado (owner/manager/staff) — usado só pelas notificações internas.
   role: string;
-  // RBAC: vindos do servidor (GET /auth/me). Só refletem a UI; quem autoriza é o backend.
-  roleId?: string | null;
-  roleSlug?: string | null;
-  roleName?: string | null;
-  permissions?: string[];
 }
 
 export interface Tenant {

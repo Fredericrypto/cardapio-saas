@@ -8,7 +8,6 @@ import { CreateLoyaltyProgramDto } from './dto/create-loyalty-program.dto';
 import { UpdateLoyaltyProgramDto } from './dto/update-loyalty-program.dto';
 import { RedeemReceiptDto } from './dto/redeem-receipt.dto';
 import { RedemptionPurpose } from './receipt-redemption.entity';
-import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 
 @Controller()
 export class LoyaltyController {
@@ -22,13 +21,13 @@ export class LoyaltyController {
     return this.loyaltyService.findAllPrograms(tenantId);
   }
 
-  @RequirePermission('loyalty:manage')
+  @UseGuards(JwtAuthGuard)
   @Post('loyalty/programs')
   async createProgram(@CurrentTenant() tenantId: string, @Body() dto: CreateLoyaltyProgramDto) {
     return this.loyaltyService.createProgram(tenantId, dto);
   }
 
-  @RequirePermission('loyalty:manage')
+  @UseGuards(JwtAuthGuard)
   @Patch('loyalty/programs/:id')
   async updateProgram(
     @CurrentTenant() tenantId: string,
@@ -38,7 +37,7 @@ export class LoyaltyController {
     return this.loyaltyService.updateProgram(tenantId, id, dto);
   }
 
-  @RequirePermission('loyalty:manage')
+  @UseGuards(JwtAuthGuard)
   @Delete('loyalty/programs/:id')
   async deleteProgram(@CurrentTenant() tenantId: string, @Param('id') id: string) {
     await this.loyaltyService.deleteProgram(tenantId, id);
@@ -47,7 +46,7 @@ export class LoyaltyController {
 
   // ---------- Resgate (usado pela tela "Verificar cupom") ----------
 
-  @RequirePermission('receipts:verify')
+  @UseGuards(JwtAuthGuard)
   @Post('loyalty/redeem')
   async redeem(
     @CurrentTenant() tenantId: string,
@@ -65,13 +64,13 @@ export class LoyaltyController {
 
   // ---------- Prêmios pendentes de entrega ----------
 
-  @RequirePermission('loyalty:view')
+  @UseGuards(JwtAuthGuard)
   @Get('loyalty/rewards')
   async findPendingRewards(@CurrentTenant() tenantId: string, @Query('programId') programId?: string) {
     return this.loyaltyService.findPendingRewards(tenantId, programId);
   }
 
-  @RequirePermission('loyalty:manage')
+  @UseGuards(JwtAuthGuard)
   @Post('loyalty/rewards/:id/fulfill')
   async fulfillReward(
     @CurrentTenant() tenantId: string,
@@ -93,7 +92,7 @@ export class LoyaltyController {
 
   // ---------- Histórico (aba "Fidelidade" dentro de Histórico, admin) ----------
 
-  @RequirePermission('loyalty:view')
+  @UseGuards(JwtAuthGuard)
   @Get('loyalty/history')
   async getFidelityHistory(@CurrentTenant() tenantId: string) {
     return this.loyaltyService.getFidelityHistory(tenantId);

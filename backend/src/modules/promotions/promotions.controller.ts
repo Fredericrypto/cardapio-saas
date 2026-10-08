@@ -8,17 +8,18 @@ import {
   Param,
   Query,
   Headers,
+  UseGuards,
   UseInterceptors,
   UploadedFile,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 import { StorageService } from '../../common/services/storage.service';
 import { CustomersAuthService } from '../customers/customers-auth.service';
 import { PromotionsService } from './promotions.service';
 import { CreatePromotionDto } from './dto/create-promotion.dto';
 import { UpdatePromotionDto } from './dto/update-promotion.dto';
-import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 
 @Controller('promotions')
 export class PromotionsController {
@@ -44,13 +45,13 @@ export class PromotionsController {
     return this.promotionsService.findActiveForPublic(tenantId, customer?.customerId ?? null, locationId ?? null);
   }
 
-  @RequirePermission('promotions:view')
+  @UseGuards(JwtAuthGuard)
   @Get()
   async findAll(@CurrentTenant() tenantId: string) {
     return this.promotionsService.findAllForAdmin(tenantId);
   }
 
-  @RequirePermission('promotions:view')
+  @UseGuards(JwtAuthGuard)
   @Get(':id/redemptions')
   async getRedemptions(@CurrentTenant() tenantId: string, @Param('id') id: string) {
     return this.promotionsService.getRedemptions(tenantId, id);
@@ -58,7 +59,7 @@ export class PromotionsController {
 
   // Painel admin: uso agrupado por cliente (quantas vezes cada um já
   // usou, frente ao limite) — base pra decidir quem "resetar".
-  @RequirePermission('promotions:view')
+  @UseGuards(JwtAuthGuard)
   @Get(':id/customer-usage')
   async getCustomerUsage(@CurrentTenant() tenantId: string, @Param('id') id: string) {
     return this.promotionsService.getCustomerUsage(tenantId, id);
@@ -66,7 +67,7 @@ export class PromotionsController {
 
   // Devolve o uso da promoção pra esse cliente específico, sem tocar em
   // nenhum pedido antigo — ver PromotionsService.resetCustomerUsage.
-  @RequirePermission('promotions:manage')
+  @UseGuards(JwtAuthGuard)
   @Post(':id/customers/:customerId/reset-usage')
   async resetCustomerUsage(
     @CurrentTenant() tenantId: string,
@@ -80,20 +81,20 @@ export class PromotionsController {
   // "Resetar pra TODOS" — devolve o uso pra QUALQUER cliente de uma vez,
   // guardando quantos usaram até agora só como referência histórica —
   // ver PromotionsService.resetAllCustomersUsage.
-  @RequirePermission('promotions:manage')
+  @UseGuards(JwtAuthGuard)
   @Post(':id/reset-usage')
   async resetAllCustomersUsage(@CurrentTenant() tenantId: string, @Param('id') id: string) {
     await this.promotionsService.resetAllCustomersUsage(tenantId, id);
     return { success: true };
   }
 
-  @RequirePermission('promotions:view')
+  @UseGuards(JwtAuthGuard)
   @Get(':id')
   async findOne(@CurrentTenant() tenantId: string, @Param('id') id: string) {
     return this.promotionsService.findOne(tenantId, id);
   }
 
-  @RequirePermission('promotions:manage')
+  @UseGuards(JwtAuthGuard)
   @Post()
   async create(@CurrentTenant() tenantId: string, @Body() dto: CreatePromotionDto) {
     return this.promotionsService.create(tenantId, dto);
@@ -101,7 +102,7 @@ export class PromotionsController {
 
   // Upload do banner: mesmo padrão de ProductsController.uploadImage —
   // a promoção precisa já existir antes de receber a foto.
-  @RequirePermission('promotions:manage')
+  @UseGuards(JwtAuthGuard)
   @Post(':id/image')
   @UseInterceptors(FileInterceptor('file'))
   async uploadImage(
@@ -114,7 +115,7 @@ export class PromotionsController {
     return this.promotionsService.setImage(tenantId, id, imageUrl);
   }
 
-  @RequirePermission('promotions:manage')
+  @UseGuards(JwtAuthGuard)
   @Patch(':id')
   async update(
     @CurrentTenant() tenantId: string,
@@ -124,7 +125,7 @@ export class PromotionsController {
     return this.promotionsService.update(tenantId, id, dto);
   }
 
-  @RequirePermission('promotions:manage')
+  @UseGuards(JwtAuthGuard)
   @Delete(':id')
   async remove(@CurrentTenant() tenantId: string, @Param('id') id: string) {
     await this.promotionsService.remove(tenantId, id);

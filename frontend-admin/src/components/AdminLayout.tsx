@@ -1,16 +1,48 @@
 import { useEffect, useState } from 'react';
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Menu } from 'lucide-react';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import {
+  LayoutDashboard,
+  UtensilsCrossed,
+  Table2,
+  Store,
+  Percent,
+  Gift,
+  Wallet,
+  Star,
+  History,
+  TrendingUp,
+  StickyNote,
+  Menu,
+  ScanLine,
+  Settings,
+  LogOut,
+  BadgeCheck,
+} from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchMyTenant } from '../lib/admin-api';
-import { AdminSidebar } from './layout/AdminSidebar';
+import { BUILD_VERSION } from '../buildInfo';
 import { useAttentionStatus } from '../hooks/useAttentionStatus';
 import { DashboardDataProvider, useDashboardData } from '../contexts/DashboardDataContext';
 import { InternalNotificationsProvider } from '../contexts/InternalNotificationsContext';
 import { NotificationBell } from './notifications/NotificationBell';
-import { ThemeToggle } from './ThemeToggle';
-import { MAIN_SCROLL_ID } from '../lib/layout';
 import { disableDevicePush, enableDevicePush, getPermission, registerPanelServiceWorker, wantsDevicePush } from '../lib/internalPush';
+
+const NAV_ITEMS = [
+  { to: '/', label: 'Painel', icon: LayoutDashboard, end: true },
+  { to: '/cardapio', label: 'Cardápio', icon: UtensilsCrossed },
+  { to: '/mesas', label: 'Mesas', icon: Table2 },
+  { to: '/lojas', label: 'Lojas', icon: Store },
+  { to: '/promocoes', label: 'Promoções', icon: Percent },
+  { to: '/fidelidade', label: 'Fidelidade', icon: Gift },
+  { to: '/cashback', label: 'Cashback', icon: Wallet },
+  { to: '/avaliacoes', label: 'Avaliações', icon: Star },
+  { to: '/verificacoes', label: 'Verificações', icon: BadgeCheck },
+  { to: '/analise', label: 'Análise', icon: TrendingUp },
+  { to: '/anotacoes', label: 'Anotações', icon: StickyNote },
+  { to: '/historico', label: 'Histórico', icon: History },
+  { to: '/verificar-cupom', label: 'Verificar cupom', icon: ScanLine },
+  { to: '/configuracoes', label: 'Configurações', icon: Settings },
+];
 
 // O DashboardDataProvider precisa envolver TUDO que usa useAttentionStatus
 // (inclusive este layout, pro blink do "Painel") e tudo que usa
@@ -28,7 +60,7 @@ export function AdminLayout() {
 }
 
 function AdminLayoutContent() {
-  const { logout, updateTenant } = useAuth();
+  const { tenant, logout, updateTenant } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   // Pisca o item "Painel" quando tem algo pedindo atenção (chamado de
@@ -118,21 +150,74 @@ function AdminLayoutContent() {
   }
 
   return (
-    // Altura EXATA da tela e sem scroll global: a sidebar fica parada e só o <main> rola.
-    <div className="h-dvh overflow-hidden flex bg-gray-50">
+    <div className="min-h-screen flex bg-gray-50">
       {/* Celular: o menu lateral vira uma gaveta (botão no topo); a partir de
           md (768px) continua fixo na lateral, como sempre foi. */}
       {menuOpen && (
         <div className="md:hidden fixed inset-0 z-40 bg-black/40" onClick={() => setMenuOpen(false)} aria-hidden />
       )}
-      <AdminSidebar
-        menuOpen={menuOpen}
-        blinking={{ painel: shouldBlinkPainel, verificacoes: shouldBlinkVerifications }}
-        onLogout={handleLogout}
-      />
+      <aside
+        className={`bg-white border-r border-gray-100 flex flex-col shrink-0 fixed inset-y-0 left-0 z-50 w-64 overflow-y-auto transition-transform duration-200 md:static md:z-auto md:w-56 md:translate-x-0 md:overflow-visible ${
+          menuOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div className="p-5 border-b border-gray-100">
+          {/* Nome SEM cortar: quebra em quantas linhas precisar, qualquer que
+              seja o tamanho (overflowWrap pega até palavra gigante sem espaço). */}
+          <p
+            className="font-display font-bold text-gray-900 leading-tight"
+            style={{ overflowWrap: 'anywhere' }}
+          >
+            {tenant?.name}
+          </p>
+          <p className="text-xs text-gray-400 mt-0.5" style={{ overflowWrap: 'anywhere' }}>
+            {tenant?.slug}
+          </p>
+        </div>
 
-      <div className="flex-1 min-w-0 min-h-0 flex flex-col">
-        <header className="shrink-0 z-30 h-14 px-4 md:px-6 flex items-center justify-between gap-3 bg-gray-50/90 backdrop-blur border-b border-gray-100">
+        <nav className="flex-1 p-3 flex flex-col gap-1">
+          {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={end}
+              className={({ isActive }) =>
+                `flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  isActive
+                    ? 'bg-gray-900 text-white'
+                    : `text-gray-600 hover:bg-gray-100 ${
+                        (label === 'Painel' && shouldBlinkPainel) ||
+                        (label === 'Verificações' && shouldBlinkVerifications)
+                          ? 'nav-attention-blink'
+                          : ''
+                      }`
+                }`
+              }
+            >
+              <Icon size={18} />
+              {label}
+            </NavLink>
+          ))}
+        </nav>
+
+        <div className="p-3 border-t border-gray-100">
+          {/* Mesmo estilo do "Chamar garçom" do cardápio, centralizado. */}
+          <button
+            onClick={handleLogout}
+            className="w-full rounded-xl py-2.5 flex items-center justify-center gap-1.5 text-xs font-semibold text-white hover:opacity-90"
+            style={{ backgroundColor: tenant?.primaryColor ?? '#3d3846' }}
+          >
+            <LogOut size={14} />
+            Sair
+          </button>
+          <p className="text-[10px] text-gray-300 text-center mt-2 select-all">
+            build {BUILD_VERSION}
+          </p>
+        </div>
+      </aside>
+
+      <div className="flex-1 min-w-0 flex flex-col">
+        <header className="sticky top-0 z-30 h-14 px-4 md:px-6 flex items-center justify-between gap-3 bg-gray-50/90 backdrop-blur border-b border-gray-100">
           <button
             onClick={() => setMenuOpen(true)}
             aria-label="Abrir menu"
@@ -141,15 +226,9 @@ function AdminLayoutContent() {
             <Menu size={18} />
           </button>
           <span className="hidden md:block" />
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <NotificationBell />
-          </div>
+          <NotificationBell />
         </header>
-        {/* Única área com rolagem. Cada página fica CENTRALIZADA aqui: o filho direto
-            ganha margens automáticas (as páginas que têm max-w-* centralizam sozinhas;
-            as de largura total não mudam). */}
-        <main id={MAIN_SCROLL_ID} className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain [&>*]:mx-auto">
+        <main className="flex-1 overflow-y-auto">
           <Outlet />
         </main>
       </div>

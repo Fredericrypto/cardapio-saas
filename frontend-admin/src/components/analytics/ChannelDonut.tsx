@@ -1,11 +1,10 @@
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import type { Analytics } from '../../types/analytics';
 import { brl, int, pct } from './format';
-import { useChartPalette } from '../../hooks/useTheme';
+
+const COLORS: Record<string, string> = { mesa: '#18181B', balcao: '#71717a', entrega: '#d4d4d8' };
 
 export function ChannelDonut({ data }: { data: Analytics }) {
-  const palette = useChartPalette();
-  const COLORS: Record<string, string> = { mesa: palette.ink, balcao: palette.channelBalcao, entrega: palette.channelEntrega };
   const total = data.channels.reduce((a, c) => a + c.revenue, 0);
   const hasData = total > 0;
   return (

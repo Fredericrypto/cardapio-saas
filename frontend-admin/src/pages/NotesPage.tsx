@@ -16,7 +16,6 @@ import { NotesBoard, type NotesBoardHandle } from '../components/notes/NotesBoar
 import { NotesGrid } from '../components/notes/NotesGrid';
 import type { NoteDraftValues } from '../components/notes/NoteCard';
 import { DEFAULT_NOTE_COLORS } from '../components/notes/notePalette';
-import { scrollMainToTop } from '../lib/layout';
 
 const VIEW_KEY = 'notes_view';
 const FALLBACK_TAGS = ['Geral', 'Cozinha', 'Caixa', 'Urgente'];
@@ -162,7 +161,7 @@ export function NotesPage() {
     });
     setEditingId(DRAFT_ID);
     setTagFilter('');
-    if (effectiveView === 'mural') scrollMainToTop();
+    if (effectiveView === 'mural') window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   async function save(id: string, values: NoteDraftValues) {

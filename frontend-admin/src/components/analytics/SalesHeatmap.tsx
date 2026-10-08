@@ -1,10 +1,8 @@
 import type { Analytics } from '../../types/analytics';
 import { WEEKDAYS, brl } from './format';
-import { useChartPalette } from '../../hooks/useTheme';
 
 // Densidade de pedidos por dia da semana × hora (horário de Brasília).
 export function SalesHeatmap({ data }: { data: Analytics }) {
-  const palette = useChartPalette();
   const cells = new Map(data.heatmap.map((c) => [`${c.weekday}-${c.hour}`, c]));
   const max = Math.max(1, ...data.heatmap.map((c) => c.orders));
   const peak = data.heatmap.reduce<(typeof data.heatmap)[number] | null>((best, c) => (!best || c.orders > best.orders ? c : best), null);
@@ -45,7 +43,7 @@ export function SalesHeatmap({ data }: { data: Analytics }) {
                         key={h}
                         title={c ? `${d} ${String(h).padStart(2, '0')}h — ${c.orders} pedidos · ${brl(c.revenue)}` : `${d} ${String(h).padStart(2, '0')}h — sem pedidos`}
                         className="h-6 rounded-[4px]"
-                        style={{ backgroundColor: c ? `rgba(${palette.heatRgb},${0.12 + intensity * 0.88})` : palette.heatEmpty }}
+                        style={{ backgroundColor: c ? `rgba(24,24,27,${0.12 + intensity * 0.88})` : '#f4f4f5' }}
                       />
                     );
                   })}

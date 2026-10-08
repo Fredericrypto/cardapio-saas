@@ -3,7 +3,6 @@ import { IsBoolean, IsOptional, IsString } from 'class-validator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 import { HistoryService } from './history.service';
-import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 
 class SetFlaggedDto {
   @IsBoolean()
@@ -33,7 +32,6 @@ class SearchArchiveDto {
 export class HistoryController {
   constructor(private readonly historyService: HistoryService) {}
 
-  @RequirePermission('history:view')
   @Get()
   findHistory(@CurrentTenant() tenantId: string) {
     return this.historyService.findHistory(tenantId);
@@ -41,13 +39,11 @@ export class HistoryController {
 
   // Busca no arquivo — inclui cupons já escondidos da tela normal (mais
   // de 30 dias). Exige nome do cliente OU intervalo de datas.
-  @RequirePermission('history:view')
   @Get('search')
   searchArchive(@CurrentTenant() tenantId: string, @Query() dto: SearchArchiveDto) {
     return this.historyService.searchArchive(tenantId, dto);
   }
 
-  @RequirePermission('history:manage')
   @Patch('session/:id/flag')
   setSessionFlagged(
     @CurrentTenant() tenantId: string,
@@ -57,7 +53,6 @@ export class HistoryController {
     return this.historyService.setSessionFlagged(tenantId, id, dto.flagged);
   }
 
-  @RequirePermission('history:manage')
   @Patch('order/:id/flag')
   setOrderFlagged(
     @CurrentTenant() tenantId: string,

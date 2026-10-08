@@ -4,4 +4,4 @@
 // essa string manualmente a cada entrega nova; se o rodapé do painel
 // mostrar uma versão diferente da que eu acabei de mandar, é sinal de que o
 // deploy/reload não pegou — não precisa adivinhar mais.
-export const BUILD_VERSION = '2026-10-08-sessao-z6-03';
+export const BUILD_VERSION = '2026-10-08-backup-restore-01';

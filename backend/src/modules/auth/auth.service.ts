@@ -4,7 +4,6 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource } from 'typeorm';
 import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -13,9 +12,6 @@ import { AdminUser } from './admin-user.entity';
 import { Tenant } from '../tenants/tenant.entity';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
-import { RolesService } from '../roles/roles.service';
-import { AccessControlService } from '../roles/access-control.service';
-import { AccessContext } from '../roles/access-context';
 
 const BCRYPT_ROUNDS = 12;
 
@@ -27,9 +23,6 @@ export class AuthService {
     @InjectRepository(Tenant)
     private readonly tenantRepo: Repository<Tenant>,
     private readonly jwtService: JwtService,
-    private readonly dataSource: DataSource,
-    private readonly rolesService: RolesService,
-    private readonly access: AccessControlService,
   ) {}
 
   // Cria o tenant (estabelecimento) e o primeiro admin (dono) juntos.
@@ -49,27 +42,21 @@ export class AuthService {
       throw new ConflictException('Esse e-mail já está cadastrado.');
     }
 
-    const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
-
-    // Tenant + cargos de sistema + primeiro usuário (Administrador) em UMA
-    // transação: nunca sobra um estabelecimento sem dono ou sem cargos.
-    const { tenant, adminUser } = await this.dataSource.transaction(async (em) => {
-      const tenant = await em.getRepository(Tenant).save(
-        em.getRepository(Tenant).create({ name: dto.tenantName, slug: dto.tenantSlug }),
-      );
-      const adminRole = await this.rolesService.ensureSystemRoles(tenant.id, em);
-      const adminUser = await em.getRepository(AdminUser).save(
-        em.getRepository(AdminUser).create({
-          tenantId: tenant.id,
-          email: dto.email,
-          passwordHash,
-          name: dto.name,
-          role: 'owner',
-          roleId: adminRole.id,
-        }),
-      );
-      return { tenant, adminUser };
+    const tenant = this.tenantRepo.create({
+      name: dto.tenantName,
+      slug: dto.tenantSlug,
     });
+    await this.tenantRepo.save(tenant);
+
+    const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
+    const adminUser = this.adminUserRepo.create({
+      tenantId: tenant.id,
+      email: dto.email,
+      passwordHash,
+      name: dto.name,
+      role: 'owner',
+    });
+    await this.adminUserRepo.save(adminUser);
 
     return this.buildAuthResponse(adminUser, tenant);
   }
@@ -93,30 +80,7 @@ export class AuthService {
     return this.buildAuthResponse(adminUser, adminUser.tenant);
   }
 
-  // Dados de sessão atuais (cargo + permissões) — o painel usa para montar o
-  // menu e esconder botões. É só reflexo: a autorização real é no servidor.
-  async me(userId: string) {
-    const ctx = await this.access.getContext(userId);
-    if (!ctx) throw new UnauthorizedException('Sessão inválida. Entre novamente.');
-    return this.adminView(ctx);
-  }
-
-  private adminView(ctx: AccessContext) {
-    return {
-      id: ctx.userId,
-      email: ctx.email,
-      name: ctx.name,
-      role: ctx.role,
-      roleId: ctx.roleId,
-      roleSlug: ctx.roleSlug,
-      roleName: ctx.roleName,
-      permissions: ctx.permissions,
-    };
-  }
-
-  private async buildAuthResponse(adminUser: AdminUser, tenant: Tenant) {
-    // O token carrega só identidade. Cargo/permissões são resolvidos no
-    // servidor a cada requisição (ver JwtStrategy) — por isso não vão no JWT.
+  private buildAuthResponse(adminUser: AdminUser, tenant: Tenant) {
     const payload = {
       sub: adminUser.id,
       tenantId: adminUser.tenantId,
@@ -125,13 +89,14 @@ export class AuthService {
       type: 'admin' as const,
     };
 
-    this.access.invalidateUser(adminUser.id);
-    const ctx = await this.access.getContext(adminUser.id);
-    if (!ctx) throw new UnauthorizedException('Sessão inválida. Entre novamente.');
-
     return {
       accessToken: this.jwtService.sign(payload),
-      admin: this.adminView(ctx),
+      admin: {
+        id: adminUser.id,
+        email: adminUser.email,
+        name: adminUser.name,
+        role: adminUser.role,
+      },
       // Retorna o tenant (marca) inteiro sempre — endereço/horário/aberto
       // agora vivem em Location (uma ou mais lojas por marca), não aqui.
       tenant,

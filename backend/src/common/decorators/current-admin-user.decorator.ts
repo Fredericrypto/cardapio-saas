@@ -8,14 +8,7 @@ export interface RequestAdminUser {
   userId: string;
   tenantId: string;
   email: string;
-  // LEGADO (owner/manager/staff) — derivado do cargo; usado pelas notificações internas.
   role: string;
-  // RBAC: preenchidos pela JwtStrategy a partir do BANCO (nunca do corpo/headers
-  // da requisição). Opcionais só para não quebrar código/testes antigos.
-  roleId?: string | null;
-  roleSlug?: string | null;
-  roleName?: string | null;
-  permissions?: string[];
 }
 
 export const CurrentAdminUser = createParamDecorator(

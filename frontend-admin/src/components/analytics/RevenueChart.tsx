@@ -1,7 +1,6 @@
 import { Area, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import type { Analytics } from '../../types/analytics';
 import { brl } from './format';
-import { useChartPalette } from '../../hooks/useTheme';
 
 interface ChartRow {
   label: string;
@@ -40,7 +39,6 @@ function ChartTooltip({ active, payload }: { active?: boolean; payload?: Array<{
 const TREND_LABEL = { alta: 'tendência de alta', queda: 'tendência de queda', estavel: 'tendência estável' } as const;
 
 export function RevenueChart({ data }: { data: Analytics }) {
-  const palette = useChartPalette();
   const actual = data.series.filter((p) => !p.forecast);
   const lastActual = actual[actual.length - 1];
   const rows: ChartRow[] = data.series.map((p) => ({
@@ -74,18 +72,18 @@ export function RevenueChart({ data }: { data: Analytics }) {
           <ComposedChart data={rows} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="gRev" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={palette.ink} stopOpacity={0.22} />
-                <stop offset="100%" stopColor={palette.ink} stopOpacity={0} />
+                <stop offset="0%" stopColor="#18181B" stopOpacity={0.22} />
+                <stop offset="100%" stopColor="#18181B" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke={palette.grid} vertical={false} />
-            <XAxis dataKey="label" tick={{ fontSize: 11, fill: palette.tick }} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={18} />
-            <YAxis tick={{ fontSize: 11, fill: palette.tick }} tickLine={false} axisLine={false} width={56} tickFormatter={(v: number) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(v))} />
+            <CartesianGrid strokeDasharray="3 3" stroke="#eee" vertical={false} />
+            <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#9ca3af' }} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={18} />
+            <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} tickLine={false} axisLine={false} width={56} tickFormatter={(v: number) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(v))} />
             <Tooltip content={<ChartTooltip />} />
             <Legend wrapperStyle={{ fontSize: 12 }} />
-            <Area type="monotone" dataKey="revenue" name="Receita líquida" stroke={palette.ink} strokeWidth={2} fill="url(#gRev)" connectNulls={false} />
+            <Area type="monotone" dataKey="revenue" name="Receita líquida" stroke="#18181B" strokeWidth={2} fill="url(#gRev)" connectNulls={false} />
             <Line type="monotone" dataKey="profit" name="Lucro bruto" stroke="#16a34a" strokeWidth={2} dot={false} connectNulls={false} />
-            <Line type="monotone" dataKey="revenueForecast" name="Projeção de receita" stroke={palette.ink} strokeWidth={2} strokeDasharray="5 5" dot={false} legendType="plainline" />
+            <Line type="monotone" dataKey="revenueForecast" name="Projeção de receita" stroke="#18181B" strokeWidth={2} strokeDasharray="5 5" dot={false} legendType="plainline" />
             <Line type="monotone" dataKey="profitForecast" name="Projeção de lucro" stroke="#16a34a" strokeWidth={2} strokeDasharray="5 5" dot={false} legendType="plainline" />
           </ComposedChart>
         </ResponsiveContainer>

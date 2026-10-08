@@ -4,9 +4,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 // pedidos e chamados de garçom aparecerem "quase em tempo real" sem
 // precisar de WebSocket agora — simples e suficiente pro volume de um
 // restaurante pequeno/médio.
-// `enabled=false` (ex.: usuário sem a permissão do endpoint) não faz nenhuma
-// requisição — evita 403 em loop a cada poucos segundos.
-export function usePolling<T>(fetchFn: () => Promise<T>, intervalMs = 5000, enabled = true) {
+export function usePolling<T>(fetchFn: () => Promise<T>, intervalMs = 5000) {
   const [data, setData] = useState<T | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   // BUG CORRIGIDO: antes o erro era engolido silenciosamente (try/finally
@@ -30,14 +28,10 @@ export function usePolling<T>(fetchFn: () => Promise<T>, intervalMs = 5000, enab
   }, []);
 
   useEffect(() => {
-    if (!enabled) {
-      setIsLoading(false);
-      return;
-    }
     refetch();
     const interval = setInterval(refetch, intervalMs);
     return () => clearInterval(interval);
-  }, [refetch, intervalMs, enabled]);
+  }, [refetch, intervalMs]);
 
   return { data, isLoading, error, refetch };
 }

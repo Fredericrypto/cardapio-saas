@@ -15,7 +15,6 @@ import { LocationsService } from './locations.service';
 import { CreateLocationDto } from './dto/create-location.dto';
 import { UpdateLocationDto } from './dto/update-location.dto';
 import { ConfirmLocationAddressDto } from './dto/confirm-location-address.dto';
-import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 
 @Controller('locations')
 export class LocationsController {
@@ -49,13 +48,13 @@ export class LocationsController {
     return this.locationsService.findAllForTenant(tenantId);
   }
 
-  @RequirePermission('locations:manage')
+  @UseGuards(JwtAuthGuard)
   @Post('me')
   async create(@CurrentTenant() tenantId: string, @Body() dto: CreateLocationDto) {
     return this.locationsService.create(tenantId, dto);
   }
 
-  @RequirePermission('locations:manage')
+  @UseGuards(JwtAuthGuard)
   @Patch('me/:id')
   async update(
     @CurrentTenant() tenantId: string,
@@ -65,7 +64,7 @@ export class LocationsController {
     return this.locationsService.update(tenantId, id, dto);
   }
 
-  @RequirePermission('locations:manage')
+  @UseGuards(JwtAuthGuard)
   @Patch('me/:id/location')
   async confirmAddress(
     @CurrentTenant() tenantId: string,
@@ -75,7 +74,7 @@ export class LocationsController {
     return this.locationsService.confirmAddress(tenantId, id, dto.address);
   }
 
-  @RequirePermission('locations:manage')
+  @UseGuards(JwtAuthGuard)
   @Delete('me/:id')
   async remove(@CurrentTenant() tenantId: string, @Param('id') id: string) {
     await this.locationsService.remove(tenantId, id);

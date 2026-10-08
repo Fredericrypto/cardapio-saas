@@ -32,8 +32,9 @@ import { CashbackConsumption } from '../modules/cashback/cashback-consumption.en
 import { Review } from '../modules/reviews/review.entity';
 import { ReviewResponse } from '../modules/reviews/review-response.entity';
 import { PushSubscription } from '../modules/push/push-subscription.entity';
-import { Role } from '../modules/roles/entities/role.entity';
-import { Permission } from '../modules/roles/entities/permission.entity';
+import { TenantBackup } from '../modules/backups/tenant-backup.entity';
+import { TenantBackupSettings } from '../modules/backups/tenant-backup-settings.entity';
+import { BackupAuditLog } from '../modules/backups/backup-audit-log.entity';
 
 // Este arquivo é usado SOMENTE pelo TypeORM CLI (migrations).
 // A aplicação NestJS em si usa TypeOrmModule.forRootAsync no app.module.ts.
@@ -76,8 +77,9 @@ export const AppDataSource = new DataSource({
     Review,
     ReviewResponse,
     PushSubscription,
-    Role,
-    Permission,
+    TenantBackup,
+    TenantBackupSettings,
+    BackupAuditLog,
   ],
   migrations: [__dirname + '/../migrations/*{.ts,.js}'],
   synchronize: false, // NUNCA true em produção — só migrations controlam o schema

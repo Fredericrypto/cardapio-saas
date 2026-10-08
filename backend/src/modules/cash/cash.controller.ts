@@ -6,7 +6,6 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 import { CashTransaction } from './cash-transaction.entity';
 import type { CashTransactionType } from './cash-transaction.entity';
-import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 
 class CreateCashTransactionDto {
   @IsIn(['sangria', 'suprimento', 'abertura', 'fechamento'])
@@ -36,7 +35,6 @@ export class CashController {
     private readonly repo: Repository<CashTransaction>,
   ) {}
 
-  @RequirePermission('cash:manage')
   @Post()
   async create(
     @CurrentTenant() tenantId: string,
@@ -55,7 +53,6 @@ export class CashController {
     );
   }
 
-  @RequirePermission('cash:view')
   @Get()
   async list(@CurrentTenant() tenantId: string, @Query('limit') limit?: string) {
     return this.repo.find({

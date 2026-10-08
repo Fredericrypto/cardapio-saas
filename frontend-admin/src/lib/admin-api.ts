@@ -1,5 +1,12 @@
 import { api } from './api';
 import type { Analytics, AnalyticsPeriod } from '../types/analytics';
+import type {
+  BackupAuditItem,
+  BackupOverview,
+  BackupSettingsView,
+  RestorePreview,
+  RestoreSummary,
+} from '../types/backups';
 import type { InternalNotification, LayoutItem, Note, NoteDraft, NotificationTarget } from '../types/notes';
 import type {
   Tenant,
@@ -779,4 +786,52 @@ export async function sendInternalPushTest(): Promise<{ sent: number }> {
 export async function fetchVapidPublicKey(): Promise<string | null> {
   const { data } = await api.get<{ publicKey: string | null }>('/push/vapid-public-key');
   return data.publicKey;
+}
+
+// ---------- Backups (somente administrador/"owner") ----------
+export async function fetchBackups(): Promise<BackupOverview> {
+  const { data } = await api.get<BackupOverview>('/backups');
+  return data;
+}
+export async function saveBackupSettings(payload: {
+  frequencyDays: number;
+  runTime: string;
+  retentionDays: number;
+}): Promise<BackupSettingsView> {
+  const { data } = await api.put<BackupSettingsView>('/backups/settings', payload);
+  return data;
+}
+export async function createManualBackup(): Promise<{ id: string; status: string }> {
+  const { data } = await api.post<{ id: string; status: string }>('/backups');
+  return data;
+}
+export async function fetchRestorePreview(id: string): Promise<RestorePreview> {
+  const { data } = await api.get<RestorePreview>(`/backups/${id}/restore-preview`);
+  return data;
+}
+export async function restoreBackup(
+  id: string,
+  payload: { password: string; confirmationWord: string },
+): Promise<RestoreSummary> {
+  const { data } = await api.post<RestoreSummary>(`/backups/${id}/restore`, payload);
+  return data;
+}
+export async function deleteBackup(id: string): Promise<void> {
+  await api.delete(`/backups/${id}`);
+}
+export async function fetchBackupAudit(): Promise<BackupAuditItem[]> {
+  const { data } = await api.get<BackupAuditItem[]>('/backups/audit-log');
+  return data;
+}
+// Baixa o arquivo CRIPTOGRAFADO (blob) e dispara o download no navegador.
+export async function downloadBackupFile(id: string, fileName: string): Promise<void> {
+  const res = await api.get<Blob>(`/backups/${id}/download`, { responseType: 'blob' });
+  const url = URL.createObjectURL(res.data);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }

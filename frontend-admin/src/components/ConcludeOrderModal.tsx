@@ -144,11 +144,12 @@ export function ConcludeOrderModal({ order, onClose, onConcluded }: ConcludeOrde
               <button
                 key={method.value}
                 onClick={() => setPaymentMethod(method.value)}
-                className={`flex-1 py-2 rounded-lg text-xs font-semibold border ${
+                className="flex-1 py-2 rounded-lg text-xs font-semibold border"
+                style={
                   paymentMethod === method.value
-                    ? 'bg-gray-900 text-white border-gray-900'
-                    : 'border-gray-200 text-gray-500'
-                }`}
+                    ? { backgroundColor: '#111827', color: 'white', borderColor: '#111827' }
+                    : { borderColor: '#e5e5e5', color: '#666' }
+                }
               >
                 {method.label}
               </button>

@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, ForbiddenException } from '@nestjs/common';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 import { CustomerJwtAuthGuard } from '../customers/customer-jwt-auth.guard';
 import { CurrentCustomer } from '../../common/decorators/current-customer.decorator';
@@ -6,7 +7,6 @@ import type { RequestCustomer } from '../../common/decorators/current-customer.d
 import { CashbackService } from './cashback.service';
 import { CreateCashbackSettingsDto } from './dto/create-cashback-settings.dto';
 import { UpdateCashbackSettingsDto } from './dto/update-cashback-settings.dto';
-import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 
 @Controller()
 export class CashbackController {
@@ -14,19 +14,19 @@ export class CashbackController {
 
   // ---------- Configurações (admin) ----------
 
-  @RequirePermission('cashback:view')
+  @UseGuards(JwtAuthGuard)
   @Get('cashback/settings')
   async findAllSettings(@CurrentTenant() tenantId: string) {
     return this.cashbackService.findAllSettings(tenantId);
   }
 
-  @RequirePermission('cashback:manage')
+  @UseGuards(JwtAuthGuard)
   @Post('cashback/settings')
   async createSettings(@CurrentTenant() tenantId: string, @Body() dto: CreateCashbackSettingsDto) {
     return this.cashbackService.createSettings(tenantId, dto);
   }
 
-  @RequirePermission('cashback:manage')
+  @UseGuards(JwtAuthGuard)
   @Patch('cashback/settings/:id')
   async updateSettings(
     @CurrentTenant() tenantId: string,
@@ -36,7 +36,7 @@ export class CashbackController {
     return this.cashbackService.updateSettings(tenantId, id, dto);
   }
 
-  @RequirePermission('cashback:manage')
+  @UseGuards(JwtAuthGuard)
   @Delete('cashback/settings/:id')
   async deleteSettings(@CurrentTenant() tenantId: string, @Param('id') id: string) {
     await this.cashbackService.deleteSettings(tenantId, id);
@@ -84,19 +84,19 @@ export class CashbackController {
 
   // ---------- Histórico e totais (aba "Cashback" dentro de Histórico, admin) ----------
 
-  @RequirePermission('cashback:view')
+  @UseGuards(JwtAuthGuard)
   @Get('cashback/history/credits')
   async getAdminCreditHistory(@CurrentTenant() tenantId: string) {
     return this.cashbackService.getAdminCreditHistory(tenantId);
   }
 
-  @RequirePermission('cashback:view')
+  @UseGuards(JwtAuthGuard)
   @Get('cashback/history/consumptions')
   async getAdminConsumptionHistory(@CurrentTenant() tenantId: string) {
     return this.cashbackService.getAdminConsumptionHistory(tenantId);
   }
 
-  @RequirePermission('cashback:view')
+  @UseGuards(JwtAuthGuard)
   @Get('cashback/totals')
   async getTotals(@CurrentTenant() tenantId: string) {
     return this.cashbackService.getTotals(tenantId);

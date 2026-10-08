@@ -1,10 +1,6 @@
-import type { ReactElement } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { ProtectedRoute } from './components/auth/ProtectedRoute';
-import { AccessDeniedView } from './components/common/AccessDeniedView';
-import { RoleManagementPage } from './pages/RoleManagementPage';
-import { firstAllowedPath, permissionForPath } from './config/sidebarConfig';
+import { AuthProvider } from './contexts/AuthContext';
+import { ProtectedRoute } from './components/ProtectedRoute';
 import { AdminLayout } from './components/AdminLayout';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
@@ -23,22 +19,6 @@ import { ReviewsPage } from './pages/ReviewsPage';
 import { VerifyReceiptPage } from './pages/VerifyReceiptPage';
 import { VerificationsPage } from './pages/VerificationsPage';
 
-// Protege a página com a permissão declarada em config/sidebarConfig.ts
-// (fonte única do menu e das rotas).
-function guarded(path: string, page: ReactElement) {
-  return <ProtectedRoute permission={permissionForPath(path)}>{page}</ProtectedRoute>;
-}
-
-// "/" é o Painel; quem não tem acesso a ele cai direto na primeira aba permitida
-// (em vez de ver "acesso negado" logo depois de entrar).
-function HomeGate() {
-  const { hasPermission, permissionsReady } = useAuth();
-  if (!permissionsReady) return null;
-  const required = permissionForPath('/');
-  if (!required || hasPermission(required)) return <DashboardPage />;
-  return <Navigate to={firstAllowedPath((p) => hasPermission(p))} replace />;
-}
-
 function App() {
   return (
     <AuthProvider>
@@ -53,23 +33,21 @@ function App() {
               </ProtectedRoute>
             }
           >
-            <Route path="/" element={<HomeGate />} />
-            <Route path="/cardapio" element={guarded('/cardapio', <MenuManagementPage />)} />
-            <Route path="/mesas" element={guarded('/mesas', <TablesPage />)} />
-            <Route path="/lojas" element={guarded('/lojas', <LocationsSettingsPage />)} />
-            <Route path="/promocoes" element={guarded('/promocoes', <PromotionsSettingsPage />)} />
-            <Route path="/fidelidade" element={guarded('/fidelidade', <LoyaltySettingsPage />)} />
-            <Route path="/cashback" element={guarded('/cashback', <CashbackSettingsPage />)} />
-            <Route path="/avaliacoes" element={guarded('/avaliacoes', <ReviewsPage />)} />
-            <Route path="/analise" element={guarded('/analise', <AnalyticsPage />)} />
-            <Route path="/anotacoes" element={guarded('/anotacoes', <NotesPage />)} />
-            <Route path="/notificacoes" element={guarded('/notificacoes', <NotificationsPage />)} />
-            <Route path="/historico" element={guarded('/historico', <HistoryPage />)} />
-            <Route path="/verificar-cupom" element={guarded('/verificar-cupom', <VerifyReceiptPage />)} />
-            <Route path="/verificacoes" element={guarded('/verificacoes', <VerificationsPage />)} />
-            <Route path="/cargos" element={guarded('/cargos', <RoleManagementPage />)} />
-            <Route path="/configuracoes" element={guarded('/configuracoes', <SettingsPage />)} />
-            <Route path="/acesso-negado" element={<AccessDeniedView />} />
+            <Route path="/" element={<DashboardPage />} />
+            <Route path="/cardapio" element={<MenuManagementPage />} />
+            <Route path="/mesas" element={<TablesPage />} />
+            <Route path="/lojas" element={<LocationsSettingsPage />} />
+            <Route path="/promocoes" element={<PromotionsSettingsPage />} />
+            <Route path="/fidelidade" element={<LoyaltySettingsPage />} />
+            <Route path="/cashback" element={<CashbackSettingsPage />} />
+            <Route path="/avaliacoes" element={<ReviewsPage />} />
+            <Route path="/analise" element={<AnalyticsPage />} />
+            <Route path="/anotacoes" element={<NotesPage />} />
+            <Route path="/notificacoes" element={<NotificationsPage />} />
+            <Route path="/historico" element={<HistoryPage />} />
+            <Route path="/verificar-cupom" element={<VerifyReceiptPage />} />
+            <Route path="/verificacoes" element={<VerificationsPage />} />
+            <Route path="/configuracoes" element={<SettingsPage />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />
