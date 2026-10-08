@@ -1,17 +1,10 @@
-RBAC patch + tema claro/escuro (2026-10-08) - aplicar POR CIMA do repo (rsync), nunca sozinho.
-
-Backend
-- TS1272 corrigido (import type) em auth/auth.controller.ts e roles/roles.controller.ts.
-- backend/tsconfig.json: "exclude": ["node_modules","dist","test"] (npx tsc --noEmit nao olha mais test/).
-  (test/helpers.ts existe no repo; o build do Nest ja ignorava test/ via tsconfig.build.json.)
-- Migration nova 1757200000000-RbacRolesPermissions -> migration:run ANTES do push.
+Ajustes Z6-03 (2026-10-08) - aplicar POR CIMA do repo que ja tem o patch rbac-tema-layout-patch-2026-10-08-0603.
 
 Frontend-admin
-- Layout: sidebar FIXA (tela sem scroll global); so o <main> rola (id admin-main-scroll, lib/layout.ts).
-- Conteudo das abas CENTRALIZADO na area da direita (main aplica mx-auto no filho direto).
-- Tema Dracula REMOVIDO (sidebar, acesso negado, cargos e acessos voltaram ao visual original).
-- Modo escuro alternavel (botao no cabecalho), padrao claro, persiste em localStorage. Ver docs/TEMA.md.
-- BUILD_VERSION: 2026-10-08-sessao-z6-02 (admin e cardapio).
+- Sidebar: sem slug, logo ao lado do nome, mais larga.
+- Configuracoes: sub-abas por categoria (Visual / Redes sociais e contatos / Pagamentos e pedidos / Analise e financeiro / Funcionamento e notificacoes).
+- Mesas: copiar link contido no card, lixeira vermelha, QR legivel no modo escuro, impressao do QR corrigida.
+- Cursor pointer global (admin e cardapio).
+- BUILD_VERSION: 2026-10-08-sessao-z6-03 (admin e cardapio). Sem migration nova. Sem npm install novo.
 
-REMOVER manualmente: frontend-admin/src/components/ProtectedRoute.tsx
-  (movido para components/auth/ProtectedRoute.tsx)
+Detalhes: docs/AJUSTES-Z6-03.md

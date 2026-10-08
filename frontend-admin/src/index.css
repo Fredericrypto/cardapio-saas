@@ -128,6 +128,41 @@
   box-sizing: border-box;
 }
 
+/* ============================================================
+   CURSOR INTERATIVO (mãozinha) em tudo que é clicável.
+   O Tailwind v4 reseta <button> para `cursor: default`; aqui devolvemos o
+   `pointer` de forma GLOBAL (um lugar só, sem repetir `cursor-pointer` em
+   cada componente). Fica em @layer base: qualquer utilitário
+   (`cursor-default`, `cursor-not-allowed`, `cursor-grab`...) continua
+   ganhando — por isso o arrastar do mural de Anotações não é afetado.
+   Desabilitado = `not-allowed`. Para um elemento NÃO nativo que reage a clique
+   (ex.: <div onClick>), use `cursor-pointer` ou role="button".
+   ============================================================ */
+@layer base {
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  [role='tab'],
+  [role='switch'],
+  [role='menuitem'],
+  [role='option'],
+  a[href],
+  summary,
+  select:not(:disabled),
+  label[for],
+  input:is([type='checkbox'], [type='radio'], [type='color'], [type='file'], [type='range'], [type='button'], [type='submit'], [type='reset']):not(:disabled),
+  label:has(> input:is([type='checkbox'], [type='radio']):not(:disabled)) {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  [role='button'][aria-disabled='true'],
+  select:disabled,
+  input:disabled {
+    cursor: not-allowed;
+  }
+}
+
+
 html, body {
   margin: 0;
   padding: 0;
@@ -139,7 +174,8 @@ h1, h2, h3, .font-display {
   font-family: 'Poppins', sans-serif;
 }
 
-/* Ao imprimir, mostra só o conteúdo do cupom (#receipt-print-area),
+/* Ao imprimir, mostra só o conteúdo do cupom (#receipt-print-area) ou o QR da
+   mesa (#qr-print-area, aba Mesas),
    escondendo o resto da interface do painel (sidebar, botões, overlay).
    @page força o tamanho de papel térmico (80mm) — a impressora física
    precisa estar selecionada no diálogo de impressão do navegador (não
@@ -154,10 +190,13 @@ h1, h2, h3, .font-display {
     visibility: hidden;
   }
   #receipt-print-area,
-  #receipt-print-area * {
+  #receipt-print-area *,
+  #qr-print-area,
+  #qr-print-area * {
     visibility: visible;
   }
-  #receipt-print-area {
+  #receipt-print-area,
+  #qr-print-area {
     position: absolute;
     top: 0;
     left: 0;
