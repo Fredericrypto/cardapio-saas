@@ -16,7 +16,7 @@ import {
 import { Throttle } from '@nestjs/throttler';
 import { CurrentAdminUser } from '../../common/decorators/current-admin-user.decorator';
 import { RequirePermission } from '../auth/decorators/require-permission.decorator';
-import { AccessContext } from './access-context';
+import type { AccessContext } from './access-context';
 import { AssignRoleDto } from './dto/assign-role.dto';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
