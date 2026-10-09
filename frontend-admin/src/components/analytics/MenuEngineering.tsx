@@ -2,6 +2,9 @@ import { CartesianGrid, ReferenceLine, ResponsiveContainer, Scatter, ScatterChar
 import type { Analytics, MatrixClass, MatrixItem, MenuItemStat } from '../../types/analytics';
 import { brl, int, pct } from './format';
 import { useChartPalette } from '../../hooks/useTheme';
+import { Calculator } from 'lucide-react';
+import { useOpenCalculator } from '../../contexts/ManagerCalculatorContext';
+import { payloadFromProduct } from '../../lib/calculator/calculatorAnalytics';
 
 // Definições formais dos quadrantes (V̄ = volume médio, M̄ = margem média).
 export const CLASS_META: Record<MatrixClass, { label: string; color: string; hint: string }> = {
@@ -14,8 +17,9 @@ const ORDER: MatrixClass[] = ['estrela', 'burro_de_carga', 'puzzle', 'cao'];
 
 // Barras proporcionais ao MAIOR volume DENTRO DA PRÓPRIA LISTA (cada ranking
 // tem a sua escala — a barra dos menos vendidos nunca usa a escala do Top 10).
-function Ranking({ title, items, empty, testId }: { title: string; items: MenuItemStat[]; empty: string; testId: string }) {
+function Ranking({ title, items, empty, testId, params }: { title: string; items: MenuItemStat[]; empty: string; testId: string; params: Analytics['params'] }) {
   const max = Math.max(0, ...items.map((i) => i.units));
+  const openCalculator = useOpenCalculator();
   return (
     <div className="bg-white border border-gray-100 rounded-2xl p-4" data-testid={testId}>
       <h3 className="text-sm font-bold text-gray-800 mb-3">{title}</h3>
@@ -30,8 +34,17 @@ function Ranking({ title, items, empty, testId }: { title: string; items: MenuIt
                   <span className="text-gray-400 mr-1.5">{idx + 1}.</span>
                   {i.name}
                 </span>
-                <span className="font-semibold text-gray-800 shrink-0">
+                <span className="font-semibold text-gray-800 shrink-0 flex items-center gap-2">
                   {int(i.units)} un · {brl(i.revenue)}
+                  <button
+                    type="button"
+                    onClick={() => openCalculator(payloadFromProduct(i, params))}
+                    aria-label={`Simular ${i.name} na calculadora`}
+                    title="Simular na Calculadora"
+                    className="p-1 rounded-md border border-gray-200 text-gray-500 hover:bg-gray-50"
+                  >
+                    <Calculator size={12} strokeWidth={1.5} />
+                  </button>
                 </span>
               </div>
               <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
@@ -107,11 +120,12 @@ export function MenuEngineering({ data }: { data: Analytics }) {
     <div className="flex flex-col gap-4">
       <h2 className="text-sm font-bold text-gray-800">Engenharia de cardápio</h2>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Ranking testId="rank-top" title="Top 10 mais vendidos" items={data.topProducts} empty="Sem vendas no período." />
+        <Ranking testId="rank-top" title="Top 10 mais vendidos" items={data.topProducts} empty="Sem vendas no período." params={data.params} />
         <Ranking
           testId="rank-bottom"
           title="10 menos vendidos"
           items={data.bottomProducts}
+          params={data.params}
           empty="Todos os itens do cardápio já estão no Top 10 — não há itens fora do ranking."
         />
       </div>

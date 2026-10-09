@@ -11,11 +11,11 @@ import { DashboardPage } from './pages/DashboardPage';
 import { MenuManagementPage } from './pages/MenuManagementPage';
 import { TablesPage } from './pages/TablesPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
+import { ManagerCalculatorPage } from './pages/ManagerCalculatorPage';
 import { NotesPage } from './pages/NotesPage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { SettingsPage } from './pages/SettingsPage';
-import { BackupsPage } from './pages/BackupsPage';
 import { LocationsSettingsPage } from './pages/LocationsSettingsPage';
 import { PromotionsSettingsPage } from './pages/PromotionsSettingsPage';
 import { LoyaltySettingsPage } from './pages/LoyaltySettingsPage';
@@ -63,13 +63,13 @@ function App() {
             <Route path="/cashback" element={guarded('/cashback', <CashbackSettingsPage />)} />
             <Route path="/avaliacoes" element={guarded('/avaliacoes', <ReviewsPage />)} />
             <Route path="/analise" element={guarded('/analise', <AnalyticsPage />)} />
+            <Route path="/calculadora" element={guarded('/calculadora', <ManagerCalculatorPage />)} />
             <Route path="/anotacoes" element={guarded('/anotacoes', <NotesPage />)} />
             <Route path="/notificacoes" element={guarded('/notificacoes', <NotificationsPage />)} />
             <Route path="/historico" element={guarded('/historico', <HistoryPage />)} />
             <Route path="/verificar-cupom" element={guarded('/verificar-cupom', <VerifyReceiptPage />)} />
             <Route path="/verificacoes" element={guarded('/verificacoes', <VerificationsPage />)} />
             <Route path="/cargos" element={guarded('/cargos', <RoleManagementPage />)} />
-            <Route path="/seguranca" element={guarded('/seguranca', <BackupsPage />)} />
             <Route path="/configuracoes" element={guarded('/configuracoes', <SettingsPage />)} />
             <Route path="/acesso-negado" element={<AccessDeniedView />} />
           </Route>

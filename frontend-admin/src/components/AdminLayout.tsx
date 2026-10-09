@@ -7,6 +7,7 @@ import { AdminSidebar } from './layout/AdminSidebar';
 import { useAttentionStatus } from '../hooks/useAttentionStatus';
 import { DashboardDataProvider, useDashboardData } from '../contexts/DashboardDataContext';
 import { InternalNotificationsProvider } from '../contexts/InternalNotificationsContext';
+import { ManagerCalculatorProvider } from '../contexts/ManagerCalculatorContext';
 import { NotificationBell } from './notifications/NotificationBell';
 import { ThemeToggle } from './ThemeToggle';
 import { MAIN_SCROLL_ID } from '../lib/layout';
@@ -21,7 +22,9 @@ export function AdminLayout() {
   return (
     <DashboardDataProvider>
       <InternalNotificationsProvider>
-      <AdminLayoutContent />
+        <ManagerCalculatorProvider>
+          <AdminLayoutContent />
+        </ManagerCalculatorProvider>
       </InternalNotificationsProvider>
     </DashboardDataProvider>
   );

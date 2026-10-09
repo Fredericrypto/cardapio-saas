@@ -1,17 +1,8 @@
-RBAC patch + tema claro/escuro (2026-10-08) - aplicar POR CIMA do repo (rsync), nunca sozinho.
+Calculadora de Gestao Z6-04 (2026-10-08) - aplicar POR CIMA do Z6-03.
 
-Backend
-- TS1272 corrigido (import type) em auth/auth.controller.ts e roles/roles.controller.ts.
-- backend/tsconfig.json: "exclude": ["node_modules","dist","test"] (npx tsc --noEmit nao olha mais test/).
-  (test/helpers.ts existe no repo; o build do Nest ja ignorava test/ via tsconfig.build.json.)
-- Migration nova 1757200000000-RbacRolesPermissions -> migration:run ANTES do push.
+- Rota /calculadora (frontend-admin), item "Calculadora" no menu (permissao analytics:view; sem migration).
+- Botoes "Simular na Calculadora" na aba Analise (rankings + resumo).
+- Sem dependencia nova. frontend-cardapio nao muda.
+- BUILD_VERSION: 2026-10-08-sessao-z6-04
 
-Frontend-admin
-- Layout: sidebar FIXA (tela sem scroll global); so o <main> rola (id admin-main-scroll, lib/layout.ts).
-- Conteudo das abas CENTRALIZADO na area da direita (main aplica mx-auto no filho direto).
-- Tema Dracula REMOVIDO (sidebar, acesso negado, cargos e acessos voltaram ao visual original).
-- Modo escuro alternavel (botao no cabecalho), padrao claro, persiste em localStorage. Ver docs/TEMA.md.
-- BUILD_VERSION: 2026-10-08-sessao-z6-02 (admin e cardapio).
-
-REMOVER manualmente: frontend-admin/src/components/ProtectedRoute.tsx
-  (movido para components/auth/ProtectedRoute.tsx)
+Detalhes e decisoes: docs/CALCULADORA-Z6-04.md

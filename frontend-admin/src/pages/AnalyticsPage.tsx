@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { RefreshCw, TrendingUp } from 'lucide-react';
+import { Calculator, RefreshCw, TrendingUp } from 'lucide-react';
 import { fetchAnalytics, fetchLocations } from '../lib/admin-api';
 import type { Analytics, AnalyticsPeriod } from '../types/analytics';
 import type { Location } from '../types';
 import { PeriodSelector } from '../components/analytics/PeriodSelector';
 import { KpiCards } from '../components/analytics/KpiCards';
+import { useOpenCalculator } from '../contexts/ManagerCalculatorContext';
+import { payloadFromSummary } from '../lib/calculator/calculatorAnalytics';
 import { RevenueChart } from '../components/analytics/RevenueChart';
 import { MenuEngineering } from '../components/analytics/MenuEngineering';
 import { SalesHeatmap } from '../components/analytics/SalesHeatmap';
@@ -16,6 +18,7 @@ import { ExportMenu } from '../components/analytics/ExportMenu';
 // esmaecida, até chegar o resultado novo — nada de piscar vazio). Auto-atualiza
 // a cada 60 s só nos períodos que incluem "agora".
 export function AnalyticsPage() {
+  const openCalculator = useOpenCalculator();
   const [period, setPeriod] = useState<AnalyticsPeriod>('semana');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
@@ -103,6 +106,15 @@ export function AnalyticsPage() {
             <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
           </button>
           <ExportMenu data={data} disabled={loading} />
+          <button
+            type="button"
+            onClick={() => data && openCalculator(payloadFromSummary(data))}
+            disabled={!data || loading}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+          >
+            <Calculator size={14} strokeWidth={1.5} />
+            Simular na Calculadora
+          </button>
         </div>
       </div>
 
