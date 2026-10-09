@@ -34,6 +34,10 @@ export class AdminUser {
   @Column({ type: 'varchar', length: 150, nullable: true })
   name: string | null;
 
+  // Foto do usuário (opcional) — usada no card das notificações internas.
+  @Column({ name: 'avatar_url', type: 'varchar', length: 500, nullable: true })
+  avatarUrl: string | null;
+
   // LEGADO: perfil de 3 níveis (owner/manager/staff) usado pelas notificações
   // internas. É derivado do cargo (roleId) — nunca editado direto. A fonte de
   // verdade das permissões é `roleEntity` (tabela roles).

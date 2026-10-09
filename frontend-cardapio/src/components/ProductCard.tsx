@@ -1,11 +1,17 @@
 import { Ban, Plus } from 'lucide-react';
 import type { Product } from '../types';
 import { useCart } from '../contexts/CartContext';
+import { CLOSED_MUTED_CLASS, CLOSED_STORE_LABEL } from '../lib/storeStatus';
+import { ShareButton } from './ShareButton';
 
 interface ProductCardProps {
   product: Product;
   primaryColor: string;
   onClick: () => void;
+  // Loja fechada: o card continua abrindo (para ler os detalhes), mas o "+" fica travado.
+  storeClosed?: boolean;
+  // Link público do item; sem ele o card não mostra o botão de compartilhar.
+  shareUrl?: string;
 }
 
 // Card de grid 2 colunas — foto quadrada, botão "+" circular flutuando
@@ -13,7 +19,7 @@ interface ProductCardProps {
 // nome e preço abaixo. Estrutura calcada no print de referência
 // (McDonald's/FoodyPro): grid denso, cartão compacto, preço riscado
 // quando há promoção.
-export function ProductCard({ product, primaryColor, onClick }: ProductCardProps) {
+export function ProductCard({ product, primaryColor, onClick, storeClosed = false, shareUrl }: ProductCardProps) {
   const { addItem } = useCart();
   const displayPrice = product.promoPrice ?? product.price;
   const hasPromo = product.promoPrice != null;
@@ -30,12 +36,22 @@ export function ProductCard({ product, primaryColor, onClick }: ProductCardProps
           <img
             src={product.imageUrl}
             alt={product.name}
-            className={`w-full h-full object-cover ${isUnavailable ? 'grayscale opacity-60' : ''}`}
+            className={`w-full h-full object-cover ${isUnavailable ? 'grayscale opacity-60' : storeClosed ? CLOSED_MUTED_CLASS : ''}`}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-300 text-xs">
             Sem foto
           </div>
+        )}
+
+        {shareUrl && (
+          <ShareButton
+            variant="chip"
+            className="absolute top-2 right-2"
+            url={shareUrl}
+            title={product.name}
+            text={product.description ?? undefined}
+          />
         )}
 
         {isUnavailable && (
@@ -50,12 +66,20 @@ export function ProductCard({ product, primaryColor, onClick }: ProductCardProps
           </span>
         )}
 
-        {isUnavailable ? (
+        {storeClosed && !isUnavailable ? (
+          <span
+            aria-label={`${product.name}: ${CLOSED_STORE_LABEL}`}
+            title={CLOSED_STORE_LABEL}
+            className="absolute -bottom-3 right-2.5 w-8 h-8 rounded-full flex items-center justify-center text-white shadow-md border-2 border-white bg-gray-400 cursor-not-allowed"
+          >
+            <Ban size={15} strokeWidth={1.5} />
+          </span>
+        ) : isUnavailable ? (
           <span
             aria-label={`${product.name} indisponível`}
             className="absolute -bottom-3 right-2.5 w-8 h-8 rounded-full flex items-center justify-center text-white shadow-md border-2 border-white bg-gray-400 cursor-not-allowed"
           >
-            <Ban size={15} strokeWidth={2.5} />
+            <Ban size={15} strokeWidth={1.5} />
           </span>
         ) : (
         <span

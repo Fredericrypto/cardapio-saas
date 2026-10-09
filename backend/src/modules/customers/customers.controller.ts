@@ -26,6 +26,7 @@ import { CustomerJwtAuthGuard } from './customer-jwt-auth.guard';
 import { CurrentCustomer } from '../../common/decorators/current-customer.decorator';
 import type { RequestCustomer } from '../../common/decorators/current-customer.decorator';
 import { StorageService } from '../../common/services/storage.service';
+import type { PresetAvatarId } from './preset-avatars';
 import { CustomerVerificationService } from './customer-verification.service';
 
 // Rotas do CLIENTE FINAL, sempre por restaurante (/:tenantId na URL) —
@@ -191,7 +192,7 @@ export class CustomersController {
     return this.customersAuthService.setAvatarPreset(
       tenantId,
       customer.customerId,
-      dto.presetId as any,
+      dto.presetId as PresetAvatarId,
     );
   }
 

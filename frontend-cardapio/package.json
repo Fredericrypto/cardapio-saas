@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "cap:sync": "npm run build && npx cap sync android"
+    "cap:sync": "npm run build && npx cap sync android",
+    "test:logic": "npx --yes tsx test/cashbackFormat.test.ts && npx --yes tsx test/shareLinks.test.ts && npx --yes tsx test/share.test.ts"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.2",

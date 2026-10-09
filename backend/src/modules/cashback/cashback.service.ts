@@ -661,6 +661,11 @@ export class CashbackService {
       remainingAmount?: number;
       expiresAt?: Date | null;
       expired?: boolean;
+      // Só nos resgates ("spent"): valor total do pedido/conta em que foi usado
+      // (antes do desconto do cashback) e onde aconteceu.
+      orderTotal?: number | null;
+      establishmentName?: string;
+      locationName?: string | null;
     }[]
   > {
     const credits = await this.ledgerRepo.find({
@@ -688,13 +693,58 @@ export class CashbackService {
       expiresAt: c.expiresAt,
       expired: c.expiresAt != null && c.expiresAt.getTime() <= Date.now() && c.remainingAmount > 0,
     }));
-    const spent = consumptions.map((c) => ({
-      id: c.id,
-      type: 'spent' as const,
-      amount: c.amount,
-      description: 'Usado em um pedido',
-      createdAt: c.createdAt,
-    }));
+    // Contexto de cada resgate (aba "Utilizados"): total do pedido/conta e loja.
+    // Duas consultas em lote (uma por tipo de origem), nunca uma por linha.
+    const manager = this.consumptionRepo.manager;
+    const orderIds = [...new Set(consumptions.map((c) => c.orderId).filter((id): id is string => Boolean(id)))];
+    const sessionIds = [...new Set(consumptions.map((c) => c.tableSessionId).filter((id): id is string => Boolean(id)))];
+    const orderInfo = new Map<string, { total: number; locationName: string | null }>();
+    const sessionInfo = new Map<string, { total: number; locationName: string | null }>();
+    if (orderIds.length > 0) {
+      const rows: Array<{ id: string; total: string; cashback_used: string; location_name: string | null }> =
+        await manager.query(
+          `SELECT o.id, o.total, o.cashback_used, l.name AS location_name
+             FROM orders o LEFT JOIN locations l ON l.id = o.location_id
+            WHERE o.tenant_id = $1 AND o.id = ANY($2::uuid[])`,
+          [tenantId, orderIds],
+        );
+      // `total` do pedido já vem DESCONTADO do cashback; somar de volta dá o valor cheio.
+      for (const r of rows) {
+        orderInfo.set(r.id, {
+          total: fromCents(toCents(Number(r.total)) + toCents(Number(r.cashback_used))),
+          locationName: r.location_name,
+        });
+      }
+    }
+    if (sessionIds.length > 0) {
+      const rows: Array<{ id: string; total: string; location_name: string | null }> = await manager.query(
+        `SELECT s.id, COALESCE(SUM(o.total) FILTER (WHERE o.status <> 'cancelado'), 0) AS total, l.name AS location_name
+           FROM table_sessions s
+           JOIN restaurant_tables t ON t.id = s.table_id
+           LEFT JOIN locations l ON l.id = t.location_id
+           LEFT JOIN orders o ON o.table_session_id = s.id
+          WHERE s.tenant_id = $1 AND s.id = ANY($2::uuid[])
+          GROUP BY s.id, l.name`,
+        [tenantId, sessionIds],
+      );
+      for (const r of rows) sessionInfo.set(r.id, { total: Number(r.total), locationName: r.location_name });
+    }
+    const tenant = await this.tenantRepo.findOne({ where: { id: tenantId } });
+    const tenantName = tenant?.name ?? '';
+
+    const spent = consumptions.map((c) => {
+      const info = c.orderId ? orderInfo.get(c.orderId) : c.tableSessionId ? sessionInfo.get(c.tableSessionId) : undefined;
+      return {
+        id: c.id,
+        type: 'spent' as const,
+        amount: c.amount,
+        description: 'Usado em um pedido',
+        createdAt: c.createdAt,
+        orderTotal: info ? info.total : null,
+        establishmentName: tenantName,
+        locationName: info?.locationName ?? null,
+      };
+    });
 
     return [...earned, ...spent].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }

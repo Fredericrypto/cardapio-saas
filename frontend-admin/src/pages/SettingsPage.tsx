@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { updateMyTenant, uploadTenantLogo, uploadTenantCoverImage } from '../lib/admin-api';
 import { useAuth } from '../contexts/AuthContext';
+import { NotificationPreferences } from '../components/notifications/NotificationPreferences';
 
 // Configurações da MARCA, organizadas por contexto (sub-abas). Endereço,
 // horário, entrega, WhatsApp e telefone são por LOJA (ver
@@ -32,7 +33,7 @@ function clampPercent(raw: string): number {
   return Number.isFinite(n) ? Math.min(100, Math.max(0, Math.round(n * 100) / 100)) : 0;
 }
 
-type SectionId = 'visual' | 'contatos' | 'pagamentos' | 'financeiro' | 'atendimento';
+type SectionId = 'visual' | 'contatos' | 'pagamentos' | 'financeiro' | 'atendimento' | 'notificacoes';
 
 interface SectionDef {
   id: SectionId;
@@ -48,6 +49,8 @@ const SECTIONS: readonly SectionDef[] = [
   { id: 'pagamentos', label: 'Pagamentos & pedidos', icon: CreditCard, savable: true },
   { id: 'financeiro', label: 'Análise & financeiro', icon: TrendingUp, savable: true },
   { id: 'atendimento', label: 'Funcionamento & notificações', icon: Store, savable: false },
+  // Gerenciamento das notificações da equipe (antes era a engrenagem do sininho).
+  { id: 'notificacoes', label: 'Configurações de Notificações', icon: Bell, savable: false },
 ];
 
 const INPUT = 'border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none w-full';
@@ -662,13 +665,23 @@ export function SettingsPage() {
                 />
               )}
               <ShortcutCard
-                to="/notificacoes?aba=preferencias"
+                to="/configuracoes?secao=notificacoes"
                 icon={Bell}
-                title="Notificações da equipe"
+                title="Configurações de Notificações"
                 text="Quem recebe os alertas internos (anotações) e como ativar o aviso neste aparelho."
               />
             </div>
           </Card>
+        )}
+
+        {section.id === 'notificacoes' && (
+          <div className="flex flex-col gap-3">
+            <p className="text-xs text-gray-400">
+              Quem recebe os alertas internos da equipe (anotações) e como ativar o aviso neste aparelho.
+              Os clientes nunca recebem nada daqui.
+            </p>
+            <NotificationPreferences />
+          </div>
         )}
       </div>
 

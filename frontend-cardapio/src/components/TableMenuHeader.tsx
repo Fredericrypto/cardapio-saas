@@ -4,6 +4,7 @@ import type { Tenant, Location, TableSession } from '../types';
 import { RestaurantInfoPanel } from './RestaurantInfoPanel';
 import { TableSessionTimer } from './TableSessionTimer';
 import { ReviewBadge, OpenStatusRow } from './HeaderStatus';
+import { ACTION_BUTTON_BASE } from '../lib/uiClasses';
 
 interface TableMenuHeaderProps {
   tenant: Tenant;
@@ -102,17 +103,17 @@ export function TableMenuHeader({
           <button
             onClick={onCallWaiter}
             disabled={isCallingWaiter}
-            className="flex-1 rounded-xl py-2.5 flex items-center justify-center gap-1.5 text-xs font-semibold text-white disabled:opacity-60"
+            className={`flex-1 text-white ${ACTION_BUTTON_BASE}`}
             style={{ backgroundColor: tenant.primaryColor }}
           >
-            <Bell size={14} />
+            <Bell size={14} strokeWidth={1.5} />
             {isCallingWaiter ? 'Chamando...' : 'Chamar garçom'}
           </button>
           <button
             onClick={onOpenAccount}
-            className="flex-1 rounded-xl py-2.5 flex items-center justify-center gap-1.5 text-xs font-semibold text-gray-700 bg-gray-50 border border-gray-100"
+            className={`flex-1 text-gray-700 bg-gray-50 border border-gray-100 ${ACTION_BUTTON_BASE}`}
           >
-            <Receipt size={14} />
+            <Receipt size={14} strokeWidth={1.5} />
             Minha conta
           </button>
         </div>

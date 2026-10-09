@@ -269,7 +269,7 @@ export function VerifyReceiptPage() {
                       <p className="text-xs text-green-700 mt-1 flex items-center gap-1">
                         <Stamp size={13} />
                         {redeemResult.stampProgress.rewardJustGranted
-                          ? '🎉 Cartão completo! Prêmio liberado — vai aparecer na fila de entrega em Fidelidade.'
+                          ? 'Cartão completo! Prêmio liberado — vai aparecer na fila de entrega em Fidelidade.'
                           : `${redeemResult.stampProgress.stampsCount}/${redeemResult.stampProgress.stampsRequired} carimbos.`}
                       </p>
                     )}

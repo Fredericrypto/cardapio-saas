@@ -215,7 +215,7 @@ export function ReceiptContent({ tenant, summary }: ReceiptContentProps) {
       <div className="border-t border-dashed border-gray-300 my-1" />
 
       <p className="text-center pt-1">Obrigado pela preferência!</p>
-      <p className="text-center">Volte sempre 🙂</p>
+      <p className="text-center">Volte sempre</p>
     </div>
   );
 }

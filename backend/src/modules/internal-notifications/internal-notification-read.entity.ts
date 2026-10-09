@@ -12,4 +12,9 @@ export class InternalNotificationRead {
 
   @CreateDateColumn({ name: 'read_at', type: 'timestamptz' })
   readAt: Date;
+
+  // Exclusão manual INDIVIDUAL: o alerta é compartilhado pela equipe, então
+  // "excluir" esconde só para quem excluiu (a linha já é desse usuário).
+  @Column({ name: 'deleted_at', type: 'timestamptz', nullable: true })
+  deletedAt: Date | null;
 }

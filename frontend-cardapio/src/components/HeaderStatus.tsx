@@ -67,7 +67,7 @@ export function OpenStatusRow({ location }: { location: Location | null }) {
     <div className="flex items-center justify-center gap-1.5 mt-2.5 flex-wrap">
       <span
         className={`text-[11px] font-bold px-2 py-0.5 rounded-full text-white ${
-          isOpenNow ? 'bg-green-500' : 'bg-red-500'
+          isOpenNow ? 'bg-green-500' : 'bg-red-600'
         }`}
       >
         {isOpenNow ? 'Aberto' : 'Fechado'}

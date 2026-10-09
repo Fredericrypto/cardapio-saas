@@ -751,6 +751,10 @@ export async function markInternalNotificationRead(id: string): Promise<void> {
   await api.patch(`/internal-notifications/${id}/read`);
 }
 
+export async function deleteInternalNotification(id: string): Promise<void> {
+  await api.delete(`/internal-notifications/${id}`);
+}
+
 export async function markAllInternalNotificationsRead(): Promise<void> {
   await api.patch('/internal-notifications/read-all');
 }

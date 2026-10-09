@@ -165,9 +165,16 @@ export function NotesPage() {
     if (effectiveView === 'mural') scrollMainToTop();
   }
 
+  const savingIds = useRef<Set<string>>(new Set());
+
   async function save(id: string, values: NoteDraftValues) {
     const content = values.content.trimEnd();
     if (!content.trim()) return;
+    // Anti-duplicidade: duplo clique em "Salvar" (ou Ctrl+Enter + clique) não
+    // pode mandar o mesmo POST/PATCH duas vezes — cada nota tem no máximo UM
+    // salvamento em andamento.
+    if (savingIds.current.has(id)) return;
+    savingIds.current.add(id);
     try {
       if (id === DRAFT_ID && draft) {
         const created = await createNote({
@@ -190,6 +197,8 @@ export function NotesPage() {
       setError(null);
     } catch (err) {
       setError(apiMessage(err, 'Não foi possível salvar a anotação.'));
+    } finally {
+      savingIds.current.delete(id);
     }
   }
 
@@ -220,13 +229,17 @@ export function NotesPage() {
 
   function remove(id: string) {
     if (id === DRAFT_ID) return cancel(id);
+    if (savingIds.current.has(`del:${id}`)) return;
     if (!window.confirm('Excluir esta anotação? Essa ação não pode ser desfeita e avisa a equipe.')) return;
+    savingIds.current.add(`del:${id}`);
     const snapshot = notes;
     setNotes((prev) => prev.filter((n) => n.id !== id));
-    deleteNote(id).catch((err) => {
-      setNotes(snapshot);
-      setError(apiMessage(err, 'Não foi possível excluir a anotação.'));
-    });
+    deleteNote(id)
+      .catch((err) => {
+        setNotes(snapshot);
+        setError(apiMessage(err, 'Não foi possível excluir a anotação.'));
+      })
+      .finally(() => savingIds.current.delete(`del:${id}`));
   }
 
   // Marcar tarefa direto no card: é uma edição de conteúdo, então avisa a equipe

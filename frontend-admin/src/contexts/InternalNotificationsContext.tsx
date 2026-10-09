@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import {
   fetchInternalNotifications,
   fetchInternalUnreadCount,
+  deleteInternalNotification,
   markAllInternalNotificationsRead,
   markInternalNotificationRead,
 } from '../lib/admin-api';
@@ -16,6 +17,8 @@ interface Ctx {
   reload: () => Promise<void>;
   markRead: (id: string) => Promise<void>;
   markAllRead: () => Promise<void>;
+  // Exclusão manual individual (some só para quem excluiu).
+  remove: (id: string) => Promise<void>;
   // Quem mostra a lista (sino aberto / página) avisa para ela ser mantida fresca.
   watchList: (active: boolean) => void;
 }
@@ -24,17 +27,31 @@ const InternalNotificationsContext = createContext<Ctx | undefined>(undefined);
 
 const POLL_MS = 30_000;
 
+// Defesa extra contra duplicidade na tela: nunca exibe dois cards com o mesmo id
+// (ex.: duas respostas de reload que se cruzam).
+function uniqueById(list: InternalNotification[]): InternalNotification[] {
+  const seen = new Set<string>();
+  return list.filter((n) => (seen.has(n.id) ? false : (seen.add(n.id), true)));
+}
+
 export function InternalNotificationsProvider({ children }: { children: ReactNode }) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [items, setItems] = useState<InternalNotification[]>([]);
   const [loading, setLoading] = useState(false);
   const watchers = useRef(0);
+  // Só a resposta do reload MAIS RECENTE vale (respostas fora de ordem não
+  // sobrescrevem a lista com dado velho).
+  const reloadSeq = useRef(0);
+  const itemsRef = useRef<InternalNotification[]>([]);
+  itemsRef.current = items;
 
   const reload = useCallback(async () => {
+    const seq = ++reloadSeq.current;
     setLoading(true);
     try {
       const data = await fetchInternalNotifications({ limit: 100 });
-      setItems(data.items);
+      if (seq !== reloadSeq.current) return;
+      setItems(uniqueById(data.items));
       setUnreadCount(data.unreadCount);
     } catch {
       /* sem rede / sessão expirada: o interceptor cuida do 401 */
@@ -96,6 +113,20 @@ export function InternalNotificationsProvider({ children }: { children: ReactNod
     }
   }, [reload]);
 
+  const remove = useCallback(
+    async (id: string) => {
+      const wasUnread = itemsRef.current.some((n) => n.id === id && !n.isRead);
+      setItems((prev) => prev.filter((n) => n.id !== id));
+      if (wasUnread) setUnreadCount((c) => Math.max(0, c - 1));
+      try {
+        await deleteInternalNotification(id);
+      } catch {
+        void reload();
+      }
+    },
+    [reload],
+  );
+
   const watchList = useCallback(
     (active: boolean) => {
       watchers.current = Math.max(0, watchers.current + (active ? 1 : -1));
@@ -105,8 +136,8 @@ export function InternalNotificationsProvider({ children }: { children: ReactNod
   );
 
   const value = useMemo(
-    () => ({ unreadCount, items, loading, reload, markRead, markAllRead, watchList }),
-    [unreadCount, items, loading, reload, markRead, markAllRead, watchList],
+    () => ({ unreadCount, items, loading, reload, markRead, markAllRead, remove, watchList }),
+    [unreadCount, items, loading, reload, markRead, markAllRead, remove, watchList],
   );
   return <InternalNotificationsContext.Provider value={value}>{children}</InternalNotificationsContext.Provider>;
 }

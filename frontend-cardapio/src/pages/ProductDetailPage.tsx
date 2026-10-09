@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Ban, Check, ChevronRight, Star } from 'lucide-react';
 import { fetchProducts } from '../lib/menu-api';
 import { fetchItemReviewsSummary } from '../lib/customer-api';
@@ -8,6 +8,10 @@ import type { Product, SelectedCartOption } from '../types';
 import { useCart } from '../contexts/CartContext';
 import { useTenant } from '../contexts/TenantContext';
 import { CartIcon } from '../components/MenuIcons';
+import { useActiveLocation } from '../hooks/useActiveLocation';
+import { ShareButton } from '../components/ShareButton';
+import { buildShareUrl } from '../lib/shareLinks';
+import { CLOSED_STORE_HINT, CLOSED_STORE_LABEL } from '../lib/storeStatus';
 
 // Texto mínimo necessário pro grupo, no estilo iFood: nada quando é
 // realmente livre (0 a 1), "Escolha até N" quando é opcional com teto,
@@ -42,10 +46,15 @@ export function ProductDetailPage() {
     qrCodeToken?: string;
   }>();
   const navigate = useNavigate();
+  const routerLocation = useLocation();
   const { addItem } = useCart();
 
   const { tenant } = useTenant();
-  const [product, setProduct] = useState<Product | null>(null);  const [quantity, setQuantity] = useState(1);
+  // Loja fechada: a tela abre normalmente para ler o item, mas não deixa adicionar.
+  const activeLocation = useActiveLocation(tenant?.id, Boolean(qrCodeToken));
+  const isStoreClosed = activeLocation?.isOpenNow === false;
+  const [product, setProduct] = useState<Product | null>(null);
+  const [quantity, setQuantity] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   // groupId -> array de valueIds escolhidos nesse grupo
   const [selections, setSelections] = useState<Record<string, string[]>>({});
@@ -140,7 +149,7 @@ export function ProductDetailPage() {
   const subtotal = displayPrice * quantity;
 
   function handleAddToCart() {
-    if (!product || product.isAvailable === false) return;
+    if (!product || product.isAvailable === false || isStoreClosed) return;
 
     // Confere grupos obrigatórios antes de deixar adicionar — mesma
     // regra que o backend também confere (defesa em profundidade: aqui
@@ -176,11 +185,26 @@ export function ProductDetailPage() {
           </div>
         )}
         <button
-          onClick={() => navigate(-1)}
+          // Link compartilhado abre direto aqui (sem histórico para voltar):
+          // nesse caso "voltar" leva ao cardápio em vez de sair do app.
+          onClick={() =>
+            routerLocation.key === 'default'
+              ? navigate(qrCodeToken ? `/${slug}/mesa/${qrCodeToken}` : `/${slug}`, { replace: true })
+              : navigate(-1)
+          }
+          aria-label="Voltar"
           className="absolute top-4 left-4 w-9 h-9 rounded-full bg-white/90 flex items-center justify-center shadow-md"
         >
-          <ArrowLeft size={18} />
+          <ArrowLeft size={18} strokeWidth={1.5} />
         </button>
+        {slug && (
+          <ShareButton
+            className="absolute top-4 right-4"
+            url={buildShareUrl('produto', slug, product.id)}
+            title={product.name}
+            text={product.description ?? `Olha esse item de ${tenant.name}`}
+          />
+        )}
       </div>
 
       <div className="p-4">
@@ -306,7 +330,20 @@ export function ProductDetailPage() {
         // truque padrão e bem documentado pra esse exato sintoma.
         style={{ transform: 'translateZ(0)' }}
       >
-        {product.isAvailable === false ? (
+        {isStoreClosed && product.isAvailable !== false ? (
+          <div className="flex flex-col gap-1.5">
+            <p className="text-[11px] text-red-500 text-center">{CLOSED_STORE_HINT}</p>
+            <button
+              type="button"
+              disabled
+              aria-disabled="true"
+              className="w-full py-3.5 rounded-xl bg-red-50 text-red-600 border border-red-100 font-semibold flex justify-center items-center gap-2 px-5 cursor-not-allowed"
+            >
+              <Ban size={16} strokeWidth={1.5} />
+              {CLOSED_STORE_LABEL}
+            </button>
+          </div>
+        ) : product.isAvailable === false ? (
           <button
             type="button"
             disabled

@@ -68,6 +68,12 @@ export class InternalNotificationsController {
     return { subscribed: await this.service.isSubscribed(user.tenantId, user, dto.endpoint) };
   }
 
+  @Delete(':id')
+  async remove(@CurrentAdminUser() user: RequestAdminUser, @Param('id', ParseUUIDPipe) id: string) {
+    await this.service.deleteForUser(user.tenantId, user, id);
+    return { success: true };
+  }
+
   @Patch(':id/read')
   async markRead(@CurrentAdminUser() user: RequestAdminUser, @Param('id', ParseUUIDPipe) id: string) {
     await this.service.markRead(user.tenantId, user, id);

@@ -49,7 +49,7 @@ export function ReceiptContentStandalone({
             <p className="text-left">Ref: {order.deliveryReferencePoint}</p>
           )}
           {order.deliveryAddressPrecise === false && (
-            <p className="text-left">⚠ endereço não confirmado com exatidão</p>
+            <p className="text-left">endereço não confirmado com exatidão</p>
           )}
         </>
       )}
@@ -171,7 +171,7 @@ export function ReceiptContentStandalone({
       <div className="border-t border-dashed border-gray-300 my-1" />
 
       <p className="text-center pt-1">Obrigado pela preferência!</p>
-      <p className="text-center">Volte sempre 🙂</p>
+      <p className="text-center">Volte sempre</p>
     </div>
   );
 }

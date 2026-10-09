@@ -10,6 +10,8 @@ export type InternalNotificationTarget = 'owner' | 'owner_manager' | 'all';
 // cliente: tabela própria, serviço próprio, inscrições push próprias
 // (user_push_subscriptions) — nada aqui é lido nem enviado ao app do cliente.
 @Entity('internal_notifications')
+// Índice único parcial (note_id, type) para 'note_created'/'note_deleted' vive na
+// migration 1757300000000: um evento desses por anotação, no máximo.
 @Index(['tenantId', 'createdAt'])
 export class InternalNotification {
   @PrimaryGeneratedColumn('uuid')

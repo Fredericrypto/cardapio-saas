@@ -22,6 +22,24 @@ export interface GeocodeResult {
   precise: boolean;
 }
 
+// Subconjunto da resposta da LocationIQ que o serviço realmente lê.
+interface LocationIqFeature {
+  lat: string;
+  lon: string;
+  display_name?: string;
+  address?: {
+    road?: string;
+    house_number?: string;
+    suburb?: string;
+    neighbourhood?: string;
+    city?: string;
+    town?: string;
+    village?: string;
+    state?: string;
+    postcode?: string;
+  };
+}
+
 const LOCATIONIQ_STRUCTURED_URL = 'https://us1.locationiq.com/v1/search/structured';
 const LOCATIONIQ_FREE_TEXT_URL = 'https://us1.locationiq.com/v1/search';
 const REQUEST_TIMEOUT_MS = 8000;
@@ -132,8 +150,8 @@ export class GeocodingService {
       );
     }
 
-    const data = await response.json();
-    const feature = Array.isArray(data) ? data[0] : null;
+    const data: unknown = await response.json();
+    const feature = Array.isArray(data) ? (data[0] as LocationIqFeature | undefined) : undefined;
     if (!feature) {
       throw new BadRequestException(
         'Não conseguimos localizar esse endereço. Confira se está correto e completo.',
@@ -169,7 +187,7 @@ export class GeocodingService {
   // Região Sul"). Reconstrói um endereço limpo a partir dos componentes
   // separados (`addressdetails=1`) — rua, número, bairro, cidade, estado,
   // CEP — caindo pro display_name só se os componentes vierem vazios.
-  private buildFormattedAddress(feature: any): string {
+  private buildFormattedAddress(feature: LocationIqFeature): string {
     const addr = feature.address ?? {};
     const streetLine = [addr.road, addr.house_number].filter(Boolean).join(', ');
 

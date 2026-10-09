@@ -1,5 +1,6 @@
 import { BannerViewer, LogoViewer } from './LogoViewer';
 import { Bike, ChevronLeft } from 'lucide-react';
+import { CLOSED_MUTED_CLASS } from '../lib/storeStatus';
 import type { Tenant, Location } from '../types';
 import { RestaurantInfoPanel } from './RestaurantInfoPanel';
 import { QrScanButton } from './QrScanButton';
@@ -21,10 +22,13 @@ export function MenuHeader({ tenant, location, onBack }: MenuHeaderProps) {
   const isOpenNow = location?.isOpenNow ?? true;
 
   return (
-    <div className={`transition-[filter] ${!isOpenNow ? 'grayscale' : ''}`}>
+    // Loja fechada: só banner, logo e o card de entrega ficam em tom atenuado.
+    // Selo "Fechado" (vermelho), avaliações e Informações/redes sociais mantêm
+    // as cores e continuam clicáveis.
+    <div>
       {/* Banner / capa */}
       <div
-        className="relative h-40 w-full overflow-hidden"
+        className={`relative h-40 w-full overflow-hidden transition-[filter] ${!isOpenNow ? 'grayscale' : ''}`}
         style={
           tenant.coverImageUrl
             ? undefined
@@ -41,7 +45,7 @@ export function MenuHeader({ tenant, location, onBack }: MenuHeaderProps) {
             aria-label="Voltar"
             className="absolute top-3.5 left-3.5 w-9 h-9 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-sm active:scale-90 transition-transform"
           >
-            <ChevronLeft size={20} className="text-gray-700" />
+            <ChevronLeft size={20} strokeWidth={1.5} className="text-gray-700" />
           </button>
         )}
       </div>
@@ -49,7 +53,9 @@ export function MenuHeader({ tenant, location, onBack }: MenuHeaderProps) {
       {/* Sheet branco flutuante */}
       <div className="relative -mt-6 rounded-t-3xl bg-white px-4 pt-3.5 pb-1 z-10">
         <div className="flex flex-col items-center text-center">
-          <LogoViewer tenant={tenant} size="w-16 h-16" />
+          <div className={`transition-[filter] ${!isOpenNow ? 'grayscale' : ''}`}>
+            <LogoViewer tenant={tenant} size="w-16 h-16" />
+          </div>
 
           {/* Nome do restaurante SEM truncar: quebra em quantas linhas
               precisar (text-balance deixa as linhas equilibradas) e
@@ -77,13 +83,13 @@ export function MenuHeader({ tenant, location, onBack }: MenuHeaderProps) {
         <OpenStatusRow location={location} />
 
         {deliveryAvailable && location && (
-          <div className="mt-3 rounded-2xl bg-gray-50 border border-gray-100 px-3.5 py-2.5 flex items-center justify-between">
+          <div className={`mt-3 rounded-2xl bg-gray-50 border border-gray-100 px-3.5 py-2.5 flex items-center justify-between ${!isOpenNow ? CLOSED_MUTED_CLASS : ''}`}>
             <div className="flex items-center gap-2">
               <span
                 className="w-8 h-8 rounded-full flex items-center justify-center text-white shrink-0"
                 style={{ backgroundColor: tenant.primaryColor }}
               >
-                <Bike size={15} />
+                <Bike size={15} strokeWidth={1.5} />
               </span>
               <div>
                 <p className="text-xs font-semibold text-gray-700">Aceita entrega</p>

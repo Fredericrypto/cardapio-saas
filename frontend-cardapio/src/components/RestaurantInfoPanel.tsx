@@ -13,6 +13,7 @@ import {
   MessengerIcon,
   GmailIcon,
 } from './BrandIcons';
+import { ACTION_BUTTON_BASE } from '../lib/uiClasses';
 import {
   buildWhatsappLink,
   buildInstagramLink,
@@ -117,14 +118,67 @@ export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelPro
     Boolean(tenant.messengerUsername) ||
     Boolean(tenant.gmailAddress);
   const hasContactPhone = Boolean(location?.contactPhoneNumber);
+  // Redes sociais agora moram DENTRO de "Informações" (entre o horário de
+  // funcionamento e o botão de telefone).
   const hasCollapsibleInfo =
-    Boolean(location?.address) || Boolean(weekSchedule) || hasContactPhone;
+    Boolean(location?.address) || Boolean(weekSchedule) || hasSocialLinks || hasContactPhone;
 
-  if (!hasSocialLinks && !hasCollapsibleInfo) return null;
+  if (!hasCollapsibleInfo) return null;
 
   return (
     <div className="mt-3 pt-4 border-t border-gray-100 flex flex-col gap-4">
-      {hasSocialLinks && (
+      {hasCollapsibleInfo && (
+        <div>
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            className="flex items-center justify-center gap-1.5 w-full text-xs font-semibold text-gray-500 py-1"
+          >
+            <Info size={15} strokeWidth={1.5} className="shrink-0" />
+            <span>Informações</span>
+            <ChevronDown size={14} strokeWidth={1.5} className={`transition-transform ${expanded ? 'rotate-180' : ''}`} />
+          </button>
+
+          {expanded && (
+            <div className="mt-3 px-2 pb-1 flex flex-col items-center gap-3 text-xs text-gray-500 text-center">
+              {location?.address && (
+                <div className="flex flex-col items-center gap-1">
+                  <MapPin size={13} strokeWidth={1.5} className="shrink-0 text-gray-400" />
+                  {/* Pedido do Felipe (19/09): endereço em duas linhas
+                      — rua/bairro numa, cidade/estado/CEP na outra —
+                      as duas centralizadas, uma embaixo da outra. O
+                      endereço geocodificado sempre vem nesse formato
+                      exato (rua, bairro, cidade, estado, CEP — ver
+                      GeocodingService.buildFormattedAddress no
+                      backend); se por algum motivo vier diferente
+                      (menos partes que o esperado), cai de volta pra
+                      mostrar o endereço inteiro numa linha só, sem
+                      quebrar o layout. */}
+                  <div className="flex flex-col items-center">
+                    {formatAddressLines(location.address).map((line, idx) => (
+                      <span key={idx}>{line}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {weekSchedule && (
+                <div className="flex flex-col gap-1 text-left">
+                  {/* Pedido do Felipe (19/09): ícone de relógio em
+                      TODAS as linhas dos dias, não só uma vez pro bloco
+                      inteiro — e dia marcado como fechado (pelo admin,
+                      na aba "Lojas") aparece em vermelho. */}
+                  {weekSchedule.map((line) => (
+                    <span key={line.day} className="flex items-center gap-1.5">
+                      <Clock size={13} strokeWidth={1.5} className="shrink-0 text-gray-400" />
+                      <span className={line.hours === 'Fechado' ? 'text-red-500 font-medium' : ''}>
+                        {line.day}: {line.hours}
+                      </span>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {hasSocialLinks && (
         // Pedido do Felipe (18/09, cores atualizadas 19/09): só os
         // ícones (sem número/usuário escrito do lado), maiores e mais
         // visíveis, com a aparência oficial (e cores atuais) de cada
@@ -233,57 +287,6 @@ export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelPro
         </div>
       )}
 
-      {hasCollapsibleInfo && (
-        <div>
-          <button
-            onClick={() => setExpanded((v) => !v)}
-            className="flex items-center justify-center gap-1.5 w-full text-xs font-semibold text-gray-500 py-1"
-          >
-            <Info size={15} className="shrink-0" />
-            <span>Informações</span>
-            <ChevronDown size={14} className={`transition-transform ${expanded ? 'rotate-180' : ''}`} />
-          </button>
-
-          {expanded && (
-            <div className="mt-3 px-2 pb-1 flex flex-col items-center gap-3 text-xs text-gray-500 text-center">
-              {location?.address && (
-                <div className="flex flex-col items-center gap-1">
-                  <MapPin size={13} className="shrink-0 text-gray-400" />
-                  {/* Pedido do Felipe (19/09): endereço em duas linhas
-                      — rua/bairro numa, cidade/estado/CEP na outra —
-                      as duas centralizadas, uma embaixo da outra. O
-                      endereço geocodificado sempre vem nesse formato
-                      exato (rua, bairro, cidade, estado, CEP — ver
-                      GeocodingService.buildFormattedAddress no
-                      backend); se por algum motivo vier diferente
-                      (menos partes que o esperado), cai de volta pra
-                      mostrar o endereço inteiro numa linha só, sem
-                      quebrar o layout. */}
-                  <div className="flex flex-col items-center">
-                    {formatAddressLines(location.address).map((line, idx) => (
-                      <span key={idx}>{line}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {weekSchedule && (
-                <div className="flex flex-col gap-1 text-left">
-                  {/* Pedido do Felipe (19/09): ícone de relógio em
-                      TODAS as linhas dos dias, não só uma vez pro bloco
-                      inteiro — e dia marcado como fechado (pelo admin,
-                      na aba "Lojas") aparece em vermelho. */}
-                  {weekSchedule.map((line) => (
-                    <span key={line.day} className="flex items-center gap-1.5">
-                      <Clock size={13} className="shrink-0 text-gray-400" />
-                      <span className={line.hours === 'Fechado' ? 'text-red-500 font-medium' : ''}>
-                        {line.day}: {line.hours}
-                      </span>
-                    </span>
-                  ))}
-                </div>
-              )}
-
               {/* Pedido do Felipe (19/09): telefone de contato "puro"
                   (sem ser WhatsApp), numa área separada dos ícones de
                   rede social — aqui dentro de "Informações do
@@ -291,10 +294,10 @@ export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelPro
               {location?.contactPhoneNumber && (
                 <a
                   href={buildPhoneLink(location.contactPhoneNumber)}
-                  className="w-full rounded-xl py-2.5 flex items-center justify-center gap-1.5 text-xs font-semibold text-white active:opacity-80"
+                  className={`w-full text-white ${ACTION_BUTTON_BASE}`}
                   style={{ backgroundColor: tenant.primaryColor }}
                 >
-                  <Phone size={14} className="shrink-0" />
+                  <Phone size={14} strokeWidth={1.5} className="shrink-0" />
                   <span>{location.contactPhoneNumber}</span>
                 </a>
               )}

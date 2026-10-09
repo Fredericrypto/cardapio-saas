@@ -25,6 +25,8 @@ import { getCategoryIcon, PromocoesIcon } from '../components/CategoryIcon';
 import { ProductCard } from '../components/ProductCard';
 import { CartBar } from '../components/CartBar';
 import { BottomNav } from '../components/BottomNav';
+import { CLOSED_STORE_HINT, CLOSED_STORE_LABEL } from '../lib/storeStatus';
+import { buildShareUrl } from '../lib/shareLinks';
 
 // Cardápio único pro cliente — atende tanto quem escaneou o QR de uma
 // mesa (`/:slug/mesa/:qrCodeToken`) quanto quem chegou por um link geral
@@ -323,13 +325,16 @@ export function MenuPage() {
 
       {!isOpenNow && (
         <div className="bg-red-50 border-b border-red-100 px-4 py-2.5 text-center">
-          <p className="text-xs font-semibold text-red-600">
-            Esta loja está fechada no momento — não é possível fazer pedidos agora.
-          </p>
+          <p className="text-xs font-bold text-red-600">{CLOSED_STORE_LABEL}</p>
+          <p className="text-[11px] text-red-500 mt-0.5">{CLOSED_STORE_HINT}</p>
         </div>
       )}
 
-      <div className={!isOpenNow ? 'grayscale opacity-70 pointer-events-none select-none' : ''}>
+      {/* Loja fechada: tudo continua navegável (setas, carrossel, busca, abrir
+          item/promoção para ler). Só o VISUAL dos cards fica atenuado e os
+          botões de adicionar/pedir ficam travados (ver ProductCard e telas de
+          detalhe). */}
+      <div>
         <div className="pt-1 pb-5">
           {/* Mesmo cabeçalho das categorias da aba "Todos": ícone à
               esquerda + nome + seta de recolher (decisão do Felipe, 30/09). */}
@@ -343,7 +348,7 @@ export function MenuPage() {
             <span className="text-sm font-semibold flex-1 text-left">Promoções</span>
             <ChevronDown
               size={16}
-              strokeWidth={1.8}
+              strokeWidth={1.5}
               className={`text-gray-400 transition-transform ${showPromotions ? '' : '-rotate-90'}`}
             />
           </button>
@@ -353,6 +358,8 @@ export function MenuPage() {
               <PromoCards
                 promotions={promotions}
                 primaryColor={tenant.primaryColor}
+                muted={!isOpenNow}
+                buildShareUrl={(id) => buildShareUrl('promocao', slug!, id)}
                 onSelect={(id) => navigate(promotionHref(id))}
               />
             ) : (
@@ -379,6 +386,8 @@ export function MenuPage() {
                 key={product.id}
                 product={product}
                 primaryColor={tenant.primaryColor}
+                storeClosed={!isOpenNow}
+                shareUrl={buildShareUrl('produto', slug!, product.id)}
                 onClick={() => navigate(productHref(product.id))}
               />
             ))}
@@ -412,7 +421,7 @@ export function MenuPage() {
                     <span className="text-sm font-semibold flex-1 text-left">{category.name}</span>
                     <ChevronDown
                       size={16}
-                      strokeWidth={1.8}
+                      strokeWidth={1.5}
                       className={`text-gray-400 transition-transform ${isCollapsed ? '-rotate-90' : ''}`}
                     />
                   </button>
@@ -423,6 +432,8 @@ export function MenuPage() {
                           key={product.id}
                           product={product}
                           primaryColor={tenant.primaryColor}
+                          storeClosed={!isOpenNow}
+                          shareUrl={buildShareUrl('produto', slug!, product.id)}
                           onClick={() => navigate(productHref(product.id))}
                         />
                       ))}

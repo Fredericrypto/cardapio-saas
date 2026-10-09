@@ -313,6 +313,11 @@ export interface CashbackHistoryEntry {
   remainingAmount?: number;
   expiresAt?: string | null;
   expired?: boolean;
+  // Só nos resgates ("spent"): valor cheio do pedido/conta (antes do desconto
+  // do cashback) e onde foi usado.
+  orderTotal?: number | null;
+  establishmentName?: string;
+  locationName?: string | null;
 }
 
 export async function fetchMyCashbackHistory(

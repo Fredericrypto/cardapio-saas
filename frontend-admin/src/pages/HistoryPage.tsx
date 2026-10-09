@@ -12,6 +12,13 @@ import {
   fetchFidelityHistory,
 } from '../lib/admin-api';
 import { HistoryReceiptModal } from '../components/HistoryReceiptModal';
+import { HistoryFilterBar } from '../components/history/HistoryFilterBar';
+import {
+  DEFAULT_HISTORY_FILTERS,
+  applyHistoryFilters,
+  countByOption,
+  type HistoryFilters,
+} from '../lib/historyFilters';
 import type { HistorySessionEntry, HistoryOrderEntry, HistoryResponse } from '../types';
 
 type ReceiptItem =
@@ -162,6 +169,7 @@ function OrdersHistoryTab() {
   const [openReceipt, setOpenReceipt] = useState<ReceiptItem | null>(null);
   const [togglingKey, setTogglingKey] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+  const [filters, setFilters] = useState<HistoryFilters>(DEFAULT_HISTORY_FILTERS);
 
   const sessions = data?.sessions ?? [];
   const standaloneOrders = data?.standaloneOrders ?? [];
@@ -185,9 +193,27 @@ function OrdersHistoryTab() {
   );
 
   const normalizedQuery = query.trim().toLowerCase();
-  const filteredItems = normalizedQuery
-    ? allItems.filter((item) => searchableText(item).includes(normalizedQuery))
-    : allItems;
+  // Busca por texto + filtros (status, tipo e período) combinados com E lógico.
+  // Tudo é derivado de `allItems` na hora: atualiza a lista sem nova requisição.
+  const searchedItems = useMemo(
+    () =>
+      normalizedQuery
+        ? allItems.filter((item) => searchableText(item).includes(normalizedQuery))
+        : allItems,
+    [allItems, normalizedQuery],
+  );
+  const filteredItems = useMemo(
+    () => applyHistoryFilters(searchedItems, filters),
+    [searchedItems, filters],
+  );
+  const statusCounts = useMemo(
+    () => countByOption(searchedItems, filters, 'status'),
+    [searchedItems, filters],
+  );
+  const typeCounts = useMemo(
+    () => countByOption(searchedItems, filters, 'type'),
+    [searchedItems, filters],
+  );
 
   const dayGroups: DayGroup[] = useMemo(() => groupItemsByDay(filteredItems), [filteredItems]);
 
@@ -226,6 +252,13 @@ function OrdersHistoryTab() {
         />
       </div>
 
+      <HistoryFilterBar
+        filters={filters}
+        onChange={setFilters}
+        statusCounts={statusCounts}
+        typeCounts={typeCounts}
+      />
+
       {isLoading && <p className="text-sm text-gray-400 py-8 text-center">Carregando...</p>}
 
       {!isLoading && Boolean(error) && (
@@ -243,7 +276,9 @@ function OrdersHistoryTab() {
 
       {noSearchResults && (
         <p className="text-sm text-gray-400 py-12 text-center">
-          Nenhum cupom encontrado para "{query}".
+          {normalizedQuery
+            ? `Nenhum cupom encontrado para "${query}" com os filtros atuais.`
+            : 'Nenhum cupom encontrado com os filtros atuais.'}
         </p>
       )}
 

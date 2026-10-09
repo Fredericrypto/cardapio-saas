@@ -1,11 +1,17 @@
 import { useEffect, useState } from 'react';
 import { Clock, ChevronRight } from 'lucide-react';
 import type { Promotion } from '../types';
+import { CLOSED_MUTED_CLASS } from '../lib/storeStatus';
+import { ShareButton } from './ShareButton';
 
 interface PromoCardsProps {
   promotions: Promotion[];
   primaryColor: string;
   onSelect: (promotionId: string) => void;
+  // Loja fechada: visual atenuado, mas o carrossel rola e os cards abrem normalmente.
+  muted?: boolean;
+  // Monta o link público de cada promoção; sem ele não há botão de compartilhar.
+  buildShareUrl?: (promotionId: string) => string;
 }
 
 // "1h 20min" / "45min" / "2 dias" — countdown de verdade. Acima de 48h
@@ -48,7 +54,7 @@ function useCountdownLabel(endsAt: string | null): string | null {
 // própria ou herdada do produto vinculado (ver
 // PromotionsService.attachDisplayImage). Só mostra promoções cadastradas
 // de verdade, nunca inventa desconto.
-export function PromoCards({ promotions, primaryColor, onSelect }: PromoCardsProps) {
+export function PromoCards({ promotions, primaryColor, onSelect, muted = false, buildShareUrl }: PromoCardsProps) {
   if (promotions.length === 0) return null;
 
   // pb-4 + -mb-3: o container rola na horizontal, o que corta a sombra no
@@ -57,7 +63,7 @@ export function PromoCards({ promotions, primaryColor, onSelect }: PromoCardsPro
   return (
     <div className="flex gap-3 px-4 pt-1 pb-4 -mb-3 overflow-x-auto no-scrollbar snap-x snap-mandatory">
       {promotions.map((promo) => (
-        <PromoCard key={promo.id} promo={promo} primaryColor={primaryColor} onSelect={onSelect} />
+        <PromoCard key={promo.id} promo={promo} primaryColor={primaryColor} onSelect={onSelect} muted={muted} shareUrl={buildShareUrl?.(promo.id)} />
       ))}
     </div>
   );
@@ -67,17 +73,21 @@ function PromoCard({
   promo,
   primaryColor,
   onSelect,
+  muted,
+  shareUrl,
 }: {
   promo: Promotion;
   primaryColor: string;
   onSelect: (id: string) => void;
+  muted: boolean;
+  shareUrl?: string;
 }) {
   const countdownLabel = useCountdownLabel(promo.endsAt);
 
   return (
     <button
       onClick={() => onSelect(promo.id)}
-      className="shrink-0 w-[270px] snap-start rounded-2xl overflow-hidden relative shadow-[0_2px_10px_rgba(0,0,0,0.04)] text-left active:scale-[0.98] transition-transform"
+      className={`shrink-0 w-[270px] snap-start rounded-2xl overflow-hidden relative shadow-[0_2px_10px_rgba(0,0,0,0.04)] text-left active:scale-[0.98] transition-transform ${muted ? CLOSED_MUTED_CLASS : ''}`}
     >
       <div className="relative h-36 w-full">
         {promo.imageUrl ? (
@@ -97,6 +107,16 @@ function PromoCard({
 
         {/* Gradiente pra legibilidade do texto sobre a foto */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/15 to-transparent" />
+
+        {shareUrl && (
+          <ShareButton
+            variant="chip"
+            className="absolute top-2.5 left-2.5"
+            url={shareUrl}
+            title={promo.title}
+            text={promo.description ?? undefined}
+          />
+        )}
 
         {countdownLabel && !promo.alreadyUsedUp && (
           <span className="absolute top-2.5 right-2.5 bg-white text-orange-600 text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-sm">

@@ -1,52 +1,132 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, CircleDollarSign, ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
+import { ArrowLeft, CalendarClock, CircleDollarSign, Receipt, Store, Wallet } from 'lucide-react';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { useTenant } from '../contexts/TenantContext';
 import { fetchMyCashbackHistory, fetchMyCashbackWallet, type CashbackWallet } from '../lib/customer-api';
 import type { CashbackHistoryEntry } from '../lib/customer-api';
+import {
+  categorizeCashback,
+  formatBRL,
+  formatCashbackExpiry,
+  formatDateBR,
+  formatDateTimeBR,
+  isExpiringWithin24h,
+  type CashbackTab,
+} from '../lib/cashbackFormat';
 
-function formatDateTime(dateStr: string): string {
-  return new Date(dateStr).toLocaleString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+const TABS: { key: CashbackTab; label: string }[] = [
+  { key: 'disponiveis', label: 'Disponíveis' },
+  { key: 'expirados', label: 'Expirados' },
+  { key: 'utilizados', label: 'Utilizados' },
+];
+
+function Badge({ tone, children }: { tone: 'green' | 'amber' | 'red' | 'gray'; children: React.ReactNode }) {
+  const tones = {
+    green: 'bg-green-50 text-green-700 border-green-100',
+    amber: 'bg-amber-50 text-amber-700 border-amber-100',
+    red: 'bg-red-50 text-red-600 border-red-100',
+    gray: 'bg-gray-100 text-gray-600 border-gray-200',
+  } as const;
+  return (
+    <span className={`inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full border ${tones[tone]}`}>
+      {children}
+    </span>
+  );
 }
 
-// Área "Meu Cashback" da conta — saldo em destaque + extrato completo
-// (o que faltava: até aqui só o carrinho mostrava um número, sem
-// explicar de onde veio nem pra onde foi). Mesmo princípio visual do
-// extrato de qualquer carteira digital (Uber Cash, PicPay): lista
-// cronológica, verde pra entrada, vermelho pra saída.
-// "3 dias e 4h", "5h 20min", "12 min" — tempo que falta até `iso`.
-function timeLeftLabel(iso: string, now: number): string {
-  const ms = new Date(iso).getTime() - now;
-  if (ms <= 0) return 'venceu';
-  const mins = Math.floor(ms / 60_000);
-  const days = Math.floor(mins / 1440);
-  const hours = Math.floor((mins % 1440) / 60);
-  const rest = mins % 60;
-  if (days >= 1) return hours > 0 ? `${days} ${days === 1 ? 'dia' : 'dias'} e ${hours}h` : `${days} ${days === 1 ? 'dia' : 'dias'}`;
-  if (hours >= 1) return `${hours}h ${rest}min`;
-  return `${Math.max(1, rest)} min`;
+function AvailableCard({ entry, now }: { entry: CashbackHistoryEntry; now: number }) {
+  const urgent = entry.expiresAt ? isExpiringWithin24h(entry.expiresAt, now) : false;
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 p-4 flex flex-col gap-2">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-lg font-bold text-gray-900">{formatBRL(entry.remainingAmount)}</p>
+          <p className="text-xs text-gray-400 truncate">
+            {entry.description} · ganho em {formatDateBR(entry.createdAt)}
+          </p>
+        </div>
+        <Badge tone={urgent ? 'amber' : 'green'}>{urgent ? 'Vence em breve' : 'Válido'}</Badge>
+      </div>
+      <p className={`text-xs font-semibold flex items-center gap-1.5 ${urgent ? 'text-amber-600' : 'text-gray-500'}`}>
+        <CalendarClock size={13} strokeWidth={1.5} className="shrink-0" />
+        {entry.expiresAt ? formatCashbackExpiry(entry.expiresAt, now) : 'Sem data de validade'}
+      </p>
+      {Number(entry.remainingAmount) < Number(entry.amount) && (
+        <p className="text-[11px] text-gray-400">Crédito original de {formatBRL(entry.amount)}</p>
+      )}
+    </div>
+  );
 }
 
+function ExpiredCard({ entry }: { entry: CashbackHistoryEntry }) {
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 p-4 flex flex-col gap-2">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-lg font-bold text-gray-400 line-through">{formatBRL(entry.remainingAmount)}</p>
+          <p className="text-xs text-gray-400 truncate">{entry.description}</p>
+        </div>
+        <Badge tone="red">Expirado</Badge>
+      </div>
+      <div className="flex flex-col gap-0.5 text-xs text-gray-500">
+        <p>Ganho em {formatDateTimeBR(entry.createdAt)}</p>
+        {entry.expiresAt && <p className="font-semibold text-red-500">Expirou dia {formatDateTimeBR(entry.expiresAt)}</p>}
+        <p className="text-gray-400">Não utilizado (crédito original de {formatBRL(entry.amount)})</p>
+      </div>
+    </div>
+  );
+}
+
+function UsedCard({ entry }: { entry: CashbackHistoryEntry }) {
+  const place = [entry.establishmentName, entry.locationName]
+    .filter((v, i, a): v is string => Boolean(v) && a.indexOf(v) === i)
+    .join(' · ');
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 p-4 flex flex-col gap-2">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-xs text-gray-400">Cashback utilizado</p>
+          <p className="text-lg font-bold text-gray-900">{formatBRL(entry.amount)}</p>
+        </div>
+        <Badge tone="gray">Utilizado</Badge>
+      </div>
+      <div className="flex flex-col gap-1 text-xs text-gray-500">
+        <p className="flex items-center gap-1.5">
+          <Receipt size={13} strokeWidth={1.5} className="shrink-0 text-gray-400" />
+          Total do pedido: <span className="font-semibold text-gray-700">{entry.orderTotal != null ? formatBRL(entry.orderTotal) : 'indisponível'}</span>
+        </p>
+        <p className="flex items-center gap-1.5">
+          <CalendarClock size={13} strokeWidth={1.5} className="shrink-0 text-gray-400" />
+          {formatDateTimeBR(entry.createdAt)}
+        </p>
+        {place && (
+          <p className="flex items-center gap-1.5">
+            <Store size={13} strokeWidth={1.5} className="shrink-0 text-gray-400" />
+            {place}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Área "Meu Cashback": saldo em destaque + o extrato dividido em Disponíveis,
+// Expirados e Utilizados. Datas sempre no fuso do estabelecimento (Brasília).
 export function CustomerCashbackPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { tenant } = useTenant();
   const [wallet, setWallet] = useState<CashbackWallet | null>(null);
   const balance = wallet ? wallet.balance : null;
-  // Relógio para o tempo restante andar sozinho (a cada 30s).
+  // Relógio para o "Vence em Xh Ymin" andar sozinho (a cada 30s).
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 30_000);
     return () => clearInterval(id);
   }, []);
   const [history, setHistory] = useState<CashbackHistoryEntry[] | null>(null);
-
+  const [tab, setTab] = useState<CashbackTab>('disponiveis');
 
   const { customer, token, isLoading } = useCustomerAuth();
 
@@ -56,6 +136,8 @@ export function CustomerCashbackPage() {
     fetchMyCashbackHistory(tenant.id, token).then(setHistory);
   }, [tenant, token]);
 
+  const categorized = useMemo(() => (history ? categorizeCashback(history, now) : null), [history, now]);
+
   if (!tenant || isLoading || !customer) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -64,87 +146,74 @@ export function CustomerCashbackPage() {
     );
   }
 
+  const emptyText: Record<CashbackTab, string> = {
+    disponiveis: 'Você não tem cashback disponível agora. Faça um pedido pra começar a ganhar!',
+    expirados: 'Nenhum cashback expirou até agora.',
+    utilizados: 'Você ainda não usou cashback em nenhum pedido.',
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 pb-10 max-w-md mx-auto">
       <div className="flex items-center gap-3 px-4 py-4 bg-white border-b border-gray-100">
-        <button onClick={() => navigate(`/${slug}/conta-cliente/perfil`)}>
-          <ArrowLeft size={20} />
+        <button onClick={() => navigate(`/${slug}/conta-cliente/perfil`)} aria-label="Voltar">
+          <ArrowLeft size={20} strokeWidth={1.5} />
         </button>
         <h1 className="font-display font-bold text-lg">Meu Cashback</h1>
       </div>
 
       <div className="px-4 mt-4 flex flex-col gap-3">
-        <div
-          className="rounded-2xl p-5 text-white flex flex-col gap-1"
-          style={{ backgroundColor: tenant.primaryColor }}
-        >
+        <div className="rounded-2xl p-5 text-white flex flex-col gap-1" style={{ backgroundColor: tenant.primaryColor }}>
           <p className="text-xs opacity-80 flex items-center gap-1.5">
-            <CircleDollarSign size={14} />
+            <CircleDollarSign size={14} strokeWidth={1.5} />
             Saldo disponível
           </p>
-          <p className="text-3xl font-bold">
-            {balance == null ? '...' : `R$ ${balance.toFixed(2).replace('.', ',')}`}
-          </p>
+          <p className="text-3xl font-bold">{balance == null ? '...' : formatBRL(balance)}</p>
           {wallet?.nextExpiresAt && wallet.balance > 0 && (
             <p className="text-xs font-semibold bg-white/20 rounded-lg px-2.5 py-1.5 mt-1 inline-block self-start">
-              R$ {wallet.expiringAmount.toFixed(2).replace('.', ',')} vence em{' '}
-              {timeLeftLabel(wallet.nextExpiresAt, now)}
+              {formatBRL(wallet.expiringAmount)} · {formatCashbackExpiry(wallet.nextExpiresAt, now)}
             </p>
           )}
           <p className="text-xs opacity-80 mt-1">
-            Use no carrinho quando quiser — marque a caixinha "Usar meu saldo de cashback" no
-            checkout.
+            Use no carrinho quando quiser — marque a caixinha "Usar meu saldo de cashback" no checkout.
           </p>
         </div>
 
-        <div className="bg-white rounded-2xl overflow-hidden">
-          <p className="text-xs font-semibold text-gray-500 px-4 pt-4 pb-2">Extrato</p>
-
-          {history == null && <p className="text-sm text-gray-400 text-center py-8">Carregando...</p>}
-
-          {history != null && history.length === 0 && (
-            <p className="text-sm text-gray-400 text-center py-8 px-4">
-              Você ainda não tem movimentações de cashback. Faça um pedido pra começar a ganhar!
-            </p>
-          )}
-
-          {(history ?? []).map((entry) => (
-            <div
-              key={entry.id}
-              className="flex items-center gap-3 px-4 py-3 border-b border-gray-50 last:border-b-0"
-            >
-              {entry.type === 'earned' ? (
-                <ArrowDownCircle size={20} className="text-green-500 shrink-0" />
-              ) : (
-                <ArrowUpCircle size={20} className="text-red-400 shrink-0" />
-              )}
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-gray-800 truncate">{entry.description}</p>
-                <p className="text-xs text-gray-400">{formatDateTime(entry.createdAt)}</p>
-                {entry.type === 'earned' && entry.expired && (
-                  <p className="text-[11px] font-semibold text-red-500">
-                    Expirou — R$ {Number(entry.remainingAmount ?? 0).toFixed(2).replace('.', ',')} não usados
-                  </p>
-                )}
-                {entry.type === 'earned' &&
-                  !entry.expired &&
-                  entry.expiresAt &&
-                  Number(entry.remainingAmount ?? 0) > 0 && (
-                    <p className="text-[11px] font-semibold text-amber-600">
-                      Vence em {timeLeftLabel(entry.expiresAt, now)}
-                    </p>
-                  )}
-              </div>
-              <p
-                className={`text-sm font-bold shrink-0 ${
-                  entry.type === 'earned' ? 'text-green-600' : 'text-red-500'
-                }`}
+        <div role="tablist" aria-label="Categorias de cashback" className="grid grid-cols-3 gap-1 bg-white rounded-xl p-1 border border-gray-100">
+          {TABS.map((t) => {
+            const count = categorized ? categorized[t.key].length : null;
+            const active = tab === t.key;
+            return (
+              <button
+                key={t.key}
+                role="tab"
+                aria-selected={active}
+                onClick={() => setTab(t.key)}
+                className={`py-2 rounded-lg text-xs font-semibold transition-colors ${active ? 'text-white' : 'text-gray-500'}`}
+                style={active ? { backgroundColor: tenant.primaryColor } : undefined}
               >
-                {entry.type === 'earned' ? '+' : '-'} R$ {Number(entry.amount).toFixed(2).replace('.', ',')}
-              </p>
-            </div>
-          ))}
+                {t.label}
+                {count != null && <span className={`ml-1 text-[10px] ${active ? 'opacity-80' : 'text-gray-400'}`}>{count}</span>}
+              </button>
+            );
+          })}
         </div>
+
+        {history == null && <p className="text-sm text-gray-400 text-center py-8">Carregando...</p>}
+
+        {categorized && categorized[tab].length === 0 && (
+          <div className="bg-white rounded-2xl border border-gray-100 py-10 px-4 flex flex-col items-center gap-2 text-center">
+            <Wallet size={22} strokeWidth={1.5} className="text-gray-300" />
+            <p className="text-sm text-gray-400">{emptyText[tab]}</p>
+          </div>
+        )}
+
+        {categorized && (
+          <div className="flex flex-col gap-2.5" role="tabpanel">
+            {tab === 'disponiveis' && categorized.disponiveis.map((e) => <AvailableCard key={e.id} entry={e} now={now} />)}
+            {tab === 'expirados' && categorized.expirados.map((e) => <ExpiredCard key={e.id} entry={e} />)}
+            {tab === 'utilizados' && categorized.utilizados.map((e) => <UsedCard key={e.id} entry={e} />)}
+          </div>
+        )}
       </div>
     </div>
   );

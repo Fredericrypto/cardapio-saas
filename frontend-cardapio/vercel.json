@@ -1,3 +1,42 @@
 {
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    {
+      "source": "/:slug/produto/:id",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(facebookexternalhit|meta-externalagent|WhatsApp|Twitterbot|TelegramBot|Slackbot|LinkedInBot|Discordbot|Pinterest|Googlebot|bingbot|Applebot|Embedly|redditbot|SkypeUriPreview|vkShare|Mastodon|Iframely|Instagram|GoogleImageProxy|Google-PageRenderer).*"
+        }
+      ],
+      "destination": "/api/share?slug=:slug&kind=produto&id=:id",
+      "missing": [
+        {
+          "type": "query",
+          "key": "app"
+        }
+      ]
+    },
+    {
+      "source": "/:slug/promocao/:id",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(facebookexternalhit|meta-externalagent|WhatsApp|Twitterbot|TelegramBot|Slackbot|LinkedInBot|Discordbot|Pinterest|Googlebot|bingbot|Applebot|Embedly|redditbot|SkypeUriPreview|vkShare|Mastodon|Iframely|Instagram|GoogleImageProxy|Google-PageRenderer).*"
+        }
+      ],
+      "destination": "/api/share?slug=:slug&kind=promocao&id=:id",
+      "missing": [
+        {
+          "type": "query",
+          "key": "app"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
 }

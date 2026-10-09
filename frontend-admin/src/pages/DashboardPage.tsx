@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react';
-import { Bell, Clock, Table2, Store, DoorOpen, Receipt, Check, X, ShoppingBag, Bike, Copy, MessageSquare, Tag, Coins, Wallet, ArrowRight } from 'lucide-react';
+import { AlertTriangle, Bell, Clock, Table2, Store, DoorOpen, Receipt, Check, X, ShoppingBag, Bike, Copy, MessageSquare, Tag, Coins, Wallet, ArrowRight } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import {
   attendWaiterCall,
@@ -556,8 +556,9 @@ function OrderRow({
             </p>
           )}
           {order.deliveryAddressPrecise === false && (
-            <p className={`text-xs font-medium ${dark ? 'text-amber-400' : 'text-amber-600'}`}>
-              ⚠ Endereço não confirmado com exatidão — confira com o cliente
+            <p className={`text-xs font-medium flex items-center gap-1 ${dark ? 'text-amber-400' : 'text-amber-600'}`}>
+              <AlertTriangle size={12} strokeWidth={1.5} className="shrink-0" />
+              Endereço não confirmado com exatidão — confira com o cliente
             </p>
           )}
         </div>
@@ -1122,8 +1123,9 @@ function StandaloneOrderCard({
           intencional), só precisa ficar visível pro admin não ficar
           confuso vendo os dois ao mesmo tempo no painel. */}
       {order.placedWhileAtTable && (
-        <p className="text-[11px] font-semibold text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg px-2.5 py-1.5">
-          ⚠️ Cliente estava na Mesa {order.placedWhileAtTable} ao pedir esta entrega
+        <p className="text-[11px] font-semibold text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg px-2.5 py-1.5 flex items-center gap-1.5">
+          <AlertTriangle size={12} strokeWidth={1.5} className="shrink-0" />
+          Cliente estava na Mesa {order.placedWhileAtTable} ao pedir esta entrega
         </p>
       )}
 

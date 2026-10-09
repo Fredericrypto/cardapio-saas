@@ -3,9 +3,9 @@ import type { InternalNotification } from '../../types/notes';
 
 // Ícones de traço fino por tipo de ação (nunca emoji).
 export function NotificationIcon({ type, size = 16 }: { type: InternalNotification['type']; size?: number }) {
-  if (type === 'note_deleted') return <Trash2 size={size} />;
-  if (type === 'note_updated') return <Pencil size={size} />;
-  return <StickyNote size={size} />;
+  if (type === 'note_deleted') return <Trash2 size={size} strokeWidth={1.5} />;
+  if (type === 'note_updated') return <Pencil size={size} strokeWidth={1.5} />;
+  return <StickyNote size={size} strokeWidth={1.5} />;
 }
 
 export const TYPE_TONE: Record<InternalNotification['type'], string> = {

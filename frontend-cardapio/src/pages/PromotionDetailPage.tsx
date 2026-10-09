@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Percent, Clock, Users, Tag, CheckCircle2 } from 'lucide-react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { ArrowLeft, Ban, Percent, Clock, Users, Tag, CheckCircle2 } from 'lucide-react';
+import { CLOSED_STORE_HINT, CLOSED_STORE_LABEL } from '../lib/storeStatus';
+import { ShareButton } from '../components/ShareButton';
+import { buildShareUrl } from '../lib/shareLinks';
 import { fetchActivePromotions, fetchCategories, fetchProducts, fetchLocationById } from '../lib/menu-api';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { useTenant } from '../contexts/TenantContext';
@@ -29,6 +32,7 @@ export function PromotionDetailPage() {
     qrCodeToken?: string;
   }>();
   const navigate = useNavigate();
+  const routerLocation = useLocation();
   const { items, totalPrice, selectedPromotionIds, togglePromotion } = useCart();
   const isTableFlow = Boolean(qrCodeToken);
 
@@ -119,10 +123,13 @@ export function PromotionDetailPage() {
         ? products.filter((p) => promotion.productIds.includes(p.id)).map((p) => p.name)
         : [];
 
+  // Loja fechada: dá para ler a promoção, mas não resgatar/aplicar.
+  const isStoreClosed = activeLocation?.isOpenNow === false;
   const eligibility = computePromotionEligibility(promotion, items, totalPrice);
   const isApplied = selectedPromotionIds.includes(promotion.id);
 
   function handleApply() {
+    if (isStoreClosed) return;
     togglePromotion(promotion!.id);
     navigate(items.length > 0 ? cartHref : backHref);
   }
@@ -146,11 +153,21 @@ export function PromotionDetailPage() {
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
         <button
-          onClick={() => navigate(-1)}
+          // Link compartilhado abre direto aqui (sem histórico): voltar leva ao cardápio.
+          onClick={() => (routerLocation.key === 'default' ? navigate(backHref, { replace: true }) : navigate(-1))}
+          aria-label="Voltar"
           className="absolute top-4 left-4 w-9 h-9 rounded-full bg-white/90 flex items-center justify-center shadow-md"
         >
-          <ArrowLeft size={18} />
+          <ArrowLeft size={18} strokeWidth={1.5} />
         </button>
+        {slug && (
+          <ShareButton
+            className="absolute top-4 right-4"
+            url={buildShareUrl('promocao', slug, promotion.id)}
+            title={promotion.title}
+            text={promotion.description ?? `Promoção de ${tenant.name}`}
+          />
+        )}
         <div className="absolute bottom-4 left-4 right-4">
           <h1 className="font-display text-2xl font-extrabold text-white drop-shadow-sm">
             {promotion.title}
@@ -232,6 +249,19 @@ export function PromotionDetailPage() {
           <button disabled className="w-full py-3.5 rounded-xl bg-gray-200 text-gray-400 font-semibold">
             Promoção já utilizada
           </button>
+        ) : isStoreClosed && !isApplied ? (
+          <div className="flex flex-col gap-1.5">
+            <p className="text-[11px] text-red-500 text-center">{CLOSED_STORE_HINT}</p>
+            <button
+              type="button"
+              disabled
+              aria-disabled="true"
+              className="w-full py-3.5 rounded-xl bg-red-50 text-red-600 border border-red-100 font-semibold flex justify-center items-center gap-2 cursor-not-allowed"
+            >
+              <Ban size={16} strokeWidth={1.5} />
+              {CLOSED_STORE_LABEL}
+            </button>
+          </div>
         ) : isApplied ? (
           <button
             onClick={handleRemove}

@@ -40,6 +40,11 @@ export interface InternalNotification {
   tag: string | null;
   authorName: string;
   authorRole: string;
+  // Identidade de quem disparou a ação.
+  authorAvatarUrl: string | null;
+  authorVerified: boolean;
+  authorRoleLabel: string; // "CEO", "Gerente", nome do cargo ou "Sistema"
+  isSystem: boolean;
   targetRole: NotificationTarget;
   noteId: string | null;
   isRead: boolean;

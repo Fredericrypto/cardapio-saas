@@ -1,7 +1,7 @@
 import { useScrollLock } from '../hooks/useScrollLock';
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Minus, Plus, Trash2, MapPin, AlertTriangle, Tag, X, ShoppingBag, BookOpen } from 'lucide-react';
+import { ArrowLeft, Coins, Minus, Plus, Trash2, MapPin, AlertTriangle, Tag, X, ShoppingBag, BookOpen } from 'lucide-react';
 import { createOrder, quoteDeliveryFee, callWaiter, cancelWaiterCall, getWaiterCallStatus, cancelOrder, flagOrderForAttention, fetchLocationById, fetchActivePromotions } from '../lib/menu-api';
 import { computePromotionEligibility, computeSelectedPromotionsEligibility } from '../lib/promotionEligibility';
 import type { Location, DeliveryQuote, CreatedOrder, Promotion } from '../types';
@@ -1086,7 +1086,7 @@ export function CartPage() {
                             <p className="text-xs text-gray-400 truncate">{optionsLabel}</p>
                           )}
                           <p className="text-[11px] font-semibold mt-0.5" style={{ color: tenant.primaryColor }}>
-                            🏷 Cupom aplicado · R$ {(unitPrice * discountedQty).toFixed(2).replace('.', ',')}
+                            <Tag size={11} strokeWidth={1.5} className="inline-block mr-1 -mt-0.5" />Cupom aplicado · R$ {(unitPrice * discountedQty).toFixed(2).replace('.', ',')}
                           </p>
                         </div>
                         <div className="px-0.5">
@@ -1112,7 +1112,7 @@ export function CartPage() {
                         </p>
                         {discountedQty > 0 && (
                           <p className="text-[11px] font-semibold mt-0.5" style={{ color: tenant.primaryColor }}>
-                            🏷 Cupom aplicado
+                            <Tag size={11} strokeWidth={1.5} className="inline-block mr-1 -mt-0.5" />Cupom aplicado
                           </p>
                         )}
                       </div>
@@ -1626,7 +1626,7 @@ export function CartPage() {
                         {discountedQty}x {item.product.name}
                         {optionsLabel && <span className="block text-xs text-gray-400">{optionsLabel}</span>}
                         <span className="block text-[11px] font-semibold" style={{ color: tenant.primaryColor }}>
-                          🏷 Cupom aplicado
+                          <Tag size={11} strokeWidth={1.5} className="inline-block mr-1 -mt-0.5" />Cupom aplicado
                         </span>
                       </span>
                       <span className="text-gray-500 shrink-0 ml-2">
@@ -1654,7 +1654,7 @@ export function CartPage() {
                     )}
                     {discountedQty > 0 && (
                       <span className="block text-[11px] font-semibold" style={{ color: tenant.primaryColor }}>
-                        🏷 Cupom aplicado
+                        <Tag size={11} strokeWidth={1.5} className="inline-block mr-1 -mt-0.5" />Cupom aplicado
                       </span>
                     )}
                   </span>
@@ -1722,7 +1722,7 @@ export function CartPage() {
 
           {customerToken && estimatedCashbackEarn > 0 && (
             <p className="text-xs text-green-600 -mt-1">
-              🪙 Você vai ganhar ~R$ {estimatedCashbackEarn.toFixed(2).replace('.', ',')} de cashback
+              <Coins size={12} strokeWidth={1.5} className="inline-block mr-1 -mt-0.5" />Você vai ganhar ~R$ {estimatedCashbackEarn.toFixed(2).replace('.', ',')} de cashback
               nesse pedido.
             </p>
           )}
