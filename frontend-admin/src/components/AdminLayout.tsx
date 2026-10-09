@@ -22,9 +22,9 @@ export function AdminLayout() {
   return (
     <DashboardDataProvider>
       <InternalNotificationsProvider>
-        <ManagerCalculatorProvider>
-          <AdminLayoutContent />
-        </ManagerCalculatorProvider>
+      <ManagerCalculatorProvider>
+        <AdminLayoutContent />
+      </ManagerCalculatorProvider>
       </InternalNotificationsProvider>
     </DashboardDataProvider>
   );

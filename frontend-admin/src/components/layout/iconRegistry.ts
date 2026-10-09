@@ -1,6 +1,7 @@
 import {
-  BadgeCheck,
   Calculator,
+  BadgeCheck,
+  DatabaseBackup,
   Gift,
   History,
   LayoutDashboard,
@@ -21,8 +22,9 @@ import {
 
 // nome (string em sidebarConfig) → componente Lucide. Ícone novo = uma linha.
 const ICONS: Record<string, LucideIcon> = {
-  BadgeCheck,
   Calculator,
+  BadgeCheck,
+  DatabaseBackup,
   Gift,
   History,
   LayoutDashboard,

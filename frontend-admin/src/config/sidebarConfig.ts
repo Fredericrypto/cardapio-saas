@@ -10,6 +10,10 @@ export interface MenuItem {
   permission?: string; // ex.: 'stock:view'. Omitido = qualquer usuário autenticado.
   badge?: string;
   end?: boolean; // NavLink "end" (rota "/")
+  // Só o Administrador (CEO, role legado 'owner'). Não é uma permissão do catálogo
+  // de propósito: o backend (OwnerOnlyGuard) confere o mesmo critério, então um
+  // cargo personalizado nunca enxerga uma aba que o servidor vai recusar.
+  ownerOnly?: boolean;
 }
 
 export const SIDEBAR_ITEMS: readonly MenuItem[] = [
@@ -23,12 +27,13 @@ export const SIDEBAR_ITEMS: readonly MenuItem[] = [
   { id: 'avaliacoes', label: 'Avaliações', path: '/avaliacoes', iconName: 'Star', permission: 'reviews:view' },
   { id: 'verificacoes', label: 'Verificações', path: '/verificacoes', iconName: 'BadgeCheck', permission: 'verifications:view' },
   { id: 'analise', label: 'Análise', path: '/analise', iconName: 'TrendingUp', permission: 'analytics:view' },
-  // Reaproveita a permissão da Análise (mesmos dados financeiros): não exige migration nem cargo novo.
+  // Reaproveita a permissao da Analise (mesmos dados financeiros): sem migration nem cargo novo.
   { id: 'calculadora', label: 'Calculadora', path: '/calculadora', iconName: 'Calculator', permission: 'analytics:view' },
   { id: 'anotacoes', label: 'Anotações', path: '/anotacoes', iconName: 'StickyNote' },
   { id: 'historico', label: 'Histórico', path: '/historico', iconName: 'History', permission: 'history:view' },
   { id: 'verificar-cupom', label: 'Verificar cupom', path: '/verificar-cupom', iconName: 'ScanLine', permission: 'receipts:verify' },
   { id: 'cargos', label: 'Cargos e acessos', path: '/cargos', iconName: 'ShieldCheck', permission: 'roles:view' },
+  { id: 'seguranca', label: 'Segurança e Backups', path: '/seguranca', iconName: 'DatabaseBackup', ownerOnly: true },
   { id: 'configuracoes', label: 'Configurações', path: '/configuracoes', iconName: 'Settings', permission: 'settings:view' },
 ];
 
@@ -44,6 +49,6 @@ export function permissionForPath(path: string): string | undefined {
 
 // Primeira rota que o usuário pode abrir (destino do "voltar" no acesso negado).
 export function firstAllowedPath(can: (permission: string) => boolean): string {
-  const item = SIDEBAR_ITEMS.find((i) => !i.permission || can(i.permission));
+  const item = SIDEBAR_ITEMS.find((i) => !i.ownerOnly && (!i.permission || can(i.permission)));
   return item?.path ?? '/notificacoes';
 }
