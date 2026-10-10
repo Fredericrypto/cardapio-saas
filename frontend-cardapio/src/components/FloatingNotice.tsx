@@ -29,7 +29,7 @@ export function FloatingNotice({ message, onDone, durationMs = 6000, persistent 
       className="pointer-events-none fixed inset-x-0 z-[60] flex justify-center px-4"
       style={{ top: 'max(0.75rem, env(safe-area-inset-top))' }}
     >
-      <p className="w-full max-w-sm rounded-xl bg-gray-900/95 px-4 py-3 text-center text-sm font-medium leading-snug text-white shadow-lg">
+      <p className="w-full max-w-sm rounded-xl bg-gray-900/95 px-4 py-3 text-center text-sm font-medium leading-snug text-white shadow-lg dark:border dark:border-[#38393B] dark:bg-[#282A2C]/95 dark:text-white">
         {message}
       </p>
     </div>,
