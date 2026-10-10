@@ -3,6 +3,8 @@ import { Link, useLocation } from 'react-router-dom';
 import { UtensilsCrossed, ShoppingCart, User } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
+import { useAccentColor } from '../hooks/useAccentColor';
+import { useTheme } from '../hooks/useTheme';
 
 interface BottomNavProps {
   slug: string;
@@ -19,6 +21,10 @@ export function BottomNav({ slug, qrCodeToken, primaryColor = '#111827' }: Botto
   const location = useLocation();
   const { totalItems } = useCart();
   const { customer } = useCustomerAuth();
+  // No escuro: marca clareada (texto/ícone) e cinza inativo com contraste.
+  const accent = useAccentColor(primaryColor);
+  const { isDark } = useTheme();
+  const inactive = isDark ? '#A3A6A4' : '#9CA3AF';
   const { t } = useI18n();
 
   const base = qrCodeToken ? `/${slug}/mesa/${qrCodeToken}` : `/${slug}`;
@@ -43,21 +49,24 @@ export function BottomNav({ slug, qrCodeToken, primaryColor = '#111827' }: Botto
         icon={UtensilsCrossed}
         label={t('nav.menu')}
         active={location.pathname === menuHref}
-        color={primaryColor}
+        color={accent}
+        inactiveColor={inactive}
       />
       <NavItem
         to={cartHref}
         icon={ShoppingCart}
         label={t('nav.cart')}
         active={location.pathname === cartHref}
-        color={primaryColor}
+        color={accent}
+        inactiveColor={inactive}
+        badgeColor={primaryColor}
         badge={totalItems > 0 ? totalItems : undefined}
       />
       <Link to={accountHref} className="flex-1 flex">
         <div className="flex flex-col items-center gap-1 py-2.5 flex-1 relative">
           <div
             className="relative w-9 h-9 rounded-2xl flex items-center justify-center transition-colors"
-            style={{ backgroundColor: accountActive ? `${primaryColor}1a` : 'transparent' }}
+            style={{ backgroundColor: accountActive ? `${accent}1a` : 'transparent' }}
           >
             {/* Avatar do cliente, igual Instagram — foto de verdade se
                 tiver, senão um círculo com a inicial do nome (nunca o
@@ -66,7 +75,7 @@ export function BottomNav({ slug, qrCodeToken, primaryColor = '#111827' }: Botto
             <div
               className="w-6 h-6 rounded-full overflow-hidden shrink-0 flex items-center justify-center"
               style={{
-                boxShadow: accountActive ? `0 0 0 1.5px ${primaryColor}` : undefined,
+                boxShadow: accountActive ? `0 0 0 1.5px ${accent}` : undefined,
                 backgroundColor: customer?.avatarUrl ? undefined : '#D1D5DB',
               }}
             >
@@ -81,7 +90,7 @@ export function BottomNav({ slug, qrCodeToken, primaryColor = '#111827' }: Botto
               )}
             </div>
           </div>
-          <span className="text-[10px] font-semibold" style={{ color: accountActive ? primaryColor : '#9CA3AF' }}>
+          <span className="text-[10px] font-semibold" style={{ color: accountActive ? accent : inactive }}>
             {t('nav.account')}
           </span>
         </div>
@@ -96,10 +105,12 @@ interface NavItemProps {
   label: string;
   active: boolean;
   color: string;
+  inactiveColor: string;
+  badgeColor?: string;
   badge?: number;
 }
 
-function NavItem({ to, icon: Icon, label, active, color, badge }: NavItemProps) {
+function NavItem({ to, icon: Icon, label, active, color, inactiveColor, badgeColor, badge }: NavItemProps) {
   return (
     <Link to={to} className="flex-1 flex">
       <div className="flex flex-col items-center gap-1 py-2.5 flex-1 relative">
@@ -107,17 +118,17 @@ function NavItem({ to, icon: Icon, label, active, color, badge }: NavItemProps) 
           className="relative w-9 h-9 rounded-2xl flex items-center justify-center transition-colors"
           style={{ backgroundColor: active ? `${color}1a` : 'transparent' }}
         >
-          <Icon size={19} color={active ? color : '#9CA3AF'} />
+          <Icon size={19} color={active ? color : inactiveColor} />
           {Boolean(badge) && (
             <span
               className="absolute -top-1 -right-1.5 text-[9px] font-bold text-white rounded-full w-4 h-4 flex items-center justify-center"
-              style={{ backgroundColor: color }}
+              style={{ backgroundColor: badgeColor ?? color }}
             >
               {badge}
             </span>
           )}
         </div>
-        <span className="text-[10px] font-semibold" style={{ color: active ? color : '#9CA3AF' }}>
+        <span className="text-[10px] font-semibold" style={{ color: active ? color : inactiveColor }}>
           {label}
         </span>
       </div>

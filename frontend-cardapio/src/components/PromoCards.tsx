@@ -87,7 +87,7 @@ function PromoCard({
   return (
     <button
       onClick={() => onSelect(promo.id)}
-      className={`shrink-0 w-[270px] snap-start rounded-2xl overflow-hidden relative shadow-[0_2px_10px_rgba(0,0,0,0.04)] text-left active:scale-[0.98] transition-transform ${muted ? CLOSED_MUTED_CLASS : ''}`}
+      className={`shrink-0 w-[270px] snap-start rounded-2xl overflow-hidden relative shadow-[0_2px_10px_rgba(0,0,0,0.04)] text-left active:scale-[0.98] transition-transform dark:ring-1 dark:ring-white/10 ${muted ? CLOSED_MUTED_CLASS : ''}`}
     >
       <div className="relative h-36 w-full">
         {promo.imageUrl ? (
@@ -138,7 +138,7 @@ function PromoCard({
           </div>
           {!promo.alreadyUsedUp && (
             <span className="shrink-0 w-7 h-7 rounded-full bg-white/95 flex items-center justify-center">
-              <ChevronRight size={16} className="text-gray-700" />
+              <ChevronRight size={16} className="text-[#374151]" />
             </span>
           )}
         </div>
@@ -153,7 +153,7 @@ function PromoCard({
       </div>
 
       {promo.minOrderValue > 0 && !promo.alreadyUsedUp && (
-        <div className="bg-white px-3.5 py-1.5 text-[11px] text-gray-400">
+        <div className="bg-white px-3.5 py-1.5 text-[11px] text-gray-400 dark:text-gray-300">
           Pedido mínimo R$ {Number(promo.minOrderValue).toFixed(2).replace('.', ',')}
         </div>
       )}

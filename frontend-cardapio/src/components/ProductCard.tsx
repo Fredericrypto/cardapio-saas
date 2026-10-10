@@ -4,6 +4,7 @@ import type { Product } from '../types';
 import { useCart } from '../contexts/CartContext';
 import { CLOSED_MUTED_CLASS } from '../lib/storeStatus';
 import { ShareButton } from './ShareButton';
+import { useAccentColor } from '../hooks/useAccentColor';
 
 interface ProductCardProps {
   product: Product;
@@ -23,6 +24,7 @@ interface ProductCardProps {
 export function ProductCard({ product, primaryColor, onClick, storeClosed = false, shareUrl }: ProductCardProps) {
   const { t } = useI18n();
   const { addItem } = useCart();
+  const accent = useAccentColor(primaryColor);
   const displayPrice = product.promoPrice ?? product.price;
   const hasPromo = product.promoPrice != null;
   const isUnavailable = product.isAvailable === false;
@@ -72,14 +74,14 @@ export function ProductCard({ product, primaryColor, onClick, storeClosed = fals
           <span
             aria-label={`${product.name}: ${t('store.closedEstablishment')}`}
             title={t('store.closedEstablishment')}
-            className="absolute -bottom-3 right-2.5 w-8 h-8 rounded-full flex items-center justify-center text-white shadow-md border-2 border-white bg-gray-400 cursor-not-allowed"
+            className="absolute -bottom-3 right-2.5 w-8 h-8 rounded-full flex items-center justify-center text-white shadow-md border-2 border-white dark:border-[#1E1E20] bg-gray-400 cursor-not-allowed"
           >
             <Ban size={15} strokeWidth={1.5} />
           </span>
         ) : isUnavailable ? (
           <span
             aria-label={t('product.unavailable', { name: product.name })}
-            className="absolute -bottom-3 right-2.5 w-8 h-8 rounded-full flex items-center justify-center text-white shadow-md border-2 border-white bg-gray-400 cursor-not-allowed"
+            className="absolute -bottom-3 right-2.5 w-8 h-8 rounded-full flex items-center justify-center text-white shadow-md border-2 border-white dark:border-[#1E1E20] bg-gray-400 cursor-not-allowed"
           >
             <Ban size={15} strokeWidth={1.5} />
           </span>
@@ -95,7 +97,7 @@ export function ProductCard({ product, primaryColor, onClick, storeClosed = fals
                 addItem(product);
               }
             }}
-            className="absolute -bottom-3 right-2.5 w-8 h-8 rounded-full flex items-center justify-center text-white shadow-md active:scale-90 transition-transform border-2 border-white"
+            className="absolute -bottom-3 right-2.5 w-8 h-8 rounded-full flex items-center justify-center text-white shadow-md active:scale-90 transition-transform border-2 border-white dark:border-[#1E1E20]"
             style={{ backgroundColor: primaryColor }}
           >
             <Plus size={16} strokeWidth={2.75} />
@@ -118,7 +120,10 @@ export function ProductCard({ product, primaryColor, onClick, storeClosed = fals
               R$ {Number(product.price).toFixed(2).replace('.', ',')}
             </span>
           )}
-          <span className="font-bold text-sm" style={{ color: isUnavailable ? '#9ca3af' : hasPromo ? primaryColor : '#111827' }}>
+          <span
+            className={`font-bold text-sm ${!isUnavailable && !hasPromo ? 'text-[#111827] dark:text-gray-100' : ''}`}
+            style={isUnavailable ? { color: '#9ca3af' } : hasPromo ? { color: accent } : undefined}
+          >
             R$ {Number(displayPrice).toFixed(2).replace('.', ',')}
           </span>
         </div>

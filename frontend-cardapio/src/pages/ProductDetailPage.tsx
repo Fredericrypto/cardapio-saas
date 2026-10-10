@@ -8,6 +8,7 @@ import { fetchItemReviewsSummary } from '../lib/customer-api';
 import type { ReviewSummary } from '../lib/customer-api';
 import type { Product, SelectedCartOption } from '../types';
 import { useCart } from '../contexts/CartContext';
+import { useAccentColor } from '../hooks/useAccentColor';
 import { useTenant } from '../contexts/TenantContext';
 import { CartIcon } from '../components/MenuIcons';
 import { useActiveLocation } from '../hooks/useActiveLocation';
@@ -52,6 +53,7 @@ export function ProductDetailPage() {
   const { addItem } = useCart();
 
   const { tenant } = useTenant();
+  const accent = useAccentColor(tenant?.primaryColor ?? '#111827');
   // Loja fechada: a tela abre normalmente para ler o item, mas não deixa adicionar.
   const activeLocation = useActiveLocation(tenant?.id, Boolean(qrCodeToken));
   const storeStatus = useStoreStatus(activeLocation);
@@ -196,7 +198,7 @@ export function ProductDetailPage() {
               : navigate(-1)
           }
           aria-label="Voltar"
-          className="absolute top-4 left-4 w-9 h-9 rounded-full bg-white/90 flex items-center justify-center shadow-md"
+          className="absolute top-4 left-4 w-9 h-9 rounded-full bg-white/90 dark:bg-[#1E1E20]/90 flex items-center justify-center shadow-md"
         >
           <ArrowLeft size={18} strokeWidth={1.5} />
         </button>
@@ -245,21 +247,21 @@ export function ProductDetailPage() {
         )}
 
         <div className="flex items-center justify-between mt-6">
-          <span className="text-2xl font-bold" style={{ color: tenant.primaryColor }}>
+          <span className="text-2xl font-bold" style={{ color: accent }}>
             R$ {Number(product.promoPrice ?? product.price).toFixed(2).replace('.', ',')}
           </span>
 
           <div className="flex items-center gap-3 bg-gray-100 rounded-full px-1 py-1">
             <button
               onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-              className="w-8 h-8 rounded-full bg-white flex items-center justify-center font-bold text-gray-600 shadow-sm"
+              className="w-8 h-8 rounded-full bg-white dark:bg-[#3A3C3E] flex items-center justify-center font-bold text-gray-600 dark:text-gray-100 shadow-sm"
             >
               −
             </button>
             <span className="w-6 text-center font-semibold">{quantity}</span>
             <button
               onClick={() => setQuantity((q) => q + 1)}
-              className="w-8 h-8 rounded-full bg-white flex items-center justify-center font-bold text-gray-600 shadow-sm"
+              className="w-8 h-8 rounded-full bg-white dark:bg-[#3A3C3E] flex items-center justify-center font-bold text-gray-600 dark:text-gray-100 shadow-sm"
             >
               +
             </button>

@@ -8,6 +8,7 @@ import { fetchActivePromotions, fetchCategories, fetchProducts, fetchLocationByI
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { useTenant } from '../contexts/TenantContext';
 import { useCart } from '../contexts/CartContext';
+import { useAccentColor } from '../hooks/useAccentColor';
 import { useTableSessionContext } from '../contexts/TableSessionContext';
 import { useSelectedLocation } from '../hooks/useSelectedLocation';
 import { computePromotionEligibility } from '../lib/promotionEligibility';
@@ -38,6 +39,7 @@ export function PromotionDetailPage() {
   const isTableFlow = Boolean(qrCodeToken);
 
   const { tenant } = useTenant();
+  const accent = useAccentColor(tenant?.primaryColor ?? '#111827');
   const [promotion, setPromotion] = useState<Promotion | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -109,7 +111,7 @@ export function PromotionDetailPage() {
         <button
           onClick={() => navigate(backHref)}
           className="text-sm font-semibold"
-          style={{ color: tenant.primaryColor }}
+          style={{ color: accent }}
         >
           Voltar pro cardápio
         </button>
@@ -157,7 +159,7 @@ export function PromotionDetailPage() {
           // Link compartilhado abre direto aqui (sem histórico): voltar leva ao cardápio.
           onClick={() => (routerLocation.key === 'default' ? navigate(backHref, { replace: true }) : navigate(-1))}
           aria-label="Voltar"
-          className="absolute top-4 left-4 w-9 h-9 rounded-full bg-white/90 flex items-center justify-center shadow-md"
+          className="absolute top-4 left-4 w-9 h-9 rounded-full bg-white/90 dark:bg-[#1E1E20]/90 flex items-center justify-center shadow-md"
         >
           <ArrowLeft size={18} strokeWidth={1.5} />
         </button>
@@ -267,7 +269,7 @@ export function PromotionDetailPage() {
           <button
             onClick={handleRemove}
             className="w-full py-3.5 rounded-xl font-semibold border-2"
-            style={{ borderColor: tenant.primaryColor, color: tenant.primaryColor }}
+            style={{ borderColor: accent, color: accent }}
           >
             Remover promoção
           </button>
