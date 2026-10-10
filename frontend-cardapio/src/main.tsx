@@ -4,10 +4,14 @@ import './index.css'
 import App from './App.tsx'
 import { ErrorBoundary } from './components/ErrorBoundary.tsx'
 import { installContentProtection } from './lib/protectContent'
+import { initTheme } from './lib/theme'
 
 // Bloqueia botão direito/toque longo, salvar imagem, nova guia e copiar texto
 // (campos de digitação continuam normais) — ver lib/protectContent.ts.
 installContentProtection()
+
+// Aplica o tema (localStorage > preferência do sistema) antes de renderizar — ver lib/theme.ts.
+initTheme()
 
 // Registra o Service Worker cedo, sem pedir NENHUMA permissão — isso é
 // puramente técnico (nunca mostra prompt pro usuário). Precisa
