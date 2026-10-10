@@ -57,6 +57,12 @@ export class Note {
   @Column({ name: 'is_pinned', type: 'boolean', default: false })
   isPinned: boolean;
 
+  // Ordem de exibição (menor = primeiro), dentro do grupo fixadas / soltas.
+  // Define a sequência no modo Cards e a ordem dos slots "Pin 1, Pin 2..." no
+  // quadro. Sempre persistida pelo painel; o banco só garante o padrão 0.
+  @Column({ name: 'sort_order', type: 'int', default: 0 })
+  sortOrder: number;
+
   @Column({ name: 'is_minimized', type: 'boolean', default: false })
   isMinimized: boolean;
 

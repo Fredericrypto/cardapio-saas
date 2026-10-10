@@ -62,6 +62,11 @@ export interface Location {
   closingInMinutes: number | null;
   // Aberto 24h agora — o cardápio nunca mostra "fecha em X min" nesse caso.
   isOpen24h?: boolean;
+  // Último estado do horário gravado pelo servidor (usado para recalcular o
+  // status no aparelho exatamente como o backend: ver lib/schedule.ts).
+  scheduleOpenState?: boolean | null;
+  // Próxima abertura pela matriz de horários (só vem com a loja fechada).
+  nextOpening?: { dayIndex: number; dayKey: string; time: string; daysAhead: number } | null;
 }
 
 export interface Category {

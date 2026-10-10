@@ -1,3 +1,4 @@
+import { LanguageSwitchProvider } from '../contexts/LanguageSwitchContext';
 import { Outlet } from 'react-router-dom';
 import { TenantProvider } from '../contexts/TenantContext';
 import { CustomerAuthProvider } from '../contexts/CustomerAuthContext';
@@ -20,8 +21,10 @@ export function CustomerAppShell() {
   return (
     <TenantProvider>
       <CustomerAuthProvider>
-        <Outlet />
-        <ReviewPromptProvider />
+        <LanguageSwitchProvider>
+          <Outlet />
+          <ReviewPromptProvider />
+        </LanguageSwitchProvider>
       </CustomerAuthProvider>
     </TenantProvider>
   );

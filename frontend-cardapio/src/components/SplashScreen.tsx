@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nContext';
 import { useEffect, useState } from 'react';
 import type { Tenant } from '../types';
 
@@ -12,6 +13,7 @@ const MIN_VISIBLE_MS = 1200;
 const FADE_DURATION_MS = 400;
 
 export function SplashScreen({ tenant, onFinish }: SplashScreenProps) {
+  const { t } = useI18n();
   const [isFadingOut, setIsFadingOut] = useState(false);
 
   useEffect(() => {
@@ -53,7 +55,7 @@ export function SplashScreen({ tenant, onFinish }: SplashScreenProps) {
           </div>
         )}
         <h1 className="font-display font-bold text-2xl text-white tracking-tight">
-          {tenant?.name || 'Carregando...'}
+          {tenant?.name || t('common.loading')}
         </h1>
       </div>
     </div>

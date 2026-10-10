@@ -17,6 +17,7 @@ import { NotesGrid } from '../components/notes/NotesGrid';
 import type { NoteDraftValues } from '../components/notes/NoteCard';
 import { DEFAULT_NOTE_COLORS } from '../components/notes/notePalette';
 import { scrollMainToTop } from '../lib/layout';
+import { applyLayoutItems, pinNote, reorderCards, unpinNote } from '../lib/noteLayout';
 
 const VIEW_KEY = 'notes_view';
 const FALLBACK_TAGS = ['Geral', 'Cozinha', 'Caixa', 'Urgente'];
@@ -54,6 +55,11 @@ export function NotesPage() {
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const boardRef = useRef<NotesBoardHandle>(null);
   const busyRef = useRef<Set<string>>(new Set());
+  // Largura do quadro (px): os Pins quebram de linha conforme ela. Vale a última medida.
+  const boardWidthRef = useRef(900);
+  const onBoardWidth = useCallback((w: number) => {
+    boardWidthRef.current = w;
+  }, []);
   const narrow = useIsNarrow();
   // Em telas pequenas o quadro livre não é prático: vira cards sozinho.
   const effectiveView = narrow ? 'cards' : view;
@@ -123,15 +129,17 @@ export function NotesPage() {
     else busyRef.current.delete(id);
   }, []);
 
+  // Um gesto (arrastar, fixar, reordenar...) = UMA requisição com todas as notas
+  // afetadas (posição, fixação e ordem juntas): nunca fica metade aplicada.
   const commitLayout = useCallback(
     (items: LayoutItem[]) => {
-      setNotes((prev) =>
-        prev.map((n) => {
-          const it = items.find((i) => i.id === n.id);
-          return it ? { ...n, posX: it.posX, posY: it.posY, width: it.width ?? n.width, height: it.height ?? n.height } : n;
-        }),
-      );
-      updateNotesLayout(items).catch((err) => {
+      if (items.length === 0) return;
+      setNotes((prev) => applyLayoutItems(prev, items));
+      // A anotação ainda não salva (rascunho) só existe na tela.
+      setDraft((prev) => (prev ? applyLayoutItems([prev], items)[0] : prev));
+      const persisted = items.filter((i) => i.id !== DRAFT_ID);
+      if (persisted.length === 0) return;
+      updateNotesLayout(persisted).catch((err) => {
         setError(apiMessage(err, 'Não foi possível salvar a posição.'));
         void load();
       });
@@ -153,6 +161,8 @@ export function NotesPage() {
       posY: 24 + offset,
       isPinned: false,
       isMinimized: false,
+      // Nota nova entra no início das soltas (igual ao backend).
+      sortOrder: notes.filter((n) => !n.isPinned).reduce((m, n) => Math.min(m, n.sortOrder), 1) - 1,
       authorName: '',
       lastEditedByName: null,
       tag: 'Geral',
@@ -207,14 +217,20 @@ export function NotesPage() {
     setEditingId(null);
   }
 
+  // Fixar: a nota vai para o primeiro slot livre da prateleira (Pin 1, 2, 3...)
+  // e quem estava no caminho é empurrado. Desafixar: volta à área comum.
   function togglePin(id: string) {
-    const note = notes.find((n) => n.id === id);
-    if (!note) return;
-    patchLocal(id, { isPinned: !note.isPinned });
-    updateNote(id, { isPinned: !note.isPinned }).catch((err) => {
-      setError(apiMessage(err, 'Não foi possível fixar a anotação.'));
-      void load();
-    });
+    const all = draft ? [draft, ...notes] : notes;
+    const note = all.find((n) => n.id === id);
+    if (!note || id === DRAFT_ID) return;
+    const width = boardWidthRef.current;
+    commitLayout(note.isPinned ? unpinNote(all, id, width) : pinNote(all, id, width));
+  }
+
+  // Modo Cards: soltou um card sobre outro do mesmo grupo.
+  function reorderNotes(activeId: string, overId: string) {
+    const all = draft ? [draft, ...notes] : notes;
+    commitLayout(reorderCards(all, activeId, overId));
   }
 
   function toggleMinimize(id: string) {
@@ -356,15 +372,25 @@ export function NotesPage() {
         <NotesBoard
           ref={boardRef}
           notes={visible}
+          allNotes={draft ? [draft, ...notes] : notes}
           tags={tags}
           editingId={editingId}
           highlightId={highlightId}
           onLayout={commitLayout}
           onBusy={busyIds}
+          onBoardWidth={onBoardWidth}
           {...handlers}
         />
       ) : (
-        <NotesGrid notes={visible} tags={tags} editingId={editingId} highlightId={highlightId} {...handlers} />
+        <NotesGrid
+          notes={visible}
+          tags={tags}
+          editingId={editingId}
+          highlightId={highlightId}
+          onReorder={reorderNotes}
+          onBusy={busyIds}
+          {...handlers}
+        />
       )}
     </div>
   );

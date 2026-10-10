@@ -575,6 +575,8 @@ export class PromotionsService {
     await this.pushService.broadcastToTenant(promotion.tenantId, {
       title: 'Nova promoção!',
       body: promotion.description?.trim() || promotion.title,
+      // Só o título é traduzido; o texto da promoção é conteúdo do restaurante.
+      i18n: { key: 'new_promotion', params: { text: promotion.description?.trim() || promotion.title } },
       url: `/${tenant.slug}/promocao/${promotion.id}`,
       tag: 'promotion',
       icon: tenant.logoUrl ?? undefined,

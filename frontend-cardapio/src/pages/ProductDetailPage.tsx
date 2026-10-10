@@ -1,3 +1,5 @@
+import { useI18n } from '../i18n/I18nContext';
+import { useStoreStatus } from '../hooks/useStoreStatus';
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Ban, Check, ChevronRight, Star } from 'lucide-react';
@@ -11,7 +13,6 @@ import { CartIcon } from '../components/MenuIcons';
 import { useActiveLocation } from '../hooks/useActiveLocation';
 import { ShareButton } from '../components/ShareButton';
 import { buildShareUrl } from '../lib/shareLinks';
-import { CLOSED_STORE_HINT, CLOSED_STORE_LABEL } from '../lib/storeStatus';
 
 // Texto mínimo necessário pro grupo, no estilo iFood: nada quando é
 // realmente livre (0 a 1), "Escolha até N" quando é opcional com teto,
@@ -40,6 +41,7 @@ function useItemReviewSummary(tenantId: string, productId: string | undefined) {
 }
 
 export function ProductDetailPage() {
+  const { t } = useI18n();
   const { slug, productId, qrCodeToken } = useParams<{
     slug: string;
     productId: string;
@@ -52,7 +54,8 @@ export function ProductDetailPage() {
   const { tenant } = useTenant();
   // Loja fechada: a tela abre normalmente para ler o item, mas não deixa adicionar.
   const activeLocation = useActiveLocation(tenant?.id, Boolean(qrCodeToken));
-  const isStoreClosed = activeLocation?.isOpenNow === false;
+  const storeStatus = useStoreStatus(activeLocation);
+  const isStoreClosed = !storeStatus.isOpen && Boolean(activeLocation);
   const [product, setProduct] = useState<Product | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
@@ -332,7 +335,7 @@ export function ProductDetailPage() {
       >
         {isStoreClosed && product.isAvailable !== false ? (
           <div className="flex flex-col gap-1.5">
-            <p className="text-[11px] text-red-500 text-center">{CLOSED_STORE_HINT}</p>
+            <p className="text-[11px] text-red-500 text-center">{t('store.closedHint')}</p>
             <button
               type="button"
               disabled
@@ -340,7 +343,7 @@ export function ProductDetailPage() {
               className="w-full py-3.5 rounded-xl bg-red-50 text-red-600 border border-red-100 font-semibold flex justify-center items-center gap-2 px-5 cursor-not-allowed"
             >
               <Ban size={16} strokeWidth={1.5} />
-              {CLOSED_STORE_LABEL}
+              {t('store.closedEstablishment')}
             </button>
           </div>
         ) : product.isAvailable === false ? (

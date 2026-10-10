@@ -1,13 +1,27 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import * as webpush from 'web-push';
 import { PushSubscription } from './push-subscription.entity';
 import { SubscribePushDto } from './dto/subscribe-push.dto';
+import { Customer } from '../customers/customer.entity';
+import { DEFAULT_LANGUAGE, normalizeLanguage, type AppLanguage } from '../../common/i18n/languages';
+import { renderPushMessage, type PushMessageKey, type PushParams } from '../../common/i18n/push-messages';
+
+// Texto da notificação por CHAVE: o PushService renderiza no idioma salvo no
+// perfil de cada cliente (pt-BR, en, es). `title`/`body` do payload continuam
+// obrigatórios e servem de fallback (pt-BR) caso a chave não possa ser usada.
+export interface PushI18n {
+  key: PushMessageKey;
+  params?: PushParams;
+  // Para parâmetros que dependem do idioma (ex.: motivo de recusa da lista fechada).
+  paramsByLanguage?: (lang: AppLanguage) => PushParams;
+}
 
 export interface PushPayload {
   title: string;
   body: string;
+  i18n?: PushI18n;
   // Pra onde o navegador leva o cliente ao clicar na notificação — path
   // relativo (o service worker no frontend resolve contra a origem).
   url?: string;
@@ -54,6 +68,8 @@ export class PushService {
   constructor(
     @InjectRepository(PushSubscription)
     private readonly subscriptionRepo: Repository<PushSubscription>,
+    @InjectRepository(Customer)
+    private readonly customerRepo: Repository<Customer>,
   ) {
     const publicKey = process.env.VAPID_PUBLIC_KEY;
     const privateKey = process.env.VAPID_PRIVATE_KEY;
@@ -113,7 +129,30 @@ export class PushService {
     const subscriptions = await this.subscriptionRepo.find({ where: { tenantId } });
     if (subscriptions.length === 0) return;
 
-    await Promise.all(subscriptions.map((sub) => this.sendToSubscription(sub, payload)));
+    const languages = await this.languagesOf(subscriptions.map((sub) => sub.customerId));
+    await Promise.all(
+      subscriptions.map((sub) =>
+        this.sendToSubscription(sub, this.localize(payload, languages.get(sub.customerId) ?? DEFAULT_LANGUAGE)),
+      ),
+    );
+  }
+
+  // Idioma de cada cliente (uma consulta só). Cliente sem idioma = pt-BR.
+  private async languagesOf(customerIds: string[]): Promise<Map<string, AppLanguage>> {
+    const unique = [...new Set(customerIds)];
+    const map = new Map<string, AppLanguage>();
+    if (unique.length === 0) return map;
+    const rows = await this.customerRepo.find({ where: { id: In(unique) }, select: { id: true, language: true } });
+    for (const row of rows) map.set(row.id, normalizeLanguage(row.language));
+    return map;
+  }
+
+  // Aplica o idioma ao payload e remove o campo interno `i18n` do que vai ao navegador.
+  localize(payload: PushPayload, lang: AppLanguage): PushPayload {
+    const { i18n, ...rest } = payload;
+    if (!i18n) return rest;
+    const copy = renderPushMessage(i18n.key, lang, i18n.paramsByLanguage ? i18n.paramsByLanguage(lang) : i18n.params);
+    return { ...rest, title: copy.title, body: copy.body };
   }
 
   // Manda pra TODAS as inscrições ativas desse cliente (pode ter mais
@@ -129,7 +168,9 @@ export class PushService {
     const subscriptions = await this.subscriptionRepo.find({ where: { tenantId, customerId } });
     if (subscriptions.length === 0) return;
 
-    await Promise.all(subscriptions.map((sub) => this.sendToSubscription(sub, payload)));
+    const languages = await this.languagesOf([customerId]);
+    const localized = this.localize(payload, languages.get(customerId) ?? DEFAULT_LANGUAGE);
+    await Promise.all(subscriptions.map((sub) => this.sendToSubscription(sub, localized)));
   }
 
   private async sendToSubscription(sub: PushSubscription, payload: PushPayload): Promise<void> {

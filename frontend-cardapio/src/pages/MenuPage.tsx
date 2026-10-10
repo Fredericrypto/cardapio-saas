@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nContext';
 import { FloatingNotice } from '../components/FloatingNotice';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -25,7 +26,6 @@ import { getCategoryIcon, PromocoesIcon } from '../components/CategoryIcon';
 import { ProductCard } from '../components/ProductCard';
 import { CartBar } from '../components/CartBar';
 import { BottomNav } from '../components/BottomNav';
-import { CLOSED_STORE_HINT, CLOSED_STORE_LABEL } from '../lib/storeStatus';
 import { buildShareUrl } from '../lib/shareLinks';
 
 // Cardápio único pro cliente — atende tanto quem escaneou o QR de uma
@@ -36,6 +36,7 @@ import { buildShareUrl } from '../lib/shareLinks';
 // LocationPickerPage — mesma lógica do McDonald's), e essa escolha fica
 // guardada pra próxima visita.
 export function MenuPage() {
+  const { t } = useI18n();
   const { slug, qrCodeToken } = useParams<{ slug: string; qrCodeToken?: string }>();
   const navigate = useNavigate();
   const isTableFlow = Boolean(qrCodeToken);
@@ -325,8 +326,8 @@ export function MenuPage() {
 
       {!isOpenNow && (
         <div className="bg-red-50 border-b border-red-100 px-4 py-2.5 text-center">
-          <p className="text-xs font-bold text-red-600">{CLOSED_STORE_LABEL}</p>
-          <p className="text-[11px] text-red-500 mt-0.5">{CLOSED_STORE_HINT}</p>
+          <p className="text-xs font-bold text-red-600">{t('store.closedEstablishment')}</p>
+          <p className="text-[11px] text-red-500 mt-0.5">{t('store.closedHint')}</p>
         </div>
       )}
 

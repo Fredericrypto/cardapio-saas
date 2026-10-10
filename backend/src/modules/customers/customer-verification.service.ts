@@ -9,6 +9,7 @@ import { StorageService } from '../../common/services/storage.service';
 import { PushService } from '../push/push.service';
 import type { VerificationRejectionReason } from './verification-rejection-reasons';
 import { VERIFICATION_REJECTION_REASON_LABELS } from './verification-rejection-reasons';
+import { translateRejectionReason } from '../../common/i18n/push-messages';
 import { signVerification, verifyVerificationSignature } from '../../common/utils/verification-signature';
 
 // Janela de análise: o admin tem esse prazo pra decidir depois que o
@@ -273,6 +274,7 @@ export class CustomerVerificationService {
     await this.pushService.sendToCustomer(tenantId, customer.id, {
       title: 'Você foi verificado!',
       body: 'Seu perfil agora tem o selo de cliente verificado. Toque pra ver.',
+      i18n: { key: 'verification_approved' },
       url: `/${slug}/conta-cliente/perfil`,
       tag: 'verification_approved',
       icon: logoUrl ?? undefined,
@@ -305,6 +307,8 @@ export class CustomerVerificationService {
     await this.pushService.sendToCustomer(tenantId, customer.id, {
       title: 'Sua verificação não foi aprovada',
       body: VERIFICATION_REJECTION_REASON_LABELS[reason] + '. Você pode tentar de novo.',
+      // O motivo é da lista fechada: cada idioma tem a própria redação.
+      i18n: { key: 'verification_rejected', paramsByLanguage: (lang) => ({ reason: translateRejectionReason(reason, lang) }) },
       url: `/${slug}/conta-cliente/perfil`,
       tag: 'verification_rejected',
       icon: logoUrl ?? undefined,
@@ -346,6 +350,8 @@ export class CustomerVerificationService {
     await this.pushService.sendToCustomer(tenantId, customer.id, {
       title: 'Sua verificação foi revogada',
       body: `O estabelecimento revogou seu selo de verificado. Motivo: ${reason.trim()}`,
+      // Motivo digitado pela equipe = dado dinâmico: não é traduzido.
+      i18n: { key: 'verification_revoked', params: { reason: reason.trim() } },
       url: `/${slug}/conta-cliente/perfil`,
       tag: 'verification_revoked',
       icon: logoUrl ?? undefined,
@@ -434,6 +440,7 @@ export class CustomerVerificationService {
         await this.pushService.sendToCustomer(customer.tenantId, customer.id, {
           title: 'Sua verificação expirou',
           body: 'O prazo de análise terminou sem decisão. Você pode tentar de novo.',
+          i18n: { key: 'verification_expired' },
           url: `/${slug}/conta-cliente/perfil`,
           tag: 'verification_rejected',
           icon: logoUrl ?? undefined,

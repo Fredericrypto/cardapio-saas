@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nContext';
 import { type ReactNode } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useTableSession } from '../hooks/useTableSession';
@@ -33,6 +34,7 @@ function BuildMark() {
 // 3. Mesa sem sessão ativa e genuinamente livre (nunca usada, ou última
 //    sessão encerrada há mais tempo) → entra direto, sem fricção.
 export function TableSessionGate({ children }: { children: ReactNode }) {
+  const { t } = useI18n();
   const { slug, qrCodeToken } = useParams<{ slug: string; qrCodeToken: string }>();
   const location = useLocation();
   const navigate = useNavigate();
@@ -99,7 +101,7 @@ export function TableSessionGate({ children }: { children: ReactNode }) {
           style={{ backgroundColor: primaryColor }}
           className="py-3 px-6 rounded-xl text-white text-sm font-semibold shadow-sm"
         >
-          {hasKnownActiveMesa ? 'Voltar pra minha mesa' : 'Ir pro cardápio geral'}
+          {hasKnownActiveMesa ? t('table.backToMine') : t('table.goGeneral')}
         </button>
         <BuildMark />
       </div>
@@ -150,9 +152,9 @@ export function TableSessionGate({ children }: { children: ReactNode }) {
           <QrCode size={26} className="text-gray-500" />
         </div>
         <div>
-          <p className="text-base font-bold text-gray-900">Você saiu desta mesa</p>
+          <p className="text-base font-bold text-gray-900">{t('table.leftTitle')}</p>
           <p className="text-sm text-gray-500 mt-1">
-            Pra voltar, escaneie o QR code físico da mesa de novo.
+            {t('table.leftHint')}
           </p>
         </div>
         <button
@@ -160,7 +162,7 @@ export function TableSessionGate({ children }: { children: ReactNode }) {
           style={{ backgroundColor: primaryColor }}
           className="py-3 px-6 rounded-xl text-white text-sm font-semibold shadow-sm"
         >
-          Voltar ao cardápio geral
+          {t('table.backGeneral')}
         </button>
         <BuildMark />
       </div>
@@ -174,10 +176,9 @@ export function TableSessionGate({ children }: { children: ReactNode }) {
           <QrCode size={26} className="text-gray-500" />
         </div>
         <div>
-          <p className="text-base font-bold text-gray-900">Sessão encerrada</p>
+          <p className="text-base font-bold text-gray-900">{t('table.endedTitle')}</p>
           <p className="text-sm text-gray-500 mt-1">
-            A conta dessa mesa já foi fechada. Se ainda estiver no restaurante, escaneie o QR
-            code físico da mesa de novo pra abrir uma conta nova.
+            {t('table.endedHint')}
           </p>
         </div>
         <button
@@ -185,7 +186,7 @@ export function TableSessionGate({ children }: { children: ReactNode }) {
           style={{ backgroundColor: primaryColor }}
           className="py-3 px-6 rounded-xl text-white text-sm font-semibold shadow-sm"
         >
-          Voltar ao cardápio geral
+          {t('table.backGeneral')}
         </button>
         <BuildMark />
       </div>

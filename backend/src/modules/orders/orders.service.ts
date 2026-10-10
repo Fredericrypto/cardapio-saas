@@ -20,6 +20,7 @@ import { TableSessionParticipant } from '../tables/table-session-participant.ent
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { toCents, fromCents } from '../../common/utils/money';
+import type { PushMessageKey } from '../../common/i18n/push-messages';
 import { computeIsOpenNow } from '../../common/utils/schedule';
 import { buildPixTxId, generatePixPayload } from '../../common/utils/pix';
 import { signReceipt, verifyReceiptSignature, formatVerificationCode, parseVerificationCode } from '../../common/utils/receipt-signature';
@@ -242,6 +243,7 @@ export class OrdersService {
     await this.pushService.sendToCustomer(order.tenantId, order.customerId, {
       title: 'Como foi seu pedido?',
       body: 'Sua opinião ajuda outros clientes e o restaurante a melhorar. Toque pra avaliar.',
+      i18n: { key: 'review_prompt' },
       url: `/${tenant.slug}/conta-cliente/pedidos/avulso/${order.id}?avaliar=${order.id}`,
       tag: 'review_prompt',
       icon: tenant.logoUrl ?? undefined,
@@ -262,6 +264,10 @@ export class OrdersService {
     await this.pushService.sendToCustomer(order.tenantId, order.customerId, {
       title: 'Pagamento confirmado',
       body: `Recebemos o pagamento de R$ ${Number(order.total).toFixed(2).replace('.', ',')} do seu pedido.`,
+      i18n: {
+        key: 'payment_confirmed_order',
+        params: { amount: `R$ ${Number(order.total).toFixed(2).replace('.', ',')}` },
+      },
       url: `/${tenant.slug}/conta-cliente/pedidos/avulso/${order.id}`,
       tag: 'payment_completed',
       groupTag: `payment-${order.id}`,
@@ -281,6 +287,7 @@ export class OrdersService {
     await this.pushService.sendToCustomer(order.tenantId, order.customerId, {
       title: 'Você ganhou cashback',
       body: `R$ ${amount} caíram na sua carteira desse restaurante. Toque pra ver o saldo.`,
+      i18n: { key: 'cashback_earned', params: { amount: `R$ ${amount}` } },
       url: `/${tenant.slug}/conta-cliente/cashback`,
       tag: 'cashback',
       icon: tenant.logoUrl ?? undefined,
@@ -310,6 +317,7 @@ export class OrdersService {
     await this.pushService.sendToCustomer(order.tenantId, order.customerId, {
       title: copy.title,
       body: copy.body,
+      i18n: { key: copy.key },
       url,
       tag: 'order_delivered',
       groupTag: `order-status-${order.id}`,
@@ -320,9 +328,10 @@ export class OrdersService {
   private orderStatusNotificationCopy(
     orderType: string,
     status: string,
-  ): { title: string; body: string } | null {
+  ): { key: PushMessageKey; title: string; body: string } | null {
     if (status === 'preparando') {
       return {
+        key: 'order_preparing',
         title: 'Seu pedido está sendo preparado',
         body: 'A cozinha já começou a preparar seu pedido.',
       };
@@ -330,29 +339,32 @@ export class OrdersService {
     if (status === 'pronto') {
       if (orderType === 'entrega') {
         return {
+          key: 'order_ready_delivery',
           title: 'Seu pedido está pronto',
           body: 'Já vai sair para entrega a qualquer momento.',
         };
       }
       if (orderType === 'mesa') {
         return {
+          key: 'order_ready_table',
           title: 'Seu pedido está pronto',
           body: 'O garçom já está levando pra sua mesa.',
         };
       }
-      return {
-        title: 'Seu pedido está pronto',
-        body: 'Pode vir buscar no balcão.',
-      };
+      return { key: 'order_ready_pickup', title: 'Seu pedido está pronto', body: 'Pode vir buscar no balcão.' };
     }
     if (status === 'entregue') {
       if (orderType === 'entrega') {
-        return { title: 'Seu pedido foi entregue', body: 'Bom apetite! Toque para ver o cupom.' };
+        return {
+          key: 'order_done_delivery',
+          title: 'Seu pedido foi entregue',
+          body: 'Bom apetite! Toque para ver o cupom.',
+        };
       }
       if (orderType === 'mesa') {
-        return { title: 'Pedido servido', body: 'Bom apetite! Toque para ver o cupom.' };
+        return { key: 'order_done_table', title: 'Pedido servido', body: 'Bom apetite! Toque para ver o cupom.' };
       }
-      return { title: 'Pedido retirado', body: 'Bom apetite! Toque para ver o cupom.' };
+      return { key: 'order_done_pickup', title: 'Pedido retirado', body: 'Bom apetite! Toque para ver o cupom.' };
     }
     return null;
   }

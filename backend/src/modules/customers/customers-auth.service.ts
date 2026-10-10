@@ -8,6 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import { normalizeLanguage } from '../../common/i18n/languages';
 
 import { Customer } from './customer.entity';
 import { RegisterCustomerDto } from './dto/register-customer.dto';
@@ -128,6 +129,7 @@ export class CustomersAuthService {
     if (dto.name !== undefined) customer.name = dto.name.trim();
     if (dto.phone !== undefined) customer.phone = dto.phone;
     if (dto.gender !== undefined) customer.gender = dto.gender;
+    if (dto.language !== undefined) customer.language = dto.language;
     if (dto.pronouns !== undefined) {
       // Guarda na ordem canônica (ex.: ['dela','ela'] vira "ela/dela").
       const chosen = PRONOUN_OPTIONS.filter((p) => dto.pronouns!.includes(p));
@@ -265,6 +267,7 @@ export class CustomersAuthService {
       phone: customer.phone,
       gender: customer.gender,
       pronouns: customer.pronouns,
+      language: normalizeLanguage(customer.language),
       avatarUrl: customer.avatarUrl,
       pixKeyType: customer.pixKeyType,
       pixKey: customer.pixKey,

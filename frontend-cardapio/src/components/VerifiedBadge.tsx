@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nContext';
 // Mesmo azul clássico usado no painel do admin (#1D9BF0) — cor única de
 // destaque reservada só pra isso, em todo o app, dos dois lados
 // (admin e cliente). Nunca aparece sozinho: sempre ao lado de um avatar
@@ -14,6 +15,7 @@ interface VerifiedBadgeProps {
 }
 
 export function VerifiedBadge({ variant = 'icon', size = 14 }: VerifiedBadgeProps) {
+  const { t } = useI18n();
   if (variant === 'inline') {
     return (
       <span
@@ -21,7 +23,7 @@ export function VerifiedBadge({ variant = 'icon', size = 14 }: VerifiedBadgeProp
         style={{ color: VERIFIED_BLUE }}
       >
         <CheckIcon size={size} />
-        Verificado
+        {t('verified.label')}
       </span>
     );
   }
@@ -29,7 +31,7 @@ export function VerifiedBadge({ variant = 'icon', size = 14 }: VerifiedBadgeProp
     <span
       className="inline-flex items-center justify-center rounded-full shrink-0"
       style={{ backgroundColor: VERIFIED_BLUE, width: size, height: size }}
-      title="Cliente verificado"
+      title={t('verified.title')}
     >
       <CheckIcon size={size * 0.6} color="white" />
     </span>

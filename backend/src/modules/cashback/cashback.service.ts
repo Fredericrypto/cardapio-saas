@@ -845,6 +845,7 @@ export class CashbackService {
           await this.pushService.sendToCustomer(b.tenantId, b.customerId, {
             title: 'Seu cashback vence em 2 dias',
             body: `${brl(sum(b.twoDays))} de cashback expiram em até 2 dias. Use no próximo pedido!`,
+            i18n: { key: 'cashback_expiring_2d', params: { amount: brl(sum(b.twoDays)) } },
             url,
             tag: 'cashback',
             groupTag: 'cashback-expiring-2d',
@@ -855,6 +856,7 @@ export class CashbackService {
           await this.pushService.sendToCustomer(b.tenantId, b.customerId, {
             title: 'Seu cashback vence em 1 semana',
             body: `${brl(sum(b.week))} de cashback expiram em até 7 dias. Aproveite antes que acabe!`,
+            i18n: { key: 'cashback_expiring_7d', params: { amount: brl(sum(b.week)) } },
             url,
             tag: 'cashback',
             groupTag: 'cashback-expiring-7d',

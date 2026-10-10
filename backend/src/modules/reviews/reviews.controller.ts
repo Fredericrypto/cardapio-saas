@@ -10,6 +10,10 @@ import { CreateReviewDto } from './dto/create-review.dto';
 import { RespondReviewDto } from './dto/respond-review.dto';
 import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 
+function parseTargetType(value?: string): 'restaurant' | 'item' | undefined {
+  return value === 'restaurant' || value === 'item' ? value : undefined;
+}
+
 @Controller()
 export class ReviewsController {
   constructor(private readonly reviewsService: ReviewsService) {}
@@ -131,14 +135,35 @@ export class ReviewsController {
 
   @RequirePermission('reviews:view')
   @Get('reviews/admin')
-  async findAllForAdmin(@CurrentTenant() tenantId: string, @Query('locationId') locationId?: string) {
-    return this.reviewsService.findAllForAdmin(tenantId, { locationId });
+  async findAllForAdmin(
+    @CurrentTenant() tenantId: string,
+    @Query('locationId') locationId?: string,
+    @Query('targetType') targetType?: string,
+  ) {
+    return this.reviewsService.findAllForAdmin(tenantId, {
+      locationId: locationId || undefined,
+      targetType: parseTargetType(targetType),
+    });
   }
 
   @RequirePermission('reviews:view')
   @Get('reviews/admin/summary')
-  async getAdminSummary(@CurrentTenant() tenantId: string) {
-    return this.reviewsService.getAdminSummary(tenantId);
+  async getAdminSummary(
+    @CurrentTenant() tenantId: string,
+    @Query('locationId') locationId?: string,
+    @Query('targetType') targetType?: string,
+  ) {
+    return this.reviewsService.getAdminSummary(tenantId, {
+      locationId: locationId || undefined,
+      targetType: parseTargetType(targetType),
+    });
+  }
+
+  // Aba "Avaliações de Itens / Pratos": nota e distribuição por produto.
+  @RequirePermission('reviews:view')
+  @Get('reviews/admin/items')
+  async getAdminItems(@CurrentTenant() tenantId: string, @Query('locationId') locationId?: string) {
+    return this.reviewsService.getAdminItemBreakdown(tenantId, { locationId: locationId || undefined });
   }
 
   // Responder continua permitido — só ocultar/editar a review do

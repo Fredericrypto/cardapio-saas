@@ -1,3 +1,4 @@
+import type { AppLanguage } from '../i18n/languages';
 import { api } from './api';
 
 // Chamadas do sistema de login/perfil do CLIENTE FINAL — endpoints sob
@@ -30,6 +31,8 @@ export interface CustomerProfile {
   gender: string | null;
   // "ela/dela", "ele/dele"… — só aparece em Meus dados e na Conta.
   pronouns: string | null;
+  // Idioma do app e das notificações (ausente em backend antigo = pt-BR).
+  language?: AppLanguage;
   avatarUrl: string | null;
   pixKeyType: string | null;
   pixKey: string | null;
@@ -83,7 +86,7 @@ export async function fetchMyCustomerProfile(
 export async function updateMyCustomerProfile(
   tenantId: string,
   token: string,
-  payload: { name?: string; phone?: string; gender?: string; pronouns?: string[] },
+  payload: { name?: string; phone?: string; gender?: string; pronouns?: string[]; language?: AppLanguage },
 ): Promise<CustomerProfile> {
   const { data } = await api.patch<CustomerProfile>(
     `/customers/${tenantId}/auth/me`,

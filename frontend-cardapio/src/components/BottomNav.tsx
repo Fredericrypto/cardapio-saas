@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nContext';
 import { Link, useLocation } from 'react-router-dom';
 import { UtensilsCrossed, ShoppingCart, User } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
@@ -18,6 +19,7 @@ export function BottomNav({ slug, qrCodeToken, primaryColor = '#111827' }: Botto
   const location = useLocation();
   const { totalItems } = useCart();
   const { customer } = useCustomerAuth();
+  const { t } = useI18n();
 
   const base = qrCodeToken ? `/${slug}/mesa/${qrCodeToken}` : `/${slug}`;
   const menuHref = base;
@@ -39,14 +41,14 @@ export function BottomNav({ slug, qrCodeToken, primaryColor = '#111827' }: Botto
       <NavItem
         to={menuHref}
         icon={UtensilsCrossed}
-        label="Cardápio"
+        label={t('nav.menu')}
         active={location.pathname === menuHref}
         color={primaryColor}
       />
       <NavItem
         to={cartHref}
         icon={ShoppingCart}
-        label="Carrinho"
+        label={t('nav.cart')}
         active={location.pathname === cartHref}
         color={primaryColor}
         badge={totalItems > 0 ? totalItems : undefined}
@@ -80,7 +82,7 @@ export function BottomNav({ slug, qrCodeToken, primaryColor = '#111827' }: Botto
             </div>
           </div>
           <span className="text-[10px] font-semibold" style={{ color: accountActive ? primaryColor : '#9CA3AF' }}>
-            Conta
+            {t('nav.account')}
           </span>
         </div>
       </Link>

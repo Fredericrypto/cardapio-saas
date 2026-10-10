@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nContext';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, ChevronRight, Store } from 'lucide-react';
@@ -16,6 +17,7 @@ import { BottomNav } from '../components/BottomNav';
 // a conta do cliente deixar de ser isolada por restaurante, esta mesma
 // tela vira naturalmente uma lista de vários cartões.
 export function OrdersHubPage() {
+  const { t, formatDate } = useI18n();
   const { slug } = useParams<{ slug: string }>();
   // Mesmo bug/correção do CustomerProfilePage — ver comentário lá.
   const navigate = useNavigate();
@@ -48,7 +50,7 @@ export function OrdersHubPage() {
   if (!token) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center max-w-md mx-auto pb-20">
-        <p className="text-gray-500 text-sm">Você precisa entrar na sua conta pra ver seus pedidos.</p>
+        <p className="text-gray-500 text-sm">{t('ordersHub.needLogin')}</p>
         <button
           onClick={() => navigate(`/${slug}/conta-cliente/entrar`)}
           className="mt-4 text-white px-5 py-2.5 rounded-xl text-sm font-semibold"
@@ -67,7 +69,7 @@ export function OrdersHubPage() {
         <button onClick={() => navigate(`/${slug}/conta-cliente/perfil`)}>
           <ArrowLeft size={20} />
         </button>
-        <h1 className="font-display font-bold text-lg">Meus pedidos</h1>
+        <h1 className="font-display font-bold text-lg">{t('profile.myOrders')}</h1>
       </div>
 
       <div className="px-4 mt-3">
@@ -89,13 +91,11 @@ export function OrdersHubPage() {
             <p className="font-display font-bold text-gray-900 truncate">{tenant.name}</p>
             <p className="text-xs text-gray-400 mt-0.5">
               {orderCount === null
-                ? 'Carregando pedidos...'
+                ? t('ordersHub.loading')
                 : orderCount === 0
-                  ? 'Nenhum pedido ainda'
-                  : `${orderCount} ${orderCount === 1 ? 'pedido' : 'pedidos'}${
-                      lastOrderAt
-                        ? ` · último em ${new Date(lastOrderAt).toLocaleDateString('pt-BR')}`
-                        : ''
+                  ? t('ordersHub.none')
+                  : `${orderCount === 1 ? t('ordersHub.countOne', { count: orderCount }) : t('ordersHub.count', { count: orderCount })}${
+                      lastOrderAt ? t('ordersHub.last', { date: formatDate(lastOrderAt) }) : ''
                     }`}
             </p>
           </div>

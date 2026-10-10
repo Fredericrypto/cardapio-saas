@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nContext';
 import { useCallback, useState } from 'react';
 import { Share2 } from 'lucide-react';
 import { FloatingNotice } from './FloatingNotice';
@@ -39,6 +40,7 @@ async function copyToClipboard(text: string): Promise<boolean> {
 // Usa <span role="button"> quando está dentro de um card clicável (um <button>
 // dentro de <button> é HTML inválido) — o clique não propaga para o card.
 export function ShareButton({ url, title, text, variant = 'overlay', className = '' }: ShareButtonProps) {
+  const { t } = useI18n();
   const [notice, setNotice] = useState<string | null>(null);
   const clearNotice = useCallback(() => setNotice(null), []);
 
@@ -54,7 +56,7 @@ export function ShareButton({ url, title, text, variant = 'overlay', className =
         // qualquer outra falha cai na cópia do link
       }
     }
-    setNotice((await copyToClipboard(url)) ? 'Link copiado!' : 'Não foi possível compartilhar. Copie o link manualmente.');
+    setNotice((await copyToClipboard(url)) ? t('share.copied') : t('share.failed'));
   }
 
   const look =
@@ -67,8 +69,8 @@ export function ShareButton({ url, title, text, variant = 'overlay', className =
       <span
         role="button"
         tabIndex={0}
-        aria-label={`Compartilhar ${title}`}
-        title="Compartilhar"
+        aria-label={t('share.shareItem', { title })}
+        title={t('share.share')}
         onClick={share}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') void share(e);

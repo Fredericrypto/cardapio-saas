@@ -1,3 +1,5 @@
+import { readStoredLanguage } from '../i18n/languages';
+import { translate } from '../i18n/translate';
 import { Component, type ReactNode } from 'react';
 
 // Rede de segurança pra QUALQUER erro de renderização não tratado em
@@ -32,7 +34,7 @@ export class ErrorBoundary extends Component<
       return (
         <div className="flex flex-col items-center justify-center h-screen gap-3 px-6 text-center bg-gray-50">
           <p className="text-sm text-gray-600">
-            Ops, algo deu errado ao carregar essa tela.
+            {translate(readStoredLanguage(), 'error.generic')}
           </p>
           <button
             onClick={() => {
@@ -41,7 +43,7 @@ export class ErrorBoundary extends Component<
             }}
             className="text-sm font-semibold bg-gray-900 text-white px-4 py-2 rounded-lg"
           >
-            Voltar ao início
+            {translate(readStoredLanguage(), 'error.backHome')}
           </button>
         </div>
       );

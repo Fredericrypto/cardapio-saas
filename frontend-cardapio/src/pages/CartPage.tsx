@@ -1,3 +1,4 @@
+import { useStoreStatus } from '../hooks/useStoreStatus';
 import { useScrollLock } from '../hooks/useScrollLock';
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
@@ -88,6 +89,8 @@ export function CartPage() {
     fetchLocationById(tenant.id, session.table.locationId).then(setTableLocation);
   }, [isTableFlow, tenant, session?.table?.locationId]);
   const activeLocation = isTableFlow ? tableLocation : selectedLocation;
+  // Aberto/fechado no momento exato (virada de minuto, fuso de Brasília).
+  const storeIsOpen = useStoreStatus(activeLocation).isOpen;
 
   const { token: customerToken, customer } = useCustomerAuth();
   const [customerName, setCustomerName] = useState('');
@@ -318,7 +321,7 @@ export function CartPage() {
 
   async function handleSubmit() {
     if (!tenant) return;
-    if (!activeLocation?.isOpenNow) return; // botão já deveria estar desabilitado, defesa extra
+    if (!activeLocation || !storeIsOpen) return; // botão já deveria estar desabilitado, defesa extra
     if (orderType === 'entrega' && !quote) return; // botão já deveria estar desabilitado, defesa extra
 
     setErrorMessage(null);
@@ -541,7 +544,8 @@ export function CartPage() {
   }, [orderCancelledByCustomer, isTableFlow, slug, qrCodeToken, navigate]);
 
   const canProceedFromForm =
-    Boolean(activeLocation?.isOpenNow) &&
+    Boolean(activeLocation) &&
+    storeIsOpen &&
     customerName.trim().length > 0 &&
     !guestNameError &&
     isValidBrazilPhone(customerPhone) &&
@@ -992,8 +996,8 @@ export function CartPage() {
   // etapas de pagamento e revisão antes de poder enviar de verdade.
   const canSubmit =
     orderType === 'mesa'
-      ? activeLocation?.isOpenNow
-      : checkoutStep === 'review' && activeLocation?.isOpenNow && (orderType !== 'entrega' || Boolean(quote));
+      ? Boolean(activeLocation) && storeIsOpen
+      : checkoutStep === 'review' && Boolean(activeLocation) && storeIsOpen && (orderType !== 'entrega' || Boolean(quote));
   const deliveryAvailable = activeLocation?.latitude != null && activeLocation?.longitude != null;
   const orderTypeOptions = (['mesa', 'balcao', 'entrega'] as const).filter(
     (type) =>
@@ -1017,7 +1021,7 @@ export function CartPage() {
     ? 'Enviando...'
     : !activeLocation
       ? 'Carregando...'
-      : !activeLocation.isOpenNow
+      : !storeIsOpen
         ? 'Estabelecimento fechado'
         : orderType === 'mesa'
           ? 'Confirmar pedido'
@@ -1797,7 +1801,7 @@ export function CartPage() {
           onClick={handlePrimaryAction}
           disabled={
             isSubmitting ||
-            !activeLocation?.isOpenNow ||
+            !activeLocation || !storeIsOpen ||
             (checkoutStep === 'form' && orderType !== 'mesa' && !canProceedFromForm) ||
             (checkoutStep === 'review' && !canSubmit)
           }

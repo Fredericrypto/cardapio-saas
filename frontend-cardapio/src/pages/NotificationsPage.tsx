@@ -1,3 +1,5 @@
+import { useI18n } from '../i18n/I18nContext';
+import type { TranslationKey } from '../i18n/dictionaries/pt-BR';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
@@ -21,6 +23,16 @@ import {
   type NotificationTag,
 } from '../lib/notificationPrefs';
 
+const TYPE_KEYS: Record<NotificationTag, { label: TranslationKey; description: TranslationKey }> = {
+  review_prompt: { label: 'notifications.type.review_prompt.label', description: 'notifications.type.review_prompt.description' },
+  order_delivered: { label: 'notifications.type.order_delivered.label', description: 'notifications.type.order_delivered.description' },
+  payment_completed: { label: 'notifications.type.payment_completed.label', description: 'notifications.type.payment_completed.description' },
+  cashback: { label: 'notifications.type.cashback.label', description: 'notifications.type.cashback.description' },
+  promotion: { label: 'notifications.type.promotion.label', description: 'notifications.type.promotion.description' },
+  loyalty: { label: 'notifications.type.loyalty.label', description: 'notifications.type.loyalty.description' },
+  complaint: { label: 'notifications.type.complaint.label', description: 'notifications.type.complaint.description' },
+};
+
 const ICONS: Record<NotificationTag, LucideIcon> = {
   review_prompt: Star,
   order_delivered: Truck,
@@ -41,7 +53,7 @@ export function NotificationsPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { tenant } = useTenant();
-
+  const { t } = useI18n();
 
   const { customer, token, isLoading } = useCustomerAuth();
   const push = usePushNotifications(tenant?.id, token);
@@ -75,15 +87,14 @@ export function NotificationsPage() {
         <button onClick={() => navigate(`/${slug}/conta-cliente/perfil`)}>
           <ArrowLeft size={20} />
         </button>
-        <h1 className="font-display font-bold text-lg">Notificações</h1>
+        <h1 className="font-display font-bold text-lg">{t('notifications.title')}</h1>
       </div>
 
       <div className="px-4 mt-4 flex flex-col gap-3">
         {!push.isSubscribed && (
           <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
             <p className="text-xs text-amber-800">
-              Notificações estão desativadas no geral. Ative em "Minha Conta" pra receber qualquer
-              uma das opções abaixo.
+              {t('notifications.globalOff')}
             </p>
           </div>
         )}
@@ -107,8 +118,8 @@ export function NotificationsPage() {
                     <Icon size={17} style={{ color: tenant.primaryColor }} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-800">{type.label}</p>
-                    <p className="text-xs text-gray-400">{type.description}</p>
+                    <p className="text-sm font-medium text-gray-800">{t(TYPE_KEYS[type.tag].label)}</p>
+                    <p className="text-xs text-gray-400">{t(TYPE_KEYS[type.tag].description)}</p>
                   </div>
                   <button
                     onClick={() => toggle(type.tag)}
@@ -128,7 +139,7 @@ export function NotificationsPage() {
         </div>
 
         <p className="text-[11px] text-gray-400 px-1">
-          Todo tipo começa ativado. Desligue só o que você não quer receber.
+          {t('notifications.footer')}
         </p>
       </div>
     </div>

@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nContext';
 import { useState } from 'react';
 import { ChevronDown, MapPin, Clock, Phone, Info } from 'lucide-react';
 import type { Tenant, Location } from '../types';
@@ -105,7 +106,8 @@ function formatAddressLines(address: string): string[] {
 // sobre a cor do tenant como na versão anterior.
 export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelProps) {
   const [expanded, setExpanded] = useState(false);
-  const weekSchedule = getWeekScheduleLines(location?.openingHours ?? null);
+  const { t } = useI18n();
+  const weekSchedule = getWeekScheduleLines(location?.openingHours ?? null, t);
 
   const hasSocialLinks =
     Boolean(location?.whatsappNumber) ||
@@ -134,7 +136,7 @@ export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelPro
             className="flex items-center justify-center gap-1.5 w-full text-xs font-semibold text-gray-500 py-1"
           >
             <Info size={15} strokeWidth={1.5} className="shrink-0" />
-            <span>Informações</span>
+            <span>{t('info.title')}</span>
             <ChevronDown size={14} strokeWidth={1.5} className={`transition-transform ${expanded ? 'rotate-180' : ''}`} />
           </button>
 
@@ -280,7 +282,7 @@ export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelPro
             </a>
           )}
           {tenant.gmailAddress && (
-            <a href={buildGmailLink(tenant.gmailAddress)} className="active:opacity-70" aria-label="E-mail">
+            <a href={buildGmailLink(tenant.gmailAddress)} className="active:opacity-70" aria-label={t('info.email')}>
               <GmailIcon size={30} />
             </a>
           )}

@@ -46,13 +46,13 @@ export class LocationsController {
   @Get('me')
   @Header('Cache-Control', 'no-store')
   async findAllForMe(@CurrentTenant() tenantId: string) {
-    return this.locationsService.findAllForTenant(tenantId);
+    return this.locationsService.findAllForAdmin(tenantId);
   }
 
   @RequirePermission('locations:manage')
   @Post('me')
   async create(@CurrentTenant() tenantId: string, @Body() dto: CreateLocationDto) {
-    return this.locationsService.create(tenantId, dto);
+    return this.locationsService.withComputedStatus(await this.locationsService.create(tenantId, dto));
   }
 
   @RequirePermission('locations:manage')
@@ -62,7 +62,7 @@ export class LocationsController {
     @Param('id') id: string,
     @Body() dto: UpdateLocationDto,
   ) {
-    return this.locationsService.update(tenantId, id, dto);
+    return this.locationsService.withComputedStatus(await this.locationsService.update(tenantId, id, dto));
   }
 
   @RequirePermission('locations:manage')
@@ -72,7 +72,9 @@ export class LocationsController {
     @Param('id') id: string,
     @Body() dto: ConfirmLocationAddressDto,
   ) {
-    return this.locationsService.confirmAddress(tenantId, id, dto.address);
+    return this.locationsService.withComputedStatus(
+      await this.locationsService.confirmAddress(tenantId, id, dto.address),
+    );
   }
 
   @RequirePermission('locations:manage')

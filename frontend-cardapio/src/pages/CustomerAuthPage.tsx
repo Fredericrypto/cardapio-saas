@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nContext';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTenant } from '../contexts/TenantContext';
@@ -16,6 +17,7 @@ import { isValidBrazilPhone } from '../lib/phone';
 // genérico), botão principal com glow nas cores da marca. Cada
 // restaurante que usa o SaaS ganha uma tela com a cara dele.
 export function CustomerAuthPage() {
+  const { t } = useI18n();
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -61,7 +63,7 @@ export function CustomerAuthPage() {
       setJustAuthenticated(true);
     } catch (err: any) {
       setError(
-        err?.response?.data?.message || 'Não foi possível concluir. Confira os dados e tente de novo.',
+        err?.response?.data?.message || t('auth.submitError'),
       );
     } finally {
       setIsSubmitting(false);
@@ -143,17 +145,17 @@ export function CustomerAuthPage() {
             {tenant.name}
           </p>
           <h1 className="font-display text-2xl font-bold text-gray-900 text-center mt-1">
-            {mode === 'login' ? 'Bem-vindo de volta' : 'Criar sua conta'}
+            {mode === 'login' ? t('auth.welcomeBack') : t('auth.createTitle')}
           </h1>
           <p className="text-sm text-gray-500 text-center mt-1.5">
-            {mode === 'login' ? 'Entre pra fazer seu pedido.' : 'Leva menos de um minuto.'}
+            {mode === 'login' ? t('auth.loginSubtitle') : t('auth.registerSubtitle')}
           </p>
 
           <div className="flex flex-col gap-3 mt-6">
             {mode === 'register' && (
-              <GlassInput type="text" value={name} onChange={setName} placeholder="Seu nome" accent={primary} />
+              <GlassInput type="text" value={name} onChange={setName} placeholder={t('auth.namePlaceholder')} accent={primary} />
             )}
-            <GlassInput type="email" value={email} onChange={setEmail} placeholder="E-mail" accent={primary} />
+            <GlassInput type="email" value={email} onChange={setEmail} placeholder={t('auth.emailPlaceholder')} accent={primary} />
             {mode === 'register' && (
               <PhoneInput
                 value={phone}
@@ -165,7 +167,7 @@ export function CustomerAuthPage() {
               type="password"
               value={password}
               onChange={setPassword}
-              placeholder="Senha"
+              placeholder={t('auth.passwordPlaceholder')}
               accent={primary}
             />
 
@@ -185,12 +187,12 @@ export function CustomerAuthPage() {
                 boxShadow: `0 8px 28px -6px ${primary}99`,
               }}
             >
-              {isSubmitting ? 'Aguarde...' : mode === 'login' ? 'Entrar' : 'Criar conta'}
+              {isSubmitting ? t('auth.wait') : mode === 'login' ? t('common.enter') : t('auth.createAccount')}
             </button>
 
             <div className="flex items-center gap-3 my-1">
               <div className="flex-1 h-px bg-gray-200" />
-              <span className="text-[11px] text-gray-400 font-medium">ou</span>
+              <span className="text-[11px] text-gray-400 font-medium">{t('auth.or')}</span>
               <div className="flex-1 h-px bg-gray-200" />
             </div>
 
@@ -199,11 +201,11 @@ export function CustomerAuthPage() {
               className="py-3 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 flex items-center justify-center gap-2.5 transition-colors hover:bg-gray-50"
             >
               <GoogleIcon />
-              Continuar com Google
+              {t('auth.google')}
             </button>
             {showGoogleSoon && (
               <p className="text-[11px] text-gray-400 text-center -mt-1">
-                Login com Google chegando em breve por aqui.
+                {t('auth.googleSoon')}
               </p>
             )}
 
@@ -215,7 +217,7 @@ export function CustomerAuthPage() {
               }}
               className="text-xs font-semibold text-gray-500 mt-1 py-1"
             >
-              {mode === 'login' ? 'Não tem conta? Criar uma agora' : 'Já tem conta? Entrar'}
+              {mode === 'login' ? t('auth.noAccount') : t('auth.haveAccount')}
             </button>
           </div>
         </div>

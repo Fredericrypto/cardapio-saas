@@ -289,6 +289,7 @@ export class LoyaltyService {
       await this.pushService.sendToCustomer(tenantId, customerId, {
         title: 'Prêmio de fidelidade liberado!',
         body: 'Você completou seu cartão fidelidade. Toque pra ver o cupom.',
+        i18n: { key: 'loyalty_reward' },
         url,
         tag: 'loyalty',
         icon: tenant.logoUrl ?? undefined,
@@ -299,6 +300,7 @@ export class LoyaltyService {
     await this.pushService.sendToCustomer(tenantId, customerId, {
       title: 'Você ganhou um carimbo',
       body: `${progress.stampsCount} de ${progress.stampsRequired} carimbos no seu cartão fidelidade.`,
+      i18n: { key: 'loyalty_stamp', params: { count: progress.stampsCount, required: progress.stampsRequired } },
       url,
       tag: 'loyalty',
       icon: tenant.logoUrl ?? undefined,

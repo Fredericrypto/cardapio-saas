@@ -55,6 +55,12 @@ export class Customer {
   @Column({ type: 'varchar', length: 20, nullable: true })
   pronouns: string | null;
 
+  // Idioma do app e das notificações deste cliente: 'pt-BR' (padrão) | 'en' | 'es'.
+  // Só muda texto de interface/notificação; moeda (R$), nomes e endereços
+  // nunca são traduzidos.
+  @Column({ type: 'varchar', length: 8, default: 'pt-BR' })
+  language: string;
+
   @Column({ name: 'avatar_url', type: 'text', nullable: true })
   avatarUrl: string | null;
 

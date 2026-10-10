@@ -593,13 +593,33 @@ export async function fetchFidelityHistory(): Promise<FidelityHistoryEntry[]> {
 
 // ---------- Reviews ----------
 
-export async function fetchAdminReviews(filters?: { locationId?: string }): Promise<AdminReview[]> {
+export type ReviewTarget = 'restaurant' | 'item';
+
+export interface ReviewFilters {
+  locationId?: string;
+  targetType?: ReviewTarget;
+}
+
+export async function fetchAdminReviews(filters?: ReviewFilters): Promise<AdminReview[]> {
   const { data } = await api.get<AdminReview[]>('/reviews/admin', { params: filters });
   return data;
 }
 
-export async function fetchReviewsSummary(): Promise<ReviewSummary> {
-  const { data } = await api.get<ReviewSummary>('/reviews/admin/summary');
+// Resumo SEMPRE de um tipo só (loja ou itens) e, se informado, de uma unidade.
+export async function fetchReviewsSummary(filters?: ReviewFilters): Promise<ReviewSummary> {
+  const { data } = await api.get<ReviewSummary>('/reviews/admin/summary', { params: filters });
+  return data;
+}
+
+export interface ItemReviewStat extends ReviewSummary {
+  productId: string;
+  productName: string;
+  lastReviewAt: string;
+}
+
+// Nota média, total e distribuição por prato (só avaliações de item).
+export async function fetchItemReviewStats(filters?: { locationId?: string }): Promise<ItemReviewStat[]> {
+  const { data } = await api.get<ItemReviewStat[]>('/reviews/admin/items', { params: filters });
   return data;
 }
 

@@ -18,9 +18,21 @@ export class NotesService {
     return { tags: NOTE_TAGS };
   }
 
-  // Fixadas primeiro, depois as mais recentes.
+  // Fixadas primeiro; dentro de cada grupo vale a ordem salva (sortOrder) e, em
+  // empate, as mais recentes.
   list(tenantId: string): Promise<Note[]> {
-    return this.repo.find({ where: { tenantId }, order: { isPinned: 'DESC', createdAt: 'DESC' } });
+    return this.repo.find({ where: { tenantId }, order: { isPinned: 'DESC', sortOrder: 'ASC', createdAt: 'DESC' } });
+  }
+
+  // Nota nova entra no INÍCIO do grupo (solta) ou no FIM das fixadas.
+  private async nextSortOrder(tenantId: string, pinned: boolean): Promise<number> {
+    const row = await this.repo
+      .createQueryBuilder('n')
+      .select(pinned ? 'MAX(n.sortOrder)' : 'MIN(n.sortOrder)', 'v')
+      .where('n.tenantId = :tenantId AND n.isPinned = :pinned', { tenantId, pinned })
+      .getRawOne<{ v: number | string | null }>();
+    if (row?.v == null) return 0;
+    return pinned ? Number(row.v) + 1 : Number(row.v) - 1;
   }
 
   async create(user: RequestAdminUser, dto: CreateNoteDto): Promise<Note> {
@@ -39,6 +51,7 @@ export class NotesService {
         posX: dto.posX ?? 24 + (count % 10) * 32,
         posY: dto.posY ?? 24 + (count % 10) * 32,
         isPinned: dto.isPinned ?? false,
+        sortOrder: await this.nextSortOrder(user.tenantId, dto.isPinned ?? false),
         isMinimized: dto.isMinimized ?? false,
         authorUserId: user.userId,
         authorName: actor.name,
@@ -84,10 +97,12 @@ export class NotesService {
     for (const item of dto.items) {
       const note = byId.get(item.id);
       if (!note) continue; // de outro restaurante ou já excluída: ignora
-      note.posX = item.posX;
-      note.posY = item.posY;
+      if (item.posX !== undefined) note.posX = item.posX;
+      if (item.posY !== undefined) note.posY = item.posY;
       if (item.width) note.width = item.width;
       if (item.height) note.height = item.height;
+      if (item.isPinned !== undefined) note.isPinned = item.isPinned;
+      if (item.sortOrder !== undefined) note.sortOrder = item.sortOrder;
     }
     await this.repo.save([...byId.values()]);
     return { updated: byId.size };

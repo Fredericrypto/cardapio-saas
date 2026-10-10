@@ -1,8 +1,9 @@
+import { useI18n } from '../i18n/I18nContext';
 import { useScrollLock } from '../hooks/useScrollLock';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ChevronRight, Receipt, MapPin, Wallet, CircleDollarSign, Star, Bell, BellOff, LogOut, User, BadgeCheck, Clock3 } from 'lucide-react';
+import { ChevronRight, Receipt, MapPin, Wallet, CircleDollarSign, Star, Bell, BellOff, LogOut, User, BadgeCheck, Clock3, Languages } from 'lucide-react';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { useTenant } from '../contexts/TenantContext';
 import { usePushNotifications } from '../hooks/usePushNotifications';
@@ -31,6 +32,7 @@ export function CustomerProfilePage() {
   // useTableSession, exatamente pra esse cenário de "voltar pra onde eu
   // estava".
   const navigate = useNavigate();
+  const { t } = useI18n();
   const { tenant } = useTenant();
   const { customer, token, isLoading, logout, setCustomer } = useCustomerAuth();
   const [confirmingLogout, setConfirmingLogout] = useState(false);
@@ -61,7 +63,7 @@ export function CustomerProfilePage() {
         err && typeof err === 'object' && 'response' in err
           ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
           : undefined;
-      setVerificationError(message ?? 'Não foi possível enviar sua foto agora. Tenta de novo.');
+      setVerificationError(message ?? t('profile.photoSendError'));
       setVerificationStep(null);
     } finally {
       setIsSubmittingVerification(false);
@@ -89,13 +91,13 @@ export function CustomerProfilePage() {
   if (!customer) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center max-w-md mx-auto pb-20">
-        <p className="text-gray-500 text-sm">Você ainda não entrou na sua conta.</p>
+        <p className="text-gray-500 text-sm">{t('profile.notLoggedIn')}</p>
         <button
           onClick={() => navigate(`/${slug}/conta-cliente/entrar`)}
           className="mt-4 text-white px-5 py-2.5 rounded-xl text-sm font-semibold"
           style={{ backgroundColor: tenant.primaryColor }}
         >
-          Entrar
+          {t('common.enter')}
         </button>
       <BottomNav slug={slug!} qrCodeToken={activeMesaToken} tenantId={tenant.id} primaryColor={tenant.primaryColor} />
       </div>
@@ -145,7 +147,7 @@ export function CustomerProfilePage() {
             icon={User}
             iconBg="#EDE9FE"
             iconColor="#7C3AED"
-            label="Meus dados"
+            label={t('profile.myData')}
             onClick={() => navigate(`/${slug}/conta-cliente/dados`)}
           />
           {/* Verificação — pedido explícito do Felipe: o botão SOME por
@@ -160,10 +162,10 @@ export function CustomerProfilePage() {
               iconColor={customer.verificationStatus === 'pending' ? '#F59E0B' : '#1D9BF0'}
               label={
                 customer.verificationStatus === 'pending'
-                  ? 'Verificação pendente'
+                  ? t('profile.verificationPending')
                   : customer.verificationStatus === 'rejected'
-                    ? 'Verificação recusada — tentar de novo'
-                    : 'Verificar minha conta'
+                    ? t('profile.verificationRejectedRetry')
+                    : t('profile.verifyAccount')
               }
               disabled={customer.verificationStatus === 'pending'}
               disabledSuffix={false}
@@ -174,42 +176,49 @@ export function CustomerProfilePage() {
             icon={Receipt}
             iconBg="#FEE2E2"
             iconColor="#DC2626"
-            label="Meus pedidos"
+            label={t('profile.myOrders')}
             onClick={() => navigate(`/${slug}/conta-cliente/pedidos`)}
           />
           <MenuRow
             icon={MapPin}
             iconBg="#DBEAFE"
             iconColor="#2563EB"
-            label="Endereço salvo"
+            label={t('profile.savedAddress')}
             onClick={() => navigate(`/${slug}/conta-cliente/endereco`)}
           />
           <MenuRow
             icon={Wallet}
             iconBg="#DCFCE7"
             iconColor="#16A34A"
-            label="Carteira Pix"
+            label={t('profile.pixWallet')}
             onClick={() => navigate(`/${slug}/conta-cliente/carteira-pix`)}
           />
           <MenuRow
             icon={CircleDollarSign}
             iconBg="#3d3846"
             iconColor="#c0bfbc"
-            label="Meu Cashback"
+            label={t('profile.cashback')}
             onClick={() => navigate(`/${slug}/conta-cliente/cashback`)}
           />
           <MenuRow
             icon={Star}
             iconBg="#FEF3C7"
             iconColor="#F59E0B"
-            label="Minhas Avaliações"
+            label={t('profile.myReviews')}
             onClick={() => navigate(`/${slug}/conta-cliente/avaliacoes`)}
+          />
+          <MenuRow
+            icon={Languages}
+            iconBg="#E0F2FE"
+            iconColor="#0284C7"
+            label={t('profile.language')}
+            onClick={() => navigate(`/${slug}/conta-cliente/idioma`)}
           />
         </div>
 
         {customer.verificationStatus === 'rejected' && customer.verificationRejectionReason && (
           <div className="bg-red-50 border border-red-100 rounded-xl px-3.5 py-3 mt-3">
-            <p className="text-xs font-semibold text-red-700 mb-0.5">Sua verificação foi recusada</p>
+            <p className="text-xs font-semibold text-red-700 mb-0.5">{t('profile.verificationRejectedTitle')}</p>
             <p className="text-xs text-red-600">{customer.verificationRejectionReason}</p>
           </div>
         )}
@@ -233,13 +242,13 @@ export function CustomerProfilePage() {
                   size={40}
                 />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-800">Notificações</p>
+                  <p className="text-sm font-medium text-gray-800">{t('profile.notifications')}</p>
                   <p className="text-xs text-gray-400">
                     {push.permission === 'denied'
-                      ? 'Bloqueadas nas configurações do navegador'
+                      ? t('profile.notificationsBlocked')
                       : push.isSubscribed
-                        ? 'Ativadas — toque pra escolher quais tipos'
-                        : 'Avise quando algo importante acontecer'}
+                        ? t('profile.notificationsOn')
+                        : t('profile.notificationsOff')}
                   </p>
                 </div>
                 <ChevronRight size={16} className="text-gray-300 shrink-0" />
@@ -265,7 +274,7 @@ export function CustomerProfilePage() {
             icon={LogOut}
             iconBg="#FEE2E2"
             iconColor="#DC2626"
-            label="Sair da conta"
+            label={t('profile.logout')}
             labelColor="#DC2626"
             onClick={() => setConfirmingLogout(true)}
           />
@@ -277,8 +286,8 @@ export function CustomerProfilePage() {
           modal nunca renderizava — "Sair da conta" parecia morto. */}
       {confirmingLogout && (
         <ConfirmModal
-          message="Tem certeza que deseja sair da sua conta?"
-          confirmLabel="Sim, sair da conta"
+          message={t('profile.logoutConfirm')}
+          confirmLabel={t('profile.logoutConfirmYes')}
           destructive
           onConfirm={() => {
             setConfirmingLogout(false);
@@ -308,7 +317,7 @@ export function CustomerProfilePage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl px-6 py-5 flex items-center gap-3">
             <div className="w-5 h-5 border-2 border-gray-200 border-t-gray-500 rounded-full animate-spin" />
-            <p className="text-sm text-gray-600">Enviando sua foto...</p>
+            <p className="text-sm text-gray-600">{t('profile.sendingPhoto')}</p>
           </div>
         </div>
       )}
@@ -352,8 +361,8 @@ function MenuRow({
     >
       <IconBadge icon={icon} backgroundColor={iconBg} iconColor={iconColor} size={40} />
       <span
-        className={`flex-1 text-left text-sm font-medium ${labelColor ? '' : 'text-[#1F2937] dark:text-gray-100'}`}
-        style={labelColor ? { color: labelColor } : undefined}
+        className="flex-1 text-left text-sm font-medium"
+        style={{ color: labelColor ?? '#1F2937' }}
       >
         {label}
         {disabled && disabledSuffix && <span className="text-xs text-gray-400 font-normal"> · em breve</span>}

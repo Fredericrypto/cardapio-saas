@@ -1,7 +1,8 @@
+import { useI18n } from '../i18n/I18nContext';
 import { Ban, Plus } from 'lucide-react';
 import type { Product } from '../types';
 import { useCart } from '../contexts/CartContext';
-import { CLOSED_MUTED_CLASS, CLOSED_STORE_LABEL } from '../lib/storeStatus';
+import { CLOSED_MUTED_CLASS } from '../lib/storeStatus';
 import { ShareButton } from './ShareButton';
 
 interface ProductCardProps {
@@ -20,6 +21,7 @@ interface ProductCardProps {
 // (McDonald's/FoodyPro): grid denso, cartão compacto, preço riscado
 // quando há promoção.
 export function ProductCard({ product, primaryColor, onClick, storeClosed = false, shareUrl }: ProductCardProps) {
+  const { t } = useI18n();
   const { addItem } = useCart();
   const displayPrice = product.promoPrice ?? product.price;
   const hasPromo = product.promoPrice != null;
@@ -62,21 +64,21 @@ export function ProductCard({ product, primaryColor, onClick, storeClosed = fals
 
         {hasPromo && !isUnavailable && (
           <span className="absolute top-2 left-2 bg-white text-[10px] font-bold px-2 py-0.5 rounded-full text-red-600 shadow-sm">
-            Promoção
+            {t('product.promotion')}
           </span>
         )}
 
         {storeClosed && !isUnavailable ? (
           <span
-            aria-label={`${product.name}: ${CLOSED_STORE_LABEL}`}
-            title={CLOSED_STORE_LABEL}
+            aria-label={`${product.name}: ${t('store.closedEstablishment')}`}
+            title={t('store.closedEstablishment')}
             className="absolute -bottom-3 right-2.5 w-8 h-8 rounded-full flex items-center justify-center text-white shadow-md border-2 border-white bg-gray-400 cursor-not-allowed"
           >
             <Ban size={15} strokeWidth={1.5} />
           </span>
         ) : isUnavailable ? (
           <span
-            aria-label={`${product.name} indisponível`}
+            aria-label={t('product.unavailable', { name: product.name })}
             className="absolute -bottom-3 right-2.5 w-8 h-8 rounded-full flex items-center justify-center text-white shadow-md border-2 border-white bg-gray-400 cursor-not-allowed"
           >
             <Ban size={15} strokeWidth={1.5} />
@@ -84,7 +86,7 @@ export function ProductCard({ product, primaryColor, onClick, storeClosed = fals
         ) : (
         <span
             role="button"
-            aria-label={`Adicionar ${product.name}`}
+            aria-label={t('product.add', { name: product.name })}
             onClick={(e) => {
               e.stopPropagation();
               if (hasRequiredOptions) {

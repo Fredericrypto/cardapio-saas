@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nContext';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useScrollLock } from '../hooks/useScrollLock';
@@ -17,13 +18,14 @@ export function LogoViewer({
   size: string;
   className?: string;
 }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   return (
     <>
       <button
         type="button"
         onClick={() => setOpen(true)}
-        aria-label="Ver logo do restaurante"
+        aria-label={t('logo.viewLogo')}
         className={`${size} -mt-10 rounded-2xl border-4 border-white shadow-md bg-white overflow-hidden shrink-0 ${className}`}
       >
         <LogoImage tenant={tenant} textSize="text-lg" />
@@ -108,6 +110,7 @@ function LogoOverlay({ tenant, onClose }: { tenant: Tenant; onClose: () => void 
 // abre em tela cheia com o mesmo comportamento do logo. Sem foto de capa
 // (só o degradê) não há o que ampliar, então nada é clicável.
 export function BannerViewer({ tenant }: { tenant: Tenant }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   if (!tenant.coverImageUrl) return null;
   return (
@@ -115,7 +118,7 @@ export function BannerViewer({ tenant }: { tenant: Tenant }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        aria-label="Ver banner do restaurante"
+        aria-label={t('logo.viewBanner')}
         className="absolute inset-0 w-full h-full block"
       >
         <img src={tenant.coverImageUrl} alt={tenant.name} className="w-full h-full object-cover" />

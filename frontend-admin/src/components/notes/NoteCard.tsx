@@ -42,7 +42,9 @@ interface Props {
   onToggleMinimize: () => void;
   onDelete: () => void;
   onToggleCheck: (line: number) => void;
-  // Só no mural livre:
+  // Posição na prateleira de fixadas (1 = "Pin 1"); só vem em notas fixadas.
+  pinIndex?: number;
+  // Alça de arraste (mural livre e modo Cards):
   onDragStart?: (e: React.PointerEvent) => void;
   onResizeStart?: (e: React.PointerEvent) => void;
 }
@@ -139,11 +141,19 @@ export function NoteCard(props: Props) {
       {/* ---------- cabeçalho: alça de arraste + ações ---------- */}
       <div
         className={`flex items-center gap-0.5 px-1.5 py-1.5 border-b border-black/10 select-none ${
-          variant === 'free' && !editing ? 'cursor-grab active:cursor-grabbing touch-none' : ''
+          props.onDragStart && !editing ? 'cursor-grab active:cursor-grabbing touch-none' : ''
         }`}
-        onPointerDown={variant === 'free' && !editing ? props.onDragStart : undefined}
+        onPointerDown={props.onDragStart && !editing ? props.onDragStart : undefined}
       >
-        {variant === 'free' && <GripVertical size={15} className="opacity-45 shrink-0 ml-0.5" aria-hidden />}
+        {props.onDragStart && <GripVertical size={15} strokeWidth={1.5} className="opacity-45 shrink-0 ml-0.5" aria-hidden />}
+        {note.isPinned && props.pinIndex != null && (
+          <span
+            className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-black/10 shrink-0"
+            data-testid="pin-slot-label"
+          >
+            Pin {props.pinIndex}
+          </span>
+        )}
         <span className="flex-1 min-w-0 text-[11px] font-semibold px-1 truncate opacity-80">
           {isDraft ? 'Nova anotação' : minimized && note.content.trim() ? note.content.split('\n')[0].replace(/^[-*] (\[[ xX]\] )?/, '') : ''}
         </span>
@@ -167,7 +177,7 @@ export function NoteCard(props: Props) {
               aria-pressed={note.isPinned}
               onClick={props.onTogglePin}
             >
-              {note.isPinned ? <PinOff size={15} /> : <Pin size={15} />}
+              {note.isPinned ? <PinOff size={15} strokeWidth={1.5} /> : <Pin size={15} strokeWidth={1.5} />}
             </button>
             {!editing && (
               <button type="button" className={iconBtn} title="Editar" aria-label="Editar anotação" onClick={props.onStartEdit}>

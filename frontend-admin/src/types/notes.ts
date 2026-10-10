@@ -11,6 +11,8 @@ export interface Note {
   posY: number;
   isPinned: boolean;
   isMinimized: boolean;
+  // Ordem de exibição (menor = primeiro) dentro do grupo fixadas / soltas.
+  sortOrder: number;
   authorName: string;
   lastEditedByName: string | null;
   tag: string;
@@ -23,10 +25,12 @@ export type NoteDraft = Partial<Pick<Note, 'content' | 'color' | 'textColor' | '
 
 export interface LayoutItem {
   id: string;
-  posX: number;
-  posY: number;
+  posX?: number;
+  posY?: number;
   width?: number;
   height?: number;
+  isPinned?: boolean;
+  sortOrder?: number;
 }
 
 export type InternalNotificationType = 'note_created' | 'note_updated' | 'note_deleted';

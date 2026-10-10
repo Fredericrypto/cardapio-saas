@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { MapPin, CheckCircle2, Plus, Trash2 } from 'lucide-react';
 import {
   fetchLocations,
@@ -10,6 +10,8 @@ import {
 import { CurrencyField, MaskedNumberField } from '../components/MaskedNumberField';
 import { formatBrPhoneInput } from '../lib/phoneFormat';
 import type { Location } from '../types';
+import { computeIsOpenNow, isOpen24hNow } from '../lib/schedule';
+import { useMinuteClock } from '../hooks/useMinuteClock';
 
 const WEEK_DAYS: { key: string; label: string }[] = [
   { key: 'segunda', label: 'Segunda' },
@@ -213,6 +215,14 @@ function LocationEditor({
     location.contactPhoneNumber ?? '',
   );
   const [isOpen, setIsOpen] = useState(location.isOpen);
+  // Relógio do painel: o status "pro cliente" é recalculado na virada de cada
+  // minuto (e ao voltar para a aba), com o MESMO cálculo do servidor
+  // (lib/schedule.ts), usando o toggle local — por isso reage na hora ao clique.
+  const nowTick = useMinuteClock();
+  const liveStatus = useMemo(() => {
+    const isOpenNow = computeIsOpenNow(isOpen, location.openingHours, location.scheduleOpenState, nowTick);
+    return { isOpenNow, isOpen24h: isOpenNow && isOpen24hNow(location.openingHours, nowTick) };
+  }, [isOpen, location.openingHours, location.scheduleOpenState, nowTick]);
   // Quando o servidor abre/fecha pelo horário, a tela acompanha.
   useEffect(() => {
     setIsOpen(location.isOpen);
@@ -297,12 +307,21 @@ function LocationEditor({
             manualmente quando quiser — vale até o próximo abre/fecha do horário.
           </p>
           <p
-            className={`text-xs font-semibold mt-1.5 ${
-              location.isOpenNow ? 'text-green-600' : 'text-red-500'
-            }`}
+            className="flex items-center gap-1.5 text-xs font-semibold mt-1.5 text-gray-600"
+            aria-live="polite"
+            data-testid="store-status-line"
           >
-            Status agora, pro cliente: {location.isOpenNow ? 'Aberto' : 'Fechado'}
-            {location.isOpen24h && ' · aberto 24h'}
+            Status agora, pro cliente:
+            <span
+              className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold text-white ${
+                liveStatus.isOpenNow ? 'bg-green-500' : 'bg-red-600'
+              }`}
+            >
+              {liveStatus.isOpenNow ? 'Aberto' : 'Fechado'}
+            </span>
+            {liveStatus.isOpenNow && liveStatus.isOpen24h && (
+              <span className="text-[11px] font-normal text-gray-400">aberto 24h</span>
+            )}
           </p>
           {isTogglingOpen && <p className="text-xs text-gray-400 mt-1">Salvando...</p>}
         </div>

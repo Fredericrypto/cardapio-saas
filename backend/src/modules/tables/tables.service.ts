@@ -1851,6 +1851,10 @@ export class TablesService {
           await this.pushService.sendToCustomer(tenantId, customerId, {
             title: 'Pagamento confirmado',
             body: `Recebemos o pagamento de R$ ${fromCents(totalCents).toFixed(2).replace('.', ',')} da sua conta.`,
+            i18n: {
+              key: 'payment_confirmed_table',
+              params: { amount: `R$ ${fromCents(totalCents).toFixed(2).replace('.', ',')}` },
+            },
             url: `/${tenantForNotify.slug}/conta-cliente/pedidos/mesa/${sessionId}`,
             tag: 'payment_completed',
             groupTag: `payment-session-${sessionId}-${customerId}`,
@@ -1862,6 +1866,10 @@ export class TablesService {
           await this.pushService.sendToCustomer(tenantId, customerId, {
             title: 'Você ganhou cashback',
             body: `R$ ${fromCents(cashbackCents).toFixed(2).replace('.', ',')} caíram na sua carteira desse restaurante. Toque pra ver o saldo.`,
+            i18n: {
+              key: 'cashback_earned',
+              params: { amount: `R$ ${fromCents(cashbackCents).toFixed(2).replace('.', ',')}` },
+            },
             url: `/${tenantForNotify.slug}/conta-cliente/cashback`,
             tag: 'cashback',
             groupTag: `cashback-session-${sessionId}-${customerId}`,
@@ -1877,6 +1885,7 @@ export class TablesService {
         await this.pushService.sendToCustomer(tenantId, customerId, {
           title: 'Como foi seu pedido?',
           body: 'Sua opinião ajuda outros clientes e o restaurante a melhorar. Toque pra avaliar.',
+          i18n: { key: 'review_prompt' },
           url: `/${tenantForNotify.slug}/conta-cliente/pedidos/mesa/${sessionId}?avaliar=${lastOrderIdByOrderer.get(customerId)}`,
           tag: 'review_prompt',
           groupTag: `review-session-${sessionId}-${customerId}`,

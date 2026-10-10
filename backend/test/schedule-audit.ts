@@ -1,7 +1,7 @@
 // Auditoria do horário de funcionamento (fuso de Brasília, 24h, janela que cruza a
 // meia-noite, toggle x horário). Não usa banco.
 import {
-  computeIsOpenNow, getBrazilClock, getMinutesUntilClose, isOpen24hNow, isWithinSchedule,
+  computeIsOpenNow, getBrazilClock, getNextOpening, getMinutesUntilClose, isOpen24hNow, isWithinSchedule,
 } from '../src/common/utils/schedule';
 import { createChecker } from './helpers';
 
@@ -25,4 +25,20 @@ ok(computeIsOpenNow(true, cross, true, at('2026-10-04T06:00:00Z')) === false, 'h
 ok(computeIsOpenNow(true, cross, false, at('2026-10-04T06:00:00Z')) === true, 'admin abriu fora do horário (sem transição pendente): fica aberto');
 ok(computeIsOpenNow(true, cross, null, at('2026-10-04T06:00:00Z')) === false, 'estado desconhecido (loja antiga): comportamento anterior (toggle E horário)');
 ok(computeIsOpenNow(true, null, null, sun11) === true && computeIsOpenNow(false, null, null, sun11) === false, 'sem horário configurado: vale só o toggle');
+
+// Próxima abertura (aviso "Abre Hoje às 18:00" / "Abre Segunda-feira às 09:30").
+const week = Object.fromEntries(days.map((d) => [d, d === 'domingo' ? 'fechado' : '09:30-18:00']));
+const evening = { ...week, domingo: '18:00-23:00' };
+const sunMorning = at('2026-10-04T12:00:00Z'); // domingo 09:00 BRT
+const n1 = getNextOpening(evening, sunMorning);
+ok(n1?.dayKey === 'domingo' && n1.time === '18:00' && n1.daysAhead === 0, 'domingo 09:00, abre 18:00: "Abre Hoje às 18:00"');
+const n2 = getNextOpening(week, sunMorning);
+ok(n2?.dayKey === 'segunda' && n2.time === '09:30' && n2.daysAhead === 1, 'domingo fechado: próxima abertura segunda 09:30');
+const n3 = getNextOpening(week, at('2026-10-05T22:00:00Z')); // segunda 19:00 BRT, já fechou
+ok(n3?.dayKey === 'terca' && n3.time === '09:30', 'segunda 19:00 depois de fechar: terça 09:30');
+const n4 = getNextOpening(only('segunda', '09:30-18:00'), at('2026-10-05T22:00:00Z'));
+ok(n4?.dayKey === 'segunda' && n4.daysAhead === 7, 'único dia aberto já passou: segunda da semana seguinte (7 dias)');
+ok(getNextOpening(Object.fromEntries(days.map((d) => [d, 'fechado'])), sunMorning) === null && getNextOpening(null, sunMorning) === null, 'tudo fechado ou sem horário: sem previsão');
+const n5 = getNextOpening(H24, sun11);
+ok(n5?.dayKey === 'segunda' && n5.time === '00:00' && n5.daysAhead === 1, '24h fechado na mão: próxima abertura é a do dia seguinte 00:00');
 process.exit(finish());

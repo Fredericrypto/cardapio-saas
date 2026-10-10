@@ -1,3 +1,5 @@
+import { useI18n } from '../i18n/I18nContext';
+import { useStoreStatus } from '../hooks/useStoreStatus';
 import { BannerViewer, LogoViewer } from './LogoViewer';
 import { Bike, ChevronLeft } from 'lucide-react';
 import { CLOSED_MUTED_CLASS } from '../lib/storeStatus';
@@ -5,7 +7,6 @@ import type { Tenant, Location } from '../types';
 import { RestaurantInfoPanel } from './RestaurantInfoPanel';
 import { QrScanButton } from './QrScanButton';
 import { ReviewBadge, OpenStatusRow } from './HeaderStatus';
-import { ThemeToggle } from './ThemeToggle';
 
 interface MenuHeaderProps {
   tenant: Tenant;
@@ -19,8 +20,9 @@ interface MenuHeaderProps {
 // cartão de infos de entrega — no lugar da faixa lisa de cor sólida que
 // existia antes.
 export function MenuHeader({ tenant, location, onBack }: MenuHeaderProps) {
+  const { t } = useI18n();
   const deliveryAvailable = location?.latitude != null && location?.longitude != null;
-  const isOpenNow = location?.isOpenNow ?? true;
+  const isOpenNow = useStoreStatus(location).isOpen;
 
   return (
     // Loja fechada: só banner, logo e o card de entrega ficam em tom atenuado.
@@ -43,16 +45,12 @@ export function MenuHeader({ tenant, location, onBack }: MenuHeaderProps) {
         {onBack && (
           <button
             onClick={onBack}
-            aria-label="Voltar"
-            className="absolute top-3.5 left-3.5 w-9 h-9 rounded-full bg-white/90 dark:bg-[#1E1E20]/90 backdrop-blur-sm flex items-center justify-center shadow-sm active:scale-90 transition-transform"
+            aria-label={t('common.back')}
+            className="absolute top-3.5 left-3.5 w-9 h-9 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-sm active:scale-90 transition-transform"
           >
             <ChevronLeft size={20} strokeWidth={1.5} className="text-gray-700" />
           </button>
         )}
-
-        <div className="absolute top-3.5 right-3.5 z-10">
-          <ThemeToggle variant="floating" />
-        </div>
       </div>
 
       {/* Sheet branco flutuante */}
@@ -97,7 +95,7 @@ export function MenuHeader({ tenant, location, onBack }: MenuHeaderProps) {
                 <Bike size={15} strokeWidth={1.5} />
               </span>
               <div>
-                <p className="text-xs font-semibold text-gray-700">Aceita entrega</p>
+                <p className="text-xs font-semibold text-gray-700">{t('menu.acceptsDelivery')}</p>
                 <p className="text-[11px] text-gray-400">
                   Taxa a partir de R$ {location.deliveryFee.toFixed(2).replace('.', ',')}
                 </p>
@@ -105,7 +103,7 @@ export function MenuHeader({ tenant, location, onBack }: MenuHeaderProps) {
             </div>
             {location.minOrderValue > 0 && (
               <div className="text-right shrink-0 pl-2">
-                <p className="text-[11px] text-gray-400">Pedido mínimo</p>
+                <p className="text-[11px] text-gray-400">{t('menu.minimumOrder')}</p>
                 <p className="text-xs font-bold text-gray-700">
                   R$ {location.minOrderValue.toFixed(2).replace('.', ',')}
                 </p>

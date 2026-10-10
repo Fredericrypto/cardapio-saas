@@ -49,6 +49,12 @@ export interface AdminReviewDto {
   response: { responseText: string; staffName: string; createdAt: Date } | null;
 }
 
+export interface AdminItemReviewStatDto extends ReviewSummary {
+  productId: string;
+  productName: string;
+  lastReviewAt: string;
+}
+
 export interface ReviewPromptInfo {
   canReviewRestaurant: boolean;
   items: Array<{ productId: string; productName: string; productImageUrl: string | null }>;
@@ -497,9 +503,15 @@ export class ReviewsService {
   // apagada aparece aqui, sempre, nota baixa inclusa. Inclui os dois
   // tipos juntos (restaurante + item) — o frontend distingue pelo
   // campo `targetType`/`productName`.
-  async findAllForAdmin(tenantId: string, filters: { locationId?: string }): Promise<AdminReviewDto[]> {
+  async findAllForAdmin(
+    tenantId: string,
+    filters: { locationId?: string; targetType?: 'restaurant' | 'item' },
+  ): Promise<AdminReviewDto[]> {
     const where: Record<string, unknown> = { tenantId };
+    // Loja: filtra pelo snapshot `location_id` do pedido avaliado, tanto para
+    // avaliação da loja quanto para a de item (a de item também grava a loja).
     if (filters.locationId) where.locationId = filters.locationId;
+    if (filters.targetType) where.targetType = filters.targetType;
 
     const reviews = await this.reviewRepo.find({
       where,
@@ -551,8 +563,82 @@ export class ReviewsService {
     });
   }
 
-  async getAdminSummary(tenantId: string): Promise<ReviewSummary> {
-    return this.getSummary(tenantId, null);
+  // Resumo do painel: SEMPRE separado por tipo (a nota da loja nunca se mistura
+  // com a dos pratos) e, se informado, restrito a UMA unidade.
+  async getAdminSummary(
+    tenantId: string,
+    filters: { locationId?: string; targetType?: 'restaurant' | 'item' } = {},
+  ): Promise<ReviewSummary> {
+    const targetType = filters.targetType ?? 'restaurant';
+    const qb = this.reviewRepo
+      .createQueryBuilder('r')
+      .select('r.rating', 'rating')
+      .addSelect('COUNT(*)', 'count')
+      .where('r.tenantId = :tenantId', { tenantId })
+      .andWhere('r.targetType = :targetType', { targetType });
+    if (filters.locationId) qb.andWhere('r.locationId = :locationId', { locationId: filters.locationId });
+    const rows = await qb.groupBy('r.rating').getRawMany<{ rating: number; count: string }>();
+    return ReviewsService.summaryFromRows(rows);
+  }
+
+  // Histórico segmentado por prato: nota média, total e distribuição de cada
+  // produto, só das avaliações de ITEM (e só da unidade escolhida, se houver).
+  async getAdminItemBreakdown(tenantId: string, filters: { locationId?: string } = {}): Promise<AdminItemReviewStatDto[]> {
+    const qb = this.reviewRepo
+      .createQueryBuilder('r')
+      .select('r.productId', 'productId')
+      .addSelect('r.rating', 'rating')
+      .addSelect('COUNT(*)', 'count')
+      .addSelect('MAX(r.createdAt)', 'lastReviewAt')
+      .where('r.tenantId = :tenantId', { tenantId })
+      .andWhere('r.targetType = :targetType', { targetType: 'item' })
+      .andWhere('r.productId IS NOT NULL');
+    if (filters.locationId) qb.andWhere('r.locationId = :locationId', { locationId: filters.locationId });
+    const rows = await qb
+      .groupBy('r.productId')
+      .addGroupBy('r.rating')
+      .getRawMany<{ productId: string; rating: number; count: string; lastReviewAt: Date | string }>();
+
+    const byProduct = new Map<string, { rows: { rating: number; count: string }[]; last: number }>();
+    for (const row of rows) {
+      const entry = byProduct.get(row.productId) ?? { rows: [], last: 0 };
+      entry.rows.push({ rating: row.rating, count: row.count });
+      entry.last = Math.max(entry.last, new Date(row.lastReviewAt).getTime());
+      byProduct.set(row.productId, entry);
+    }
+    if (byProduct.size === 0) return [];
+
+    // Nome do prato = snapshot gravado no item do pedido (sobrevive a renomeações).
+    const items = await this.orderItemRepo.find({ where: { productId: In([...byProduct.keys()]) } });
+    const nameByProduct = new Map<string, string>();
+    for (const item of items) if (!nameByProduct.has(item.productId)) nameByProduct.set(item.productId, item.productName);
+
+    return [...byProduct.entries()]
+      .map(([productId, entry]) => ({
+        productId,
+        productName: nameByProduct.get(productId) ?? 'Item',
+        ...ReviewsService.summaryFromRows(entry.rows),
+        lastReviewAt: new Date(entry.last).toISOString(),
+      }))
+      .sort((a, b) => b.count - a.count || b.average - a.average || a.productName.localeCompare(b.productName, 'pt-BR'));
+  }
+
+  private static summaryFromRows(rows: { rating: number; count: string }[]): ReviewSummary {
+    const distribution: RatingDistribution = { ...DEFAULT_EMPTY_DISTRIBUTION };
+    let totalCount = 0;
+    let weightedSum = 0;
+    for (const row of rows) {
+      const rating = Number(row.rating) as 1 | 2 | 3 | 4 | 5;
+      const count = Number(row.count);
+      distribution[rating] = count;
+      totalCount += count;
+      weightedSum += rating * count;
+    }
+    return {
+      average: totalCount > 0 ? Math.round((weightedSum / totalCount) * 100) / 100 : 0,
+      count: totalCount,
+      distribution,
+    };
   }
 
   // Responder é sempre um UPSERT: cria na primeira vez, atualiza se já

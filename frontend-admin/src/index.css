@@ -264,3 +264,15 @@ h1, h2, h3, .font-display {
 .blue-ring-blink {
   animation: blue-ring-blink 1s step-end infinite;
 }
+
+/* Verificação de cupom: o ícone de resultado "pula" ao aparecer (respeita
+   quem pediu menos movimento). */
+@keyframes coupon-pop {
+  0% { transform: scale(0.55); opacity: 0; }
+  60% { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.animate-coupon-pop { animation: coupon-pop 380ms ease-out both; }
+@media (prefers-reduced-motion: reduce) {
+  .animate-coupon-pop { animation: none; }
+}

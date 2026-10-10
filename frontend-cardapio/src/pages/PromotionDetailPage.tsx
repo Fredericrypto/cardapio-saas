@@ -1,7 +1,7 @@
+import { useI18n } from '../i18n/I18nContext';
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Ban, Percent, Clock, Users, Tag, CheckCircle2 } from 'lucide-react';
-import { CLOSED_STORE_HINT, CLOSED_STORE_LABEL } from '../lib/storeStatus';
 import { ShareButton } from '../components/ShareButton';
 import { buildShareUrl } from '../lib/shareLinks';
 import { fetchActivePromotions, fetchCategories, fetchProducts, fetchLocationById } from '../lib/menu-api';
@@ -26,6 +26,7 @@ function formatDateTime(iso: string): string {
 // promoção", igual iFood: o cliente decide usar, nunca é forçado. Some
 // mostra se dá pra usar AGORA com o carrinho atual (ou por que não).
 export function PromotionDetailPage() {
+  const { t } = useI18n();
   const { slug, promotionId, qrCodeToken } = useParams<{
     slug: string;
     promotionId: string;
@@ -251,7 +252,7 @@ export function PromotionDetailPage() {
           </button>
         ) : isStoreClosed && !isApplied ? (
           <div className="flex flex-col gap-1.5">
-            <p className="text-[11px] text-red-500 text-center">{CLOSED_STORE_HINT}</p>
+            <p className="text-[11px] text-red-500 text-center">{t('store.closedHint')}</p>
             <button
               type="button"
               disabled
@@ -259,7 +260,7 @@ export function PromotionDetailPage() {
               className="w-full py-3.5 rounded-xl bg-red-50 text-red-600 border border-red-100 font-semibold flex justify-center items-center gap-2 cursor-not-allowed"
             >
               <Ban size={16} strokeWidth={1.5} />
-              {CLOSED_STORE_LABEL}
+              {t('store.closedEstablishment')}
             </button>
           </div>
         ) : isApplied ? (

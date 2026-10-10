@@ -5,6 +5,10 @@ import { fetchLocations } from '../lib/menu-api';
 import { fetchReviewsSummaryByLocation } from '../lib/customer-api';
 import type { ReviewSummary } from '../lib/customer-api';
 import { useSelectedLocation } from '../hooks/useSelectedLocation';
+import { useMinuteClock } from '../hooks/useMinuteClock';
+import { useI18n } from '../i18n/I18nContext';
+import { getStoreStatus } from '../lib/storeStatus';
+import { formatNextOpening } from '../lib/openingHours';
 import { getActiveMesaToken } from '../lib/seat';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { useTenant } from '../contexts/TenantContext';
@@ -28,6 +32,8 @@ function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): nu
 // deixa escolher manualmente na lista (o GPS pode estar desligado, ou o
 // cliente pode simplesmente preferir outra unidade).
 export function LocationPickerPage() {
+  const { t } = useI18n();
+  const now = useMinuteClock();
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { token: customerToken } = useCustomerAuth();
@@ -129,23 +135,26 @@ export function LocationPickerPage() {
           </div>
         )}
         <h1 className="font-display text-lg font-bold text-gray-900">{tenant.name}</h1>
-        <p className="text-sm text-gray-400 mt-1">Escolha a loja mais perto de você</p>
+        <p className="text-sm text-gray-400 mt-1">{t('location.title')}</p>
       </div>
 
       {gpsStatus === 'locating' && (
         <p className="text-center text-xs text-gray-400 flex items-center justify-center gap-1.5 pb-3">
           <Navigation size={13} className="animate-pulse" />
-          Buscando sua localização...
+          {t('location.searching')}
         </p>
       )}
 
       <div className="px-4 flex flex-col gap-2.5 pb-8">
-        {locations.map((location) => (
+        {locations.map((location) => {
+          const status = getStoreStatus(location, now);
+          const nextOpeningLabel = status.isOpen ? null : formatNextOpening(status.nextOpening, t);
+          return (
           <button
             key={location.id}
             onClick={() => handleSelect(location)}
             className={`w-full bg-white rounded-2xl p-4 flex items-center gap-3 text-left ${
-              !location.isOpenNow ? 'grayscale opacity-60' : ''
+              !status.isOpen ? 'grayscale opacity-60' : ''
             }`}
           >
             <div
@@ -165,11 +174,12 @@ export function LocationPickerPage() {
               <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                 <span
                   className={`text-[11px] font-semibold ${
-                    location.isOpenNow ? 'text-green-600' : 'text-red-500'
+                    status.isOpen ? 'text-green-600' : 'text-red-500'
                   }`}
                 >
-                  {location.isOpenNow ? 'Aberto agora' : 'Fechado'}
+                  {status.isOpen ? t('store.openNow') : t('store.closed')}
                 </span>
+                {nextOpeningLabel && <span className="text-[11px] text-gray-400">· {nextOpeningLabel}</span>}
                 {location.distanceKm != null && (
                   <span className="text-[11px] text-gray-400">
                     · {location.distanceKm.toFixed(1)}km
@@ -197,7 +207,8 @@ export function LocationPickerPage() {
             </div>
             <ChevronRight size={16} className="text-gray-300 shrink-0" />
           </button>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

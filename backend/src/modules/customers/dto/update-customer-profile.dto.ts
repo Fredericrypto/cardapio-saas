@@ -3,6 +3,8 @@ import { ArrayMaxSize, ArrayUnique, IsArray, IsIn, IsOptional, IsString, Matches
 // Lista fechada de pronomes pessoais (ordem canônica = ordem de exibição).
 export const PRONOUN_OPTIONS = ['ela', 'dela', 'elas', 'delas', 'ele', 'dele', 'eles', 'deles'] as const;
 
+import { SUPPORTED_LANGUAGES } from '../../../common/i18n/languages';
+
 const GENDER_OPTIONS = ['masculino', 'feminino', 'outro', 'prefiro_nao_dizer'] as const;
 
 // Todo campo de texto livre aqui tem whitelist de caracteres (nunca
@@ -41,4 +43,9 @@ export class UpdateCustomerProfileDto {
   @ArrayUnique()
   @IsIn(PRONOUN_OPTIONS, { each: true })
   pronouns?: Array<(typeof PRONOUN_OPTIONS)[number]>;
+
+  // Idioma preferido do app e das notificações.
+  @IsOptional()
+  @IsIn(SUPPORTED_LANGUAGES)
+  language?: (typeof SUPPORTED_LANGUAGES)[number];
 }

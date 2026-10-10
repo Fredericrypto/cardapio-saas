@@ -56,17 +56,26 @@ class LayoutItemDto {
   @IsUUID()
   id: string;
 
-  @IsInt() @Min(0) @Max(20000)
-  posX: number;
+  // Posição é opcional: reordenar no modo Cards muda só a ordem, não o lugar no quadro.
+  @IsOptional() @IsInt() @Min(0) @Max(20000)
+  posX?: number;
 
-  @IsInt() @Min(0) @Max(20000)
-  posY: number;
+  @IsOptional() @IsInt() @Min(0) @Max(20000)
+  posY?: number;
 
   @IsOptional() @IsInt() @Min(160) @Max(1200)
   width?: number;
 
   @IsOptional() @IsInt() @Min(48) @Max(1200)
   height?: number;
+
+  // Fixar/desafixar e reordenar chegam junto da posição: um gesto = uma
+  // requisição atômica (nunca fica nota fixada no meio de outra).
+  @IsOptional() @IsBoolean()
+  isPinned?: boolean;
+
+  @IsOptional() @IsInt() @Min(-100000) @Max(100000)
+  sortOrder?: number;
 }
 
 // "Organizar em grade" e arrastes em lote: só posição/tamanho, nunca conteúdo.

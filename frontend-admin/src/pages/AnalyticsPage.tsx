@@ -105,7 +105,11 @@ export function AnalyticsPage() {
           >
             <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
           </button>
-          <ExportMenu data={data} disabled={loading} />
+          <ExportMenu
+            data={data}
+            disabled={loading}
+            locationName={locations.find((l) => l.id === locationId)?.name ?? null}
+          />
           <button
             type="button"
             onClick={() => data && openCalculator(payloadFromSummary(data))}

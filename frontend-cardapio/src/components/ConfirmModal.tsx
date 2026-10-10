@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nContext';
 import { createPortal } from 'react-dom';
 import { useScrollLock } from '../hooks/useScrollLock';
 
@@ -7,7 +8,7 @@ import { useScrollLock } from '../hooks/useScrollLock';
 export function ConfirmModal({
   message,
   confirmLabel,
-  cancelLabel = 'Cancelar',
+  cancelLabel,
   destructive = false,
   onConfirm,
   onCancel,
@@ -20,6 +21,7 @@ export function ConfirmModal({
   onCancel: () => void;
 }) {
   useScrollLock(true);
+  const { t } = useI18n();
   return createPortal(
     <div
       className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-6"
@@ -43,7 +45,7 @@ export function ConfirmModal({
             onClick={onCancel}
             className="py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600"
           >
-            {cancelLabel}
+            {cancelLabel ?? t('common.cancel')}
           </button>
         </div>
       </div>

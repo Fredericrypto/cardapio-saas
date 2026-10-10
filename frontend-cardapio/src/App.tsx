@@ -1,3 +1,4 @@
+import { LanguagePage } from './pages/LanguagePage';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { CartProvider } from './contexts/CartContext';
 import { MenuPage } from './pages/MenuPage';
@@ -220,6 +221,14 @@ function App() {
               element={
                 <RequireCustomerAuth>
                   <MyReviewsPage />
+                </RequireCustomerAuth>
+              }
+            />
+            <Route
+              path="conta-cliente/idioma"
+              element={
+                <RequireCustomerAuth>
+                  <LanguagePage />
                 </RequireCustomerAuth>
               }
             />

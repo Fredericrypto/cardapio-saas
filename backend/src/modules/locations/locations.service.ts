@@ -8,6 +8,7 @@ import { UpdateLocationDto } from './dto/update-location.dto';
 import { GeocodingService } from '../geocoding/geocoding.service';
 import {
   computeIsOpenNow,
+  getNextOpening,
   getMinutesUntilClose,
   isOpen24hNow,
   isWithinSchedule,
@@ -27,6 +28,14 @@ export class LocationsService {
 
   async findAllForTenant(tenantId: string): Promise<Location[]> {
     return this.locationRepo.find({ where: { tenantId }, order: { createdAt: 'ASC' } });
+  }
+
+  // Painel admin: a mesma leitura que o cliente vê (isOpenNow, isOpen24h,
+  // nextOpening...). Sem isso o painel recebia a loja crua, `isOpenNow` vinha
+  // `undefined` e o aviso "Status agora, pro cliente" mostrava sempre "Fechado".
+  async findAllForAdmin(tenantId: string) {
+    const locations = await this.findAllForTenant(tenantId);
+    return locations.map((location) => this.withComputedStatus(location));
   }
 
   // Cardápio público (tela de escolha de loja) — inclui isOpenNow e
@@ -127,12 +136,14 @@ export class LocationsService {
     await this.locationRepo.softDelete(id);
   }
 
-  private withComputedStatus(location: Location) {
+  withComputedStatus(location: Location) {
     const isOpenNow = computeIsOpenNow(location.isOpen, location.openingHours, location.scheduleOpenState);
     const minutesUntilClose = getMinutesUntilClose(isOpenNow, location.openingHours);
     return {
       ...location,
       isOpenNow,
+      // Só faz sentido com a loja fechada: quando ela volta a abrir pela matriz.
+      nextOpening: isOpenNow ? null : getNextOpening(location.openingHours),
       // 24h: o cardápio nunca mostra "fecha em X min".
       isOpen24h: isOpenNow && isOpen24hNow(location.openingHours),
       closingInMinutes:

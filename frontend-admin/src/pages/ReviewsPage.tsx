@@ -1,7 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Star, MessageSquare, Send, User, Check } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { fetchAdminReviews, fetchReviewsSummary, respondToReview, fetchLocations } from '../lib/admin-api';
+import {
+  fetchAdminReviews,
+  fetchItemReviewStats,
+  fetchReviewsSummary,
+  respondToReview,
+  fetchLocations,
+  type ItemReviewStat,
+} from '../lib/admin-api';
 import type { AdminReview, ReviewSummary, Location } from '../types';
 
 function formatDateTime(dateStr: string): string {
@@ -34,29 +41,63 @@ function Stars({ rating, size = 14 }: { rating: number; size?: number }) {
 // PRÓPRIO cliente apagar a dele, do lado do app dele. Nota baixa fica,
 // sempre — a média nunca é maquiada. O único poder de ação do
 // estabelecimento aqui é RESPONDER publicamente.
+type ReviewTab = 'restaurant' | 'item';
+
+const TABS: { id: ReviewTab; label: string; description: string }[] = [
+  {
+    id: 'restaurant',
+    label: 'Avaliações da Loja',
+    description: 'Atendimento, tempo de entrega, embalagem e a experiência geral com o estabelecimento.',
+  },
+  {
+    id: 'item',
+    label: 'Avaliações de Itens / Pratos',
+    description: 'O que os clientes acharam de cada prato ou produto pedido.',
+  },
+];
+
 export function ReviewsPage() {
+  const [tab, setTab] = useState<ReviewTab>('restaurant');
   const [summary, setSummary] = useState<ReviewSummary | null>(null);
   const [reviews, setReviews] = useState<AdminReview[]>([]);
+  const [itemStats, setItemStats] = useState<ItemReviewStat[]>([]);
+  const [productFilter, setProductFilter] = useState<string | null>(null);
   const [locations, setLocations] = useState<Location[]>([]);
   const [locationFilter, setLocationFilter] = useState<string | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
+  useEffect(() => {
+    fetchLocations().then(setLocations).catch(() => setLocations([]));
+  }, []);
+
+  // Cada aba busca SÓ o seu tipo, na unidade escolhida: a nota da loja nunca
+  // mistura com a dos pratos, e trocar de loja refiltra as duas.
   async function load() {
-    const [s, r, locs] = await Promise.all([
-      fetchReviewsSummary(),
-      fetchAdminReviews({ locationId: locationFilter }),
-      fetchLocations(),
-    ]);
-    setSummary(s);
-    setReviews(r);
-    setLocations(locs);
-    setIsLoading(false);
+    setLoadError(false);
+    try {
+      const filters = { locationId: locationFilter, targetType: tab } as const;
+      const [s, r, stats] = await Promise.all([
+        fetchReviewsSummary(filters),
+        fetchAdminReviews(filters),
+        tab === 'item' ? fetchItemReviewStats({ locationId: locationFilter }) : Promise.resolve([] as ItemReviewStat[]),
+      ]);
+      setSummary(s);
+      setReviews(r);
+      setItemStats(stats);
+    } catch {
+      setLoadError(true);
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   useEffect(() => {
-    load();
+    setIsLoading(true);
+    setProductFilter(null);
+    void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [locationFilter]);
+  }, [locationFilter, tab]);
 
   const chartData = useMemo(() => {
     if (!summary) return [];
@@ -66,11 +107,19 @@ export function ReviewsPage() {
     }));
   }, [summary]);
 
+  const visibleReviews = useMemo(() => {
+    if (tab !== 'item' || !productFilter) return reviews;
+    const name = itemStats.find((s) => s.productId === productFilter)?.productName;
+    return name ? reviews.filter((r) => r.productName === name) : reviews;
+  }, [tab, productFilter, reviews, itemStats]);
+
+  const activeTab = TABS.find((t) => t.id === tab)!;
+
   return (
     <div className="p-6 max-w-3xl mx-auto flex flex-col gap-5">
       <div>
         <h1 className="text-xl font-display font-bold flex items-center gap-2">
-          <Star size={22} className="text-amber-500" fill="#F59E0B" />
+          <Star size={22} strokeWidth={1.5} className="text-amber-500" fill="#F59E0B" />
           Avaliações
         </h1>
         <p className="text-sm text-gray-500 mt-0.5">
@@ -79,33 +128,22 @@ export function ReviewsPage() {
         </p>
       </div>
 
-      {summary && (
-        <div className="bg-white border border-gray-100 rounded-xl p-5 flex flex-col sm:flex-row gap-5">
-          <div className="flex flex-col items-center justify-center gap-1 sm:border-r sm:border-gray-100 sm:pr-5 shrink-0">
-            <p className="text-4xl font-bold text-gray-900">
-              {summary.count > 0 ? summary.average.toFixed(1) : '—'}
-            </p>
-            {summary.count > 0 && <Stars rating={Math.round(summary.average)} size={16} />}
-            <p className="text-xs text-gray-400">
-              {summary.count} {summary.count === 1 ? 'avaliação' : 'avaliações'}
-            </p>
-          </div>
-          <div className="flex-1 h-32">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} layout="vertical" margin={{ left: 0, right: 8 }}>
-                <XAxis type="number" hide />
-                <YAxis type="category" dataKey="stars" width={28} tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
-                <Tooltip cursor={{ fill: '#F9FAFB' }} formatter={(v) => [`${v}`, 'avaliações']} />
-                <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={14}>
-                  {chartData.map((entry) => (
-                    <Cell key={entry.stars} fill="#F59E0B" />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      )}
+      <div role="tablist" aria-label="Tipo de avaliação" className="flex gap-1 border-b border-gray-200 dark:border-white/10">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            role="tab"
+            aria-selected={tab === t.id}
+            onClick={() => setTab(t.id)}
+            className={`px-4 py-2.5 text-sm font-semibold -mb-px border-b-2 transition-colors ${
+              tab === t.id ? 'border-gray-900 text-gray-900 dark:border-white dark:text-white' : 'border-transparent text-gray-400'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+      <p className="text-xs text-gray-400 -mt-2">{activeTab.description}</p>
 
       {locations.length > 1 && (
         <div className="flex gap-1.5 flex-wrap">
@@ -131,14 +169,71 @@ export function ReviewsPage() {
         </div>
       )}
 
-      {isLoading && <p className="text-sm text-gray-400 py-8 text-center">Carregando...</p>}
+      {summary && (
+        <div className="bg-white border border-gray-100 rounded-xl p-5 flex flex-col sm:flex-row gap-5">
+          <div className="flex flex-col items-center justify-center gap-1 sm:border-r sm:border-gray-100 sm:pr-5 shrink-0">
+            <p className="text-4xl font-bold text-gray-900">
+              {summary.count > 0 ? summary.average.toFixed(1) : '—'}
+            </p>
+            {summary.count > 0 && <Stars rating={Math.round(summary.average)} size={16} />}
+            <p className="text-xs text-gray-400">
+              {summary.count} {summary.count === 1 ? 'avaliação' : 'avaliações'}
+              {tab === 'item' ? ' de itens' : ' da loja'}
+            </p>
+          </div>
+          <div className="flex-1 h-32">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} layout="vertical" margin={{ left: 0, right: 8 }}>
+                <XAxis type="number" hide />
+                <YAxis type="category" dataKey="stars" width={28} tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
+                <Tooltip cursor={{ fill: '#F9FAFB' }} formatter={(v) => [`${v}`, 'avaliações']} />
+                <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={14}>
+                  {chartData.map((entry) => (
+                    <Cell key={entry.stars} fill="#F59E0B" />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
 
-      {!isLoading && reviews.length === 0 && (
-        <p className="text-sm text-gray-400 py-12 text-center">Nenhuma avaliação por aqui ainda.</p>
+      {tab === 'item' && itemStats.length > 0 && (
+        <div className="bg-white border border-gray-100 rounded-xl overflow-hidden">
+          <p className="px-4 pt-3 pb-2 text-xs font-semibold text-gray-500">Por prato (toque para filtrar os comentários)</p>
+          {itemStats.map((stat) => (
+            <button
+              key={stat.productId}
+              onClick={() => setProductFilter((current) => (current === stat.productId ? null : stat.productId))}
+              aria-pressed={productFilter === stat.productId}
+              className={`w-full flex items-center gap-3 px-4 py-2.5 text-left border-t border-gray-50 ${
+                productFilter === stat.productId ? 'bg-gray-50' : ''
+              }`}
+            >
+              <span className="flex-1 min-w-0 text-sm font-medium text-gray-800 truncate">{stat.productName}</span>
+              <Stars rating={Math.round(stat.average)} size={12} />
+              <span className="text-sm font-bold text-gray-900 w-8 text-right">{stat.average.toFixed(1)}</span>
+              <span className="text-xs text-gray-400 w-20 text-right">
+                {stat.count} {stat.count === 1 ? 'avaliação' : 'avaliações'}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {isLoading && <p className="text-sm text-gray-400 py-8 text-center">Carregando...</p>}
+      {loadError && !isLoading && (
+        <p className="text-sm text-red-500 py-8 text-center">Não foi possível carregar as avaliações. Tente de novo.</p>
+      )}
+
+      {!isLoading && !loadError && visibleReviews.length === 0 && (
+        <p className="text-sm text-gray-400 py-12 text-center">
+          {tab === 'item' ? 'Nenhuma avaliação de prato por aqui ainda.' : 'Nenhuma avaliação da loja por aqui ainda.'}
+        </p>
       )}
 
       <div className="flex flex-col gap-3">
-        {reviews.map((review) => (
+        {visibleReviews.map((review) => (
           <ReviewCard key={review.id} review={review} onChanged={load} />
         ))}
       </div>

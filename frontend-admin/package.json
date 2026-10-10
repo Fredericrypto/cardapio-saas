@@ -8,12 +8,14 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "test:logic": "npx --yes tsx test/historyFilters.test.ts"
+    "test:logic": "npx --yes tsx test/historyFilters.test.ts && npx --yes tsx test/noteLayout.test.ts && npx --yes tsx test/couponQr.test.ts && npx --yes tsx test/analyticsPdf.test.ts"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.2",
     "axios": "^1.18.1",
+    "jsqr": "^1.4.0",
     "lucide-react": "^1.23.0",
+    "pdf-lib": "^1.17.1",
     "qrcode.react": "^4.2.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",

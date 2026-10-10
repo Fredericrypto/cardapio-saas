@@ -27,10 +27,11 @@
     "test:cashback": "ts-node --transpile-only test/cashback-expiry-audit.ts",
     "test:notes": "ts-node --transpile-only test/notes-internal-audit.ts",
     "test:push": "ts-node --transpile-only test/push-real-audit.ts",
+    "test:push-i18n": "ts-node --transpile-only test/push-i18n-audit.ts",
     "test:rbac": "ts-node --transpile-only test/rbac-audit.ts",
     "test:notifications": "ts-node --transpile-only test/notifications-lifecycle-audit.ts",
     "test:backup": "ts-node --transpile-only test/backup-pure-audit.ts && ts-node --transpile-only test/backup-db-audit.ts",
-    "test:all": "npm run test:backup && npm run test:schedule && npm run test:cashback && npm run test:notes && npm run test:push && npm run test:analytics && npm run test:rbac && npm run test:notifications"
+    "test:all": "npm run test:backup && npm run test:schedule && npm run test:cashback && npm run test:notes && npm run test:push && npm run test:push-i18n && npm run test:analytics && npm run test:rbac && npm run test:notifications"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
