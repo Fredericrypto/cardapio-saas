@@ -352,8 +352,8 @@ function MenuRow({
     >
       <IconBadge icon={icon} backgroundColor={iconBg} iconColor={iconColor} size={40} />
       <span
-        className="flex-1 text-left text-sm font-medium"
-        style={{ color: labelColor ?? '#1F2937' }}
+        className={`flex-1 text-left text-sm font-medium ${labelColor ? '' : 'text-[#1F2937] dark:text-gray-100'}`}
+        style={labelColor ? { color: labelColor } : undefined}
       >
         {label}
         {disabled && disabledSuffix && <span className="text-xs text-gray-400 font-normal"> · em breve</span>}

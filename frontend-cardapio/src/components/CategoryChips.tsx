@@ -70,7 +70,7 @@ export function CategoryChips({
       </div>
     </div>
     {hasMoreToRight && (
-      <div className="pointer-events-none absolute right-0 top-0 h-full w-10 flex items-center justify-end pr-1.5 bg-gradient-to-l from-white via-white/90 to-transparent">
+      <div className="pointer-events-none absolute right-0 top-0 h-full w-10 flex items-center justify-end pr-1.5 bg-gradient-to-l from-white via-white/90 to-transparent dark:from-[#1E1E20] dark:via-[#1E1E20]/90 dark:to-transparent">
         <ArrowRight size={14} strokeWidth={2} className="text-gray-400" />
       </div>
     )}
@@ -92,14 +92,15 @@ function Tab({
   primaryColor: string;
 }) {
   const Icon = getCategoryIcon(categoryKey ?? (label === 'Todos' ? 'todos' : null), label);
-  const color = isActive ? '#111827' : '#9CA3AF';
+  const colorClass = isActive
+    ? 'text-[#111827] dark:text-white'
+    : 'text-[#9CA3AF] dark:text-[#8E918F]';
 
   return (
     <button
       onClick={onClick}
-      className="shrink-0 flex flex-col items-center gap-2 px-4 pt-2 pb-2 min-w-[76px] transition-colors active:bg-gray-50 rounded-t-xl"
+      className={`shrink-0 flex flex-col items-center gap-2 px-4 pt-2 pb-2 min-w-[76px] transition-colors active:bg-gray-50 dark:active:bg-[#282A2C] rounded-t-xl ${colorClass}`}
       style={{
-        color,
         borderBottom: isActive ? `2.5px solid ${primaryColor}` : '2.5px solid transparent',
       }}
     >
