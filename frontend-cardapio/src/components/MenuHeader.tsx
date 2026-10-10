@@ -5,6 +5,7 @@ import type { Tenant, Location } from '../types';
 import { RestaurantInfoPanel } from './RestaurantInfoPanel';
 import { QrScanButton } from './QrScanButton';
 import { ReviewBadge, OpenStatusRow } from './HeaderStatus';
+import { ThemeToggle } from './ThemeToggle';
 
 interface MenuHeaderProps {
   tenant: Tenant;
@@ -43,11 +44,15 @@ export function MenuHeader({ tenant, location, onBack }: MenuHeaderProps) {
           <button
             onClick={onBack}
             aria-label="Voltar"
-            className="absolute top-3.5 left-3.5 w-9 h-9 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-sm active:scale-90 transition-transform"
+            className="absolute top-3.5 left-3.5 w-9 h-9 rounded-full bg-white/90 dark:bg-[#1E1E20]/90 backdrop-blur-sm flex items-center justify-center shadow-sm active:scale-90 transition-transform"
           >
             <ChevronLeft size={20} strokeWidth={1.5} className="text-gray-700" />
           </button>
         )}
+
+        <div className="absolute top-3.5 right-3.5 z-10">
+          <ThemeToggle variant="floating" />
+        </div>
       </div>
 
       {/* Sheet branco flutuante */}

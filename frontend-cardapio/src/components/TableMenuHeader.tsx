@@ -5,6 +5,7 @@ import { RestaurantInfoPanel } from './RestaurantInfoPanel';
 import { TableSessionTimer } from './TableSessionTimer';
 import { ReviewBadge, OpenStatusRow } from './HeaderStatus';
 import { ACTION_BUTTON_BASE } from '../lib/uiClasses';
+import { ThemeToggle } from './ThemeToggle';
 
 interface TableMenuHeaderProps {
   tenant: Tenant;
@@ -44,6 +45,10 @@ export function TableMenuHeader({
         }
       >
         <BannerViewer tenant={tenant} />
+
+        <div className="absolute top-3.5 right-3.5 z-10">
+          <ThemeToggle variant="floating" />
+        </div>
       </div>
 
       <div className="relative -mt-6 rounded-t-3xl bg-white px-4 pt-3.5 pb-1 z-10">
