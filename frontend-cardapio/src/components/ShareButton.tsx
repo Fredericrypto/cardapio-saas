@@ -61,8 +61,8 @@ export function ShareButton({ url, title, text, variant = 'overlay', className =
 
   const look =
     variant === 'overlay'
-      ? 'w-9 h-9 bg-white/90 shadow-md'
-      : 'w-7 h-7 bg-white/90 shadow-sm';
+      ? 'w-9 h-9 bg-white/90 dark:bg-[#282A2C]/90 dark:hover:bg-[#38393B] shadow-md'
+      : 'w-7 h-7 bg-white/90 dark:bg-[#282A2C]/90 dark:hover:bg-[#38393B] shadow-sm';
 
   return (
     <>
@@ -75,7 +75,7 @@ export function ShareButton({ url, title, text, variant = 'overlay', className =
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') void share(e);
         }}
-        className={`${look} rounded-full flex items-center justify-center text-gray-700 active:scale-90 transition-transform cursor-pointer ${className}`}
+        className={`${look} rounded-full flex items-center justify-center text-gray-700 dark:text-gray-200 active:scale-90 transition-transform cursor-pointer ${className}`}
       >
         <Share2 size={variant === 'overlay' ? 17 : 14} strokeWidth={1.5} />
       </span>
