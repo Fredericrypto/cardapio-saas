@@ -42,6 +42,9 @@ interface IconProps {
 export function WhatsAppIcon({ size = 22, className }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" className={className}>
+      {/* Miolo branco fixo: o glifo é um recorte transparente do path (evenodd) e,
+          sem isso, mostraria o fundo da página (escuro no tema escuro). */}
+      <circle cx="12" cy="12" r="11" fill="#fff" />
       <path
         fillRule="evenodd"
         fill="#25D366"
@@ -54,6 +57,9 @@ export function WhatsAppIcon({ size = 22, className }: IconProps) {
 export function TelegramIcon({ size = 22, className }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" className={className}>
+      {/* Miolo branco fixo: o glifo é um recorte transparente do path (evenodd) e,
+          sem isso, mostraria o fundo da página (escuro no tema escuro). */}
+      <circle cx="12" cy="12" r="11.5" fill="#fff" />
       <path
         fillRule="evenodd"
         fill="#26A5E4"
@@ -162,6 +168,8 @@ export function YoutubeIcon({ size = 22, className }: IconProps) {
           <stop offset="1" stopColor="#FF1DCF" />
         </linearGradient>
       </defs>
+      {/* Miolo branco fixo atrás do triângulo (recorte transparente do path). */}
+      <rect x="8" y="7" width="9" height="10" fill="#fff" />
       <path
         fillRule="evenodd"
         fill={`url(#${gradId})`}
@@ -253,6 +261,9 @@ export function GmailIcon({ size = 22, className }: IconProps) {
 export function MessengerIcon({ size = 22, className }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" className={className}>
+      {/* Miolo branco fixo: o glifo é um recorte transparente do path (evenodd) e,
+          sem isso, mostraria o fundo da página (escuro no tema escuro). */}
+      <circle cx="12" cy="11.64" r="11" fill="#fff" />
       <path
         fillRule="evenodd"
         fill="#0866FF"
