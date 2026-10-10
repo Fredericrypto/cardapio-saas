@@ -67,7 +67,7 @@ export function ManualAndFormulasModal({ onClose }: { onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Manual do Gestor" onClick={onClose}>
       <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-start justify-between gap-3 p-5 border-b border-gray-100">
+        <div className="flex shrink-0 items-start justify-between gap-3 p-5 border-b border-gray-100">
           <div>
             <h2 className="text-sm font-bold text-gray-900 flex items-center gap-2">
               <BookOpen size={16} strokeWidth={1.5} />
@@ -80,7 +80,7 @@ export function ManualAndFormulasModal({ onClose }: { onClose: () => void }) {
           </button>
         </div>
 
-        <div role="tablist" aria-label="Capítulos do manual" className="flex gap-1.5 overflow-x-auto px-5 py-3 border-b border-gray-100">
+        <div role="tablist" aria-label="Capítulos do manual" className="flex w-full shrink-0 gap-1.5 overflow-x-auto whitespace-nowrap px-5 py-3 border-b border-gray-100 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {TABS.map((t) => (
             <button
               key={t.id}
@@ -88,14 +88,14 @@ export function ManualAndFormulasModal({ onClose }: { onClose: () => void }) {
               role="tab"
               aria-selected={tab === t.id}
               onClick={() => setTab(t.id)}
-              className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap border ${tab === t.id ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+              className={`inline-flex shrink-0 items-center whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-semibold leading-4 border ${tab === t.id ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
             >
               {t.label}
             </button>
           ))}
         </div>
 
-        <div className="p-5 flex flex-col gap-4 overflow-y-auto" role="tabpanel">
+        <div className="min-h-0 flex-1 p-5 flex flex-col gap-4 overflow-y-auto" role="tabpanel">
           {tab === 'inicio' && (
             <>
               <H>Bem-vindo à Calculadora de Gestão</H>

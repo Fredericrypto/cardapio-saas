@@ -308,7 +308,7 @@ export function DashboardPage() {
   };
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-5xl w-full min-w-0 mx-auto">
       <h1 className="font-display text-xl font-bold text-gray-900 mb-6">Painel</h1>
 
       {waiterCalls && waiterCalls.length > 0 && (
@@ -318,17 +318,17 @@ export function DashboardPage() {
             Chamados de garçom pendentes
           </h2>
           {/* Mesma paleta preto/cinza dos cards de mesa (02/10). */}
-          {/* Mesma grade (2 colunas) dos cards de mesa — cada chamado fica
+          {/* Mesma grade (auto-fill, até 2 colunas) dos cards de mesa — cada chamado fica
               com a MESMA largura de uma mesa (03/10). */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,20rem),1fr))] gap-3">
             {waiterCalls.map((call) => (
               <div
                 key={call.id}
-                className="rounded-2xl px-4 py-3 flex items-center justify-between gap-3 text-white"
+                className="min-w-0 overflow-hidden rounded-2xl px-4 py-3 flex flex-wrap items-center justify-between gap-3 text-white"
                 style={{ background: 'linear-gradient(160deg, #27272A 0%, #18181B 55%, #0A0A0B 100%)' }}
               >
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-white">
+                <div className="min-w-0 flex-1 basis-40">
+                  <p className="break-words text-sm font-semibold text-white">
                     {call.tableSession?.table?.number ?? 'Mesa desconhecida'}
                     {call.calledByName ? ` — ${call.calledByName}` : ''}
                   </p>
@@ -341,7 +341,7 @@ export function DashboardPage() {
                 </div>
                 <button
                   onClick={() => handleAttendCall(call.id)}
-                  className="text-xs font-semibold bg-white text-gray-900 px-3 py-1.5 rounded-lg shrink-0"
+                  className="max-w-full whitespace-nowrap text-xs font-semibold bg-white text-gray-900 px-3 py-1.5 rounded-lg"
                 >
                   Marcar como atendido
                 </button>
@@ -361,7 +361,7 @@ export function DashboardPage() {
           Nenhuma mesa ou pedido ativo no momento.
         </p>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,20rem),1fr))] gap-3">
           {groups.map((group) => {
             if (group.kind === 'mesa-ativa') {
               return (
@@ -468,7 +468,7 @@ function OrderRow({
   return (
     <div
       onClick={isNew ? onDismiss : undefined}
-      className={`border-t pt-2.5 first:border-t-0 first:pt-0 ${dark ? 'border-white/10' : 'border-gray-100'} ${
+      className={`min-w-0 border-t pt-2.5 first:border-t-0 first:pt-0 ${dark ? 'border-white/10' : 'border-gray-100'} ${
         isNew
           ? '-mx-2 px-2 pb-2 rounded-lg ring-4 ring-blue-400 blue-ring-blink cursor-pointer'
           : ''
@@ -478,15 +478,15 @@ function OrderRow({
           "Aberta há" da mesa (que é da SESSÃO inteira), aqui é quando
           ESSE pedido em particular foi feito, pra dar pro admin
           acompanhar o ritmo dos pedidos dentro de uma mesa longa. */}
-      <p className={`text-[11px] mb-1 flex items-center gap-1 ${dark ? 'text-gray-500' : 'text-gray-400'}`}>
-        <Clock size={11} />
+      <p className={`text-[11px] mb-1 flex flex-wrap items-center gap-x-1 gap-y-0.5 ${dark ? 'text-gray-500' : 'text-gray-400'}`}>
+        <Clock size={11} className="shrink-0" />
         Pedido feito às{' '}
         {new Date(order.createdAt).toLocaleTimeString('pt-BR', {
           hour: '2-digit',
           minute: '2-digit',
         })}
         {showCustomerName && orderedByName && (
-          <span className={dark ? 'text-gray-400' : 'text-gray-500'}>· {orderedByName}</span>
+          <span className={`min-w-0 break-words ${dark ? 'text-gray-400' : 'text-gray-500'}`}>· {orderedByName}</span>
         )}
       </p>
 
@@ -494,11 +494,11 @@ function OrderRow({
         <div className="mb-1.5 flex flex-col gap-0.5">
           {order.items.map((item) => (
             <div key={item.id}>
-              <p className={`text-xs ${dark ? 'text-gray-300' : 'text-gray-500'}`}>
+              <p className={`break-words text-xs ${dark ? 'text-gray-300' : 'text-gray-500'}`}>
                 {item.quantity}x {item.productName}
               </p>
               {item.selectedOptions && item.selectedOptions.length > 0 && (
-                <p className={`text-[11px] pl-3 ${dark ? 'text-gray-500' : 'text-gray-400'}`}>
+                <p className={`break-words text-[11px] pl-3 ${dark ? 'text-gray-500' : 'text-gray-400'}`}>
                   {item.selectedOptions.map((o) => o.label).join(', ')}
                 </p>
               )}
@@ -514,7 +514,7 @@ function OrderRow({
           }`}
         >
           <Bell size={13} className={`shrink-0 ${dark ? 'text-orange-400' : 'text-orange-600'}`} />
-          <p className={`text-xs font-medium ${dark ? 'text-orange-300' : 'text-orange-800'}`}>
+          <p className={`min-w-0 break-words text-xs font-medium ${dark ? 'text-orange-300' : 'text-orange-800'}`}>
             Cliente chamou o atendente
           </p>
         </div>
@@ -530,7 +530,7 @@ function OrderRow({
             size={13}
             className={`shrink-0 mt-0.5 ${dark ? 'text-amber-400' : 'text-amber-600'}`}
           />
-          <p className={`text-xs ${dark ? 'text-amber-200' : 'text-amber-800'}`}>{order.notes}</p>
+          <p className={`min-w-0 break-words text-xs ${dark ? 'text-amber-200' : 'text-amber-800'}`}>{order.notes}</p>
         </div>
       )}
 
@@ -538,11 +538,11 @@ function OrderRow({
         <div
           className={`mb-1.5 rounded-lg p-2 flex flex-col gap-0.5 ${dark ? 'bg-white/5' : 'bg-gray-50'}`}
         >
-          <p className={`text-xs font-medium ${dark ? 'text-gray-200' : 'text-gray-600'}`}>
+          <p className={`break-words text-xs font-medium ${dark ? 'text-gray-200' : 'text-gray-600'}`}>
             {order.deliveryAddress}
           </p>
           {order.deliveryReferencePoint && (
-            <p className={`text-xs ${dark ? 'text-gray-500' : 'text-gray-400'}`}>
+            <p className={`break-words text-xs ${dark ? 'text-gray-500' : 'text-gray-400'}`}>
               Ref: {order.deliveryReferencePoint}
             </p>
           )}
@@ -571,7 +571,7 @@ function OrderRow({
           }`}
         >
           <Tag size={13} className={`shrink-0 ${dark ? 'text-red-400' : 'text-red-500'}`} />
-          <p className={`text-xs ${dark ? 'text-red-300' : 'text-red-700'}`}>
+          <p className={`min-w-0 break-words text-xs ${dark ? 'text-red-300' : 'text-red-700'}`}>
             {(() => {
               const titles = order.promotionTitlesSnapshot?.length
                 ? order.promotionTitlesSnapshot
@@ -593,7 +593,7 @@ function OrderRow({
           }`}
         >
           <Coins size={13} className={`shrink-0 ${dark ? 'text-amber-400' : 'text-amber-600'}`} />
-          <p className={`text-xs ${dark ? 'text-amber-200' : 'text-amber-800'}`}>
+          <p className={`min-w-0 break-words text-xs ${dark ? 'text-amber-200' : 'text-amber-800'}`}>
             Pago com cashback: R${' '}
             {(Number(order.total) + Number(order.cashbackUsed)).toFixed(2).replace('.', ',')}
             {' → -R$ '}
@@ -611,7 +611,7 @@ function OrderRow({
           }`}
         >
           <Coins size={13} className={`shrink-0 ${dark ? 'text-green-400' : 'text-green-600'}`} />
-          <p className={`text-xs ${dark ? 'text-green-300' : 'text-green-700'}`}>
+          <p className={`min-w-0 break-words text-xs ${dark ? 'text-green-300' : 'text-green-700'}`}>
             Cashback dado ao cliente: +R$ {Number(order.cashbackEarned).toFixed(2).replace('.', ',')}
           </p>
         </div>
@@ -626,8 +626,8 @@ function OrderRow({
       {order.status === 'aguardando_pagamento' && order.pixPayload ? (
         <PixWaitingPanel order={order} actions={actions} />
       ) : (
-        <div className="flex items-center justify-between">
-          <p className={`text-sm font-bold ${dark ? 'text-white' : 'text-gray-900'}`}>
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+          <p className={`min-w-0 break-words text-sm font-bold ${dark ? 'text-white' : 'text-gray-900'}`}>
             R$ {Number(order.total).toFixed(2).replace('.', ',')}
             {order.tipAmount > 0 && (
               <span className={`text-xs font-medium ${dark ? 'text-gray-400' : 'text-gray-400'}`}>
@@ -637,7 +637,7 @@ function OrderRow({
             )}
           </p>
 
-          <div className="flex items-center gap-1.5">
+          <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1.5">
             {/* Pedido do Felipe (17/09): o dropdown de status ("Pendente
                 / Preparando / Pronto") ficava difícil de acompanhar num
                 restaurante cheio, com risco de erro humano por escolher
@@ -648,7 +648,7 @@ function OrderRow({
                 pular ou escolher o status errado. Cancelar continua
                 separado, sempre disponível. */}
             <span
-              className={`text-xs font-semibold px-2.5 py-1.5 rounded-lg ${STATUS_COLORS[order.status]}`}
+              className={`whitespace-nowrap text-xs font-semibold px-2.5 py-1.5 rounded-lg ${STATUS_COLORS[order.status]}`}
             >
               {STATUS_LABELS[order.status]}
             </span>
@@ -667,7 +667,7 @@ function OrderRow({
             {order.status === 'pronto' && order.orderType !== 'mesa' ? (
               <button
                 onClick={() => actions.onConclude(order)}
-                className="px-3 py-1.5 rounded-lg bg-green-500 text-white text-xs font-semibold flex items-center gap-1"
+                className="whitespace-nowrap px-3 py-1.5 rounded-lg bg-green-500 text-white text-xs font-semibold flex items-center gap-1"
               >
                 <Wallet size={13} />
                 Receber pagamento
@@ -676,7 +676,7 @@ function OrderRow({
               nextOrderStatus(order.status) && (
                 <button
                   onClick={() => actions.onStatusChange(order, nextOrderStatus(order.status)!)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 ${
+                  className={`whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 ${
                     dark
                       ? 'bg-white/10 text-white border border-white/10'
                       : 'bg-gray-100 text-gray-700 border border-gray-200'
@@ -745,7 +745,7 @@ function PixWaitingPanel({ order, actions }: { order: Order; actions: OrderActio
 
   return (
     <div className="bg-orange-50 border border-orange-100 rounded-lg p-3 flex flex-col gap-2.5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <p className="text-sm font-bold text-gray-900">
           R$ {(Number(order.total) + Number(order.tipAmount)).toFixed(2).replace('.', ',')}
         </p>
@@ -753,12 +753,14 @@ function PixWaitingPanel({ order, actions }: { order: Order; actions: OrderActio
       </div>
 
       <div className="flex items-center gap-3">
-        <QRCodeSVG value={order.pixPayload!} size={72} />
+        <div className="shrink-0">
+          <QRCodeSVG value={order.pixPayload!} size={72} />
+        </div>
         <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
             <button
               onClick={handleCopy}
-              className="flex items-center gap-1 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg px-2 py-1.5"
+              className="flex max-w-full items-center gap-1 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg px-2 py-1.5"
             >
               <Copy size={12} />
               {copied ? 'Copiado!' : 'Copiar código Pix'}
@@ -771,7 +773,7 @@ function PixWaitingPanel({ order, actions }: { order: Order; actions: OrderActio
               </span>
             )}
           </div>
-          <p className="text-[11px] text-gray-400">
+          <p className="break-words text-[11px] text-gray-400">
             Cliente também vê esse QR no app dele. Confirme só depois de ver o Pix cair no seu
             banco.
           </p>
@@ -781,7 +783,7 @@ function PixWaitingPanel({ order, actions }: { order: Order; actions: OrderActio
       <div className="flex items-center gap-1.5">
         <button
           onClick={() => actions.onConfirmPixPayment?.(order)}
-          className="flex-1 text-xs font-semibold bg-green-600 text-white rounded-lg px-3 py-2"
+          className="min-w-0 flex-1 text-xs font-semibold bg-green-600 text-white rounded-lg px-3 py-2"
         >
           Confirmar pagamento recebido
         </button>
@@ -831,7 +833,7 @@ function ActiveTableCard({
   return (
     <div
       onClick={group.needsAttention ? onDismissAttention : undefined}
-      className={`rounded-2xl p-4 flex flex-col gap-3 text-white ${
+      className={`min-w-0 overflow-hidden rounded-2xl p-4 flex flex-col gap-3 text-white ${
         group.needsAttention ? 'attention-blink cursor-pointer' : ''
       } ${
         isAwaitingClosing
@@ -852,29 +854,29 @@ function ActiveTableCard({
           : {}),
       }}
     >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+        <div className="flex min-w-0 max-w-full flex-wrap items-center gap-x-1.5 gap-y-0.5">
           {group.table?.kind === 'balcao' ? (
-            <Store size={15} className="text-gray-400" />
+            <Store size={15} className="shrink-0 text-gray-400" />
           ) : (
-            <Table2 size={15} className="text-gray-400" />
+            <Table2 size={15} className="shrink-0 text-gray-400" />
           )}
-          <p className="text-sm font-semibold text-white">{group.table?.number ?? 'Mesa'}</p>
+          <p className="min-w-0 break-words text-sm font-semibold text-white">{group.table?.number ?? 'Mesa'}</p>
           {isAwaitingClosing && (
             <span className="text-xs font-semibold text-blue-300">aguardando fechamento</span>
           )}
         </div>
-        <div className="flex gap-1.5 shrink-0">
+        <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1.5">
           <button
             onClick={onViewReceipt}
-            className="text-xs font-semibold bg-white/10 text-gray-200 px-2.5 py-1.5 rounded-lg flex items-center gap-1"
+            className="whitespace-nowrap text-xs font-semibold bg-white/10 text-gray-200 px-2.5 py-1.5 rounded-lg flex items-center gap-1"
           >
             <Receipt size={13} />
             Cupom
           </button>
           <button
             onClick={onCloseAccount}
-            className="text-xs font-semibold bg-white text-gray-900 px-2.5 py-1.5 rounded-lg"
+            className="whitespace-nowrap text-xs font-semibold bg-white text-gray-900 px-2.5 py-1.5 rounded-lg"
           >
             Fechar conta
           </button>
@@ -888,7 +890,7 @@ function ActiveTableCard({
           tratamento (não só esse bloco) e trocar a paleta colorida por
           tons de cinza/preto/branco, com o selo no azul clássico do
           Twitter. */}
-      <div className="rounded-xl bg-white/5 p-3.5 flex flex-col gap-2.5">
+      <div className="min-w-0 rounded-xl bg-white/5 p-3.5 flex flex-col gap-2.5">
         {group.customers.length > 0 ? (
           group.customers.map((c, i) => {
             // Pedidos ativos DESTA pessoa — aparecem logo abaixo dela
@@ -897,9 +899,9 @@ function ActiveTableCard({
             return (
               <div
                 key={`${c.name}-${i}`}
-                className={`flex flex-col gap-2.5 ${i > 0 ? 'pt-3 border-t border-white/10' : ''}`}
+                className={`flex min-w-0 flex-col gap-2.5 ${i > 0 ? 'pt-3 border-t border-white/10' : ''}`}
               >
-                <div className={`flex items-center gap-3 ${c.hasLeft ? 'opacity-50' : ''}`}>
+                <div className={`flex min-w-0 items-center gap-3 ${c.hasLeft ? 'opacity-50' : ''}`}>
                   <div className="relative shrink-0">
                     <span
                       className={`block w-14 h-14 rounded-full overflow-hidden ring-[3px] ring-white/20 shadow-md bg-white/10 flex items-center justify-center ${
@@ -962,7 +964,7 @@ function ActiveTableCard({
                 </div>
 
                 {personOrders.length > 0 ? (
-                  <div className="flex flex-col gap-2.5 pl-3 ml-7 border-l-2 border-white/10">
+                  <div className="flex min-w-0 flex-col gap-2.5 pl-3 ml-7 border-l-2 border-white/10">
                     {personOrders.map((order) => (
                       <OrderRow
                         key={order.id}
@@ -1039,17 +1041,17 @@ function ClosedTableCard({ group, actions }: { group: ClosedTableGroup; actions:
   // verdade, então continuam com a mesma cara do resto.
   return (
     <div
-      className="rounded-2xl p-4 flex flex-col gap-3 text-white"
+      className="min-w-0 overflow-hidden rounded-2xl p-4 flex flex-col gap-3 text-white"
       style={{
         background: 'linear-gradient(160deg, #27272A 0%, #18181B 55%, #0A0A0B 100%)',
       }}
     >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
-          <Table2 size={15} className="text-gray-400" />
-          <p className="text-sm font-semibold text-white">{group.tableNumber}</p>
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+        <div className="flex min-w-0 max-w-full items-center gap-1.5">
+          <Table2 size={15} className="shrink-0 text-gray-400" />
+          <p className="min-w-0 break-words text-sm font-semibold text-white">{group.tableNumber}</p>
         </div>
-        <span className="text-xs font-medium text-gray-300 bg-white/10 px-2 py-0.5 rounded-full">
+        <span className="whitespace-nowrap text-xs font-medium text-gray-300 bg-white/10 px-2 py-0.5 rounded-full">
           conta já paga
         </span>
       </div>
@@ -1091,7 +1093,7 @@ function StandaloneOrderCard({
   return (
     <div
       onClick={needsAttention ? onDismissAttention : undefined}
-      className={`rounded-2xl p-4 flex flex-col gap-3 text-white ${
+      className={`min-w-0 overflow-hidden rounded-2xl p-4 flex flex-col gap-3 text-white ${
         needsAttention ? 'attention-blink cursor-pointer' : ''
       }`}
       style={{
@@ -1106,13 +1108,13 @@ function StandaloneOrderCard({
           : {}),
       }}
     >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
-          <Icon size={15} className="text-gray-400" />
-          <p className="text-sm font-semibold text-white">{label}</p>
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+        <div className="flex min-w-0 max-w-full items-center gap-1.5">
+          <Icon size={15} className="shrink-0 text-gray-400" />
+          <p className="min-w-0 break-words text-sm font-semibold text-white">{label}</p>
         </div>
         <span
-          className={`text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 ${STATUS_COLORS[order.status]}`}
+          className={`whitespace-nowrap text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 ${STATUS_COLORS[order.status]}`}
         >
           {STATUS_LABELS[order.status]}
         </span>
@@ -1134,7 +1136,7 @@ function StandaloneOrderCard({
           mesmo bloco com foto/nome/selo + a barra de "feito há / total"
           equivalente à "Aberta há / Total" da mesa. Sem cliente
           identificado (nome não veio), mostra só a barra de baixo. */}
-      <div className="rounded-xl bg-white/5 p-3.5 flex flex-col gap-2.5">
+      <div className="min-w-0 rounded-xl bg-white/5 p-3.5 flex flex-col gap-2.5">
         {displayName ? (
           <div className="flex items-center gap-3">
             <div className="relative shrink-0">
@@ -1155,7 +1157,7 @@ function StandaloneOrderCard({
             </div>
             <div className="min-w-0">
               <p className="font-bold text-sm text-white leading-tight truncate">{displayName}</p>
-              <p className="text-[11px] text-gray-400 mt-0.5">
+              <p className="truncate text-[11px] text-gray-400 mt-0.5">
                 {order.customerPhone ?? (order.customer?.isVerified ? 'Cliente verificado' : 'Cliente')}
               </p>
             </div>
