@@ -1,3 +1,4 @@
+import { activeDateLocale } from '../i18n/languages';
 import { useI18n } from '../i18n/I18nContext';
 import { ArrowLeft, Star, User } from 'lucide-react';
 import type { PublicReview, ReviewSummary } from '../lib/customer-api';
@@ -10,7 +11,7 @@ import { VerifiedBadge } from './VerifiedBadge';
 // resposta do restaurante.
 
 export function formatReviewDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('pt-BR', {
+  return new Date(dateStr).toLocaleDateString(activeDateLocale(), {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',

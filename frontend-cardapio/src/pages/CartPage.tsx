@@ -1,3 +1,4 @@
+import { activeDateLocale } from '../i18n/languages';
 import { useI18n } from '../i18n/I18nContext';
 import { useStoreStatus } from '../hooks/useStoreStatus';
 import { useScrollLock } from '../hooks/useScrollLock';
@@ -714,7 +715,7 @@ export function CartPage() {
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-gray-900 truncate">{tenant.name}</p>
               <p className="text-xs text-gray-400">
-                {new Date(orderSnapshot.createdAt).toLocaleString('pt-BR', {
+                {new Date(orderSnapshot.createdAt).toLocaleString(activeDateLocale(), {
                   day: '2-digit',
                   month: '2-digit',
                   hour: '2-digit',
@@ -1584,7 +1585,7 @@ export function CartPage() {
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-gray-900 truncate">{tenant.name}</p>
               <p className="text-xs text-gray-400">
-                {new Date().toLocaleString('pt-BR', {
+                {new Date().toLocaleString(activeDateLocale(), {
                   day: '2-digit',
                   month: '2-digit',
                   hour: '2-digit',

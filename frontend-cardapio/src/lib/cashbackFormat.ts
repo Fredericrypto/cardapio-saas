@@ -1,8 +1,12 @@
+import type { TranslationKey } from '../i18n/dictionaries/pt-BR';
+import { activeDateLocale } from '../i18n/languages';
 import type { CashbackHistoryEntry } from './customer-api';
 
 // Fuso oficial do estabelecimento (o projeto inteiro opera em Brasília; não há
 // fuso por loja no cadastro). Toda data/hora do cashback é exibida NELE,
 // independente do fuso do aparelho do cliente.
+type Translate = (key: TranslationKey, params?: Record<string, string | number>) => string;
+
 export const STORE_TIME_ZONE = 'America/Sao_Paulo';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -26,7 +30,8 @@ function parts(date: Date, timeZone: string): Record<string, string> {
 /** "13/09/2026" no fuso do estabelecimento. */
 export function formatDateBR(iso: string, timeZone: string = STORE_TIME_ZONE): string {
   const p = parts(new Date(iso), timeZone);
-  return `${p.day}/${p.month}/${p.year}`;
+  // Ordem da data pelo idioma ativo (en: MM/DD/YYYY). O fuso continua o da loja.
+  return activeDateLocale().startsWith('en') ? `${p.month}/${p.day}/${p.year}` : `${p.day}/${p.month}/${p.year}`;
 }
 
 /** "16:00" no fuso do estabelecimento. */
@@ -36,8 +41,9 @@ export function formatTimeBR(iso: string, timeZone: string = STORE_TIME_ZONE): s
 }
 
 /** "13/09/2026 às 16:00". */
-export function formatDateTimeBR(iso: string, timeZone: string = STORE_TIME_ZONE): string {
-  return `${formatDateBR(iso, timeZone)} às ${formatTimeBR(iso, timeZone)}`;
+export function formatDateTimeBR(iso: string, timeZone: string = STORE_TIME_ZONE, t?: Translate): string {
+  const at = t ? t('cashback.at') : 'às';
+  return `${formatDateBR(iso, timeZone)} ${at} ${formatTimeBR(iso, timeZone)}`;
 }
 
 /** Falta menos de 24h (e ainda não venceu)? */
@@ -56,16 +62,22 @@ export function formatCashbackExpiry(
   expiresAtIso: string,
   now: number = Date.now(),
   timeZone: string = STORE_TIME_ZONE,
+  t?: Translate,
 ): string {
   const ms = new Date(expiresAtIso).getTime() - now;
-  if (ms <= 0) return `Venceu dia ${formatDateTimeBR(expiresAtIso, timeZone)}`;
+  if (ms <= 0) {
+    const date = formatDateTimeBR(expiresAtIso, timeZone, t);
+    return t ? t('cashback.expiredOn', { date }) : `Venceu dia ${date}`;
+  }
   if (ms < DAY_MS) {
     const totalMin = Math.max(1, Math.floor(ms / 60_000));
     const h = Math.floor(totalMin / 60);
     const m = totalMin % 60;
+    if (t) return h > 0 ? t('cashback.expiresInHm', { h, m }) : t('cashback.expiresInM', { m });
     return h > 0 ? `Vence em ${h}h ${m}min` : `Vence em ${m} min`;
   }
-  return `Vence dia ${formatDateTimeBR(expiresAtIso, timeZone)}`;
+  const date = formatDateTimeBR(expiresAtIso, timeZone, t);
+  return t ? t('cashback.expiresOn', { date }) : `Vence dia ${date}`;
 }
 
 export type CashbackTab = 'disponiveis' | 'expirados' | 'utilizados';

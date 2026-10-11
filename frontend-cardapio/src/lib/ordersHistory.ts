@@ -1,3 +1,4 @@
+import { activeDateLocale } from '../i18n/languages';
 import type { CustomerOrderHistoryItem } from './customer-api';
 
 export interface MesaHistoryEntry {
@@ -97,7 +98,7 @@ function dayKeyAndLabel(dateStr: string): { key: string; label: string } {
   if (isSameDay(d, yesterday)) return { key, label: 'Ontem' };
   return {
     key,
-    label: d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }),
+    label: d.toLocaleDateString(activeDateLocale(), { day: '2-digit', month: 'long', year: 'numeric' }),
   };
 }
 
@@ -129,7 +130,7 @@ export function formatMoney(value: number): string {
 }
 
 export function formatDateTime(dateStr: string): string {
-  return new Date(dateStr).toLocaleString('pt-BR', {
+  return new Date(dateStr).toLocaleString(activeDateLocale(), {
     day: '2-digit',
     month: '2-digit',
     hour: '2-digit',

@@ -1,3 +1,4 @@
+import { localizedText } from '../i18n/categoryLabel';
 import { useI18n } from '../i18n/I18nContext';
 import { useEffect, useState } from 'react';
 import { Clock, ChevronRight } from 'lucide-react';
@@ -96,7 +97,7 @@ function PromoCard({
         {promo.imageUrl ? (
           <img
             src={promo.imageUrl}
-            alt={promo.title}
+            alt={localizedText(promo.title)}
             className={`w-full h-full object-cover ${promo.alreadyUsedUp ? 'grayscale' : ''}`}
           />
         ) : (
@@ -116,7 +117,7 @@ function PromoCard({
             variant="chip"
             className="absolute top-2.5 left-2.5"
             url={shareUrl}
-            title={promo.title}
+            title={localizedText(promo.title)}
             text={promo.description ?? undefined}
           />
         )}
@@ -131,11 +132,11 @@ function PromoCard({
         <div className="absolute bottom-0 left-0 right-0 p-3.5 flex items-end justify-between gap-2">
           <div className="min-w-0">
             <p className="font-display font-extrabold text-white text-lg leading-tight drop-shadow-sm">
-              {promo.title}
+              {localizedText(promo.title)}
             </p>
             {promo.description && (
               <p className="text-white/90 text-[11px] mt-0.5 line-clamp-1 leading-snug">
-                {promo.description}
+                {localizedText(promo.description)}
               </p>
             )}
           </div>

@@ -1,3 +1,4 @@
+import { activeDateLocale } from '../i18n/languages';
 import { useI18n } from '../i18n/I18nContext';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { PeopleOrders } from '../components/PeopleOrders';
@@ -335,7 +336,7 @@ export function MyAccountPage() {
               <div className="bg-white/[0.06] border border-white/10 rounded-xl p-3">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-xs font-semibold text-gray-400">
-                  {new Date(order.createdAt).toLocaleTimeString('pt-BR', {
+                  {new Date(order.createdAt).toLocaleTimeString(activeDateLocale(), {
                     hour: '2-digit',
                     minute: '2-digit',
                   })}
@@ -376,7 +377,7 @@ export function MyAccountPage() {
             <div className="border border-gray-100 rounded-xl p-3">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-xs font-semibold text-gray-400">
-                  {new Date(order.createdAt).toLocaleTimeString('pt-BR', {
+                  {new Date(order.createdAt).toLocaleTimeString(activeDateLocale(), {
                     hour: '2-digit',
                     minute: '2-digit',
                   })}

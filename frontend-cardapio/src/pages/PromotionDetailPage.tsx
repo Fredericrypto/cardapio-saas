@@ -1,3 +1,4 @@
+import { activeDateLocale } from '../i18n/languages';
 import { categoryLabel } from '../i18n/categoryLabel';
 import { useI18n } from '../i18n/I18nContext';
 import { useEffect, useState } from 'react';
@@ -16,7 +17,7 @@ import { computePromotionEligibility } from '../lib/promotionEligibility';
 import type { Promotion, Category, Product, Location } from '../types';
 
 function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString('pt-BR', {
+  return new Date(iso).toLocaleString(activeDateLocale(), {
     day: '2-digit',
     month: '2-digit',
     hour: '2-digit',

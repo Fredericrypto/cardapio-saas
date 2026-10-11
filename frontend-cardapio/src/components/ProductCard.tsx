@@ -1,3 +1,4 @@
+import { localizedText } from '../i18n/categoryLabel';
 import { useI18n } from '../i18n/I18nContext';
 import { Ban, Plus } from 'lucide-react';
 import type { Product } from '../types';
@@ -39,7 +40,7 @@ export function ProductCard({ product, primaryColor, onClick, storeClosed = fals
         {product.imageUrl ? (
           <img
             src={product.imageUrl}
-            alt={product.name}
+            alt={localizedText(product.name)}
             className={`w-full h-full object-cover ${isUnavailable ? 'grayscale opacity-60' : storeClosed ? CLOSED_MUTED_CLASS : ''}`}
           />
         ) : (
@@ -53,7 +54,7 @@ export function ProductCard({ product, primaryColor, onClick, storeClosed = fals
             variant="chip"
             className="absolute top-2 right-2"
             url={shareUrl}
-            title={product.name}
+            title={localizedText(product.name)}
             text={product.description ?? undefined}
           />
         )}
@@ -72,7 +73,7 @@ export function ProductCard({ product, primaryColor, onClick, storeClosed = fals
 
         {storeClosed && !isUnavailable ? (
           <span
-            aria-label={`${product.name}: ${t('store.closedEstablishment')}`}
+            aria-label={`${localizedText(product.name)}: ${t('store.closedEstablishment')}`}
             title={t('store.closedEstablishment')}
             className="absolute -bottom-3 right-2.5 w-8 h-8 rounded-full flex items-center justify-center text-white shadow-md border-2 border-white dark:border-[#1E1E20] bg-gray-400 cursor-not-allowed"
           >
@@ -107,11 +108,11 @@ export function ProductCard({ product, primaryColor, onClick, storeClosed = fals
 
       <div className="px-2.5 pt-2.5 pb-3">
         <p className={`font-display font-bold text-[13px] leading-tight line-clamp-1 ${isUnavailable ? 'text-gray-400' : 'text-gray-900'}`}>
-          {product.name}
+          {localizedText(product.name)}
         </p>
         {product.description && (
           <p className="text-[11px] text-gray-400 mt-0.5 line-clamp-1 leading-snug">
-            {product.description}
+            {localizedText(product.description)}
           </p>
         )}
         <div className="flex items-baseline gap-1.5 mt-1.5">

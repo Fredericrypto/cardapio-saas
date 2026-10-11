@@ -1,3 +1,4 @@
+import { activeDateLocale } from '../i18n/languages';
 import { useI18n } from '../i18n/I18nContext';
 import type { Tenant } from '../types';
 import { ReceiptAuthenticityCode } from './ReceiptAuthenticityCode';
@@ -62,7 +63,7 @@ export function ReceiptContentStandalone({
       <div className="flex justify-between">
         <span>{t('receiptContentStandalone.pedido_em')}</span>
         <span>
-          {new Date(order.createdAt).toLocaleString('pt-BR', {
+          {new Date(order.createdAt).toLocaleString(activeDateLocale(), {
             day: '2-digit',
             month: '2-digit',
             hour: '2-digit',

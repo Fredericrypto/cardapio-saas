@@ -1113,15 +1113,15 @@
    "¡Mesero llamado! Alguien irá a tu mesa en instantes."
   ],
   "Ocultar promoções": [
-   "Hide promotions",
+   "Hide deals",
    "Ocultar promociones"
   ],
   "Mostrar promoções": [
-   "Show promotions",
+   "Show deals",
    "Mostrar promociones"
   ],
   "Nenhuma promoção no momento": [
-   "No promotions right now",
+   "No deals right now",
    "Ninguna promoción por ahora"
   ],
   "Nenhum produto encontrado.": [
@@ -1883,6 +1883,159 @@
    "pt": "Whisky",
    "en": "Whisky",
    "es": "Whisky"
+  }
+ },
+ "pronouns": {
+  "ela": {
+   "pt": "ela",
+   "en": "she",
+   "es": "ella"
+  },
+  "dela": {
+   "pt": "dela",
+   "en": "her",
+   "es": "de ella"
+  },
+  "elas": {
+   "pt": "elas",
+   "en": "they",
+   "es": "ellas"
+  },
+  "delas": {
+   "pt": "delas",
+   "en": "them",
+   "es": "de ellas"
+  },
+  "ele": {
+   "pt": "ele",
+   "en": "he",
+   "es": "él"
+  },
+  "dele": {
+   "pt": "dele",
+   "en": "him",
+   "es": "de él"
+  },
+  "eles": {
+   "pt": "eles",
+   "en": "they",
+   "es": "ellos"
+  },
+  "deles": {
+   "pt": "deles",
+   "en": "them",
+   "es": "de ellos"
+  }
+ },
+ "pronounGroups": {
+  "Tradicionais Femininos": {
+   "key": "groupFeminine",
+   "en": "Traditional feminine",
+   "es": "Tradicionales femeninos"
+  },
+  "Tradicionais Masculinos": {
+   "key": "groupMasculine",
+   "en": "Traditional masculine",
+   "es": "Tradicionales masculinos"
+  }
+ },
+ "verificationReasons": {
+  "foto_sem_rosto_claro": {
+   "pt": "A foto não mostra seu rosto claramente",
+   "en": "The photo does not clearly show your face",
+   "es": "La foto no muestra tu rostro con claridad"
+  },
+  "foto_baixa_qualidade": {
+   "pt": "A foto está com qualidade baixa (borrada, escura ou cortada)",
+   "en": "The photo is low quality (blurry, dark or cropped)",
+   "es": "La foto tiene baja calidad (borrosa, oscura o recortada)"
+  },
+  "suspeita_falsificacao": {
+   "pt": "A foto parece ser de uma tela, impressão ou imagem da internet",
+   "en": "The photo looks like a screen, a printout or an internet image",
+   "es": "La foto parece ser de una pantalla, una impresión o una imagen de internet"
+  },
+  "nao_condiz_com_perfil": {
+   "pt": "A foto não parece condizer com o restante do seu perfil",
+   "en": "The photo does not seem to match the rest of your profile",
+   "es": "La foto no parece coincidir con el resto de tu perfil"
+  },
+  "multiplas_pessoas": {
+   "pt": "A foto mostra mais de uma pessoa",
+   "en": "The photo shows more than one person",
+   "es": "La foto muestra a más de una persona"
+  },
+  "outro_motivo": {
+   "pt": "Outro motivo",
+   "en": "Another reason",
+   "es": "Otro motivo"
+  }
+ },
+ "cashback": {
+  "tab.available": {
+   "pt": "Disponíveis",
+   "en": "Available",
+   "es": "Disponibles"
+  },
+  "tab.expired": {
+   "pt": "Expirados",
+   "en": "Expired",
+   "es": "Vencidos"
+  },
+  "tab.used": {
+   "pt": "Utilizados",
+   "en": "Used",
+   "es": "Utilizados"
+  },
+  "earnedOn": {
+   "pt": "ganho em",
+   "en": "earned on",
+   "es": "ganado el"
+  },
+  "at": {
+   "pt": "às",
+   "en": "at",
+   "es": "a las"
+  },
+  "expiresOn": {
+   "pt": "Vence dia {date}",
+   "en": "Expires on {date}",
+   "es": "Vence el {date}"
+  },
+  "expiredOn": {
+   "pt": "Venceu dia {date}",
+   "en": "Expired on {date}",
+   "es": "Venció el {date}"
+  },
+  "expiresInHm": {
+   "pt": "Vence em {h}h {m}min",
+   "en": "Expires in {h}h {m}min",
+   "es": "Vence en {h}h {m}min"
+  },
+  "expiresInM": {
+   "pt": "Vence em {m} min",
+   "en": "Expires in {m} min",
+   "es": "Vence en {m} min"
+  },
+  "desc.order": {
+   "pt": "Cashback do pedido",
+   "en": "Order cashback",
+   "es": "Cashback del pedido"
+  },
+  "desc.loyalty": {
+   "pt": "Prêmio de fidelidade",
+   "en": "Loyalty reward",
+   "es": "Premio de fidelidad"
+  },
+  "desc.adjustment": {
+   "pt": "Ajuste do restaurante",
+   "en": "Restaurant adjustment",
+   "es": "Ajuste del restaurante"
+  },
+  "desc.usedInOrder": {
+   "pt": "Usado em um pedido",
+   "en": "Used on an order",
+   "es": "Usado en un pedido"
   }
  }
 }

@@ -41,3 +41,9 @@ export function storeLanguage(language: AppLanguage): void {
     /* modo privado / storage cheio: a preferência continua valendo na sessão e no servidor */
   }
 }
+
+// Locale das DATAS no idioma ativo (lido do armazenamento a cada chamada, então
+// funciona também em funções fora de componentes). Moeda NUNCA usa isto: R$ fica pt-BR.
+export function activeDateLocale(): string {
+  return LANGUAGE_OPTIONS.find((o) => o.code === readStoredLanguage())?.dateLocale ?? 'pt-BR';
+}

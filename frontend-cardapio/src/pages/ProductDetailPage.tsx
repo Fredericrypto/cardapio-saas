@@ -1,3 +1,4 @@
+import { localizedText } from '../i18n/categoryLabel';
 import { useI18n } from '../i18n/I18nContext';
 import { useStoreStatus } from '../hooks/useStoreStatus';
 import { useEffect, useState } from 'react';
@@ -181,7 +182,7 @@ export function ProductDetailPage() {
         {product.imageUrl ? (
           <img
             src={product.imageUrl}
-            alt={product.name}
+            alt={localizedText(product.name)}
             className={`w-full h-full object-cover ${product.isAvailable === false ? 'grayscale opacity-60' : ''}`}
           />
         ) : (
@@ -206,7 +207,7 @@ export function ProductDetailPage() {
           <ShareButton
             className="absolute top-4 right-4"
             url={buildShareUrl('produto', slug, product.id)}
-            title={product.name}
+            title={localizedText(product.name)}
             text={product.description ?? t('productDetailPage.olha_esse_item_de', { name: tenant.name })}
           />
         )}
@@ -214,11 +215,11 @@ export function ProductDetailPage() {
 
       <div className="p-4">
         <h1 className="font-display text-xl font-bold text-gray-900">
-          {product.name}
+          {localizedText(product.name)}
         </h1>
         {product.description && (
           <p className="text-sm text-gray-500 mt-2 leading-relaxed">
-            {product.description}
+            {localizedText(product.description)}
           </p>
         )}
 

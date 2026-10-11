@@ -1,3 +1,4 @@
+import { formatPronouns, pronounGroupLabel, pronounLabel } from '../i18n/pronouns';
 import { useI18n } from '../i18n/I18nContext';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -166,7 +167,7 @@ export function EditProfilePage() {
           )}
         </button>
         {customer.pronouns && (
-          <p className="mt-2 text-xs text-gray-500">{customer.pronouns}</p>
+          <p className="mt-2 text-xs text-gray-500">{formatPronouns(customer.pronouns, t)}</p>
         )}
         <button
           onClick={() => setShowAvatarPicker(true)}
@@ -227,7 +228,7 @@ export function EditProfilePage() {
             <div className="flex flex-col gap-2.5">
               {PRONOUN_GROUPS.map((group) => (
                 <div key={group.label}>
-                  <p className="text-[11px] font-semibold text-gray-400 mb-1">{group.label}</p>
+                  <p className="text-[11px] font-semibold text-gray-400 mb-1">{pronounGroupLabel(group.label, t)}</p>
                   <div className="grid grid-cols-4 gap-2">
                     {group.options.map((option) => {
                       const on = pronouns.includes(option);
@@ -249,7 +250,7 @@ export function EditProfilePage() {
                               : { borderColor: '#e5e5e5', color: '#666' }
                           }
                         >
-                          {option}
+                          {pronounLabel(option, t)}
                         </button>
                       );
                     })}

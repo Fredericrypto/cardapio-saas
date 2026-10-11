@@ -1,3 +1,5 @@
+import type { TranslationKey } from '../i18n/dictionaries/pt-BR';
+import { cashbackDescriptionLabel } from '../i18n/cashbackDescription';
 import { useI18n } from '../i18n/I18nContext';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -16,10 +18,10 @@ import {
   type CashbackTab,
 } from '../lib/cashbackFormat';
 
-const TABS: { key: CashbackTab; label: string }[] = [
-  { key: 'disponiveis', label: 'Disponíveis' },
-  { key: 'expirados', label: 'Expirados' },
-  { key: 'utilizados', label: 'Utilizados' },
+const TABS: { key: CashbackTab; labelKey: TranslationKey }[] = [
+  { key: 'disponiveis', labelKey: 'cashback.tab.available' },
+  { key: 'expirados', labelKey: 'cashback.tab.expired' },
+  { key: 'utilizados', labelKey: 'cashback.tab.used' },
 ];
 
 function Badge({ tone, children }: { tone: 'green' | 'amber' | 'red' | 'gray'; children: React.ReactNode }) {
@@ -45,14 +47,14 @@ function AvailableCard({ entry, now }: { entry: CashbackHistoryEntry; now: numbe
         <div className="min-w-0">
           <p className="text-lg font-bold text-gray-900">{formatBRL(entry.remainingAmount)}</p>
           <p className="text-xs text-gray-400 truncate">
-            {entry.description} · ganho em {formatDateBR(entry.createdAt)}
+            {cashbackDescriptionLabel(entry.description, t)} · {t('cashback.earnedOn')} {formatDateBR(entry.createdAt)}
           </p>
         </div>
         <Badge tone={urgent ? 'amber' : 'green'}>{urgent ? t('customerCashbackPage.vence_em_breve') : t('customerCashbackPage.valido')}</Badge>
       </div>
       <p className={`text-xs font-semibold flex items-center gap-1.5 ${urgent ? 'text-amber-600' : 'text-gray-500'}`}>
         <CalendarClock size={13} strokeWidth={1.5} className="shrink-0" />
-        {entry.expiresAt ? formatCashbackExpiry(entry.expiresAt, now) : t('customerCashbackPage.sem_data_de_validade')}
+        {entry.expiresAt ? formatCashbackExpiry(entry.expiresAt, now, undefined, t) : t('customerCashbackPage.sem_data_de_validade')}
       </p>
       {Number(entry.remainingAmount) < Number(entry.amount) && (
         <p className="text-[11px] text-gray-400">{t('customerCashbackPage.credito_original_de')} {formatBRL(entry.amount)}</p>
@@ -68,13 +70,13 @@ function ExpiredCard({ entry }: { entry: CashbackHistoryEntry }) {
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-lg font-bold text-gray-400 line-through">{formatBRL(entry.remainingAmount)}</p>
-          <p className="text-xs text-gray-400 truncate">{entry.description}</p>
+          <p className="text-xs text-gray-400 truncate">{cashbackDescriptionLabel(entry.description, t)}</p>
         </div>
         <Badge tone="red">{t('customerCashbackPage.expirado')}</Badge>
       </div>
       <div className="flex flex-col gap-0.5 text-xs text-gray-500">
-        <p>{t('customerCashbackPage.ganho_em')} {formatDateTimeBR(entry.createdAt)}</p>
-        {entry.expiresAt && <p className="font-semibold text-red-500">{t('customerCashbackPage.expirou_dia')} {formatDateTimeBR(entry.expiresAt)}</p>}
+        <p>{t('customerCashbackPage.ganho_em')} {formatDateTimeBR(entry.createdAt, undefined, t)}</p>
+        {entry.expiresAt && <p className="font-semibold text-red-500">{t('customerCashbackPage.expirou_dia')} {formatDateTimeBR(entry.expiresAt, undefined, t)}</p>}
         <p className="text-gray-400">{t('customerCashbackPage.nao_utilizado_credito_original')} {formatBRL(entry.amount)})</p>
       </div>
     </div>
@@ -102,7 +104,7 @@ function UsedCard({ entry }: { entry: CashbackHistoryEntry }) {
         </p>
         <p className="flex items-center gap-1.5">
           <CalendarClock size={13} strokeWidth={1.5} className="shrink-0 text-gray-400" />
-          {formatDateTimeBR(entry.createdAt)}
+          {formatDateTimeBR(entry.createdAt, undefined, t)}
         </p>
         {place && (
           <p className="flex items-center gap-1.5">
@@ -184,19 +186,19 @@ export function CustomerCashbackPage() {
         </div>
 
         <div role="tablist" aria-label={t('customerCashbackPage.categorias_de_cashback')} className="grid grid-cols-3 gap-1 bg-white rounded-xl p-1 border border-gray-100">
-          {TABS.map((t) => {
-            const count = categorized ? categorized[t.key].length : null;
-            const active = tab === t.key;
+          {TABS.map((tabItem) => {
+            const count = categorized ? categorized[tabItem.key].length : null;
+            const active = tab === tabItem.key;
             return (
               <button
-                key={t.key}
+                key={tabItem.key}
                 role="tab"
                 aria-selected={active}
-                onClick={() => setTab(t.key)}
+                onClick={() => setTab(tabItem.key)}
                 className={`py-2 rounded-lg text-xs font-semibold transition-colors ${active ? 'text-white' : 'text-gray-500'}`}
                 style={active ? { backgroundColor: tenant.primaryColor } : undefined}
               >
-                {t.label}
+                {t(tabItem.labelKey)}
                 {count != null && <span className={`ml-1 text-[10px] ${active ? 'opacity-80' : 'text-gray-400'}`}>{count}</span>}
               </button>
             );

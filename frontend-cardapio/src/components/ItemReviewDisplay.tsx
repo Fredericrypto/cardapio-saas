@@ -1,3 +1,4 @@
+import { activeDateLocale } from '../i18n/languages';
 import { useI18n } from '../i18n/I18nContext';
 import { useState } from 'react';
 import { Star, Trash2 } from 'lucide-react';
@@ -71,7 +72,7 @@ export function ItemReviewDisplay({
         )}
       </div>
       <p className="text-[11px] text-gray-400">
-        {new Date(review.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+        {new Date(review.createdAt).toLocaleDateString(activeDateLocale(), { day: '2-digit', month: '2-digit', year: 'numeric' })}
       </p>
 
       {isConfirmingDelete && (

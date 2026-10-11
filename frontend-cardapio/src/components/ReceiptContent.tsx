@@ -1,3 +1,4 @@
+import { activeDateLocale } from '../i18n/languages';
 import { useI18n } from '../i18n/I18nContext';
 import { PersonHeader } from './PeopleOrders';
 import type { Tenant, SessionSummary } from '../types';
@@ -54,8 +55,8 @@ export function ReceiptContent({ tenant, summary }: { tenant: Tenant; summary: S
                 nome do cliente (quem é quem já está em "Mesa compartilhada
                 por"). */}
             <p className="text-[10px] text-gray-400 flex justify-between">
-              <span>{createdAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
-              <span>{createdAt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
+              <span>{createdAt.toLocaleTimeString(activeDateLocale(), { hour: '2-digit', minute: '2-digit' })}</span>
+              <span>{createdAt.toLocaleDateString(activeDateLocale(), { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
             </p>
             {(order.items ?? []).map((item, idx) => (
               <div key={idx} className="flex justify-between">
@@ -129,7 +130,7 @@ export function ReceiptContent({ tenant, summary }: { tenant: Tenant; summary: S
       <div className="flex justify-between">
         <span>{t('receiptContent.aberto_em')}</span>
         <span>
-          {new Date(session.openedAt).toLocaleString('pt-BR', {
+          {new Date(session.openedAt).toLocaleString(activeDateLocale(), {
             day: '2-digit',
             month: '2-digit',
             hour: '2-digit',
@@ -141,7 +142,7 @@ export function ReceiptContent({ tenant, summary }: { tenant: Tenant; summary: S
         <div className="flex justify-between">
           <span>{t('receiptContent.fechado_em')}</span>
           <span>
-            {new Date(session.closedAt).toLocaleString('pt-BR', {
+            {new Date(session.closedAt).toLocaleString(activeDateLocale(), {
               day: '2-digit',
               month: '2-digit',
               hour: '2-digit',

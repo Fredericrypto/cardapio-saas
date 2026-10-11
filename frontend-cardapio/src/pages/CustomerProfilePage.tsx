@@ -1,3 +1,5 @@
+import { verificationReasonLabel } from '../i18n/verificationReason';
+import { formatPronouns } from '../i18n/pronouns';
 import { useI18n } from '../i18n/I18nContext';
 import { useScrollLock } from '../hooks/useScrollLock';
 import { ConfirmModal } from '../components/ConfirmModal';
@@ -129,7 +131,7 @@ export function CustomerProfilePage() {
             <p className="font-display font-bold text-gray-900 truncate">{customer.name}</p>
             {/* Pronomes na frente do nome, estilo Instagram. */}
             {customer.pronouns && (
-              <span className="text-xs font-normal text-gray-400 shrink-0">{customer.pronouns}</span>
+              <span className="text-xs font-normal text-gray-400 shrink-0">{formatPronouns(customer.pronouns, t)}</span>
             )}
           </div>
           {/* "Cliente Verificado" por extenso só aparece aqui e no "Aí na
@@ -219,7 +221,7 @@ export function CustomerProfilePage() {
         {customer.verificationStatus === 'rejected' && customer.verificationRejectionReason && (
           <div className="bg-red-50 border border-red-100 rounded-xl px-3.5 py-3 mt-3">
             <p className="text-xs font-semibold text-red-700 mb-0.5">{t('profile.verificationRejectedTitle')}</p>
-            <p className="text-xs text-red-600">{customer.verificationRejectionReason}</p>
+            <p className="text-xs text-red-600">{verificationReasonLabel(customer.verificationRejectionReason, t)}</p>
           </div>
         )}
         {verificationError && (
