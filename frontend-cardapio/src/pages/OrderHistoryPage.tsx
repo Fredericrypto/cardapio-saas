@@ -1,3 +1,4 @@
+import { orderStatusLabel, sessionStatusLabel } from '../i18n/labels';
 import { useI18n } from '../i18n/I18nContext';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -19,17 +20,17 @@ import {
 } from '../lib/ordersHistory';
 import { BottomNav } from '../components/BottomNav';
 
-const STATUS_STYLES: Record<string, { label: string; bg: string; color: string }> = {
-  aguardando_pagamento: { label: 'Aguardando Pix', bg: '#FFEDD5', color: '#C2410C' },
-  pendente: { label: 'Pendente', bg: '#FEF3C7', color: '#B45309' },
-  confirmado: { label: 'Confirmado', bg: '#DBEAFE', color: '#1D4ED8' },
-  preparando: { label: 'Preparando', bg: '#DBEAFE', color: '#1D4ED8' },
-  pronto: { label: 'Pronto', bg: '#DCFCE7', color: '#15803D' },
-  entregue: { label: 'Entregue', bg: '#DCFCE7', color: '#15803D' },
-  cancelado: { label: 'Cancelado', bg: '#FEE2E2', color: '#B91C1C' },
-  aberta: { label: 'Em aberto', bg: '#DBEAFE', color: '#1D4ED8' },
-  fechamento_solicitado: { label: 'Fechando', bg: '#FEF3C7', color: '#B45309' },
-  fechada: { label: 'Fechada', bg: '#DCFCE7', color: '#15803D' },
+const STATUS_STYLES: Record<string, { bg: string; color: string }> = {
+  aguardando_pagamento: { bg: '#FFEDD5', color: '#C2410C' },
+  pendente: { bg: '#FEF3C7', color: '#B45309' },
+  confirmado: { bg: '#DBEAFE', color: '#1D4ED8' },
+  preparando: { bg: '#DBEAFE', color: '#1D4ED8' },
+  pronto: { bg: '#DCFCE7', color: '#15803D' },
+  entregue: { bg: '#DCFCE7', color: '#15803D' },
+  cancelado: { bg: '#FEE2E2', color: '#B91C1C' },
+  aberta: { bg: '#DBEAFE', color: '#1D4ED8' },
+  fechamento_solicitado: { bg: '#FEF3C7', color: '#B45309' },
+  fechada: { bg: '#DCFCE7', color: '#15803D' },
 };
 
 // Histórico completo — organizado por data (Hoje/Ontem/data), com pedidos
@@ -197,7 +198,6 @@ function DayFolder({
 function MesaCard({ item, onClick }: { item: MesaHistoryEntry; onClick: () => void }) {
   const { t } = useI18n();
   const statusStyle = STATUS_STYLES[item.sessionStatus] ?? {
-    label: item.sessionStatus,
     bg: '#F3F4F6',
     color: '#374151',
   };
@@ -213,7 +213,7 @@ function MesaCard({ item, onClick }: { item: MesaHistoryEntry; onClick: () => vo
           className="text-[11px] font-semibold px-2 py-1 rounded-full"
           style={{ backgroundColor: statusStyle.bg, color: statusStyle.color }}
         >
-          {statusStyle.label}
+          {sessionStatusLabel(item.sessionStatus, t)}
         </span>
       </div>
       <p className="text-xs text-gray-400 mt-1.5">
@@ -238,7 +238,6 @@ function AvulsoCard({
 }) {
   const { t } = useI18n();
   const statusStyle = STATUS_STYLES[item.status] ?? {
-    label: item.status,
     bg: '#F3F4F6',
     color: '#374151',
   };
@@ -257,7 +256,7 @@ function AvulsoCard({
           className="text-[11px] font-semibold px-2 py-1 rounded-full"
           style={{ backgroundColor: statusStyle.bg, color: statusStyle.color }}
         >
-          {statusStyle.label}
+          {orderStatusLabel(item.status, t)}
         </span>
       </div>
       <p className="text-xs text-gray-400 mt-1.5">

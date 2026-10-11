@@ -74,7 +74,7 @@ export function PeopleOrders<T extends { id: string }>({
   orders,
   unassignedOrderIds,
   renderOrder,
-  emptyLabel = 'Ainda não pediu nada',
+  emptyLabel,
   compact = false,
   dark = false,
 }: {
@@ -107,7 +107,7 @@ export function PeopleOrders<T extends { id: string }>({
               }`}
             >
               {personOrders.length === 0 ? (
-                <p className={`text-xs ${dark ? 'text-gray-400' : 'text-gray-400'}`}>{emptyLabel}</p>
+                <p className={`text-xs ${dark ? 'text-gray-400' : 'text-gray-400'}`}>{emptyLabel ?? t('peopleOrders.ainda_nao_pediu_nada')}</p>
               ) : (
                 personOrders.map((o) => <div key={o.id}>{renderOrder(o)}</div>)
               )}

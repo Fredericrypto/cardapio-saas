@@ -1,9 +1,12 @@
+import type { PromoReasonCode } from '../i18n/labels';
 import type { Promotion, CartItem } from '../types';
 
 export interface PromotionEligibility {
   isEligible: boolean;
   discountAmount: number;
   reason: string | null;
+  reasonCode?: PromoReasonCode;
+  reasonParams?: { missing: string; minimum: string };
   // Quantas unidades de CADA linha do carrinho (por lineKey) entram no
   // cálculo do desconto — usado só pra ISOLAR visualmente no carrinho
   // (CartPage) as unidades com cupom das demais. Quando
@@ -76,7 +79,7 @@ export function computePromotionEligibility(
 ): PromotionEligibility {
   const empty = new Map<string, number>();
   if (promo.alreadyUsedUp) {
-    return { isEligible: false, discountAmount: 0, reason: 'Você já usou essa promoção.', discountedQuantityByLine: empty };
+    return { isEligible: false, discountAmount: 0, reason: 'Você já usou essa promoção.', reasonCode: 'already_used', discountedQuantityByLine: empty };
   }
 
   if (cartTotal < promo.minOrderValue) {
@@ -85,6 +88,8 @@ export function computePromotionEligibility(
       isEligible: false,
       discountAmount: 0,
       reason: `Faltam R$ ${missing.toFixed(2).replace('.', ',')} pro pedido mínimo de R$ ${promo.minOrderValue.toFixed(2).replace('.', ',')}.`,
+      reasonCode: 'min_order',
+      reasonParams: { missing: missing.toFixed(2).replace('.', ','), minimum: promo.minOrderValue.toFixed(2).replace('.', ',') },
       discountedQuantityByLine: empty,
     };
   }
@@ -96,6 +101,7 @@ export function computePromotionEligibility(
       isEligible: false,
       discountAmount: 0,
       reason: 'Nenhum item do seu carrinho é elegível pra essa promoção.',
+      reasonCode: 'no_eligible_items',
       discountedQuantityByLine: empty,
     };
   }
@@ -109,7 +115,7 @@ export function computePromotionEligibility(
       : Math.min(promo.discountValue, eligibleTotal);
 
   if (discountAmount <= 0) {
-    return { isEligible: false, discountAmount: 0, reason: 'Essa promoção não gera desconto pra esse carrinho.', discountedQuantityByLine: empty };
+    return { isEligible: false, discountAmount: 0, reason: 'Essa promoção não gera desconto pra esse carrinho.', reasonCode: 'no_discount', discountedQuantityByLine: empty };
   }
 
   return { isEligible: true, discountAmount, reason: null, discountedQuantityByLine };
@@ -119,6 +125,8 @@ export interface SinglePromoResult {
   discountAmount: number;
   isEligible: boolean;
   reason: string | null;
+  reasonCode?: PromoReasonCode;
+  reasonParams?: { missing: string; minimum: string };
 }
 
 export interface MultiPromotionEligibility {
@@ -161,7 +169,7 @@ export function computeSelectedPromotionsEligibility(
 
   for (const promo of promos) {
     if (promo.alreadyUsedUp) {
-      perPromo.set(promo.id, { discountAmount: 0, isEligible: false, reason: 'Você já usou essa promoção.' });
+      perPromo.set(promo.id, { discountAmount: 0, isEligible: false, reason: 'Você já usou essa promoção.', reasonCode: 'already_used' });
       continue;
     }
     if (cartTotal < promo.minOrderValue) {
@@ -170,6 +178,8 @@ export function computeSelectedPromotionsEligibility(
         discountAmount: 0,
         isEligible: false,
         reason: `Faltam R$ ${missing.toFixed(2).replace('.', ',')} pro pedido mínimo de R$ ${promo.minOrderValue.toFixed(2).replace('.', ',')}.`,
+      reasonCode: 'min_order',
+      reasonParams: { missing: missing.toFixed(2).replace('.', ','), minimum: promo.minOrderValue.toFixed(2).replace('.', ',') },
       });
       continue;
     }
@@ -210,6 +220,7 @@ export function computeSelectedPromotionsEligibility(
           promos.length > 1
             ? 'Nenhum item sobrou no carrinho pra esse cupom depois dos outros aplicados.'
             : 'Nenhum item do seu carrinho é elegível pra essa promoção.',
+        reasonCode: promos.length > 1 ? 'no_items_left' : 'no_eligible_items',
       });
       continue;
     }
@@ -224,6 +235,7 @@ export function computeSelectedPromotionsEligibility(
         discountAmount: 0,
         isEligible: false,
         reason: 'Essa promoção não gera desconto pra esse carrinho.',
+        reasonCode: 'no_discount',
       });
       continue;
     }

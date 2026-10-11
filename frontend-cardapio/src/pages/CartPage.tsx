@@ -1,3 +1,4 @@
+import { paymentMethodLabel, promotionReasonLabel } from '../i18n/labels';
 import { activeDateLocale } from '../i18n/languages';
 import { useI18n } from '../i18n/I18nContext';
 import { useStoreStatus } from '../hooks/useStoreStatus';
@@ -29,12 +30,6 @@ const BRAZIL_STATES = [
 ];
 
 const TIP_PERCENT_OPTIONS = [0, 10, 15];
-
-const PAYMENT_METHOD_LABELS: Record<string, string> = {
-  dinheiro: 'Dinheiro',
-  cartao: 'Cartão',
-  pix: 'Pix',
-};
 
 // Só balcão/entrega passam por "pagamento" + "revisão" antes de enviar —
 // mesa não tem essas etapas porque o pagamento de verdade acontece depois,
@@ -776,7 +771,7 @@ export function CartPage() {
               <p>
                 {t('cartPage.pagamento')}{' '}
                 <span className="font-medium text-gray-700">
-                  {PAYMENT_METHOD_LABELS[orderSnapshot.paymentMethod]}
+                  {paymentMethodLabel(orderSnapshot.paymentMethod, t)}
                 </span>{' '}
                 na {orderSnapshot.orderType === 'entrega' ? 'entrega' : 'retirada'}
               </p>
@@ -1171,7 +1166,7 @@ export function CartPage() {
                           <p className="text-xs text-gray-400">
                             {result?.isEligible
                               ? `- R$ ${result.discountAmount.toFixed(2).replace('.', ',')}`
-                              : result?.reason ?? t('cartPage.nao_elegivel_pra_esse')}
+                              : promotionReasonLabel(result, t) ?? t('cartPage.nao_elegivel_pra_esse')}
                           </p>
                         </div>
                       </div>
@@ -1262,7 +1257,7 @@ export function CartPage() {
                         <p className="text-xs text-gray-400">
                           {result?.isEligible
                             ? t('cartPage.economize_r_v0', { v0: result.discountAmount.toFixed(2).replace('.', ',') })
-                            : (result?.reason ?? t('cartPage.nao_elegivel_pra_esse'))}
+                            : (promotionReasonLabel(result, t) ?? t('cartPage.nao_elegivel_pra_esse'))}
                         </p>
                       </div>
                       <div
@@ -1371,7 +1366,7 @@ export function CartPage() {
                   <input
                     value={deliveryStreet}
                     onChange={(e) => updateDeliveryField(setDeliveryStreet)(e.target.value)}
-                    placeholder="Rua"
+                    placeholder={t('address.street')}
                     className="flex-[2] min-w-0 border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none"
                   />
                   <input
@@ -1442,8 +1437,7 @@ export function CartPage() {
                     <p className="text-xs text-gray-500">{t('cartPage.endereco_confirmado')}</p>
                     <p className="text-sm font-medium text-gray-800">{quote.formattedAddress}</p>
                     <p className="text-xs text-gray-500 mt-1">
-                      {t('cartPage.distancia')} {quote.distanceKm.toFixed(1)} km · Taxa de entrega: R${' '}
-                      {quote.fee.toFixed(2).replace('.', ',')}
+                      {t('cart.distanceAndFee', { km: quote.distanceKm.toFixed(1), fee: quote.fee.toFixed(2).replace('.', ',') })}
                     </p>
                     {!quote.precise && (
                       <p className="text-xs text-amber-600 flex items-start gap-1 mt-1">
@@ -1541,7 +1535,7 @@ export function CartPage() {
                     : { borderColor: '#e5e5e5' }
                 }
               >
-                <span>{PAYMENT_METHOD_LABELS[method]}</span>
+                <span>{paymentMethodLabel(method, t)}</span>
                 {paymentMethod === method && (
                   <span
                     className="w-4 h-4 rounded-full"
@@ -1682,7 +1676,7 @@ export function CartPage() {
           <div className="flex flex-col gap-1 border-t border-gray-100 pt-3">
             <p className="text-xs font-semibold text-gray-500">{t('receiptContent.pagamento')}</p>
             <p className="text-sm text-gray-700">
-              {PAYMENT_METHOD_LABELS[paymentMethod]} na {orderType === 'entrega' ? 'entrega' : 'retirada'}
+              {t(orderType === 'entrega' ? 'cart.payOnDelivery' : 'cart.payOnPickup', { method: paymentMethodLabel(paymentMethod, t) })}
             </p>
           </div>
 

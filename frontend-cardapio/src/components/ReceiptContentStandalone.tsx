@@ -1,14 +1,9 @@
+import { orderStatusLabel } from '../i18n/labels';
 import { activeDateLocale } from '../i18n/languages';
 import { useI18n } from '../i18n/I18nContext';
 import type { Tenant } from '../types';
 import { ReceiptAuthenticityCode } from './ReceiptAuthenticityCode';
 import type { CustomerOrderHistoryItem } from '../lib/customer-api';
-
-const STATUS_LABELS: Record<string, string> = {
-  aguardando_pagamento: 'Aguardando Pix',
-  entregue: 'Entregue',
-  cancelado: 'Cancelado',
-};
 
 // Mesmo estilo do ReceiptContent (cupom de mesa), mas pra um pedido
 // avulso (balcão/entrega) — sem sessão, é só o pedido em si. Idêntico ao
@@ -38,7 +33,7 @@ export function ReceiptContentStandalone({
 
       <div className="flex justify-between">
         <span>{label}</span>
-        <span>{STATUS_LABELS[order.status] ?? order.status}</span>
+        <span>{orderStatusLabel(order.status, t)}</span>
       </div>
       {order.customerName && (
         <div className="flex justify-between">

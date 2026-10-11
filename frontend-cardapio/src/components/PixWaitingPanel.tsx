@@ -1,3 +1,5 @@
+import { translate } from '../i18n/translate';
+import { readStoredLanguage } from '../i18n/languages';
 import { useI18n } from '../i18n/I18nContext';
 import { useEffect, useRef, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
@@ -27,7 +29,7 @@ function updateLocalNotification(tenant: Tenant, msRemaining: number) {
   const seconds = Math.floor((msRemaining % 60000) / 1000);
   try {
     new Notification(tenant.name, {
-      body: `Pedido aguardando pagamento Pix • faltam ${minutes}:${seconds.toString().padStart(2, '0')}`,
+      body: translate(readStoredLanguage(), 'pix.countdownNotification', { minutes, seconds: seconds.toString().padStart(2, '0') }),
       icon: tenant.logoUrl ?? undefined,
       badge: tenant.logoUrl ?? undefined,
       tag: 'pix-countdown',

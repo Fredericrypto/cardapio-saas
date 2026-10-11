@@ -1,3 +1,4 @@
+import { paymentMethodLabel } from '../i18n/labels';
 import { useI18n } from '../i18n/I18nContext';
 import { useScrollLock } from '../hooks/useScrollLock';
 import { useEffect, useState } from 'react';
@@ -23,11 +24,7 @@ interface ClosingPaymentSheetProps {
   onConfirm: (payload: RequestClosingPayload) => void;
 }
 
-const PAYMENT_METHODS: { value: 'pix' | 'cartao' | 'dinheiro'; label: string }[] = [
-  { value: 'pix', label: 'Pix' },
-  { value: 'cartao', label: 'Cartão' },
-  { value: 'dinheiro', label: 'Dinheiro' },
-];
+const PAYMENT_METHODS: { value: 'pix' | 'cartao' | 'dinheiro' }[] = [{ value: 'pix' }, { value: 'cartao' }, { value: 'dinheiro' }];
 
 // Folha de pagamento aberta ao tocar em "Solicitar fechamento" (pedido
 // do Felipe, 28/09, revisado no mesmo dia pra NUNCA pular direto pra
@@ -155,7 +152,7 @@ export function ClosingPaymentSheet({
               {balanceCoversAll ? t('closingPaymentSheet.pagar_com_cashback') : t('closingPaymentSheet.usar_meu_cashback')}
               <span className="block text-xs text-gray-400">
                 {balanceCoversAll ? t('closingPaymentSheet.cobre_a_conta_inteira') : ''}
-                Saldo disponível: R$ {cashbackBalance.toFixed(2).replace('.', ',')}
+                {t('closing.availableBalance', { amount: cashbackBalance.toFixed(2).replace('.', ',') })}
               </span>
             </span>
             <span
@@ -190,7 +187,7 @@ export function ClosingPaymentSheet({
                         : { borderColor: '#e5e5e5', color: '#666' }
                     }
                   >
-                    {method.label}
+                    {paymentMethodLabel(method.value, t)}
                   </button>
                 ))}
               </div>

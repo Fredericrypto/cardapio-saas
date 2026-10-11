@@ -1,3 +1,4 @@
+import { addonGroupHint } from '../i18n/labels';
 import { localizedText } from '../i18n/categoryLabel';
 import { useI18n } from '../i18n/I18nContext';
 import { useStoreStatus } from '../hooks/useStoreStatus';
@@ -20,13 +21,6 @@ import { buildShareUrl } from '../lib/shareLinks';
 // realmente livre (0 a 1), "Escolha até N" quando é opcional com teto,
 // "Escolha N" quando é obrigatório com N fixo, ou a faixa quando o
 // mínimo e o máximo são diferentes.
-function groupHint(minSelect: number, maxSelect: number): string | null {
-  if (minSelect === 0 && maxSelect <= 1) return null;
-  if (minSelect === 0) return `Escolha até ${maxSelect}`;
-  if (minSelect === maxSelect) return minSelect === 1 ? 'Escolha 1' : `Escolha ${minSelect}`;
-  return `Escolha de ${minSelect} a ${maxSelect}`;
-}
-
 // Mesma forma que a nota do restaurante aparece no header do cardápio
 // (ver MenuHeader.useReviewSummary) — pedido explícito do Felipe. A nota
 // abre a página completa de avaliações do item (ItemReviewsPage); não há
@@ -275,9 +269,9 @@ export function ProductDetailPage() {
               <div key={group.id}>
                 <div className="flex items-baseline gap-1.5 mb-1">
                   <p className="text-sm font-bold text-gray-900">{group.name}</p>
-                  {groupHint(group.minSelect, group.maxSelect) && (
+                  {addonGroupHint(group.minSelect, group.maxSelect, t) && (
                     <span className="text-xs text-gray-400">
-                      · {groupHint(group.minSelect, group.maxSelect)}
+                      · {addonGroupHint(group.minSelect, group.maxSelect, t)}
                     </span>
                   )}
                 </div>

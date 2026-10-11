@@ -1,3 +1,4 @@
+import { pixKeyTypeLabel } from '../i18n/labels';
 import { useI18n } from '../i18n/I18nContext';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -5,13 +6,6 @@ import { ArrowLeft, Wallet, Trash2, ShieldCheck } from 'lucide-react';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { useTenant } from '../contexts/TenantContext';
 import { setMyCustomerPixKey, removeMyCustomerPixKey } from '../lib/customer-api';
-
-const PIX_KEY_TYPE_LABELS: Record<string, string> = {
-  email: 'E-mail',
-  telefone: 'Celular',
-  cpf: 'CPF',
-  aleatoria: 'Chave aleatória',
-};
 
 // Carteira Pix do CLIENTE — guarda só a chave de destino, pra quando o
 // estabelecimento precisar devolver dinheiro (reembolso de um pedido
@@ -112,7 +106,7 @@ export function CustomerPixWalletPage() {
               {t('customerPixWalletPage.chave_salva')}
             </p>
             <p className="text-sm font-medium text-gray-800">
-              {PIX_KEY_TYPE_LABELS[customer.pixKeyType ?? ''] ?? customer.pixKeyType}
+              {pixKeyTypeLabel(customer.pixKeyType, t)}
             </p>
             <p className="text-sm text-gray-600 mt-0.5">{customer.pixKey}</p>
             <div className="flex gap-2 mt-3">

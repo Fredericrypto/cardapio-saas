@@ -1,3 +1,4 @@
+import { genderLabel } from '../i18n/labels';
 import { formatPronouns, pronounGroupLabel, pronounLabel } from '../i18n/pronouns';
 import { useI18n } from '../i18n/I18nContext';
 import { useEffect, useState } from 'react';
@@ -14,11 +15,11 @@ import { PhoneInput } from '../components/PhoneInput';
 import { isValidBrazilPhone } from '../lib/phone';
 import { AvatarPickerModal } from '../components/AvatarPickerModal';
 
-const GENDER_OPTIONS: { value: string; label: string }[] = [
-  { value: 'masculino', label: 'Masculino' },
-  { value: 'feminino', label: 'Feminino' },
-  { value: 'outro', label: 'Outro' },
-  { value: 'prefiro_nao_dizer', label: 'Prefiro não dizer' },
+const GENDER_OPTIONS: { value: string }[] = [
+  { value: 'masculino' },
+  { value: 'feminino' },
+  { value: 'outro' },
+  { value: 'prefiro_nao_dizer' },
 ];
 
 // Pronomes pessoais (lista fechada, até 2 — ex.: "ela/dela"). A ordem de
@@ -278,7 +279,7 @@ export function EditProfilePage() {
                       : { borderColor: '#e5e5e5', color: '#666' }
                   }
                 >
-                  {option.label}
+                  {genderLabel(option.value, t)}
                 </button>
               ))}
             </div>

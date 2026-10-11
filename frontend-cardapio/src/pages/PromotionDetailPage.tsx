@@ -1,3 +1,4 @@
+import { promotionReasonLabel } from '../i18n/labels';
 import { activeDateLocale } from '../i18n/languages';
 import { categoryLabel } from '../i18n/categoryLabel';
 import { useI18n } from '../i18n/I18nContext';
@@ -242,7 +243,7 @@ export function PromotionDetailPage() {
         ) : (
           eligibility.reason && (
             <div className="bg-orange-50 border border-orange-100 rounded-xl p-3.5 text-sm text-orange-700">
-              {eligibility.reason}
+              {promotionReasonLabel(eligibility, t)}
             </div>
           )
         )}

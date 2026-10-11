@@ -155,7 +155,7 @@ export function SavedAddressPage() {
               <input
                 value={street}
                 onChange={(e) => setStreet(e.target.value)}
-                placeholder="Rua"
+                placeholder={t('address.street')}
                 className="flex-[2] min-w-0 border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none"
               />
               <input

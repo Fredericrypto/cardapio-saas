@@ -1,3 +1,4 @@
+import { orderStatusLabel } from '../i18n/labels';
 import { activeDateLocale } from '../i18n/languages';
 import { useI18n } from '../i18n/I18nContext';
 import { ConfirmModal } from '../components/ConfirmModal';
@@ -14,16 +15,6 @@ import { useTableSessionContext } from '../contexts/TableSessionContext';
 import { useTenant } from '../contexts/TenantContext';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { clearActiveMesaToken, markLeftLocally } from '../lib/seat';
-
-const STATUS_LABELS: Record<string, string> = {
-  aguardando_pagamento: 'Aguardando Pix',
-  pendente: 'Pendente',
-  confirmado: 'Confirmado',
-  preparando: 'Preparando',
-  pronto: 'Pronto',
-  entregue: 'Entregue',
-  cancelado: 'Cancelado',
-};
 
 export function MyAccountPage() {
   const { t } = useI18n();
@@ -123,7 +114,7 @@ export function MyAccountPage() {
       for (const order of newSummary.orders) {
         const before = previous[order.id];
         if (before && before !== order.status) {
-          const label = STATUS_LABELS[order.status] ?? order.status;
+          const label = orderStatusLabel(order.status, t);
           setStatusNotification(t('myAccountPage.seu_pedido_agora_esta', { label: label }));
           setTimeout(() => setStatusNotification(null), 5000);
           break; // mostra uma notificação por vez, mesmo se vários mudarem juntos
@@ -348,7 +339,7 @@ export function MyAccountPage() {
                     color: '#E5E7EB',
                   }}
                 >
-                  {STATUS_LABELS[order.status] ?? order.status}
+                  {orderStatusLabel(order.status, t)}
                 </span>
               </div>
 
@@ -389,7 +380,7 @@ export function MyAccountPage() {
                     color: tenant.primaryColor,
                   }}
                 >
-                  {STATUS_LABELS[order.status] ?? order.status}
+                  {orderStatusLabel(order.status, t)}
                 </span>
               </div>
 
