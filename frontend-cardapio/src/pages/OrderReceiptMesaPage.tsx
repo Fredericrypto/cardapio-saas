@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nContext';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Download } from 'lucide-react';
@@ -17,6 +18,7 @@ import type { MyReview } from '../lib/customer-api';
 // se o cliente e o restaurante precisarem comparar, os dois cupons batem
 // exatamente.
 export function OrderReceiptMesaPage() {
+  const { t } = useI18n();
   const { slug, sessionId } = useParams<{ slug: string; sessionId: string }>();
   const navigate = useNavigate();
   const { tenant } = useTenant();
@@ -66,7 +68,7 @@ export function OrderReceiptMesaPage() {
     try {
       await saveElementAsPng('receipt-print-area', `cupom-mesa-${sessionId}`);
     } catch {
-      setSaveError('Não foi possível salvar o cupom. Tenta de novo em alguns segundos.');
+      setSaveError(t('orderReceiptAvulsoPage.nao_foi_possivel_salvar'));
     } finally {
       setIsSaving(false);
     }
@@ -79,19 +81,19 @@ export function OrderReceiptMesaPage() {
           <ArrowLeft size={20} />
         </button>
         <h1 className="font-display font-bold text-lg">
-          Cupom — {summary?.session.table?.number ?? 'mesa'}
+          {t('orderReceiptAvulsoPage.cupom')} {summary?.session.table?.number ?? 'mesa'}
         </h1>
       </div>
 
       <div className="px-4 py-6">
         {notFound && (
           <p className="text-sm text-gray-400 text-center py-12">
-            Não foi possível carregar esse cupom.
+            {t('orderReceiptAvulsoPage.nao_foi_possivel_carregar')}
           </p>
         )}
 
         {!notFound && !summary && (
-          <p className="text-sm text-gray-400 text-center py-12">Carregando...</p>
+          <p className="text-sm text-gray-400 text-center py-12">{t('common.loading')}</p>
         )}
 
         {summary && (
@@ -131,7 +133,7 @@ export function OrderReceiptMesaPage() {
             className="w-full mt-4 py-3 rounded-xl bg-gray-900 text-white text-sm font-semibold flex items-center justify-center gap-1.5 print:hidden disabled:opacity-60"
           >
             <Download size={15} />
-            {isSaving ? 'Salvando...' : 'Salvar'}
+            {isSaving ? 'Salvando...' : t('editProfilePage.salvar')}
           </button>
         )}
 

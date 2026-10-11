@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nContext';
 import { useScrollLock } from '../hooks/useScrollLock';
 import { useRef, useState } from 'react';
 import { X, Camera } from 'lucide-react';
@@ -25,6 +26,7 @@ export function AvatarPickerModal({
   accentColor,
   isSaving,
 }: AvatarPickerModalProps) {
+  const { t } = useI18n();
   // Com o modal aberto a página atrás NÃO rola (02/10).
   useScrollLock(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -38,11 +40,11 @@ export function AvatarPickerModal({
 
     setError(null);
     if (!ALLOWED_TYPES.includes(file.type)) {
-      setError('Formato inválido. Use JPEG, PNG ou WebP.');
+      setError(t('avatarPickerModal.formato_invalido_use_jpeg'));
       return;
     }
     if (file.size > MAX_SOURCE_SIZE_BYTES) {
-      setError('Imagem muito grande. Escolha uma foto menor.');
+      setError(t('avatarPickerModal.imagem_muito_grande_escolha'));
       return;
     }
 
@@ -69,7 +71,7 @@ export function AvatarPickerModal({
     <div className="fixed inset-0 bg-black/40 flex items-end justify-center z-50">
       <div className="bg-white rounded-t-3xl w-full max-w-md p-5 max-h-[85vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
-          <p className="font-display font-bold text-gray-900">Escolher foto de perfil</p>
+          <p className="font-display font-bold text-gray-900">{t('avatarPickerModal.escolher_foto_de_perfil')}</p>
           <button onClick={onClose}>
             <X size={20} className="text-gray-400" />
           </button>
@@ -82,7 +84,7 @@ export function AvatarPickerModal({
           style={{ backgroundColor: accentColor }}
         >
           <Camera size={16} />
-          Tirar ou escolher foto
+          {t('avatarPickerModal.tirar_ou_escolher_foto')}
         </button>
         <input
           ref={fileInputRef}
@@ -94,7 +96,7 @@ export function AvatarPickerModal({
 
         {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
 
-        <p className="text-xs font-semibold text-gray-500 mt-5 mb-2">Ou escolha um avatar</p>
+        <p className="text-xs font-semibold text-gray-500 mt-5 mb-2">{t('avatarPickerModal.ou_escolha_um_avatar')}</p>
         <div className="grid grid-cols-5 gap-3">
           {PRESET_AVATAR_IDS.map((presetId) => (
             <button

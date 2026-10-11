@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nContext';
 import { PersonHeader } from './PeopleOrders';
 import type { Tenant, SessionSummary } from '../types';
 import { ReceiptAuthenticityCode } from './ReceiptAuthenticityCode';
@@ -6,6 +7,7 @@ import { ReceiptAuthenticityCode } from './ReceiptAuthenticityCode';
 // propósito idêntico, char por char no essencial, pra que se o cliente e
 // o restaurante precisarem comparar recibos, os dois batam exatamente.
 export function ReceiptContent({ tenant, summary }: { tenant: Tenant; summary: SessionSummary }) {
+  const { t } = useI18n();
   const { session, orders, total, tipAmount, grandTotal, cashbackApplied, customerName, participants, people: rawPeople, receiptVerificationCode } = summary;
   // UM avatar por cliente em "Mesa compartilhada por": o mesmo cliente podia
   // vir duas vezes (assento de convidado + conta) — dedupe por id e por nome.
@@ -70,7 +72,7 @@ export function ReceiptContent({ tenant, summary }: { tenant: Tenant; summary: S
             ))}
             {orderCashback > 0 && (
               <p className="text-[10px] text-green-600 text-right">
-                + R$ {orderCashback.toFixed(2).replace('.', ',')} de cashback
+                + R$ {orderCashback.toFixed(2).replace('.', ',')} {t('receiptContent.de_cashback')}
               </p>
             )}
           </div>
@@ -85,13 +87,13 @@ export function ReceiptContent({ tenant, summary }: { tenant: Tenant; summary: S
 
       <div className="border-t border-dashed border-gray-300 my-1" />
 
-      <p className="text-center">*** SIMPLES CONFERÊNCIA DA CONTA ***</p>
-      <p className="text-center">*** NÃO É DOCUMENTO FISCAL ***</p>
+      <p className="text-center">{t('receiptContent.simples_conferencia_da_conta')}</p>
+      <p className="text-center">{t('receiptContent.nao_e_documento_fiscal')}</p>
 
       <div className="border-t border-dashed border-gray-300 my-1" />
 
       <div className="flex justify-between">
-        <span>{session.table?.number ?? 'Mesa'}</span>
+        <span>{session.table?.number ?? t('receiptContent.mesa')}</span>
         <span>{isClosed ? 'FECHADA' : 'EM ABERTO'}</span>
       </div>
       {/* Pedido do Felipe (14/09, sessão I): mostrar TODO MUNDO que
@@ -101,31 +103,31 @@ export function ReceiptContent({ tenant, summary }: { tenant: Tenant; summary: S
           `participants` preenchido. */}
       {people && people.length > 0 ? (
         <div className="flex flex-col gap-1.5">
-          <span>Mesa compartilhada por:</span>
+          <span>{t('receiptContent.mesa_compartilhada_por')}</span>
           {people.map((person) => (
             <PersonHeader key={person.id} person={person} compact />
           ))}
         </div>
       ) : participants.length > 0 ? (
         <div className="flex flex-col gap-0.5">
-          <span>Mesa compartilhada por:</span>
+          <span>{t('receiptContent.mesa_compartilhada_por')}</span>
           {participants.map((p, idx) => (
             <div key={idx} className="flex justify-between pl-2">
               <span>{p.name}</span>
-              <span className="text-[10px] text-gray-400">{p.isOpener ? 'abriu a mesa' : ''}</span>
+              <span className="text-[10px] text-gray-400">{p.isOpener ? t('receiptContent.abriu_a_mesa') : ''}</span>
             </div>
           ))}
         </div>
       ) : (
         customerName && (
           <div className="flex justify-between">
-            <span>Cliente</span>
+            <span>{t('receiptContent.cliente')}</span>
             <span>{customerName}</span>
           </div>
         )
       )}
       <div className="flex justify-between">
-        <span>Aberto em</span>
+        <span>{t('receiptContent.aberto_em')}</span>
         <span>
           {new Date(session.openedAt).toLocaleString('pt-BR', {
             day: '2-digit',
@@ -137,7 +139,7 @@ export function ReceiptContent({ tenant, summary }: { tenant: Tenant; summary: S
       </div>
       {isClosed && session.closedAt && (
         <div className="flex justify-between">
-          <span>Fechado em</span>
+          <span>{t('receiptContent.fechado_em')}</span>
           <span>
             {new Date(session.closedAt).toLocaleString('pt-BR', {
               day: '2-digit',
@@ -153,7 +155,7 @@ export function ReceiptContent({ tenant, summary }: { tenant: Tenant; summary: S
 
       {/* Lista simples dos pedidos (itens, hora e data) — sem repetir foto/nome. */}
       {orders.length === 0 ? (
-        <p className="text-center text-gray-400">Sem pedidos</p>
+        <p className="text-center text-gray-400">{t('receiptContent.sem_pedidos')}</p>
       ) : (
         orders.map((order) => <div key={order.id}>{renderOrder(order)}</div>)
       )}
@@ -161,43 +163,43 @@ export function ReceiptContent({ tenant, summary }: { tenant: Tenant; summary: S
       <div className="border-t border-dashed border-gray-300 my-1" />
 
       <div className="flex justify-between">
-        <span>Subtotal</span>
+        <span>{t('closingPaymentSheet.subtotal')}</span>
         <span className="whitespace-nowrap pl-3 shrink-0">R$ {total.toFixed(2).replace('.', ',')}</span>
       </div>
       {discountTotal > 0 && (
         <div className="flex justify-between text-red-600">
           <span>
-            Desconto aplicado{promotionTitles.length > 0 ? ` (${promotionTitles.join(', ')})` : ''}
-            <span className="block text-[10px] text-gray-400">já refletido no subtotal</span>
+            {t('receiptContent.desconto_aplicado')}{promotionTitles.length > 0 ? ` (${promotionTitles.join(', ')})` : ''}
+            <span className="block text-[10px] text-gray-400">{t('receiptContent.ja_refletido_no_subtotal')}</span>
           </span>
           <span className="whitespace-nowrap pl-3 shrink-0">- R$ {discountTotal.toFixed(2).replace('.', ',')}</span>
         </div>
       )}
       {cashbackUsedTotal > 0 && (
         <div className="flex justify-between text-red-600">
-          <span>Cashback usado</span>
+          <span>{t('receiptContent.cashback_usado')}</span>
           <span className="whitespace-nowrap pl-3 shrink-0">- R$ {cashbackUsedTotal.toFixed(2).replace('.', ',')}</span>
         </div>
       )}
       {tipAmount > 0 && (
         <div className="flex justify-between">
-          <span>Gorjeta</span>
+          <span>{t('closingPaymentSheet.gorjeta')}</span>
           <span className="whitespace-nowrap pl-3 shrink-0">R$ {tipAmount.toFixed(2).replace('.', ',')}</span>
         </div>
       )}
       {cashbackApplied > 0 && (
         <div className="flex justify-between text-red-600">
-          <span>Cashback usado no fechamento</span>
+          <span>{t('receiptContent.cashback_usado_no_fechamento')}</span>
           <span className="whitespace-nowrap pl-3 shrink-0">- R$ {cashbackApplied.toFixed(2).replace('.', ',')}</span>
         </div>
       )}
       <div className="flex justify-between font-bold text-sm">
-        <span>TOTAL</span>
+        <span>{t('receiptContent.total')}</span>
         <span className="whitespace-nowrap pl-3 shrink-0">R$ {grandTotal.toFixed(2).replace('.', ',')}</span>
       </div>
       {cashbackEarnedTotal > 0 && (
         <div className="flex justify-between text-green-600 text-[11px]">
-          <span>Cashback recebido nesse pedido</span>
+          <span>{t('receiptContent.cashback_recebido_nesse_pedido')}</span>
           <span>+ R$ {cashbackEarnedTotal.toFixed(2).replace('.', ',')}</span>
         </div>
       )}
@@ -206,17 +208,17 @@ export function ReceiptContent({ tenant, summary }: { tenant: Tenant; summary: S
         <>
           <div className="border-t border-dashed border-gray-300 my-1" />
           <div className="flex justify-between">
-            <span>Pagamento</span>
+            <span>{t('receiptContent.pagamento')}</span>
             <span className="capitalize">{session.paymentMethod}</span>
           </div>
           {session.paymentMethod === 'dinheiro' && session.amountReceived != null && (
             <>
               <div className="flex justify-between">
-                <span>Recebido</span>
+                <span>{t('receiptContent.recebido')}</span>
                 <span className="whitespace-nowrap pl-3 shrink-0">R$ {Number(session.amountReceived).toFixed(2).replace('.', ',')}</span>
               </div>
               <div className="flex justify-between">
-                <span>Troco</span>
+                <span>{t('receiptContent.troco')}</span>
                 <span className="whitespace-nowrap pl-3 shrink-0">R$ {Number(session.changeGiven ?? 0).toFixed(2).replace('.', ',')}</span>
               </div>
             </>
@@ -226,8 +228,8 @@ export function ReceiptContent({ tenant, summary }: { tenant: Tenant; summary: S
 
       <div className="border-t border-dashed border-gray-300 my-1" />
 
-      <p className="text-center pt-1">Obrigado pela preferência!</p>
-      <p className="text-center">Volte sempre</p>
+      <p className="text-center pt-1">{t('receiptContent.obrigado_pela_preferencia')}</p>
+      <p className="text-center">{t('receiptContent.volte_sempre')}</p>
 
       {receiptVerificationCode && (
         <>

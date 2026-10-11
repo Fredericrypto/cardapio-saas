@@ -1,3 +1,5 @@
+import { categoryLabel } from '../i18n/categoryLabel';
+import { useI18n } from '../i18n/I18nContext';
 import { useEffect, useRef, useState } from 'react';
 import { ArrowRight } from 'lucide-react';
 import type { Category } from '../types';
@@ -21,6 +23,7 @@ export function CategoryChips({
   onSelect,
   primaryColor,
 }: CategoryChipsProps) {
+  const { t } = useI18n();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [hasMoreToRight, setHasMoreToRight] = useState(false);
 
@@ -52,7 +55,7 @@ export function CategoryChips({
           direto cortaria o começo da lista). */}
       <div className="flex w-max min-w-full justify-center gap-2 px-3 pt-1.5">
       <Tab
-        label="Todos"
+        label={t('categoryChips.todos')}
         isActive={activeCategoryId === null}
         onClick={() => onSelect(null)}
         primaryColor={primaryColor}
@@ -60,7 +63,7 @@ export function CategoryChips({
       {categories.map((category) => (
         <Tab
           key={category.id}
-          label={category.name}
+          label={categoryLabel(category, t)}
           categoryKey={category.key}
           isActive={activeCategoryId === category.id}
           onClick={() => onSelect(category.id)}

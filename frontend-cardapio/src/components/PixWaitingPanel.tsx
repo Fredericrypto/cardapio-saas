@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nContext';
 import { useEffect, useRef, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Copy, Check } from 'lucide-react';
@@ -52,6 +53,7 @@ export function PixWaitingPanel({
   onExpired: () => void;
   onCancelledByRestaurant: () => void;
 }) {
+  const { t } = useI18n();
   const [copied, setCopied] = useState(false);
   const [msRemaining, setMsRemaining] = useState(() => {
     if (!order.pixExpiresAt) return 0;
@@ -160,7 +162,7 @@ export function PixWaitingPanel({
       </div>
 
       <div className="text-center">
-        <p className="text-xs text-gray-400">Tempo</p>
+        <p className="text-xs text-gray-400">{t('pixWaitingPanel.tempo')}</p>
         <p
           className={`font-display text-3xl font-bold tabular-nums ${
             msRemaining < 60000 ? 'text-red-500' : 'text-gray-900'
@@ -177,13 +179,13 @@ export function PixWaitingPanel({
         className="w-full flex items-center justify-center gap-1.5 border border-gray-200 rounded-xl py-2.5 text-sm font-medium text-gray-700"
       >
         {copied ? <Check size={15} /> : <Copy size={15} />}
-        {copied ? 'Código copiado!' : 'Copiar código Pix'}
+        {copied ? t('pixWaitingPanel.codigo_copiado') : t('pixWaitingPanel.copiar_codigo_pix')}
       </button>
 
       <p className="text-xs text-gray-400 text-center">
-        Abra o app do seu banco, escaneie o QR ou cole o código, e pague em até{' '}
+        {t('pixWaitingPanel.abra_o_app_do')}{' '}
         {formatCountdown(6 * 60 * 1000)}. O pedido é confirmado assim que{' '}
-        {tenant.name} receber o pagamento.
+        {tenant.name} {t('pixWaitingPanel.receber_o_pagamento')}
       </p>
     </div>
   );

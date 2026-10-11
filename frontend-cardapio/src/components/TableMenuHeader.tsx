@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nContext';
 import { BannerViewer, LogoViewer } from './LogoViewer';
 import { Bell, Receipt } from 'lucide-react';
 import type { Tenant, Location, TableSession } from '../types';
@@ -34,6 +35,7 @@ export function TableMenuHeader({
   session,
   onExpiryTick,
 }: TableMenuHeaderProps) {
+  const { t } = useI18n();
   return (
     <div>
       <div
@@ -91,11 +93,11 @@ export function TableMenuHeader({
               ? tableKind === 'balcao'
                 ? /^balc/i.test(tableNumber.trim())
                   ? tableNumber
-                  : `Balcão ${tableNumber}`
+                  : t('tableMenuHeader.balcao_tablenumber', { tableNumber: tableNumber })
                 : /^mesa\b/i.test(tableNumber.trim())
                   ? tableNumber
-                  : `Mesa ${tableNumber}`
-              : 'Consumo no local'}
+                  : t('tableMenuHeader.mesa_tablenumber', { tableNumber: tableNumber })
+              : t('tableMenuHeader.consumo_no_local')}
           </p>
           <ReviewBadge tenant={tenant} location={location} />
         </div>
@@ -112,14 +114,14 @@ export function TableMenuHeader({
             style={{ backgroundColor: tenant.primaryColor }}
           >
             <Bell size={14} strokeWidth={1.5} />
-            {isCallingWaiter ? 'Chamando...' : 'Chamar garçom'}
+            {isCallingWaiter ? 'Chamando...' : t('tableMenuHeader.chamar_garcom')}
           </button>
           <button
             onClick={onOpenAccount}
             className={`flex-1 text-gray-700 bg-gray-50 border border-gray-100 ${ACTION_BUTTON_BASE}`}
           >
             <Receipt size={14} strokeWidth={1.5} />
-            Minha conta
+            {t('tableMenuHeader.minha_conta')}
           </button>
         </div>
 

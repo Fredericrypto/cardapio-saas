@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nContext';
 import { useScrollLock } from '../hooks/useScrollLock';
 import { useState } from 'react';
 import Cropper, { type Area } from 'react-easy-crop';
@@ -13,6 +14,7 @@ interface AvatarCropModalProps {
 // Recorte circular igual Instagram/YouTube: arrasta pra reposicionar,
 // desliza pra dar zoom, área de corte sempre redonda.
 export function AvatarCropModal({ imageSrc, onCancel, onConfirm, accentColor }: AvatarCropModalProps) {
+  const { t } = useI18n();
   // Com o modal aberto a página atrás NÃO rola (02/10).
   useScrollLock(true);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -62,7 +64,7 @@ export function AvatarCropModal({ imageSrc, onCancel, onConfirm, accentColor }: 
             onClick={onCancel}
             className="flex-1 py-3 rounded-xl text-sm font-semibold text-white border border-white/20"
           >
-            Cancelar
+            {t('common.cancel')}
           </button>
           <button
             onClick={handleConfirm}
@@ -70,7 +72,7 @@ export function AvatarCropModal({ imageSrc, onCancel, onConfirm, accentColor }: 
             className="flex-1 py-3 rounded-xl text-sm font-semibold text-white disabled:opacity-60"
             style={{ backgroundColor: accentColor }}
           >
-            {isProcessing ? 'Processando...' : 'Usar foto'}
+            {isProcessing ? 'Processando...' : t('avatarCropModal.usar_foto')}
           </button>
         </div>
       </div>

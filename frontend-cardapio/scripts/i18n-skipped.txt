@@ -1,0 +1,44 @@
+components/ClosingPaymentSheet.tsx:28: Cartão
+components/ClosingPaymentSheet.tsx:29: Dinheiro
+components/ClosingPaymentSheet.tsx:158 [texto no meio de expressões]: Saldo disponível: R$
+components/PeopleOrders.tsx:77 [valor padrão de parâmetro]: Ainda não pediu nada
+components/PixWaitingPanel.tsx:30: Pedido aguardando pagamento Pix • faltam {minutes}:{v1}
+components/ReceiptContentStandalone.tsx:7: Aguardando Pix
+components/ReceiptContentStandalone.tsx:8: Entregue
+components/ReceiptContentStandalone.tsx:9: Cancelado
+pages/CartPage.tsx:33: Dinheiro
+pages/CartPage.tsx:34: Cartão
+pages/CartPage.tsx:1444 [texto no meio de expressões]: km · Taxa de entrega: R$
+pages/CustomerCashbackPage.tsx:20: Disponíveis
+pages/CustomerCashbackPage.tsx:21: Expirados
+pages/CustomerCashbackPage.tsx:22: Utilizados
+pages/CustomerCashbackPage.tsx:48 [texto no meio de expressões]: · ganho em
+pages/CustomerPixWalletPage.tsx:11: Celular
+pages/CustomerPixWalletPage.tsx:13: Chave aleatória
+pages/EditProfilePage.tsx:17: Masculino
+pages/EditProfilePage.tsx:18: Feminino
+pages/EditProfilePage.tsx:19: Outro
+pages/EditProfilePage.tsx:20: Prefiro não dizer
+pages/EditProfilePage.tsx:26: Tradicionais Femininos
+pages/EditProfilePage.tsx:27: Tradicionais Masculinos
+pages/MyAccountPage.tsx:18: Aguardando Pix
+pages/MyAccountPage.tsx:19: Pendente
+pages/MyAccountPage.tsx:20: Confirmado
+pages/MyAccountPage.tsx:21: Preparando
+pages/MyAccountPage.tsx:22: Pronto
+pages/MyAccountPage.tsx:23: Entregue
+pages/MyAccountPage.tsx:24: Cancelado
+pages/OrderHistoryPage.tsx:23: Aguardando Pix
+pages/OrderHistoryPage.tsx:24: Pendente
+pages/OrderHistoryPage.tsx:25: Confirmado
+pages/OrderHistoryPage.tsx:26: Preparando
+pages/OrderHistoryPage.tsx:27: Pronto
+pages/OrderHistoryPage.tsx:28: Entregue
+pages/OrderHistoryPage.tsx:29: Cancelado
+pages/OrderHistoryPage.tsx:30: Em aberto
+pages/OrderHistoryPage.tsx:31: Fechando
+pages/OrderHistoryPage.tsx:32: Fechada
+pages/ProductDetailPage.tsx:24: Escolha até {maxSelect}
+pages/ProductDetailPage.tsx:25: Escolha 1
+pages/ProductDetailPage.tsx:25: Escolha {minSelect}
+pages/ProductDetailPage.tsx:26: Escolha de {minSelect} a {maxSelect}

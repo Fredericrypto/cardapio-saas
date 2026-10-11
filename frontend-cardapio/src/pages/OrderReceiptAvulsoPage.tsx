@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nContext';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Download } from 'lucide-react';
@@ -12,6 +13,7 @@ import { saveElementAsPng } from '../lib/saveAsPng';
 // em si. Usa o mesmo componente visual (ReceiptContentStandalone) usado
 // no painel do admin.
 export function OrderReceiptAvulsoPage() {
+  const { t } = useI18n();
   const { slug, orderId } = useParams<{ slug: string; orderId: string }>();
   const navigate = useNavigate();
   const { tenant } = useTenant();
@@ -50,7 +52,7 @@ export function OrderReceiptAvulsoPage() {
     try {
       await saveElementAsPng('receipt-print-area', `cupom-${orderId}`);
     } catch {
-      setSaveError('Não foi possível salvar o cupom. Tenta de novo em alguns segundos.');
+      setSaveError(t('orderReceiptAvulsoPage.nao_foi_possivel_salvar'));
     } finally {
       setIsSaving(false);
     }
@@ -71,19 +73,19 @@ export function OrderReceiptAvulsoPage() {
           <ArrowLeft size={20} />
         </button>
         <h1 className="font-display font-bold text-lg">
-          Cupom — {order?.orderType === 'entrega' ? 'Entrega' : 'Balcão'}
+          {t('orderReceiptAvulsoPage.cupom')} {order?.orderType === 'entrega' ? t('receiptContentStandalone.entrega') : t('receiptContentStandalone.balcao')}
         </h1>
       </div>
 
       <div className="px-4 py-6">
         {notFound && (
           <p className="text-sm text-gray-400 text-center py-12">
-            Não foi possível carregar esse cupom.
+            {t('orderReceiptAvulsoPage.nao_foi_possivel_carregar')}
           </p>
         )}
 
         {!notFound && !order && (
-          <p className="text-sm text-gray-400 text-center py-12">Carregando...</p>
+          <p className="text-sm text-gray-400 text-center py-12">{t('common.loading')}</p>
         )}
 
         {order && (
@@ -110,7 +112,7 @@ export function OrderReceiptAvulsoPage() {
             className="w-full mt-4 py-3 rounded-xl bg-gray-900 text-white text-sm font-semibold flex items-center justify-center gap-1.5 print:hidden disabled:opacity-60"
           >
             <Download size={15} />
-            {isSaving ? 'Salvando...' : 'Salvar'}
+            {isSaving ? 'Salvando...' : t('editProfilePage.salvar')}
           </button>
         )}
 

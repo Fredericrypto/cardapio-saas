@@ -79,7 +79,7 @@ export function CustomerAuthPage() {
       <div className="flex flex-col items-center justify-center h-screen gap-3 px-6 text-center bg-gray-50">
         <p className="text-sm text-gray-500">{tenantError}</p>
         <button onClick={retryTenant} className="text-sm font-semibold text-gray-900 underline">
-          Tentar de novo
+          {t('optionalCustomerAuth.tentar_de_novo')}
         </button>
       </div>
     );

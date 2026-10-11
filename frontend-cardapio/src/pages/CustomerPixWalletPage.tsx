@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nContext';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Wallet, Trash2, ShieldCheck } from 'lucide-react';
@@ -17,6 +18,7 @@ const PIX_KEY_TYPE_LABELS: Record<string, string> = {
 // cancelado, por exemplo). Nunca guarda saldo, nunca move dinheiro pela
 // nossa infra: é um dado de contato salvo, exatamente como o endereço.
 export function CustomerPixWalletPage() {
+  const { t } = useI18n();
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { tenant } = useTenant();
@@ -55,7 +57,7 @@ export function CustomerPixWalletPage() {
         err && typeof err === 'object' && 'response' in err
           ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
           : undefined;
-      setError(backendMessage ?? 'Não foi possível salvar sua chave Pix agora.');
+      setError(backendMessage ?? t('customerPixWalletPage.nao_foi_possivel_salvar'));
     } finally {
       setIsSaving(false);
     }
@@ -91,16 +93,15 @@ export function CustomerPixWalletPage() {
         <button onClick={() => navigate(`/${slug}/conta-cliente/perfil`)}>
           <ArrowLeft size={20} />
         </button>
-        <h1 className="font-display font-bold text-lg">Carteira Pix</h1>
+        <h1 className="font-display font-bold text-lg">{t('profile.pixWallet')}</h1>
       </div>
 
       <div className="px-4 mt-4 flex flex-col gap-3">
         <div className="bg-white rounded-2xl p-4 flex gap-2.5">
           <ShieldCheck size={16} className="text-green-600 shrink-0 mt-0.5" />
           <p className="text-xs text-gray-500">
-            Guardamos só a sua chave — nenhum saldo fica com a gente. Ela serve pra{' '}
-            {tenant.name} devolver dinheiro direto pra você, caso um pedido seja
-            cancelado ou reembolsado.
+            {t('customerPixWalletPage.guardamos_so_a_sua')}{' '}
+            {tenant.name} {t('customerPixWalletPage.devolver_dinheiro_direto_pra')}
           </p>
         </div>
 
@@ -108,7 +109,7 @@ export function CustomerPixWalletPage() {
           <div className="bg-white rounded-2xl p-4">
             <p className="text-xs font-semibold text-gray-500 flex items-center gap-1.5 mb-1.5">
               <Wallet size={13} />
-              Chave salva
+              {t('customerPixWalletPage.chave_salva')}
             </p>
             <p className="text-sm font-medium text-gray-800">
               {PIX_KEY_TYPE_LABELS[customer.pixKeyType ?? ''] ?? customer.pixKeyType}
@@ -119,7 +120,7 @@ export function CustomerPixWalletPage() {
                 onClick={() => setIsEditing(true)}
                 className="flex-1 py-2 rounded-lg text-xs font-semibold border border-gray-200 text-gray-600"
               >
-                Editar
+                {t('customerPixWalletPage.editar')}
               </button>
               <button
                 onClick={handleRemove}
@@ -139,16 +140,16 @@ export function CustomerPixWalletPage() {
               onChange={(e) => setPixKeyType(e.target.value)}
               className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none"
             >
-              <option value="">Tipo de chave</option>
-              <option value="email">E-mail</option>
-              <option value="telefone">Celular</option>
-              <option value="cpf">CPF</option>
-              <option value="aleatoria">Chave aleatória</option>
+              <option value="">{t('customerPixWalletPage.tipo_de_chave')}</option>
+              <option value="email">{t('info.email')}</option>
+              <option value="telefone">{t('customerPixWalletPage.celular')}</option>
+              <option value="cpf">{t('customerPixWalletPage.cpf')}</option>
+              <option value="aleatoria">{t('customerPixWalletPage.chave_aleatoria')}</option>
             </select>
             <input
               value={pixKey}
               onChange={(e) => setPixKey(e.target.value)}
-              placeholder="Sua chave Pix"
+              placeholder={t('customerPixWalletPage.sua_chave_pix')}
               className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none"
             />
 
@@ -160,7 +161,7 @@ export function CustomerPixWalletPage() {
               className="py-3 rounded-xl text-white font-semibold text-sm disabled:opacity-60 mt-1"
               style={{ backgroundColor: tenant.primaryColor }}
             >
-              {isSaving ? 'Salvando...' : 'Salvar chave Pix'}
+              {isSaving ? 'Salvando...' : t('customerPixWalletPage.salvar_chave_pix')}
             </button>
           </div>
         )}

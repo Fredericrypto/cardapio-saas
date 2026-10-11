@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nContext';
 import { formatBrazilPhone, isValidBrazilPhone } from '../lib/phone';
 
 interface PhoneInputProps {
@@ -12,6 +13,7 @@ interface PhoneInputProps {
 // pra exibir, e os dígitos podem ser extraídos com .replace(/\D/g, '')
 // se algum dia precisar (ex: montar link de wa.me).
 export function PhoneInput({ value, onChange, placeholder = '(48) 99999-9999', className }: PhoneInputProps) {
+  const { t } = useI18n();
   const showError = value.length > 0 && !isValidBrazilPhone(value);
 
   return (
@@ -26,7 +28,7 @@ export function PhoneInput({ value, onChange, placeholder = '(48) 99999-9999', c
       />
       {showError && (
         <p className="text-xs text-red-500 mt-1">
-          Telefone incompleto — confira o DDD e o número.
+          {t('phoneInput.telefone_incompleto_confira_o')}
         </p>
       )}
     </div>

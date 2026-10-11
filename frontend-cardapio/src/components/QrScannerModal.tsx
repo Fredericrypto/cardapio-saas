@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nContext';
 import { useScrollLock } from '../hooks/useScrollLock';
 import { markQrScanIntent } from '../lib/seat';
 import { useEffect, useRef, useState } from 'react';
@@ -28,6 +29,7 @@ interface QrScannerModalProps {
 const MESA_URL_PATTERN = /^\/([a-z0-9-]+)\/mesa\/([a-f0-9-]+)\/?$/i;
 
 export function QrScannerModal({ onClose, onCameraError }: QrScannerModalProps) {
+  const { t } = useI18n();
   // Com o modal aberto a página atrás NÃO rola (02/10).
   useScrollLock(true);
   const { slug } = useParams<{ slug: string }>();
@@ -60,7 +62,7 @@ export function QrScannerModal({ onClose, onCameraError }: QrScannerModalProps) 
       } catch {
         if (!cancelled) {
           onCameraError(
-            'Não foi possível acessar a câmera. Confirme a permissão do navegador ou escaneie com a câmera do celular.',
+            t('qrScannerModal.nao_foi_possivel_acessar'),
           );
           onClose();
         }
@@ -101,12 +103,12 @@ export function QrScannerModal({ onClose, onCameraError }: QrScannerModalProps) 
       }
       const match = path.match(MESA_URL_PATTERN);
       if (!match) {
-        setError('Esse QR code não é reconhecido. Escaneia o QR code da mesa do restaurante.');
+        setError(t('qrScannerModal.esse_qr_code_nao'));
         return;
       }
       const [, scannedSlug, scannedQrToken] = match;
       if (scannedSlug !== slug) {
-        setError('Esse QR code é de outro restaurante — não dá pra abrir por aqui.');
+        setError(t('qrScannerModal.esse_qr_code_e'));
         return;
       }
       streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -136,7 +138,7 @@ export function QrScannerModal({ onClose, onCameraError }: QrScannerModalProps) 
   return createPortal(
     <div className="fixed inset-0 z-50 bg-black flex flex-col">
       <div className="flex items-center justify-between p-4">
-        <p className="text-white text-sm font-semibold">Escanear QR code da mesa</p>
+        <p className="text-white text-sm font-semibold">{t('qrScanButton.escanear_qr_code_da')}</p>
         <button onClick={onClose} className="text-white p-1">
           <X size={22} />
         </button>
@@ -160,7 +162,7 @@ export function QrScannerModal({ onClose, onCameraError }: QrScannerModalProps) 
             }}
             className="w-full py-3 rounded-xl bg-white text-gray-900 text-sm font-semibold"
           >
-            Tentar de novo
+            {t('optionalCustomerAuth.tentar_de_novo')}
           </button>
         </div>
       )}

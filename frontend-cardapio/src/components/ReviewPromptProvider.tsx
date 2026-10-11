@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nContext';
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { fetchReviewPromptInfo } from '../lib/customer-api';
@@ -27,6 +28,7 @@ type QueueEntry =
 // nenhuma notificação nova pra isso, é tudo dentro do mesmo modal já
 // aberto pela notificação original.
 export function ReviewPromptProvider() {
+  const { t } = useI18n();
   const location = useLocation();
   const navigate = useNavigate();
   const { tenant } = useTenant();
@@ -111,7 +113,7 @@ export function ReviewPromptProvider() {
       stepLabel={queue.length > 1 ? `${currentIndex + 1}/${queue.length}` : undefined}
       target={
         current.type === 'restaurant'
-          ? { type: 'restaurant', orderLabel: 'Avaliação do restaurante' }
+          ? { type: 'restaurant', orderLabel: t('reviewPromptProvider.avaliacao_do_restaurante') }
           : {
               type: 'item',
               productId: current.productId,

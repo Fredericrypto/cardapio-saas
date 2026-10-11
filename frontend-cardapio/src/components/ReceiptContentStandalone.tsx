@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nContext';
 import type { Tenant } from '../types';
 import { ReceiptAuthenticityCode } from './ReceiptAuthenticityCode';
 import type { CustomerOrderHistoryItem } from '../lib/customer-api';
@@ -18,7 +19,8 @@ export function ReceiptContentStandalone({
   tenant: Tenant;
   order: CustomerOrderHistoryItem;
 }) {
-  const label = order.orderType === 'entrega' ? 'Entrega' : 'Balcão';
+  const { t } = useI18n();
+  const label = order.orderType === 'entrega' ? t('receiptContentStandalone.entrega') : t('receiptContentStandalone.balcao');
 
   return (
     <div className="font-mono text-xs text-gray-800 flex flex-col gap-2 w-full max-w-[280px] mx-auto">
@@ -28,8 +30,8 @@ export function ReceiptContentStandalone({
 
       <div className="border-t border-dashed border-gray-300 my-1" />
 
-      <p className="text-center">*** SIMPLES CONFERÊNCIA DA CONTA ***</p>
-      <p className="text-center">*** NÃO É DOCUMENTO FISCAL ***</p>
+      <p className="text-center">{t('receiptContent.simples_conferencia_da_conta')}</p>
+      <p className="text-center">{t('receiptContent.nao_e_documento_fiscal')}</p>
 
       <div className="border-t border-dashed border-gray-300 my-1" />
 
@@ -39,26 +41,26 @@ export function ReceiptContentStandalone({
       </div>
       {order.customerName && (
         <div className="flex justify-between">
-          <span>Cliente</span>
+          <span>{t('receiptContent.cliente')}</span>
           <span>{order.customerName}</span>
         </div>
       )}
       {order.deliveryAddress && (
         <>
           <div className="flex justify-between">
-            <span>Endereço</span>
+            <span>{t('receiptContentStandalone.endereco')}</span>
           </div>
           <p className="text-left">{order.deliveryAddress}</p>
           {order.deliveryReferencePoint && (
-            <p className="text-left">Ref: {order.deliveryReferencePoint}</p>
+            <p className="text-left">{t('receiptContentStandalone.ref')} {order.deliveryReferencePoint}</p>
           )}
           {order.deliveryAddressPrecise === false && (
-            <p className="text-left">endereço não confirmado com exatidão</p>
+            <p className="text-left">{t('receiptContentStandalone.endereco_nao_confirmado_com')}</p>
           )}
         </>
       )}
       <div className="flex justify-between">
-        <span>Pedido em</span>
+        <span>{t('receiptContentStandalone.pedido_em')}</span>
         <span>
           {new Date(order.createdAt).toLocaleString('pt-BR', {
             day: '2-digit',
@@ -90,7 +92,7 @@ export function ReceiptContentStandalone({
       {(order.discountAmount ?? 0) > 0 && (
         <div className="flex justify-between text-red-600">
           <span>
-            Desconto aplicado
+            {t('receiptContent.desconto_aplicado')}
             {/* `promotionTitlesSnapshot` é a lista de verdade — cobre
                 pedidos com mais de um cupom junto (ex: um pro burger +
                 outro pra coca-cola). Cai pro singular só em pedidos bem
@@ -103,7 +105,7 @@ export function ReceiptContentStandalone({
                   : [];
               return titles.length > 0 ? ` (${titles.join(', ')})` : '';
             })()}
-            <span className="block text-[10px] text-gray-400">já refletido no total</span>
+            <span className="block text-[10px] text-gray-400">{t('receiptContentStandalone.ja_refletido_no_total')}</span>
           </span>
           <span>- R$ {Number(order.discountAmount).toFixed(2).replace('.', ',')}</span>
         </div>
@@ -112,8 +114,8 @@ export function ReceiptContentStandalone({
       {(order.cashbackUsed ?? 0) > 0 && (
         <div className="flex justify-between text-red-600">
           <span>
-            Cashback usado
-            <span className="block text-[10px] text-gray-400">já refletido no total</span>
+            {t('receiptContent.cashback_usado')}
+            <span className="block text-[10px] text-gray-400">{t('receiptContentStandalone.ja_refletido_no_total')}</span>
           </span>
           <span>- R$ {Number(order.cashbackUsed).toFixed(2).replace('.', ',')}</span>
         </div>
@@ -121,13 +123,13 @@ export function ReceiptContentStandalone({
 
       {order.tipAmount > 0 && (
         <div className="flex justify-between">
-          <span>Gorjeta</span>
+          <span>{t('closingPaymentSheet.gorjeta')}</span>
           <span>R$ {Number(order.tipAmount).toFixed(2).replace('.', ',')}</span>
         </div>
       )}
 
       <div className="flex justify-between font-bold text-sm">
-        <span>TOTAL</span>
+        <span>{t('receiptContent.total')}</span>
         <span>
           R$ {(Number(order.total) + Number(order.tipAmount)).toFixed(2).replace('.', ',')}
         </span>
@@ -135,7 +137,7 @@ export function ReceiptContentStandalone({
 
       {(order.cashbackEarned ?? 0) > 0 && (
         <div className="flex justify-between text-green-600 text-[11px]">
-          <span>Cashback recebido nesse pedido</span>
+          <span>{t('receiptContent.cashback_recebido_nesse_pedido')}</span>
           <span>+ R$ {Number(order.cashbackEarned).toFixed(2).replace('.', ',')}</span>
         </div>
       )}
@@ -144,17 +146,17 @@ export function ReceiptContentStandalone({
         <>
           <div className="border-t border-dashed border-gray-300 my-1" />
           <div className="flex justify-between">
-            <span>Pagamento</span>
+            <span>{t('receiptContent.pagamento')}</span>
             <span className="capitalize">{order.paymentMethod}</span>
           </div>
           {order.paymentMethod === 'dinheiro' && order.amountReceived != null && (
             <>
               <div className="flex justify-between">
-                <span>Recebido</span>
+                <span>{t('receiptContent.recebido')}</span>
                 <span>R$ {Number(order.amountReceived).toFixed(2).replace('.', ',')}</span>
               </div>
               <div className="flex justify-between font-bold">
-                <span>Troco</span>
+                <span>{t('receiptContent.troco')}</span>
                 <span>
                   R${' '}
                   {(
@@ -173,8 +175,8 @@ export function ReceiptContentStandalone({
 
       <div className="border-t border-dashed border-gray-300 my-1" />
 
-      <p className="text-center pt-1">Obrigado pela preferência!</p>
-      <p className="text-center">Volte sempre</p>
+      <p className="text-center pt-1">{t('receiptContent.obrigado_pela_preferencia')}</p>
+      <p className="text-center">{t('receiptContent.volte_sempre')}</p>
 
       {order.receiptVerificationCode && (
         <>

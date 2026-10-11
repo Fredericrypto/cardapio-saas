@@ -44,7 +44,7 @@ export function ProductCard({ product, primaryColor, onClick, storeClosed = fals
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-300 text-xs">
-            Sem foto
+            {t('productCard.sem_foto')}
           </div>
         )}
 
@@ -60,7 +60,7 @@ export function ProductCard({ product, primaryColor, onClick, storeClosed = fals
 
         {isUnavailable && (
           <span className="absolute top-2 left-2 bg-gray-800/85 text-[10px] font-bold px-2 py-0.5 rounded-full text-white shadow-sm">
-            Indisponível
+            {t('productCard.indisponivel')}
           </span>
         )}
 

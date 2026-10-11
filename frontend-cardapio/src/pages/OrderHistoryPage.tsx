@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nContext';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Table2, ShoppingBag, Bike, FolderClosed, Star, ChevronDown } from 'lucide-react';
@@ -35,6 +36,7 @@ const STATUS_STYLES: Record<string, { label: string; bg: string; color: string }
 // de mesa agrupados por visita (sessão) e pedidos avulsos (balcão/entrega)
 // cada um na sua própria linha, igual ao histórico do painel do admin.
 export function OrderHistoryPage() {
+  const { t } = useI18n();
   const { slug } = useParams<{ slug: string }>();
   // Mesmo bug/correção do CustomerProfilePage — ver comentário lá.
   const navigate = useNavigate();
@@ -108,13 +110,13 @@ export function OrderHistoryPage() {
         <button onClick={() => navigate(`/${slug}/conta-cliente/pedidos`)}>
           <ArrowLeft size={20} />
         </button>
-        <h1 className="font-display font-bold text-lg">Histórico de pedidos</h1>
+        <h1 className="font-display font-bold text-lg">{t('orderHistoryPage.historico_de_pedidos')}</h1>
       </div>
 
       <div className="px-4 mt-3 flex flex-col gap-5">
-        {isLoadingOrders && <p className="text-xs text-gray-400 px-1">Carregando...</p>}
+        {isLoadingOrders && <p className="text-xs text-gray-400 px-1">{t('common.loading')}</p>}
         {isEmpty && (
-          <p className="text-xs text-gray-400 px-1">Você ainda não fez nenhum pedido aqui.</p>
+          <p className="text-xs text-gray-400 px-1">{t('orderHistoryPage.voce_ainda_nao_fez')}</p>
         )}
 
         {dayGroups?.map((group) => (
@@ -150,6 +152,7 @@ function DayFolder({
   onOpenMesa: (sessionId: string) => void;
   onOpenAvulso: (orderId: string) => void;
 }) {
+  const { t } = useI18n();
   const total = group.mesaItems.length + group.avulsoItems.length;
 
   return (
@@ -159,7 +162,7 @@ function DayFolder({
       <button
         onClick={onToggle}
         aria-expanded={!collapsed}
-        aria-label={collapsed ? `Mostrar pedidos de ${group.label}` : `Esconder pedidos de ${group.label}`}
+        aria-label={collapsed ? t('orderHistoryPage.mostrar_pedidos_de_label', { label: group.label }) : t('orderHistoryPage.esconder_pedidos_de_label', { label: group.label })}
         className="w-full flex items-center gap-2 px-1 text-gray-700"
       >
         <FolderClosed size={16} />
@@ -192,6 +195,7 @@ function DayFolder({
 }
 
 function MesaCard({ item, onClick }: { item: MesaHistoryEntry; onClick: () => void }) {
+  const { t } = useI18n();
   const statusStyle = STATUS_STYLES[item.sessionStatus] ?? {
     label: item.sessionStatus,
     bg: '#F3F4F6',
@@ -203,7 +207,7 @@ function MesaCard({ item, onClick }: { item: MesaHistoryEntry; onClick: () => vo
       <div className="flex justify-between items-start">
         <div className="flex items-center gap-1.5">
           <Table2 size={14} className="text-gray-400" />
-          <p className="text-sm font-semibold text-gray-900">{item.tableNumber ?? 'Mesa'}</p>
+          <p className="text-sm font-semibold text-gray-900">{item.tableNumber ?? t('receiptContent.mesa')}</p>
         </div>
         <span
           className="text-[11px] font-semibold px-2 py-1 rounded-full"
@@ -214,7 +218,7 @@ function MesaCard({ item, onClick }: { item: MesaHistoryEntry; onClick: () => vo
       </div>
       <p className="text-xs text-gray-400 mt-1.5">
         {formatDateTime(item.dateForGrouping)} · {item.orderCount}{' '}
-        {item.orderCount === 1 ? 'pedido feito' : 'pedidos feitos'}
+        {item.orderCount === 1 ? t('orderHistoryPage.pedido_feito') : t('orderHistoryPage.pedidos_feitos')}
       </p>
       <p className="text-sm font-semibold text-gray-700 mt-2">
         {formatMoney(item.total + item.tipAmount)}
@@ -232,6 +236,7 @@ function AvulsoCard({
   review: MyReview | undefined;
   onClick: () => void;
 }) {
+  const { t } = useI18n();
   const statusStyle = STATUS_STYLES[item.status] ?? {
     label: item.status,
     bg: '#F3F4F6',
@@ -245,7 +250,7 @@ function AvulsoCard({
         <div className="flex items-center gap-1.5">
           <Icon size={14} className="text-gray-400" />
           <p className="text-sm font-semibold text-gray-900 capitalize">
-            {item.orderType === 'entrega' ? 'Entrega' : 'Balcão'}
+            {item.orderType === 'entrega' ? t('receiptContentStandalone.entrega') : t('receiptContentStandalone.balcao')}
           </p>
         </div>
         <span

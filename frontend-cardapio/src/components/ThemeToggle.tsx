@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nContext';
 import { Moon, Sun } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
 
@@ -10,8 +11,9 @@ interface ThemeToggleProps {
 // Alterna claro/escuro. Mostra o ícone da AÇÃO (lua = ir para o escuro,
 // sol = voltar para o claro). A escolha persiste em localStorage (lib/theme.ts).
 export function ThemeToggle({ variant = 'default' }: ThemeToggleProps) {
+  const { t } = useI18n();
   const { isDark, toggleTheme } = useTheme();
-  const label = isDark ? 'Ativar modo claro' : 'Ativar modo escuro';
+  const label = isDark ? t('themeToggle.ativar_modo_claro') : t('themeToggle.ativar_modo_escuro');
   const className =
     variant === 'floating'
       ? 'w-9 h-9 shrink-0 rounded-full bg-white/90 dark:bg-[#1E1E20]/90 backdrop-blur-sm flex items-center justify-center shadow-sm active:scale-90 transition-transform text-gray-700 dark:text-gray-200'

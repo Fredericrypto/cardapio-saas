@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nContext';
 import type { ReactNode } from 'react';
 import type { SessionPerson } from '../types';
 import { VerifiedBadge } from './VerifiedBadge';
@@ -39,6 +40,7 @@ export function PersonHeader({
   compact?: boolean;
   dark?: boolean;
 }) {
+  const { t } = useI18n();
   return (
     <div className="flex items-center gap-2.5">
       <PersonAvatar person={person} size={compact ? 28 : 40} />
@@ -53,13 +55,13 @@ export function PersonHeader({
           {person.isVerified && <VerifiedBadge size={compact ? 12 : 14} />}
           {person.isMe && (
             <span className={`ml-0.5 text-[10px] font-medium ${dark ? 'text-gray-400' : 'text-gray-400'}`}>
-              (você)
+              {t('peopleOrders.voce')}
             </span>
           )}
         </p>
         {person.isOpener && (
           <p className={`text-[10px] font-semibold ${dark ? 'text-gray-300' : 'text-gray-500'}`}>
-            Abriu a mesa
+            {t('peopleOrders.abriu_a_mesa')}
           </p>
         )}
       </div>
@@ -86,6 +88,7 @@ export function PeopleOrders<T extends { id: string }>({
   // (gradiente #27272A → #0A0A0B, texto branco/cinza). Usado na Minha conta.
   dark?: boolean;
 }) {
+  const { t } = useI18n();
   const byId = new Map(orders.map((o) => [o.id, o]));
   const leftover = unassignedOrderIds.map((id) => byId.get(id)).filter((o): o is T => Boolean(o));
   const body = (
@@ -114,7 +117,7 @@ export function PeopleOrders<T extends { id: string }>({
       })}
       {leftover.length > 0 && (
         <section className="flex flex-col gap-2">
-          <p className="text-xs font-semibold text-gray-400">Outros pedidos</p>
+          <p className="text-xs font-semibold text-gray-400">{t('peopleOrders.outros_pedidos')}</p>
           {leftover.map((o) => (
             <div key={o.id}>{renderOrder(o)}</div>
           ))}

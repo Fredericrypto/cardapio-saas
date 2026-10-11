@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nContext';
 import { Search } from 'lucide-react';
 
 interface SearchBarProps {
@@ -6,6 +7,7 @@ interface SearchBarProps {
 }
 
 export function SearchBar({ value, onChange }: SearchBarProps) {
+  const { t } = useI18n();
   return (
     <div className="px-4 pt-1">
       <div className="bg-gray-50 border border-gray-100 rounded-xl px-3.5 py-2.5 flex items-center gap-2">
@@ -14,7 +16,7 @@ export function SearchBar({ value, onChange }: SearchBarProps) {
           type="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="Buscar no cardápio"
+          placeholder={t('searchBar.buscar_no_cardapio')}
           className="w-full text-sm text-gray-700 placeholder:text-gray-400 outline-none"
         />
       </div>

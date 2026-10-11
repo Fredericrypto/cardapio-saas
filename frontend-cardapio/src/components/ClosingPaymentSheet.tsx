@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nContext';
 import { useScrollLock } from '../hooks/useScrollLock';
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
@@ -50,6 +51,7 @@ export function ClosingPaymentSheet({
   onCancel,
   onConfirm,
 }: ClosingPaymentSheetProps) {
+  const { t } = useI18n();
   // Com o modal aberto a página atrás NÃO rola (02/10).
   useScrollLock(true);
   const location = useLocation();
@@ -109,27 +111,27 @@ export function ClosingPaymentSheet({
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-end justify-center">
       <div className="bg-white w-full max-w-md rounded-t-2xl p-5 flex flex-col gap-4 max-h-[85vh] overflow-y-auto">
-        <p className="font-display font-bold text-gray-900 text-center">Fechar minha conta</p>
+        <p className="font-display font-bold text-gray-900 text-center">{t('closingPaymentSheet.fechar_minha_conta')}</p>
 
         <div className="flex flex-col gap-1 text-sm">
           <div className="flex justify-between text-gray-500">
-            <span>Subtotal</span>
+            <span>{t('closingPaymentSheet.subtotal')}</span>
             <span>R$ {subtotal.toFixed(2).replace('.', ',')}</span>
           </div>
           {tipAmount > 0 && (
             <div className="flex justify-between text-gray-500">
-              <span>Gorjeta</span>
+              <span>{t('closingPaymentSheet.gorjeta')}</span>
               <span>R$ {tipAmount.toFixed(2).replace('.', ',')}</span>
             </div>
           )}
           {cashbackApplied > 0 && (
             <div className="flex justify-between text-red-600">
-              <span>Cashback aplicado</span>
+              <span>{t('closingPaymentSheet.cashback_aplicado')}</span>
               <span>- R$ {cashbackApplied.toFixed(2).replace('.', ',')}</span>
             </div>
           )}
           <div className="flex justify-between font-bold text-gray-900 text-base pt-1 border-t border-gray-100 mt-1">
-            <span>Total</span>
+            <span>{t('closingPaymentSheet.total')}</span>
             <span>R$ {remaining.toFixed(2).replace('.', ',')}</span>
           </div>
         </div>
@@ -150,9 +152,9 @@ export function ClosingPaymentSheet({
             className="flex items-center justify-between border border-gray-200 rounded-xl px-3 py-2.5 text-left"
           >
             <span className="text-sm text-gray-700">
-              {balanceCoversAll ? 'Pagar com cashback' : 'Usar meu cashback'}
+              {balanceCoversAll ? t('closingPaymentSheet.pagar_com_cashback') : t('closingPaymentSheet.usar_meu_cashback')}
               <span className="block text-xs text-gray-400">
-                {balanceCoversAll ? 'Cobre a conta inteira — nada mais a pagar · ' : ''}
+                {balanceCoversAll ? t('closingPaymentSheet.cobre_a_conta_inteira') : ''}
                 Saldo disponível: R$ {cashbackBalance.toFixed(2).replace('.', ',')}
               </span>
             </span>
@@ -172,7 +174,7 @@ export function ClosingPaymentSheet({
         {cashbackCoversAll ? null : (
           <>
             <div>
-              <p className="text-xs font-semibold text-gray-500 mb-1.5">Como você vai pagar?</p>
+              <p className="text-xs font-semibold text-gray-500 mb-1.5">{t('closingPaymentSheet.como_voce_vai_pagar')}</p>
               <div className="flex gap-2">
                 {PAYMENT_METHODS.map((method) => (
                   <button
@@ -197,7 +199,7 @@ export function ClosingPaymentSheet({
             {paymentMethod === 'dinheiro' && (
               <div>
                 <p className="text-xs font-semibold text-gray-500 mb-1.5">
-                  Prefere pagar onde?
+                  {t('closingPaymentSheet.prefere_pagar_onde')}
                 </p>
                 <div className="flex gap-2">
                   <button
@@ -209,7 +211,7 @@ export function ClosingPaymentSheet({
                         : { borderColor: '#e5e5e5', color: '#666' }
                     }
                   >
-                    Vou pagar no balcão
+                    {t('closingPaymentSheet.vou_pagar_no_balcao')}
                   </button>
                   <button
                     onClick={() => setCashDeliveryPreference('mesa')}
@@ -220,7 +222,7 @@ export function ClosingPaymentSheet({
                         : { borderColor: '#e5e5e5', color: '#666' }
                     }
                   >
-                    Atendente vem à mesa
+                    {t('closingPaymentSheet.atendente_vem_a_mesa')}
                   </button>
                 </div>
               </div>
@@ -228,14 +230,12 @@ export function ClosingPaymentSheet({
 
             {paymentMethod === 'pix' && (
               <p className="text-xs text-gray-500 bg-gray-50 rounded-lg p-2.5">
-                Se o restaurante tiver Pix automático configurado, o QR aparece na próxima
-                tela e a conta fecha sozinha assim que você pagar. Senão, o garçom leva o
-                QR até você.
+                {t('closingPaymentSheet.se_o_restaurante_tiver')}
               </p>
             )}
             {paymentMethod === 'cartao' && (
               <p className="text-xs text-gray-500 bg-gray-50 rounded-lg p-2.5">
-                O garçom vai levar a maquininha até você.
+                {t('closingPaymentSheet.o_garcom_vai_levar')}
               </p>
             )}
           </>
@@ -244,8 +244,7 @@ export function ClosingPaymentSheet({
         {askSplitMode && (
           <div>
             <p className="text-xs font-semibold text-gray-500 mb-1.5">
-              Essa mesa teve mais de uma pessoa pedindo. O cashback que essa conta vai gerar
-              fica:
+              {t('closingPaymentSheet.essa_mesa_teve_mais')}
             </p>
             <div className="flex flex-col gap-2">
               <button
@@ -257,7 +256,7 @@ export function ClosingPaymentSheet({
                     : { borderColor: '#e5e5e5', color: '#374151' }
                 }
               >
-                Cada pessoa recebe o cashback do que ela mesma pediu
+                {t('closingPaymentSheet.cada_pessoa_recebe_o')}
               </button>
               <button
                 onClick={() => setCashbackSplitMode('pagador')}
@@ -268,7 +267,7 @@ export function ClosingPaymentSheet({
                     : { borderColor: '#e5e5e5', color: '#374151' }
                 }
               >
-                Só pra mim, já que estou fechando a conta
+                {t('closingPaymentSheet.so_pra_mim_ja')}
               </button>
             </div>
           </div>
@@ -282,7 +281,7 @@ export function ClosingPaymentSheet({
             disabled={isSubmitting}
             className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 disabled:opacity-60"
           >
-            Cancelar
+            {t('common.cancel')}
           </button>
           <button
             onClick={handleConfirm}
@@ -290,7 +289,7 @@ export function ClosingPaymentSheet({
             className="flex-1 py-3 rounded-xl text-white text-sm font-semibold disabled:opacity-60"
             style={{ backgroundColor: primaryColor }}
           >
-            {isSubmitting ? 'Enviando...' : 'Confirmar'}
+            {isSubmitting ? 'Enviando...' : t('common.confirm')}
           </button>
         </div>
       </div>

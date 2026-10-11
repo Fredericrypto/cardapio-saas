@@ -1,3 +1,4 @@
+import { categoryLabel } from '../i18n/categoryLabel';
 import { useI18n } from '../i18n/I18nContext';
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
@@ -107,13 +108,13 @@ export function PromotionDetailPage() {
   if (notFound || !promotion) {
     return (
       <div className="flex flex-col items-center justify-center h-screen px-6 text-center gap-3">
-        <p className="text-gray-500">Essa promoção não está mais disponível.</p>
+        <p className="text-gray-500">{t('promotionDetailPage.essa_promocao_nao_esta')}</p>
         <button
           onClick={() => navigate(backHref)}
           className="text-sm font-semibold"
           style={{ color: accent }}
         >
-          Voltar pro cardápio
+          {t('promotionDetailPage.voltar_pro_cardapio')}
         </button>
       </div>
     );
@@ -121,7 +122,7 @@ export function PromotionDetailPage() {
 
   const scopeNames =
     promotion.scope === 'category'
-      ? categories.filter((c) => promotion.categoryIds.includes(c.id)).map((c) => c.name)
+      ? categories.filter((c) => promotion.categoryIds.includes(c.id)).map((c) => categoryLabel(c, t))
       : promotion.scope === 'product'
         ? products.filter((p) => promotion.productIds.includes(p.id)).map((p) => p.name)
         : [];
@@ -158,7 +159,7 @@ export function PromotionDetailPage() {
         <button
           // Link compartilhado abre direto aqui (sem histórico): voltar leva ao cardápio.
           onClick={() => (routerLocation.key === 'default' ? navigate(backHref, { replace: true }) : navigate(-1))}
-          aria-label="Voltar"
+          aria-label={t('common.back')}
           className="absolute top-4 left-4 w-9 h-9 rounded-full bg-white/90 dark:bg-[#1E1E20]/90 flex items-center justify-center shadow-md"
         >
           <ArrowLeft size={18} strokeWidth={1.5} />
@@ -168,7 +169,7 @@ export function PromotionDetailPage() {
             className="absolute top-4 right-4"
             url={buildShareUrl('promocao', slug, promotion.id)}
             title={promotion.title}
-            text={promotion.description ?? `Promoção de ${tenant.name}`}
+            text={promotion.description ?? t('promotionDetailPage.promocao_de_name', { name: tenant.name })}
           />
         )}
         <div className="absolute bottom-4 left-4 right-4">
@@ -184,30 +185,30 @@ export function PromotionDetailPage() {
         )}
 
         <div>
-          <p className="text-xs font-semibold text-gray-400 mb-2">DETALHES E CONDIÇÕES</p>
+          <p className="text-xs font-semibold text-gray-400 mb-2">{t('promotionDetailPage.detalhes_e_condicoes')}</p>
           <div className="flex flex-col gap-2.5">
             <DetailRow
               icon={<Percent size={15} />}
               label={
                 promotion.discountType === 'percentage'
-                  ? `${promotion.discountValue}% de desconto`
-                  : `R$ ${Number(promotion.discountValue).toFixed(2).replace('.', ',')} de desconto`
+                  ? t('promotionDetailPage.discountvalue_de_desconto', { discountValue: promotion.discountValue })
+                  : t('promotionDetailPage.r_v0_de_desconto', { v0: Number(promotion.discountValue).toFixed(2).replace('.', ',') })
               }
             />
             {promotion.minOrderValue > 0 && (
               <DetailRow
                 icon={<Tag size={15} />}
-                label={`Pedido mínimo de R$ ${Number(promotion.minOrderValue).toFixed(2).replace('.', ',')}`}
+                label={t('promotionDetailPage.pedido_minimo_de_r', { v0: Number(promotion.minOrderValue).toFixed(2).replace('.', ',') })}
               />
             )}
             <DetailRow
               icon={<Tag size={15} />}
               label={
                 promotion.scope === 'all'
-                  ? 'Válida para todos os itens do cardápio'
+                  ? t('promotionDetailPage.valida_para_todos_os')
                   : scopeNames.length > 0
-                    ? `Válida só para: ${scopeNames.join(', ')}`
-                    : 'Válida para itens selecionados'
+                    ? t('promotionDetailPage.valida_so_para_v0', { v0: scopeNames.join(', ') })
+                    : t('promotionDetailPage.valida_para_itens_selecionados')
               }
             />
             {promotion.usageLimitPerCustomer != null && (
@@ -215,27 +216,26 @@ export function PromotionDetailPage() {
                 icon={<Users size={15} />}
                 label={
                   promotion.usageLimitPerCustomer === 1
-                    ? 'Limite de 1 uso por cliente'
-                    : `Limite de ${promotion.usageLimitPerCustomer} usos por cliente`
+                    ? t('promotionDetailPage.limite_de_1_uso')
+                    : t('promotionDetailPage.limite_de_usagelimitpercustomer_usos', { usageLimitPerCustomer: promotion.usageLimitPerCustomer })
                 }
               />
             )}
             {promotion.endsAt && (
-              <DetailRow icon={<Clock size={15} />} label={`Válida até ${formatDateTime(promotion.endsAt)}`} />
+              <DetailRow icon={<Clock size={15} />} label={t('promotionDetailPage.valida_ate_v0', { v0: formatDateTime(promotion.endsAt) })} />
             )}
           </div>
         </div>
 
         {promotion.alreadyUsedUp ? (
           <div className="bg-gray-50 border border-gray-100 rounded-xl p-3.5 text-sm text-gray-500 text-center">
-            Você já usou essa promoção.
+            {t('promotionDetailPage.voce_ja_usou_essa')}
           </div>
         ) : eligibility.isEligible ? (
           <div className="bg-green-50 border border-green-100 rounded-xl p-3.5 flex items-center gap-2">
             <CheckCircle2 size={18} className="text-green-600 shrink-0" />
             <p className="text-sm text-green-700">
-              Você economiza <strong>R$ {eligibility.discountAmount.toFixed(2).replace('.', ',')}</strong> com
-              o carrinho atual.
+              {t('promotionDetailPage.voce_economiza')} <strong>R$ {eligibility.discountAmount.toFixed(2).replace('.', ',')}</strong> {t('promotionDetailPage.com_o_carrinho_atual')}
             </p>
           </div>
         ) : (
@@ -250,7 +250,7 @@ export function PromotionDetailPage() {
       <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto p-4 bg-white border-t border-gray-100">
         {promotion.alreadyUsedUp ? (
           <button disabled className="w-full py-3.5 rounded-xl bg-gray-200 text-gray-400 font-semibold">
-            Promoção já utilizada
+            {t('promotionDetailPage.promocao_ja_utilizada')}
           </button>
         ) : isStoreClosed && !isApplied ? (
           <div className="flex flex-col gap-1.5">
@@ -271,7 +271,7 @@ export function PromotionDetailPage() {
             className="w-full py-3.5 rounded-xl font-semibold border-2"
             style={{ borderColor: accent, color: accent }}
           >
-            Remover promoção
+            {t('promotionDetailPage.remover_promocao')}
           </button>
         ) : (
           <button
@@ -279,7 +279,7 @@ export function PromotionDetailPage() {
             className="w-full py-3.5 rounded-xl text-white font-semibold"
             style={{ backgroundColor: tenant.primaryColor }}
           >
-            Usar promoção
+            {t('promotionDetailPage.usar_promocao')}
           </button>
         )}
       </div>

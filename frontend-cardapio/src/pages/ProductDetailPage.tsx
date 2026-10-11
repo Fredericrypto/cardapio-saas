@@ -108,7 +108,7 @@ export function ProductDetailPage() {
   if (!product) {
     return (
       <div className="flex flex-col items-center justify-center h-screen px-6 text-center">
-        <p className="text-gray-500">Produto não encontrado.</p>
+        <p className="text-gray-500">{t('productDetailPage.produto_nao_encontrado')}</p>
       </div>
     );
   }
@@ -134,7 +134,7 @@ export function ProductDetailPage() {
         return { ...prev, [groupId]: current.filter((id) => id !== valueId) };
       }
       if (current.length >= maxSelect) {
-        setValidationError(`Máximo de ${maxSelect} opções em "${groupName}".`);
+        setValidationError(t('productDetailPage.maximo_de_maxselect_opcoes', { maxSelect: maxSelect, groupName: groupName }));
         return prev;
       }
       return { ...prev, [groupId]: [...current, valueId] };
@@ -164,8 +164,8 @@ export function ProductDetailPage() {
       if (chosenCount < group.minSelect) {
         setValidationError(
           group.minSelect === 1
-            ? `Escolha uma opção em "${group.name}" antes de continuar.`
-            : `Escolha pelo menos ${group.minSelect} opções em "${group.name}" antes de continuar.`,
+            ? t('productDetailPage.escolha_uma_opcao_em', { name: group.name })
+            : t('productDetailPage.escolha_pelo_menos_minselect', { minSelect: group.minSelect, name: group.name }),
         );
         return;
       }
@@ -186,7 +186,7 @@ export function ProductDetailPage() {
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-300">
-            Sem foto
+            {t('productCard.sem_foto')}
           </div>
         )}
         <button
@@ -197,7 +197,7 @@ export function ProductDetailPage() {
               ? navigate(qrCodeToken ? `/${slug}/mesa/${qrCodeToken}` : `/${slug}`, { replace: true })
               : navigate(-1)
           }
-          aria-label="Voltar"
+          aria-label={t('common.back')}
           className="absolute top-4 left-4 w-9 h-9 rounded-full bg-white/90 dark:bg-[#1E1E20]/90 flex items-center justify-center shadow-md"
         >
           <ArrowLeft size={18} strokeWidth={1.5} />
@@ -207,7 +207,7 @@ export function ProductDetailPage() {
             className="absolute top-4 right-4"
             url={buildShareUrl('produto', slug, product.id)}
             title={product.name}
-            text={product.description ?? `Olha esse item de ${tenant.name}`}
+            text={product.description ?? t('productDetailPage.olha_esse_item_de', { name: tenant.name })}
           />
         )}
       </div>
@@ -226,7 +226,7 @@ export function ProductDetailPage() {
           <button
             type="button"
             onClick={() => navigate(`/${slug}/produto/${productId}/avaliacoes`)}
-            aria-label="Ver avaliações desse item"
+            aria-label={t('productDetailPage.ver_avaliacoes_desse_item')}
             className="flex items-center gap-1 mt-2"
           >
             <Star
@@ -240,7 +240,7 @@ export function ProductDetailPage() {
               </span>
             )}
             <span className="text-xs text-gray-400">
-              ({itemReviewSummary.count} {itemReviewSummary.count === 1 ? 'avaliação' : 'avaliações'})
+              ({itemReviewSummary.count} {itemReviewSummary.count === 1 ? t('reviewsShared.avaliacao') : t('reviewsShared.avaliacoes_2')})
             </span>
             {itemReviewSummary.count > 0 && <ChevronRight size={13} className="text-gray-400" />}
           </button>
@@ -356,7 +356,7 @@ export function ProductDetailPage() {
             className="w-full py-3.5 rounded-xl bg-gray-200 text-gray-500 font-semibold flex justify-center items-center gap-2 px-5 cursor-not-allowed"
           >
             <Ban size={16} />
-            Indisponível
+            {t('productCard.indisponivel')}
           </button>
         ) : (
         <button
@@ -366,7 +366,7 @@ export function ProductDetailPage() {
           >
             <span className="flex items-center gap-2">
               <CartIcon size={16} />
-              Adicionar
+              {t('productDetailPage.adicionar')}
             </span>
             <span>R$ {subtotal.toFixed(2).replace('.', ',')}</span>
           </button>

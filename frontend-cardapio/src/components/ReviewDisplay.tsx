@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nContext';
 import { RestaurantResponse } from './ReviewsShared';
 import { useState } from 'react';
 import { Star, Trash2, EyeOff } from 'lucide-react';
@@ -38,6 +39,7 @@ export function ReviewDisplay({
   // rótulo genérico "Resposta do restaurante".
   restaurantName?: string; // legado: o nome agora vem do tenant (RestaurantResponse)
 }) {
+  const { t } = useI18n();
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -54,12 +56,12 @@ export function ReviewDisplay({
   return (
     <div className="bg-white rounded-2xl p-5 border border-gray-100 flex flex-col gap-2">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-gray-900">Sua avaliação</p>
+        <p className="text-sm font-semibold text-gray-900">{t('reviewDisplay.sua_avaliacao')}</p>
         {!isConfirmingDelete && (
           <button
             onClick={() => setIsConfirmingDelete(true)}
             className="text-gray-400 p-1"
-            aria-label="Apagar avaliação"
+            aria-label={t('itemReviewDisplay.apagar_avaliacao')}
           >
             <Trash2 size={15} />
           </button>
@@ -70,7 +72,7 @@ export function ReviewDisplay({
       {review.isAnonymous && (
         <p className="text-xs text-gray-400 flex items-center gap-1">
           <EyeOff size={12} />
-          Publicada como anônimo
+          {t('reviewDisplay.publicada_como_anonimo')}
         </p>
       )}
 
@@ -85,8 +87,7 @@ export function ReviewDisplay({
       {isConfirmingDelete && (
         <div className="mt-1 bg-red-50 border border-red-100 rounded-xl p-3 flex flex-col gap-2">
           <p className="text-xs text-red-700">
-            Apagar não permite avaliar esse pedido de novo — só uma compra nova libera uma nova
-            avaliação. Tem certeza?
+            {t('reviewDisplay.apagar_nao_permite_avaliar')}
           </p>
           <div className="flex gap-2">
             <button
@@ -94,14 +95,14 @@ export function ReviewDisplay({
               disabled={isDeleting}
               className="flex-1 py-2 rounded-lg border border-gray-200 text-xs font-semibold text-gray-600 disabled:opacity-50"
             >
-              Cancelar
+              {t('common.cancel')}
             </button>
             <button
               onClick={handleDelete}
               disabled={isDeleting}
               className="flex-1 py-2 rounded-lg bg-red-600 text-white text-xs font-semibold disabled:opacity-50"
             >
-              {isDeleting ? 'Apagando...' : 'Apagar mesmo assim'}
+              {isDeleting ? 'Apagando...' : t('itemReviewDisplay.apagar_mesmo_assim')}
             </button>
           </div>
         </div>

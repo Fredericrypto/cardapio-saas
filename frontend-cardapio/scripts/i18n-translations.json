@@ -1,0 +1,1888 @@
+{
+ "texts": {
+  "Usar foto": [
+   "Use photo",
+   "Usar foto"
+  ],
+  "Formato inválido. Use JPEG, PNG ou WebP.": [
+   "Invalid format. Use JPEG, PNG or WebP.",
+   "Formato no válido. Usa JPEG, PNG o WebP."
+  ],
+  "Imagem muito grande. Escolha uma foto menor.": [
+   "Image too large. Choose a smaller photo.",
+   "Imagen demasiado grande. Elige una foto más pequeña."
+  ],
+  "Escolher foto de perfil": [
+   "Choose profile photo",
+   "Elegir foto de perfil"
+  ],
+  "Tirar ou escolher foto": [
+   "Take or choose a photo",
+   "Tomar o elegir una foto"
+  ],
+  "Ou escolha um avatar": [
+   "Or choose an avatar",
+   "O elige un avatar"
+  ],
+  "no carrinho": [
+   "in cart",
+   "en el carrito"
+  ],
+  "Faça login ou crie uma conta para usufruir dos benefícios do cashback": [
+   "Sign in or create an account to enjoy the cashback benefits",
+   "Inicia sesión o crea una cuenta para disfrutar de los beneficios del cashback"
+  ],
+  "Entrar ou criar conta": [
+   "Sign in or create account",
+   "Iniciar sesión o crear cuenta"
+  ],
+  "Todos": [
+   "All",
+   "Todos"
+  ],
+  "Fechar minha conta": [
+   "Close my tab",
+   "Cerrar mi cuenta"
+  ],
+  "Subtotal": [
+   "Subtotal",
+   "Subtotal"
+  ],
+  "Gorjeta": [
+   "Tip",
+   "Propina"
+  ],
+  "Cashback aplicado": [
+   "Cashback applied",
+   "Cashback aplicado"
+  ],
+  "Total": [
+   "Total",
+   "Total"
+  ],
+  "Pagar com cashback": [
+   "Pay with cashback",
+   "Pagar con cashback"
+  ],
+  "Usar meu cashback": [
+   "Use my cashback",
+   "Usar mi cashback"
+  ],
+  "Cobre a conta inteira — nada mais a pagar ·": [
+   "Covers the whole tab — nothing left to pay ·",
+   "Cubre toda la cuenta — nada más que pagar ·"
+  ],
+  "Como você vai pagar?": [
+   "How will you pay?",
+   "¿Cómo vas a pagar?"
+  ],
+  "Prefere pagar onde?": [
+   "Where would you prefer to pay?",
+   "¿Dónde prefieres pagar?"
+  ],
+  "Vou pagar no balcão": [
+   "I will pay at the counter",
+   "Pagaré en el mostrador"
+  ],
+  "Atendente vem à mesa": [
+   "A staff member comes to the table",
+   "Un atendente va a la mesa"
+  ],
+  "Se o restaurante tiver Pix automático configurado, o QR aparece na próxima tela e a conta fecha sozinha assim que você pagar. Senão, o garçom leva o QR até você.": [
+   "If the restaurant has automatic Pix set up, the QR appears on the next screen and the tab closes by itself as soon as you pay. Otherwise, the waiter brings the QR to you.",
+   "Si el restaurante tiene Pix automático configurado, el QR aparece en la siguiente pantalla y la cuenta se cierra sola en cuanto pagues. Si no, el mesero te lleva el QR."
+  ],
+  "O garçom vai levar a maquininha até você.": [
+   "The waiter will bring the card machine to you.",
+   "El mesero te llevará la terminal de pago."
+  ],
+  "Essa mesa teve mais de uma pessoa pedindo. O cashback que essa conta vai gerar fica:": [
+   "More than one person ordered at this table. The cashback this tab generates goes:",
+   "En esta mesa pidió más de una persona. El cashback que genere esta cuenta queda:"
+  ],
+  "Cada pessoa recebe o cashback do que ela mesma pediu": [
+   "Each person gets the cashback for what they ordered",
+   "Cada persona recibe el cashback de lo que pidió"
+  ],
+  "Só pra mim, já que estou fechando a conta": [
+   "Only to me, since I am closing the tab",
+   "Solo para mí, ya que estoy cerrando la cuenta"
+  ],
+  "Apagar avaliação": [
+   "Delete review",
+   "Eliminar reseña"
+  ],
+  "Apagar não permite avaliar esse item de novo — só um pedido novo com ele libera uma avaliação nova. Tem certeza?": [
+   "Deleting does not let you review this item again — only a new order with it unlocks a new review. Are you sure?",
+   "Eliminarla no permite volver a reseñar este artículo — solo un pedido nuevo con él habilita una nueva reseña. ¿Seguro?"
+  ],
+  "Apagar mesmo assim": [
+   "Delete anyway",
+   "Eliminar de todos modos"
+  ],
+  "Taxa a partir de R$": [
+   "Fee from R$",
+   "Tarifa desde R$"
+  ],
+  "Tentar de novo": [
+   "Try again",
+   "Intentar de nuevo"
+  ],
+  "(você)": [
+   "(you)",
+   "(tú)"
+  ],
+  "Abriu a mesa": [
+   "Opened the table",
+   "Abrió la mesa"
+  ],
+  "Ainda não pediu nada": [
+   "Has not ordered anything yet",
+   "Aún no ha pedido nada"
+  ],
+  "Outros pedidos": [
+   "Other orders",
+   "Otros pedidos"
+  ],
+  "Telefone incompleto — confira o DDD e o número.": [
+   "Incomplete phone number — check the area code and the number.",
+   "Teléfono incompleto — revisa el código de área y el número."
+  ],
+  "Tempo": [
+   "Time",
+   "Tiempo"
+  ],
+  "Código copiado!": [
+   "Code copied!",
+   "¡Código copiado!"
+  ],
+  "Copiar código Pix": [
+   "Copy Pix code",
+   "Copiar código Pix"
+  ],
+  "Abra o app do seu banco, escaneie o QR ou cole o código, e pague em até": [
+   "Open your bank app, scan the QR or paste the code, and pay within",
+   "Abre la app de tu banco, escanea el QR o pega el código, y paga en un máximo de"
+  ],
+  "receber o pagamento.": [
+   "to receive the payment.",
+   "para recibir el pago."
+  ],
+  "Sem foto": [
+   "No photo",
+   "Sin foto"
+  ],
+  "Indisponível": [
+   "Unavailable",
+   "No disponible"
+  ],
+  "Encerrada": [
+   "Ended",
+   "Finalizada"
+  ],
+  "{hours}h {minutes}min": [
+   "{hours}h {minutes}min",
+   "{hours}h {minutes}min"
+  ],
+  "Você já usou essa promoção": [
+   "You already used this promotion",
+   "Ya usaste esta promoción"
+  ],
+  "Pedido mínimo R$": [
+   "Minimum order R$",
+   "Pedido mínimo R$"
+  ],
+  "Escanear QR code da mesa": [
+   "Scan the table QR code",
+   "Escanear el código QR de la mesa"
+  ],
+  "Não foi possível acessar a câmera. Confirme a permissão do navegador ou escaneie com a câmera do celular.": [
+   "Could not access the camera. Check the browser permission or scan with your phone camera.",
+   "No se pudo acceder a la cámara. Revisa el permiso del navegador o escanea con la cámara del celular."
+  ],
+  "Esse QR code não é reconhecido. Escaneia o QR code da mesa do restaurante.": [
+   "This QR code is not recognized. Scan the restaurant table QR code.",
+   "Este código QR no se reconoce. Escanea el código QR de la mesa del restaurante."
+  ],
+  "Esse QR code é de outro restaurante — não dá pra abrir por aqui.": [
+   "This QR code is from another restaurant — it cannot be opened here.",
+   "Este código QR es de otro restaurante — no se puede abrir aquí."
+  ],
+  "Código de autenticidade": [
+   "Authenticity code",
+   "Código de autenticidad"
+  ],
+  "de cashback": [
+   "of cashback",
+   "de cashback"
+  ],
+  "*** SIMPLES CONFERÊNCIA DA CONTA ***": [
+   "*** SIMPLE TAB CHECK ***",
+   "*** SIMPLE REVISIÓN DE LA CUENTA ***"
+  ],
+  "*** NÃO É DOCUMENTO FISCAL ***": [
+   "*** NOT A TAX DOCUMENT ***",
+   "*** NO ES DOCUMENTO FISCAL ***"
+  ],
+  "Mesa": [
+   "Table",
+   "Mesa"
+  ],
+  "Mesa compartilhada por:": [
+   "Table shared by:",
+   "Mesa compartida por:"
+  ],
+  "abriu a mesa": [
+   "opened the table",
+   "abrió la mesa"
+  ],
+  "Cliente": [
+   "Customer",
+   "Cliente"
+  ],
+  "Aberto em": [
+   "Opened at",
+   "Abierta el"
+  ],
+  "Fechado em": [
+   "Closed at",
+   "Cerrada el"
+  ],
+  "Sem pedidos": [
+   "No orders",
+   "Sin pedidos"
+  ],
+  "Desconto aplicado": [
+   "Discount applied",
+   "Descuento aplicado"
+  ],
+  "já refletido no subtotal": [
+   "already reflected in the subtotal",
+   "ya reflejado en el subtotal"
+  ],
+  "Cashback usado": [
+   "Cashback used",
+   "Cashback usado"
+  ],
+  "Cashback usado no fechamento": [
+   "Cashback used at closing",
+   "Cashback usado al cerrar"
+  ],
+  "TOTAL": [
+   "TOTAL",
+   "TOTAL"
+  ],
+  "Cashback recebido nesse pedido": [
+   "Cashback received on this order",
+   "Cashback recibido en este pedido"
+  ],
+  "Pagamento": [
+   "Payment",
+   "Pago"
+  ],
+  "Recebido": [
+   "Received",
+   "Recibido"
+  ],
+  "Troco": [
+   "Change",
+   "Cambio"
+  ],
+  "Obrigado pela preferência!": [
+   "Thank you for your preference!",
+   "¡Gracias por tu preferencia!"
+  ],
+  "Volte sempre": [
+   "Come back soon",
+   "Vuelve pronto"
+  ],
+  "Entrega": [
+   "Delivery",
+   "Entrega"
+  ],
+  "Balcão": [
+   "Counter",
+   "Mostrador"
+  ],
+  "Endereço": [
+   "Address",
+   "Dirección"
+  ],
+  "Ref:": [
+   "Ref:",
+   "Ref:"
+  ],
+  "endereço não confirmado com exatidão": [
+   "address not confirmed exactly",
+   "dirección no confirmada con exactitud"
+  ],
+  "Pedido em": [
+   "Ordered at",
+   "Pedido el"
+  ],
+  "já refletido no total": [
+   "already reflected in the total",
+   "ya reflejado en el total"
+  ],
+  "Não foi possível confirmar sua sessão agora. Sua conexão pode estar instável.": [
+   "Could not confirm your session right now. Your connection may be unstable.",
+   "No pudimos confirmar tu sesión ahora. Tu conexión puede estar inestable."
+  ],
+  "Sua avaliação": [
+   "Your review",
+   "Tu reseña"
+  ],
+  "Publicada como anônimo": [
+   "Posted anonymously",
+   "Publicada como anónimo"
+  ],
+  "Apagar não permite avaliar esse pedido de novo — só uma compra nova libera uma nova avaliação. Tem certeza?": [
+   "Deleting does not let you review this order again — only a new purchase unlocks a new review. Are you sure?",
+   "Eliminarla no permite volver a reseñar este pedido — solo una compra nueva habilita una nueva reseña. ¿Seguro?"
+  ],
+  "Escolhe de 1 a 5 estrelas primeiro.": [
+   "Pick 1 to 5 stars first.",
+   "Elige de 1 a 5 estrellas primero."
+  ],
+  "Não foi possível enviar. Tenta de novo.": [
+   "Could not send. Try again.",
+   "No se pudo enviar. Inténtalo de nuevo."
+  ],
+  "Avaliar item": [
+   "Review item",
+   "Reseñar artículo"
+  ],
+  "O que achou desse item?": [
+   "What did you think of this item?",
+   "¿Qué te pareció este artículo?"
+  ],
+  "Como foi o seu pedido?": [
+   "How was your order?",
+   "¿Cómo fue tu pedido?"
+  ],
+  "Sua opinião ajuda todo mundo.": [
+   "Your opinion helps everyone.",
+   "Tu opinión ayuda a todos."
+  ],
+  "Conte como foi (opcional)": [
+   "Tell us how it went (optional)",
+   "Cuéntanos cómo fue (opcional)"
+  ],
+  "Publicar como anônimo": [
+   "Post anonymously",
+   "Publicar como anónimo"
+  ],
+  "Agora não": [
+   "Not now",
+   "Ahora no"
+  ],
+  "Enviar": [
+   "Send",
+   "Enviar"
+  ],
+  "Não quer avaliar agora?": [
+   "Do not want to review now?",
+   "¿No quieres reseñar ahora?"
+  ],
+  "Sem problema — essa avaliação não vai ser feita. Se mudar de ideia depois, dá pra avaliar pelo histórico de pedidos, quando ainda for elegível.": [
+   "No problem — this review will not be made. If you change your mind, you can review from your order history while still eligible.",
+   "Sin problema — esta reseña no se hará. Si cambias de opinión, puedes reseñar desde tu historial de pedidos mientras sea elegible."
+  ],
+  "Confirmar envio?": [
+   "Confirm sending?",
+   "¿Confirmar el envío?"
+  ],
+  "Depois de enviada, sua avaliação": [
+   "Once sent, your review",
+   "Una vez enviada, tu reseña"
+  ],
+  "não pode mais ser editada": [
+   "can no longer be edited",
+   "ya no se puede editar"
+  ],
+  "— só apagada, se você quiser. Confirma o envio?": [
+   "— only deleted, if you wish. Confirm sending?",
+   "— solo eliminarla, si quieres. ¿Confirmas el envío?"
+  ],
+  "Revisar": [
+   "Review",
+   "Revisar"
+  ],
+  "Avaliação do restaurante": [
+   "Restaurant review",
+   "Reseña del restaurante"
+  ],
+  "Restaurante": [
+   "Restaurant",
+   "Restaurante"
+  ],
+  "Avaliações": [
+   "Reviews",
+   "Reseñas"
+  ],
+  "avaliação": [
+   "review",
+   "reseña"
+  ],
+  "avaliações": [
+   "reviews",
+   "reseñas"
+  ],
+  "Ainda não há avaliações por aqui.": [
+   "There are no reviews here yet.",
+   "Aún no hay reseñas por aquí."
+  ],
+  "Ver mais avaliações": [
+   "See more reviews",
+   "Ver más reseñas"
+  ],
+  "Buscar no cardápio": [
+   "Search the menu",
+   "Buscar en el menú"
+  ],
+  "Balcão {tableNumber}": [
+   "Counter {tableNumber}",
+   "Mostrador {tableNumber}"
+  ],
+  "Mesa {tableNumber}": [
+   "Table {tableNumber}",
+   "Mesa {tableNumber}"
+  ],
+  "Consumo no local": [
+   "Dine-in",
+   "Consumo en el local"
+  ],
+  "Chamar garçom": [
+   "Call waiter",
+   "Llamar al mesero"
+  ],
+  "Minha conta": [
+   "My tab",
+   "Mi cuenta"
+  ],
+  "Já existe uma seção em aberto nesta mesa. Deseja se juntar?": [
+   "There is already an open session at this table. Do you want to join?",
+   "Ya hay una sesión abierta en esta mesa. ¿Quieres unirte?"
+  ],
+  "Sim": [
+   "Yes",
+   "Sí"
+  ],
+  "Pagando a conta via Pix": [
+   "Paying the tab via Pix",
+   "Pagando la cuenta por Pix"
+  ],
+  "Abra o app do seu banco, escaneie o QR ou cole o código. Sua conta fecha sozinha assim que": [
+   "Open your bank app, scan the QR or paste the code. Your tab closes by itself as soon as we",
+   "Abre la app de tu banco, escanea el QR o pega el código. Tu cuenta se cierra sola en cuanto"
+  ],
+  "receber o pagamento — não precisa recarregar a página.": [
+   "receive the payment — no need to reload the page.",
+   "recibamos el pago — no hace falta recargar la página."
+  ],
+  "Esse navegador não permite acessar a câmera diretamente. Toque abaixo pra tirar a foto pelo app de câmera do celular.": [
+   "This browser does not allow direct camera access. Tap below to take the photo with your phone camera app.",
+   "Este navegador no permite acceder directamente a la cámara. Toca abajo para tomar la foto con la app de cámara del celular."
+  ],
+  "Você não deu permissão pra câmera. Permite o acesso nas configurações do navegador e tenta de novo, ou usa o app de câmera do celular abaixo.": [
+   "You did not allow camera access. Allow it in your browser settings and try again, or use the phone camera app below.",
+   "No diste permiso para la cámara. Permite el acceso en la configuración del navegador e inténtalo de nuevo, o usa la app de cámara del celular abajo."
+  ],
+  "Não consegui acessar a câmera. Toque abaixo pra tirar a foto pelo app de câmera do celular.": [
+   "Could not access the camera. Tap below to take the photo with your phone camera app.",
+   "No pude acceder a la cámara. Toca abajo para tomar la foto con la app de cámara del celular."
+  ],
+  "Não consegui acessar a câmera de novo. Tenta pelo app de câmera do celular.": [
+   "Could not access the camera again. Try with the phone camera app.",
+   "No pude acceder a la cámara otra vez. Prueba con la app de cámara del celular."
+  ],
+  "Abrir câmera do celular": [
+   "Open phone camera",
+   "Abrir cámara del celular"
+  ],
+  "Prévia da sua foto": [
+   "Your photo preview",
+   "Vista previa de tu foto"
+  ],
+  "Ficou boa? Seu rosto precisa estar visível e bem iluminado.": [
+   "Looks good? Your face must be visible and well lit.",
+   "¿Quedó bien? Tu rostro debe estar visible y bien iluminado."
+  ],
+  "Tirar de novo": [
+   "Retake",
+   "Tomar de nuevo"
+  ],
+  "Usar essa foto": [
+   "Use this photo",
+   "Usar esta foto"
+  ],
+  "Posicione seu rosto dentro da guia, num local bem iluminado. Quando estiver pronto, toque no botão abaixo.": [
+   "Place your face inside the guide, in a well-lit spot. When ready, tap the button below.",
+   "Coloca tu rostro dentro de la guía, en un lugar bien iluminado. Cuando estés listo, toca el botón de abajo."
+  ],
+  "Se ajeite — a foto é tirada sozinha ao fim da contagem.": [
+   "Get ready — the photo is taken automatically at the end of the countdown.",
+   "Prepárate — la foto se toma sola al final de la cuenta regresiva."
+  ],
+  "Iniciar contagem pra tirar a foto": [
+   "Start countdown to take the photo",
+   "Iniciar cuenta regresiva para tomar la foto"
+  ],
+  "Você foi verificado!": [
+   "You are verified!",
+   "¡Estás verificado!"
+  ],
+  "Seu perfil agora tem o selo de cliente verificado. Ele aparece pro estabelecimento sempre que você fizer um pedido.": [
+   "Your profile now has the verified customer badge. It shows to the establishment whenever you place an order.",
+   "Tu perfil ahora tiene la insignia de cliente verificado. Aparece al establecimiento cada vez que hagas un pedido."
+  ],
+  "Legal!": [
+   "Great!",
+   "¡Genial!"
+  ],
+  "Como funciona a verificação": [
+   "How verification works",
+   "Cómo funciona la verificación"
+  ],
+  "- Você vai tirar uma foto do seu rosto, na hora, pela câmera.": [
+   "- You will take a photo of your face, right now, with the camera.",
+   "- Tomarás una foto de tu rostro, en el momento, con la cámara."
+  ],
+  "- A decisão de aprovar é do": [
+   "- The decision to approve belongs to the",
+   "- La decisión de aprobar es del"
+  ],
+  "— ele pode recusar por motivos específicos, como foto de baixa qualidade ou que não mostre seu rosto claramente.": [
+   "— it may decline for specific reasons, such as a low-quality photo or one that does not clearly show your face.",
+   "— puede rechazar por motivos específicos, como una foto de baja calidad o que no muestre tu rostro con claridad."
+  ],
+  "- Se for recusada, você vê o motivo e pode tentar de novo.": [
+   "- If declined, you see the reason and can try again.",
+   "- Si es rechazada, ves el motivo y puedes intentarlo de nuevo."
+  ],
+  "- A foto enviada é excluída assim que a decisão sair (aprovada ou recusada).": [
+   "- The submitted photo is deleted as soon as the decision is made (approved or declined).",
+   "- La foto enviada se elimina en cuanto salga la decisión (aprobada o rechazada)."
+  ],
+  "- Tire uma foto sua de verdade, com boa luz — fotos falsas ou de outra pessoa são recusadas.": [
+   "- Take a real photo of yourself, with good light — fake photos or photos of someone else are declined.",
+   "- Toma una foto real de ti, con buena luz — las fotos falsas o de otra persona son rechazadas."
+  ],
+  "Entendi, continuar": [
+   "Got it, continue",
+   "Entendido, continuar"
+  ],
+  "Não foi possível carregar o restaurante.": [
+   "Could not load the restaurant.",
+   "No se pudo cargar el restaurante."
+  ],
+  "Não conseguimos recalcular a taxa pro endereço salvo. Confira os dados.": [
+   "We could not recalculate the fee for the saved address. Check the details.",
+   "No pudimos recalcular la tarifa para la dirección guardada. Revisa los datos."
+  ],
+  "Não conseguimos calcular a taxa de entrega para esse endereço.": [
+   "We could not calculate the delivery fee for this address.",
+   "No pudimos calcular la tarifa de entrega para esta dirección."
+  ],
+  "Não foi possível enviar o pedido. Tente novamente.": [
+   "Could not send the order. Please try again.",
+   "No se pudo enviar el pedido. Inténtalo de nuevo."
+  ],
+  "Não foi possível chamar o garçom agora. Tente novamente.": [
+   "Could not call the waiter right now. Please try again.",
+   "No se pudo llamar al mesero ahora. Inténtalo de nuevo."
+  ],
+  "Cancelar esse pedido? Essa ação não pode ser desfeita.": [
+   "Cancel this order? This action cannot be undone.",
+   "¿Cancelar este pedido? Esta acción no se puede deshacer."
+  ],
+  "Não foi possível cancelar o pedido agora. Tente novamente.": [
+   "Could not cancel the order right now. Please try again.",
+   "No se pudo cancelar el pedido ahora. Inténtalo de nuevo."
+  ],
+  "Não foi possível chamar o atendente agora.": [
+   "Could not call the staff right now.",
+   "No se pudo llamar al atendente ahora."
+  ],
+  "Pedido cancelado": [
+   "Order cancelled",
+   "Pedido cancelado"
+  ],
+  "Voltando ao cardápio...": [
+   "Going back to the menu...",
+   "Volviendo al menú..."
+  ],
+  "O pedido foi cancelado": [
+   "The order was cancelled",
+   "El pedido fue cancelado"
+  ],
+  "O tempo pra pagar acabou": [
+   "The time to pay ran out",
+   "Se acabó el tiempo para pagar"
+  ],
+  "{name} cancelou esse pedido. Se achar que foi engano, entre em contato antes de fazer um novo pedido.": [
+   "{name} cancelled this order. If you think it was a mistake, get in touch before placing a new order.",
+   "{name} canceló este pedido. Si crees que fue un error, comunícate antes de hacer un nuevo pedido."
+  ],
+  "Esse pedido foi cancelado porque o Pix não foi confirmado a tempo. Monte o pedido de novo pra tentar outra vez.": [
+   "This order was cancelled because the Pix was not confirmed in time. Build the order again to try once more.",
+   "Este pedido fue cancelado porque el Pix no se confirmó a tiempo. Arma el pedido de nuevo para intentarlo otra vez."
+  ],
+  "Voltar ao cardápio": [
+   "Back to the menu",
+   "Volver al menú"
+  ],
+  "Pagamento confirmado!": [
+   "Payment confirmed!",
+   "¡Pago confirmado!"
+  ],
+  "Pedido enviado!": [
+   "Order sent!",
+   "¡Pedido enviado!"
+  ],
+  "Seu Pix foi confirmado e o pedido já está na cozinha.": [
+   "Your Pix was confirmed and the order is already in the kitchen.",
+   "Tu Pix fue confirmado y el pedido ya está en la cocina."
+  ],
+  "O estabelecimento já recebeu seu pedido e vai confirmar em instantes.": [
+   "The establishment already received your order and will confirm shortly.",
+   "El establecimiento ya recibió tu pedido y lo confirmará en instantes."
+  ],
+  "Cliente:": [
+   "Customer:",
+   "Cliente:"
+  ],
+  "Entrega para:": [
+   "Deliver to:",
+   "Entrega para:"
+  ],
+  "Taxa de entrega: R$": [
+   "Delivery fee: R$",
+   "Tarifa de entrega: R$"
+  ],
+  "({v0} km)": [
+   "({v0} km)",
+   "({v0} km)"
+  ],
+  "Pagamento:": [
+   "Payment:",
+   "Pago:"
+  ],
+  "Gorjeta:": [
+   "Tip:",
+   "Propina:"
+  ],
+  "Sem gorjeta": [
+   "No tip",
+   "Sin propina"
+  ],
+  "Cashback usado:": [
+   "Cashback used:",
+   "Cashback usado:"
+  ],
+  "Observação:": [
+   "Note:",
+   "Observación:"
+  ],
+  "Garçom chamado!": [
+   "Waiter called!",
+   "¡Mesero llamado!"
+  ],
+  "Cancelar chamado": [
+   "Cancel call",
+   "Cancelar llamado"
+  ],
+  "Algo errado com o pedido? Chamar garçom": [
+   "Something wrong with the order? Call waiter",
+   "¿Algo mal con el pedido? Llamar al mesero"
+  ],
+  "Atendente chamado!": [
+   "Staff called!",
+   "¡Atendente llamado!"
+  ],
+  "Algo errado com o pedido? Chamar atendente": [
+   "Something wrong with the order? Call staff",
+   "¿Algo mal con el pedido? Llamar al atendente"
+  ],
+  "Cancelar pedido": [
+   "Cancel order",
+   "Cancelar pedido"
+  ],
+  "Seu carrinho está vazio": [
+   "Your cart is empty",
+   "Tu carrito está vacío"
+  ],
+  "Adicione itens do cardápio pra fazer seu pedido.": [
+   "Add items from the menu to place your order.",
+   "Agrega artículos del menú para hacer tu pedido."
+  ],
+  "Ver cardápio": [
+   "See menu",
+   "Ver menú"
+  ],
+  "Estabelecimento fechado": [
+   "Establishment closed",
+   "Establecimiento cerrado"
+  ],
+  "Confirmar pedido": [
+   "Confirm order",
+   "Confirmar pedido"
+  ],
+  "Calcule a taxa de entrega": [
+   "Calculate the delivery fee",
+   "Calcula la tarifa de entrega"
+  ],
+  "Ir para pagamento": [
+   "Go to payment",
+   "Ir al pago"
+  ],
+  "Revisar pedido": [
+   "Review order",
+   "Revisar pedido"
+  ],
+  "Seu pedido": [
+   "Your order",
+   "Tu pedido"
+  ],
+  "Cupom aplicado · R$": [
+   "Coupon applied · R$",
+   "Cupón aplicado · R$"
+  ],
+  "Cupom aplicado": [
+   "Coupon applied",
+   "Cupón aplicado"
+  ],
+  "Não elegível pra esse carrinho": [
+   "Not eligible for this cart",
+   "No elegible para este carrito"
+  ],
+  "Adicionar outro cupom": [
+   "Add another coupon",
+   "Agregar otro cupón"
+  ],
+  "Usar um cupom": [
+   "Use a coupon",
+   "Usar un cupón"
+  ],
+  "{availablePromotionsCount} disponível(is)": [
+   "{availablePromotionsCount} available",
+   "{availablePromotionsCount} disponible(s)"
+  ],
+  "Nenhum disponível": [
+   "None available",
+   "Ninguno disponible"
+  ],
+  "Economize R$ {v0}": [
+   "Save R$ {v0}",
+   "Ahorra R$ {v0}"
+  ],
+  "Como você quer receber seu pedido?": [
+   "How do you want to receive your order?",
+   "¿Cómo quieres recibir tu pedido?"
+  ],
+  "Você está na Mesa": [
+   "You are at Table",
+   "Estás en la Mesa"
+  ],
+  "agora. Pedir entrega é separado da conta da mesa — sua mesa continua aberta normalmente.": [
+   "now. Ordering delivery is separate from the table tab — your table stays open normally.",
+   "ahora. Pedir entrega es aparte de la cuenta de la mesa — tu mesa sigue abierta con normalidad."
+  ],
+  "Usando os dados da sua conta": [
+   "Using your account details",
+   "Usando los datos de tu cuenta"
+  ],
+  "Endereço de entrega": [
+   "Delivery address",
+   "Dirección de entrega"
+  ],
+  "Número": [
+   "Number",
+   "Número"
+  ],
+  "Bairro": [
+   "Neighborhood",
+   "Barrio"
+  ],
+  "Cidade": [
+   "City",
+   "Ciudad"
+  ],
+  "UF": [
+   "State",
+   "Estado"
+  ],
+  "CEP (opcional, ajuda na precisão)": [
+   "ZIP code (optional, helps accuracy)",
+   "Código postal (opcional, ayuda a la precisión)"
+  ],
+  "Ponto de referência (opcional) — ex: portão azul, perto do mercado": [
+   "Landmark (optional) — e.g. blue gate, near the market",
+   "Punto de referencia (opcional) — ej: portón azul, cerca del mercado"
+  ],
+  "Calcular taxa de entrega": [
+   "Calculate delivery fee",
+   "Calcular tarifa de entrega"
+  ],
+  "Endereço confirmado:": [
+   "Address confirmed:",
+   "Dirección confirmada:"
+  ],
+  "Distância:": [
+   "Distance:",
+   "Distancia:"
+  ],
+  "Não conseguimos confirmar o número exato — confira se o endereço acima está certo antes de continuar.": [
+   "We could not confirm the exact number — check that the address above is correct before continuing.",
+   "No pudimos confirmar el número exacto — revisa que la dirección de arriba sea correcta antes de continuar."
+  ],
+  "Recalcular": [
+   "Recalculate",
+   "Recalcular"
+  ],
+  "Alguma observação? (opcional)": [
+   "Any notes? (optional)",
+   "¿Alguna observación? (opcional)"
+  ],
+  "Ex: sem cebola, ponto da carne, embrulhar pra presente...": [
+   "E.g. no onion, how the meat is cooked, gift wrapping...",
+   "Ej: sin cebolla, punto de la carne, envolver para regalo..."
+  ],
+  "para o entregador": [
+   "for the courier",
+   "para el repartidor"
+  ],
+  "Outro valor (R$)": [
+   "Other amount (R$)",
+   "Otro valor (R$)"
+  ],
+  "Como você prefere pagar": [
+   "How do you prefer to pay",
+   "Cómo prefieres pagar"
+  ],
+  "na entrega": [
+   "on delivery",
+   "en la entrega"
+  ],
+  "na retirada": [
+   "on pickup",
+   "en la recogida"
+  ],
+  "? Ainda não processamos pagamento pelo app — isso só avisa o estabelecimento de como você vai pagar.": [
+   "? We do not process payment in the app yet — this only tells the establishment how you will pay.",
+   "? Aún no procesamos pagos en la app — esto solo avisa al establecimiento cómo vas a pagar."
+  ],
+  "Tenha o troco combinado com quem entregar/atender, se precisar.": [
+   "Have the change arranged with whoever delivers/serves, if needed.",
+   "Ten el cambio acordado con quien entregue/atienda, si lo necesitas."
+  ],
+  "Maquininha na entrega/retirada.": [
+   "Card machine on delivery/pickup.",
+   "Terminal de pago en la entrega/recogida."
+  ],
+  "O QR code do Pix será gerado pelo estabelecimento na hora da entrega/retirada.": [
+   "The Pix QR code will be generated by the establishment at delivery/pickup time.",
+   "El código QR del Pix lo generará el establecimiento al momento de la entrega/recogida."
+  ],
+  "Itens": [
+   "Items",
+   "Artículos"
+  ],
+  "Usar meu saldo de cashback": [
+   "Use my cashback balance",
+   "Usar mi saldo de cashback"
+  ],
+  "R$ {v0} disponível": [
+   "R$ {v0} available",
+   "R$ {v0} disponible"
+  ],
+  "R$ 0,00 disponível": [
+   "R$ 0,00 available",
+   "R$ 0,00 disponible"
+  ],
+  "Você vai ganhar ~R$": [
+   "You will earn ~R$",
+   "Ganarás ~R$"
+  ],
+  "de cashback nesse pedido.": [
+   "in cashback on this order.",
+   "de cashback en este pedido."
+  ],
+  "Observação": [
+   "Note",
+   "Observación"
+  ],
+  "Cupom (": [
+   "Coupon (",
+   "Cupón ("
+  ],
+  "Taxa de entrega": [
+   "Delivery fee",
+   "Tarifa de entrega"
+  ],
+  "Remover item?": [
+   "Remove item?",
+   "¿Quitar artículo?"
+  ],
+  "será removido do seu carrinho.": [
+   "will be removed from your cart.",
+   "se quitará de tu carrito."
+  ],
+  "Remover": [
+   "Remove",
+   "Quitar"
+  ],
+  "Vence em breve": [
+   "Expires soon",
+   "Vence pronto"
+  ],
+  "Válido": [
+   "Valid",
+   "Válido"
+  ],
+  "Sem data de validade": [
+   "No expiry date",
+   "Sin fecha de vencimiento"
+  ],
+  "Crédito original de": [
+   "Original credit of",
+   "Crédito original de"
+  ],
+  "Expirado": [
+   "Expired",
+   "Vencido"
+  ],
+  "Ganho em": [
+   "Earned on",
+   "Ganado el"
+  ],
+  "Expirou dia": [
+   "Expired on",
+   "Venció el"
+  ],
+  "Não utilizado (crédito original de": [
+   "Unused (original credit of",
+   "Sin usar (crédito original de"
+  ],
+  "Cashback utilizado": [
+   "Cashback used",
+   "Cashback usado"
+  ],
+  "Utilizado": [
+   "Used",
+   "Usado"
+  ],
+  "Total do pedido:": [
+   "Order total:",
+   "Total del pedido:"
+  ],
+  "indisponível": [
+   "unavailable",
+   "no disponible"
+  ],
+  "Você não tem cashback disponível agora. Faça um pedido pra começar a ganhar!": [
+   "You have no cashback available right now. Place an order to start earning!",
+   "No tienes cashback disponible ahora. ¡Haz un pedido para empezar a ganar!"
+  ],
+  "Nenhum cashback expirou até agora.": [
+   "No cashback has expired so far.",
+   "Ningún cashback ha vencido hasta ahora."
+  ],
+  "Você ainda não usou cashback em nenhum pedido.": [
+   "You have not used cashback on any order yet.",
+   "Aún no has usado cashback en ningún pedido."
+  ],
+  "Saldo disponível": [
+   "Available balance",
+   "Saldo disponible"
+  ],
+  "Use no carrinho quando quiser — marque a caixinha \"Usar meu saldo de cashback\" no checkout.": [
+   "Use it in the cart whenever you like — check the \"Use my cashback balance\" box at checkout.",
+   "Úsalo en el carrito cuando quieras — marca la casilla \"Usar mi saldo de cashback\" al pagar."
+  ],
+  "Categorias de cashback": [
+   "Cashback categories",
+   "Categorías de cashback"
+  ],
+  "Não foi possível salvar sua chave Pix agora.": [
+   "Could not save your Pix key right now.",
+   "No se pudo guardar tu clave Pix ahora."
+  ],
+  "Guardamos só a sua chave — nenhum saldo fica com a gente. Ela serve pra": [
+   "We only keep your key — no balance stays with us. It is used to",
+   "Solo guardamos tu clave — ningún saldo queda con nosotros. Sirve para"
+  ],
+  "devolver dinheiro direto pra você, caso um pedido seja cancelado ou reembolsado.": [
+   "send money back directly to you if an order is cancelled or refunded.",
+   "devolverte dinero directamente si un pedido se cancela o se reembolsa."
+  ],
+  "Chave salva": [
+   "Saved key",
+   "Clave guardada"
+  ],
+  "Editar": [
+   "Edit",
+   "Editar"
+  ],
+  "Tipo de chave": [
+   "Key type",
+   "Tipo de clave"
+  ],
+  "Celular": [
+   "Mobile",
+   "Celular"
+  ],
+  "CPF": [
+   "CPF",
+   "CPF"
+  ],
+  "Chave aleatória": [
+   "Random key",
+   "Clave aleatoria"
+  ],
+  "Sua chave Pix": [
+   "Your Pix key",
+   "Tu clave Pix"
+  ],
+  "Salvar chave Pix": [
+   "Save Pix key",
+   "Guardar clave Pix"
+  ],
+  "· em breve": [
+   "· coming soon",
+   "· próximamente"
+  ],
+  "Não foi possível enviar a foto. Tente novamente.": [
+   "Could not upload the photo. Please try again.",
+   "No se pudo enviar la foto. Inténtalo de nuevo."
+  ],
+  "Não foi possível definir o avatar. Tente novamente.": [
+   "Could not set the avatar. Please try again.",
+   "No se pudo definir el avatar. Inténtalo de nuevo."
+  ],
+  "Informe seu nome.": [
+   "Enter your name.",
+   "Ingresa tu nombre."
+  ],
+  "Não foi possível salvar. Confira os dados e tente de novo.": [
+   "Could not save. Check the details and try again.",
+   "No se pudo guardar. Revisa los datos e inténtalo de nuevo."
+  ],
+  "Alterar foto": [
+   "Change photo",
+   "Cambiar foto"
+  ],
+  "Nome": [
+   "Name",
+   "Nombre"
+  ],
+  "WhatsApp": [
+   "WhatsApp",
+   "WhatsApp"
+  ],
+  "Pronomes pessoais": [
+   "Personal pronouns",
+   "Pronombres personales"
+  ],
+  "Escolha até 2. Aparecem só na sua Conta e para o restaurante, ao lado do seu nome na mesa.": [
+   "Choose up to 2. They only show in your Account and to the restaurant, next to your name at the table.",
+   "Elige hasta 2. Aparecen solo en tu Cuenta y para el restaurante, junto a tu nombre en la mesa."
+  ],
+  "Gênero": [
+   "Gender",
+   "Género"
+  ],
+  "Salvo!": [
+   "Saved!",
+   "¡Guardado!"
+  ],
+  "Salvar": [
+   "Save",
+   "Guardar"
+  ],
+  "Não foi possível carregar este cardápio. Verifique o link.": [
+   "Could not load this menu. Check the link.",
+   "No se pudo cargar este menú. Revisa el enlace."
+  ],
+  "Este QR code não pertence a este restaurante. Escaneie novamente o código impresso na mesa.": [
+   "This QR code does not belong to this restaurant. Scan the code printed on the table again.",
+   "Este código QR no pertenece a este restaurante. Escanea de nuevo el código impreso en la mesa."
+  ],
+  "Garçom chamado! Alguém vai até a sua mesa em instantes.": [
+   "Waiter called! Someone will come to your table shortly.",
+   "¡Mesero llamado! Alguien irá a tu mesa en instantes."
+  ],
+  "Ocultar promoções": [
+   "Hide promotions",
+   "Ocultar promociones"
+  ],
+  "Mostrar promoções": [
+   "Show promotions",
+   "Mostrar promociones"
+  ],
+  "Nenhuma promoção no momento": [
+   "No promotions right now",
+   "Ninguna promoción por ahora"
+  ],
+  "Nenhum produto encontrado.": [
+   "No products found.",
+   "No se encontraron productos."
+  ],
+  "Não foi possível sair da mesa agora. Tente novamente.": [
+   "Could not leave the table right now. Please try again.",
+   "No se pudo salir de la mesa ahora. Inténtalo de nuevo."
+  ],
+  "Seu pedido agora está: {label}": [
+   "Your order is now: {label}",
+   "Tu pedido ahora está: {label}"
+  ],
+  "Não foi possível solicitar o fechamento. Tente novamente ou chame um garçom.": [
+   "Could not request closing. Try again or call a waiter.",
+   "No se pudo solicitar el cierre. Inténtalo de nuevo o llama a un mesero."
+  ],
+  "Conta fechada": [
+   "Tab closed",
+   "Cuenta cerrada"
+  ],
+  "Obrigado pela visita! Sua conta já foi paga e encerrada.": [
+   "Thanks for visiting! Your tab has been paid and closed.",
+   "¡Gracias por la visita! Tu cuenta ya fue pagada y cerrada."
+  ],
+  "Sair da mesa": [
+   "Leave table",
+   "Salir de la mesa"
+  ],
+  "Tem certeza que quer sair dessa mesa?{v0} Pra voltar, só escaneando o QR code da mesa de novo.": [
+   "Are you sure you want to leave this table?{v0} To come back, you can only scan the table QR code again.",
+   "¿Seguro que quieres salir de esta mesa?{v0} Para volver, solo escaneando de nuevo el código QR de la mesa."
+  ],
+  "Sim, sair da mesa": [
+   "Yes, leave table",
+   "Sí, salir de la mesa"
+  ],
+  "Você ainda não fez nenhum pedido nessa mesa.": [
+   "You have not placed any order at this table yet.",
+   "Aún no has hecho ningún pedido en esta mesa."
+  ],
+  "Gorjeta (opcional)": [
+   "Tip (optional)",
+   "Propina (opcional)"
+  ],
+  "Outro": [
+   "Other",
+   "Otro"
+  ],
+  "Valor da gorjeta (R$)": [
+   "Tip amount (R$)",
+   "Valor de la propina (R$)"
+  ],
+  "O Pix não foi confirmado a tempo.": [
+   "The Pix was not confirmed in time.",
+   "El Pix no se confirmó a tiempo."
+  ],
+  "Fechamento solicitado — aguarde o garçom": [
+   "Closing requested — wait for the waiter",
+   "Cierre solicitado — espera al mesero"
+  ],
+  "Solicitar fechamento da conta": [
+   "Request tab closing",
+   "Solicitar el cierre de la cuenta"
+  ],
+  "Não foi possível carregar suas avaliações.": [
+   "Could not load your reviews.",
+   "No se pudieron cargar tus reseñas."
+  ],
+  "Você ainda não avaliou nada. Depois que um pedido for concluído, você recebe uma notificação pra avaliar o restaurante e os itens que pediu.": [
+   "You have not reviewed anything yet. Once an order is completed, you get a notification to review the restaurant and the items you ordered.",
+   "Aún no has reseñado nada. Cuando un pedido se complete, recibes una notificación para reseñar el restaurante y los artículos que pediste."
+  ],
+  "Pedido": [
+   "Order",
+   "Pedido"
+  ],
+  "Histórico de pedidos": [
+   "Order history",
+   "Historial de pedidos"
+  ],
+  "Você ainda não fez nenhum pedido aqui.": [
+   "You have not placed any order here yet.",
+   "Aún no has hecho ningún pedido aquí."
+  ],
+  "Mostrar pedidos de {label}": [
+   "Show orders from {label}",
+   "Mostrar pedidos de {label}"
+  ],
+  "Esconder pedidos de {label}": [
+   "Hide orders from {label}",
+   "Ocultar pedidos de {label}"
+  ],
+  "pedido feito": [
+   "order placed",
+   "pedido hecho"
+  ],
+  "pedidos feitos": [
+   "orders placed",
+   "pedidos hechos"
+  ],
+  "Não foi possível salvar o cupom. Tenta de novo em alguns segundos.": [
+   "Could not save the receipt. Try again in a few seconds.",
+   "No se pudo guardar el cupón. Inténtalo de nuevo en unos segundos."
+  ],
+  "Cupom —": [
+   "Receipt —",
+   "Cupón —"
+  ],
+  "Não foi possível carregar esse cupom.": [
+   "Could not load this receipt.",
+   "No se pudo cargar este cupón."
+  ],
+  "Produto não encontrado.": [
+   "Product not found.",
+   "Producto no encontrado."
+  ],
+  "Máximo de {maxSelect} opções em \"{groupName}\".": [
+   "Maximum of {maxSelect} options in \"{groupName}\".",
+   "Máximo de {maxSelect} opciones en \"{groupName}\"."
+  ],
+  "Escolha uma opção em \"{name}\" antes de continuar.": [
+   "Choose an option in \"{name}\" before continuing.",
+   "Elige una opción en \"{name}\" antes de continuar."
+  ],
+  "Escolha pelo menos {minSelect} opções em \"{name}\" antes de continuar.": [
+   "Choose at least {minSelect} options in \"{name}\" before continuing.",
+   "Elige al menos {minSelect} opciones en \"{name}\" antes de continuar."
+  ],
+  "Olha esse item de {name}": [
+   "Check out this item from {name}",
+   "Mira este artículo de {name}"
+  ],
+  "Ver avaliações desse item": [
+   "See reviews for this item",
+   "Ver reseñas de este artículo"
+  ],
+  "Adicionar": [
+   "Add",
+   "Agregar"
+  ],
+  "Essa promoção não está mais disponível.": [
+   "This promotion is no longer available.",
+   "Esta promoción ya no está disponible."
+  ],
+  "Voltar pro cardápio": [
+   "Back to the menu",
+   "Volver al menú"
+  ],
+  "Promoção de {name}": [
+   "Promotion from {name}",
+   "Promoción de {name}"
+  ],
+  "DETALHES E CONDIÇÕES": [
+   "DETAILS AND CONDITIONS",
+   "DETALLES Y CONDICIONES"
+  ],
+  "{discountValue}% de desconto": [
+   "{discountValue}% off",
+   "{discountValue}% de descuento"
+  ],
+  "R$ {v0} de desconto": [
+   "R$ {v0} off",
+   "R$ {v0} de descuento"
+  ],
+  "Pedido mínimo de R$ {v0}": [
+   "Minimum order of R$ {v0}",
+   "Pedido mínimo de R$ {v0}"
+  ],
+  "Válida para todos os itens do cardápio": [
+   "Valid for all menu items",
+   "Válida para todos los artículos del menú"
+  ],
+  "Válida só para: {v0}": [
+   "Valid only for: {v0}",
+   "Válida solo para: {v0}"
+  ],
+  "Válida para itens selecionados": [
+   "Valid for selected items",
+   "Válida para artículos seleccionados"
+  ],
+  "Limite de 1 uso por cliente": [
+   "Limit of 1 use per customer",
+   "Límite de 1 uso por cliente"
+  ],
+  "Limite de {usageLimitPerCustomer} usos por cliente": [
+   "Limit of {usageLimitPerCustomer} uses per customer",
+   "Límite de {usageLimitPerCustomer} usos por cliente"
+  ],
+  "Válida até {v0}": [
+   "Valid until {v0}",
+   "Válida hasta {v0}"
+  ],
+  "Você já usou essa promoção.": [
+   "You already used this promotion.",
+   "Ya usaste esta promoción."
+  ],
+  "Você economiza": [
+   "You save",
+   "Ahorras"
+  ],
+  "com o carrinho atual.": [
+   "with the current cart.",
+   "con el carrito actual."
+  ],
+  "Promoção já utilizada": [
+   "Promotion already used",
+   "Promoción ya utilizada"
+  ],
+  "Remover promoção": [
+   "Remove promotion",
+   "Quitar promoción"
+  ],
+  "Usar promoção": [
+   "Use promotion",
+   "Usar promoción"
+  ],
+  "Não conseguimos localizar esse endereço. Confira os dados e tente de novo.": [
+   "We could not locate this address. Check the details and try again.",
+   "No pudimos localizar esta dirección. Revisa los datos e inténtalo de nuevo."
+  ],
+  "Endereço confirmado": [
+   "Address confirmed",
+   "Dirección confirmada"
+  ],
+  "Não conseguimos confirmar o número exato — confira se está certo.": [
+   "We could not confirm the exact number — check that it is right.",
+   "No pudimos confirmar el número exacto — revisa que sea correcto."
+  ],
+  "Ponto de referência (opcional)": [
+   "Landmark (optional)",
+   "Punto de referencia (opcional)"
+  ],
+  "Confirmar endereço": [
+   "Confirm address",
+   "Confirmar dirección"
+  ],
+  "Você abriu a mesa, mas a conta continua pra quem ficar.": [
+   "You opened the table, but the tab stays with whoever remains.",
+   "Abriste la mesa, pero la cuenta sigue para quien se quede."
+  ],
+  "Ativar modo claro": [
+   "Switch to light mode",
+   "Activar modo claro"
+  ],
+  "Ativar modo escuro": [
+   "Switch to dark mode",
+   "Activar modo oscuro"
+  ]
+ },
+ "categories": {
+  "lanches": {
+   "pt": "Lanches",
+   "en": "Snacks",
+   "es": "Bocadillos"
+  },
+  "hamburgueres": {
+   "pt": "Hambúrgueres",
+   "en": "Burgers",
+   "es": "Hamburguesas"
+  },
+  "hot-dogs": {
+   "pt": "Hot Dogs",
+   "en": "Hot Dogs",
+   "es": "Hot Dogs"
+  },
+  "sanduiches": {
+   "pt": "Sanduíches / Wraps",
+   "en": "Sandwiches / Wraps",
+   "es": "Sándwiches / Wraps"
+  },
+  "pizzas": {
+   "pt": "Pizzas",
+   "en": "Pizzas",
+   "es": "Pizzas"
+  },
+  "tacos-burritos": {
+   "pt": "Tacos / Burritos",
+   "en": "Tacos / Burritos",
+   "es": "Tacos / Burritos"
+  },
+  "sushi": {
+   "pt": "Sushi / Sashimi",
+   "en": "Sushi / Sashimi",
+   "es": "Sushi / Sashimi"
+  },
+  "pratos-japoneses": {
+   "pt": "Temakis / Yakisoba / Pratos Japoneses",
+   "en": "Temaki / Yakisoba / Japanese Dishes",
+   "es": "Temaki / Yakisoba / Platos Japoneses"
+  },
+  "massas-risotos": {
+   "pt": "Massas e Risotos",
+   "en": "Pasta and Risotto",
+   "es": "Pastas y Risottos"
+  },
+  "pratos-principais": {
+   "pt": "Pratos Principais",
+   "en": "Main Courses",
+   "es": "Platos Principales"
+  },
+  "pratos-executivos": {
+   "pt": "Pratos do Dia / Executivos",
+   "en": "Daily Specials / Set Lunch",
+   "es": "Platos del Día / Ejecutivos"
+  },
+  "carnes-grelhados": {
+   "pt": "Carnes e Grelhados",
+   "en": "Meats and Grills",
+   "es": "Carnes y Parrilla"
+  },
+  "peixes-frutos-do-mar": {
+   "pt": "Peixes e Frutos do Mar",
+   "en": "Fish and Seafood",
+   "es": "Pescados y Mariscos"
+  },
+  "entradas": {
+   "pt": "Entradas",
+   "en": "Starters",
+   "es": "Entradas"
+  },
+  "petiscos": {
+   "pt": "Petiscos / Aperitivos",
+   "en": "Small Bites / Appetizers",
+   "es": "Tapas / Aperitivos"
+  },
+  "porcoes": {
+   "pt": "Porções",
+   "en": "Sharing Portions",
+   "es": "Porciones"
+  },
+  "tabuas-frios": {
+   "pt": "Tábuas / Frios",
+   "en": "Boards / Cold Cuts",
+   "es": "Tablas / Fiambres"
+  },
+  "saladas": {
+   "pt": "Saladas",
+   "en": "Salads",
+   "es": "Ensaladas"
+  },
+  "sopas-caldos": {
+   "pt": "Sopas e Caldos",
+   "en": "Soups and Broths",
+   "es": "Sopas y Caldos"
+  },
+  "acompanhamentos": {
+   "pt": "Acompanhamentos / Guarnições",
+   "en": "Sides",
+   "es": "Acompañamientos / Guarniciones"
+  },
+  "combinados": {
+   "pt": "Combinados",
+   "en": "Combos",
+   "es": "Combinados"
+  },
+  "pratos-compartilhar": {
+   "pt": "Pratos para Compartilhar",
+   "en": "Sharing Plates",
+   "es": "Platos para Compartir"
+  },
+  "menu-vegetariano": {
+   "pt": "Menu Vegetariano / Vegano",
+   "en": "Vegetarian / Vegan Menu",
+   "es": "Menú Vegetariano / Vegano"
+  },
+  "menu-infantil": {
+   "pt": "Menu Infantil / Kids",
+   "en": "Kids Menu",
+   "es": "Menú Infantil / Kids"
+  },
+  "menu-degustacao": {
+   "pt": "Menu Degustação",
+   "en": "Tasting Menu",
+   "es": "Menú Degustación"
+  },
+  "cafe-da-manha": {
+   "pt": "Café da Manhã / Brunch",
+   "en": "Breakfast / Brunch",
+   "es": "Desayuno / Brunch"
+  },
+  "paes-panificados": {
+   "pt": "Pães / Panificados",
+   "en": "Breads / Bakery",
+   "es": "Panes / Panificados"
+  },
+  "bebidas": {
+   "pt": "Bebidas",
+   "en": "Drinks",
+   "es": "Bebidas"
+  },
+  "cafes": {
+   "pt": "Cafés",
+   "en": "Coffees",
+   "es": "Cafés"
+  },
+  "cafes-especiais": {
+   "pt": "Cafés Especiais",
+   "en": "Specialty Coffees",
+   "es": "Cafés Especiales"
+  },
+  "chas": {
+   "pt": "Chás / Infusões",
+   "en": "Teas / Infusions",
+   "es": "Tés / Infusiones"
+  },
+  "sucos": {
+   "pt": "Sucos",
+   "en": "Juices",
+   "es": "Jugos"
+  },
+  "refrigerantes": {
+   "pt": "Refrigerantes",
+   "en": "Soft Drinks",
+   "es": "Refrescos"
+  },
+  "aguas": {
+   "pt": "Águas",
+   "en": "Water",
+   "es": "Aguas"
+  },
+  "energeticos": {
+   "pt": "Energéticos",
+   "en": "Energy Drinks",
+   "es": "Energizantes"
+  },
+  "cervejas": {
+   "pt": "Cervejas",
+   "en": "Beers",
+   "es": "Cervezas"
+  },
+  "drinks": {
+   "pt": "Drinks / Coquetéis",
+   "en": "Drinks / Cocktails",
+   "es": "Tragos / Cócteles"
+  },
+  "destilados": {
+   "pt": "Destilados",
+   "en": "Spirits",
+   "es": "Destilados"
+  },
+  "vinhos": {
+   "pt": "Vinhos",
+   "en": "Wines",
+   "es": "Vinos"
+  },
+  "espumantes": {
+   "pt": "Espumantes",
+   "en": "Sparkling Wines",
+   "es": "Espumantes"
+  },
+  "sobremesas": {
+   "pt": "Sobremesas",
+   "en": "Desserts",
+   "es": "Postres"
+  },
+  "doces-confeitaria": {
+   "pt": "Doces / Confeitaria",
+   "en": "Sweets / Pastry",
+   "es": "Dulces / Confitería"
+  },
+  "bolos": {
+   "pt": "Bolos",
+   "en": "Cakes",
+   "es": "Pasteles"
+  },
+  "tortas": {
+   "pt": "Tortas",
+   "en": "Pies / Tarts",
+   "es": "Tartas"
+  },
+  "sorvetes": {
+   "pt": "Sorvetes",
+   "en": "Ice Cream",
+   "es": "Helados"
+  },
+  "acai": {
+   "pt": "Açaí",
+   "en": "Açaí",
+   "es": "Açaí"
+  },
+  "milkshakes": {
+   "pt": "Milkshakes",
+   "en": "Milkshakes",
+   "es": "Batidos"
+  },
+  "donuts": {
+   "pt": "Donuts",
+   "en": "Donuts",
+   "es": "Donas"
+  },
+  "cupcakes": {
+   "pt": "Cupcakes",
+   "en": "Cupcakes",
+   "es": "Cupcakes"
+  },
+  "cookies": {
+   "pt": "Cookies",
+   "en": "Cookies",
+   "es": "Galletas"
+  },
+  "chocolates": {
+   "pt": "Chocolates",
+   "en": "Chocolates",
+   "es": "Chocolates"
+  },
+  "pudins": {
+   "pt": "Pudins / Flans",
+   "en": "Puddings / Flans",
+   "es": "Pudines / Flanes"
+  },
+  "waffles-panquecas": {
+   "pt": "Waffles / Panquecas",
+   "en": "Waffles / Pancakes",
+   "es": "Waffles / Panqueques"
+  },
+  "frutas": {
+   "pt": "Frutas / Salada de Frutas",
+   "en": "Fruits / Fruit Salad",
+   "es": "Frutas / Ensalada de Frutas"
+  },
+  "bowls": {
+   "pt": "Bowls",
+   "en": "Bowls",
+   "es": "Bowls"
+  },
+  "avocado-toasts": {
+   "pt": "Avocado / Toasts",
+   "en": "Avocado / Toasts",
+   "es": "Aguacate / Tostadas"
+  },
+  "pratos-saudaveis": {
+   "pt": "Pratos Saudáveis",
+   "en": "Healthy Dishes",
+   "es": "Platos Saludables"
+  },
+  "low-carb": {
+   "pt": "Low Carb",
+   "en": "Low Carb",
+   "es": "Low Carb"
+  },
+  "fitness-proteicos": {
+   "pt": "Fitness / Proteicos",
+   "en": "Fitness / High Protein",
+   "es": "Fitness / Proteicos"
+  },
+  "smoothies": {
+   "pt": "Smoothies / Detox",
+   "en": "Smoothies / Detox",
+   "es": "Smoothies / Detox"
+  },
+  "nigiri": {
+   "pt": "Nigiri",
+   "en": "Nigiri",
+   "es": "Nigiri"
+  },
+  "uramaki": {
+   "pt": "Uramaki",
+   "en": "Uramaki",
+   "es": "Uramaki"
+  },
+  "hossomaki": {
+   "pt": "Hossomaki",
+   "en": "Hossomaki",
+   "es": "Hossomaki"
+  },
+  "temaki": {
+   "pt": "Temaki",
+   "en": "Temaki",
+   "es": "Temaki"
+  },
+  "hot-roll": {
+   "pt": "Hot",
+   "en": "Hot Roll",
+   "es": "Hot Roll"
+  },
+  "yakissoba": {
+   "pt": "Yakissoba",
+   "en": "Yakisoba",
+   "es": "Yakisoba"
+  },
+  "donburi": {
+   "pt": "Donburi",
+   "en": "Donburi",
+   "es": "Donburi"
+  },
+  "rodizio": {
+   "pt": "Rodízio",
+   "en": "All-You-Can-Eat",
+   "es": "Rodizio (Buffet Libre)"
+  },
+  "molhos-extras": {
+   "pt": "Molhos / Extras",
+   "en": "Sauces / Extras",
+   "es": "Salsas / Extras"
+  },
+  "entradas-chinesas": {
+   "pt": "Entradas Chinesas",
+   "en": "Chinese Starters",
+   "es": "Entradas Chinas"
+  },
+  "dumplings-pasteis": {
+   "pt": "Dumplings / Pastéis",
+   "en": "Dumplings / Pastries",
+   "es": "Dumplings / Empanadillas"
+  },
+  "rolinhos-primavera": {
+   "pt": "Rolinhos Primavera",
+   "en": "Spring Rolls",
+   "es": "Rollitos Primavera"
+  },
+  "sopas-chinesas": {
+   "pt": "Sopas Chinesas",
+   "en": "Chinese Soups",
+   "es": "Sopas Chinas"
+  },
+  "arroz-chao-fan": {
+   "pt": "Arroz / Chao Fan",
+   "en": "Rice / Chao Fan",
+   "es": "Arroz / Chao Fan"
+  },
+  "yakisoba-chines": {
+   "pt": "Yakisoba Chinês / Macarrão",
+   "en": "Chinese Noodles",
+   "es": "Fideos Chinos"
+  },
+  "frango-xadrez-kung-pao": {
+   "pt": "Frango Xadrez / Kung Pao",
+   "en": "Kung Pao Chicken",
+   "es": "Pollo Kung Pao"
+  },
+  "porco-agridoce": {
+   "pt": "Porco Agridoce",
+   "en": "Sweet and Sour Pork",
+   "es": "Cerdo Agridulce"
+  },
+  "pato-especialidades": {
+   "pt": "Pato / Especialidades",
+   "en": "Duck / Specialties",
+   "es": "Pato / Especialidades"
+  },
+  "combinados-chineses": {
+   "pt": "Combinados Chineses",
+   "en": "Chinese Combos",
+   "es": "Combinados Chinos"
+  },
+  "vegetarianos-chineses": {
+   "pt": "Pratos Vegetarianos Chineses",
+   "en": "Chinese Vegetarian Dishes",
+   "es": "Platos Vegetarianos Chinos"
+  },
+  "bebidas-chinesas-chas": {
+   "pt": "Bebidas Chinesas / Chás",
+   "en": "Chinese Drinks / Teas",
+   "es": "Bebidas Chinas / Tés"
+  },
+  "entradas-coreanas": {
+   "pt": "Entradas Coreanas",
+   "en": "Korean Starters",
+   "es": "Entradas Coreanas"
+  },
+  "kimchi-banchan": {
+   "pt": "Kimchi / Banchan",
+   "en": "Kimchi / Banchan",
+   "es": "Kimchi / Banchan"
+  },
+  "mandu": {
+   "pt": "Mandu (Dumplings Coreanos)",
+   "en": "Mandu (Korean Dumplings)",
+   "es": "Mandu (Dumplings Coreanos)"
+  },
+  "bibimbap": {
+   "pt": "Bibimbap",
+   "en": "Bibimbap",
+   "es": "Bibimbap"
+  },
+  "bulgogi": {
+   "pt": "Bulgogi",
+   "en": "Bulgogi",
+   "es": "Bulgogi"
+  },
+  "japchae": {
+   "pt": "Japchae",
+   "en": "Japchae",
+   "es": "Japchae"
+  },
+  "ramyeon": {
+   "pt": "Ramen / Ramyeon",
+   "en": "Ramen / Ramyeon",
+   "es": "Ramen / Ramyeon"
+  },
+  "tteokbokki": {
+   "pt": "Tteokbokki",
+   "en": "Tteokbokki",
+   "es": "Tteokbokki"
+  },
+  "frango-frito-coreano": {
+   "pt": "Fried Chicken Coreano",
+   "en": "Korean Fried Chicken",
+   "es": "Pollo Frito Coreano"
+  },
+  "combinados-coreanos": {
+   "pt": "Combinados Coreanos",
+   "en": "Korean Combos",
+   "es": "Combinados Coreanos"
+  },
+  "vegetarianos-coreanos": {
+   "pt": "Pratos Vegetarianos Coreanos",
+   "en": "Korean Vegetarian Dishes",
+   "es": "Platos Vegetarianos Coreanos"
+  },
+  "bebidas-coreanas-soju": {
+   "pt": "Bebidas Coreanas / Soju",
+   "en": "Korean Drinks / Soju",
+   "es": "Bebidas Coreanas / Soju"
+  },
+  "pizzas-doces": {
+   "pt": "Pizzas Doces",
+   "en": "Sweet Pizzas",
+   "es": "Pizzas Dulces"
+  },
+  "pizzas-especiais": {
+   "pt": "Pizzas Especiais",
+   "en": "Specialty Pizzas",
+   "es": "Pizzas Especiales"
+  },
+  "calzones": {
+   "pt": "Calzones",
+   "en": "Calzones",
+   "es": "Calzones"
+  },
+  "esfihas": {
+   "pt": "Esfihas",
+   "en": "Esfihas",
+   "es": "Esfihas"
+  },
+  "salgados": {
+   "pt": "Salgados",
+   "en": "Savory Snacks",
+   "es": "Salados"
+  },
+  "croissants-viennoiseries": {
+   "pt": "Croissants / Viennoiseries",
+   "en": "Croissants / Viennoiseries",
+   "es": "Croissants / Viennoiseries"
+  },
+  "caipirinhas": {
+   "pt": "Caipirinhas",
+   "en": "Caipirinhas",
+   "es": "Caipirinhas"
+  },
+  "shots": {
+   "pt": "Shots",
+   "en": "Shots",
+   "es": "Shots"
+  },
+  "whisky": {
+   "pt": "Whisky",
+   "en": "Whisky",
+   "es": "Whisky"
+  }
+ }
+}

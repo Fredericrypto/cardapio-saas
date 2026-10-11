@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nContext';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Camera } from 'lucide-react';
@@ -31,6 +32,7 @@ const PRONOUN_GROUPS: { label: string; options: string[] }[] = [
 // (Postgres) — nada fica só no navegador, então sobrevive a limpar
 // cache, trocar de aparelho, o que for.
 export function EditProfilePage() {
+  const { t } = useI18n();
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { tenant } = useTenant();
@@ -65,7 +67,7 @@ export function EditProfilePage() {
       setCustomer(updated);
       setShowAvatarPicker(false);
     } catch {
-      setError('Não foi possível enviar a foto. Tente novamente.');
+      setError(t('editProfilePage.nao_foi_possivel_enviar'));
     } finally {
       setIsUpdatingAvatar(false);
     }
@@ -80,7 +82,7 @@ export function EditProfilePage() {
       setCustomer(updated);
       setShowAvatarPicker(false);
     } catch {
-      setError('Não foi possível definir o avatar. Tente novamente.');
+      setError(t('editProfilePage.nao_foi_possivel_definir'));
     } finally {
       setIsUpdatingAvatar(false);
     }
@@ -91,11 +93,11 @@ export function EditProfilePage() {
     setError(null);
 
     if (name.trim().length < 2) {
-      setError('Informe seu nome.');
+      setError(t('editProfilePage.informe_seu_nome'));
       return;
     }
     if (!isValidBrazilPhone(phone)) {
-      setError('Telefone incompleto — confira o DDD e o número.');
+      setError(t('phoneInput.telefone_incompleto_confira_o'));
       return;
     }
 
@@ -114,7 +116,7 @@ export function EditProfilePage() {
       setError(
         err?.response?.data?.message?.[0] ??
           err?.response?.data?.message ??
-          'Não foi possível salvar. Confira os dados e tente de novo.',
+          t('editProfilePage.nao_foi_possivel_salvar'),
       );
     } finally {
       setIsSaving(false);
@@ -135,7 +137,7 @@ export function EditProfilePage() {
         <button onClick={() => navigate(`/${slug}/conta-cliente/perfil`)}>
           <ArrowLeft size={20} />
         </button>
-        <h1 className="font-display font-bold text-lg">Meus dados</h1>
+        <h1 className="font-display font-bold text-lg">{t('profile.myData')}</h1>
       </div>
 
       <div className="flex flex-col items-center py-6 bg-white">
@@ -171,7 +173,7 @@ export function EditProfilePage() {
           className="mt-3 rounded-xl py-2.5 px-5 inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-white"
           style={{ backgroundColor: tenant.primaryColor }}
         >
-          Alterar foto
+          {t('editProfilePage.alterar_foto')}
         </button>
       </div>
 
@@ -188,7 +190,7 @@ export function EditProfilePage() {
       <div className="px-4 mt-3 flex flex-col gap-3">
         <div className="bg-white rounded-2xl p-4 flex flex-col gap-3">
           <div>
-            <label className="text-xs font-semibold text-gray-500 block mb-1.5">Nome</label>
+            <label className="text-xs font-semibold text-gray-500 block mb-1.5">{t('editProfilePage.nome')}</label>
             <input
               type="text"
               value={name}
@@ -199,7 +201,7 @@ export function EditProfilePage() {
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-gray-500 block mb-1.5">E-mail</label>
+            <label className="text-xs font-semibold text-gray-500 block mb-1.5">{t('info.email')}</label>
             <input
               type="text"
               value={customer.email}
@@ -209,7 +211,7 @@ export function EditProfilePage() {
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-gray-500 block mb-1.5">WhatsApp</label>
+            <label className="text-xs font-semibold text-gray-500 block mb-1.5">{t('editProfilePage.whatsapp')}</label>
             <PhoneInput
               value={phone}
               onChange={setPhone}
@@ -218,9 +220,9 @@ export function EditProfilePage() {
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-gray-500 block mb-0.5">Pronomes pessoais</label>
+            <label className="text-xs font-semibold text-gray-500 block mb-0.5">{t('editProfilePage.pronomes_pessoais')}</label>
             <p className="text-[11px] text-gray-400 mb-2">
-              Escolha até 2. Aparecem só na sua Conta e para o restaurante, ao lado do seu nome na mesa.
+              {t('editProfilePage.escolha_ate_2_aparecem')}
             </p>
             <div className="flex flex-col gap-2.5">
               {PRONOUN_GROUPS.map((group) => (
@@ -258,7 +260,7 @@ export function EditProfilePage() {
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-gray-500 block mb-1.5">Gênero</label>
+            <label className="text-xs font-semibold text-gray-500 block mb-1.5">{t('editProfilePage.genero')}</label>
             <div className="grid grid-cols-2 gap-2">
               {GENDER_OPTIONS.map((option) => (
                 <button
@@ -283,7 +285,7 @@ export function EditProfilePage() {
         </div>
 
         {error && <p className="text-xs text-red-500 px-1">{error}</p>}
-        {saved && <p className="text-xs text-green-600 px-1">Salvo!</p>}
+        {saved && <p className="text-xs text-green-600 px-1">{t('editProfilePage.salvo')}</p>}
 
         <button
           onClick={handleSave}
@@ -291,7 +293,7 @@ export function EditProfilePage() {
           className="py-3.5 rounded-xl text-white font-semibold disabled:opacity-60"
           style={{ backgroundColor: tenant.primaryColor }}
         >
-          {isSaving ? 'Salvando...' : 'Salvar'}
+          {isSaving ? 'Salvando...' : t('editProfilePage.salvar')}
         </button>
       </div>
     </div>

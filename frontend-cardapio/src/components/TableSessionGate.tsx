@@ -119,7 +119,7 @@ export function TableSessionGate({ children }: { children: ReactNode }) {
               na mesa — e só aparece pro admin e pros outros — depois do
               "Sim": o servidor também exige essa confirmação. */}
           <p className="text-base font-bold text-gray-900">
-            Já existe uma seção em aberto nesta mesa. Deseja se juntar?
+            {t('tableSessionGate.ja_existe_uma_secao')}
           </p>
         </div>
         <div className="flex flex-col gap-2 w-full max-w-xs">
@@ -128,13 +128,13 @@ export function TableSessionGate({ children }: { children: ReactNode }) {
             style={{ backgroundColor: primaryColor }}
             className="py-3 rounded-xl text-white text-sm font-semibold shadow-sm"
           >
-            Sim
+            {t('tableSessionGate.sim')}
           </button>
           <button
             onClick={declineJoinExisting}
             className="py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600"
           >
-            Cancelar
+            {t('common.cancel')}
           </button>
         </div>
         <BuildMark />

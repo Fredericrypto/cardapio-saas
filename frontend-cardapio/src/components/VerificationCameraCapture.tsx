@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nContext';
 import { useScrollLock } from '../hooks/useScrollLock';
 import { useEffect, useRef, useState } from 'react';
 import { X, RotateCcw, Check, Timer } from 'lucide-react';
@@ -24,6 +25,7 @@ export function VerificationCameraCapture({
   onCancel,
   onCapture,
 }: VerificationCameraCaptureProps) {
+  const { t } = useI18n();
   // Com o modal aberto a página atrás NÃO rola (02/10).
   useScrollLock(true);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -51,7 +53,7 @@ export function VerificationCameraCapture({
       if (!navigator.mediaDevices?.getUserMedia) {
         setPhase('error');
         setErrorMessage(
-          'Esse navegador não permite acessar a câmera diretamente. Toque abaixo pra tirar a foto pelo app de câmera do celular.',
+          t('verificationCameraCapture.esse_navegador_nao_permite'),
         );
         return;
       }
@@ -72,8 +74,8 @@ export function VerificationCameraCapture({
         const name = err instanceof DOMException ? err.name : '';
         setErrorMessage(
           name === 'NotAllowedError'
-            ? 'Você não deu permissão pra câmera. Permite o acesso nas configurações do navegador e tenta de novo, ou usa o app de câmera do celular abaixo.'
-            : 'Não consegui acessar a câmera. Toque abaixo pra tirar a foto pelo app de câmera do celular.',
+            ? t('verificationCameraCapture.voce_nao_deu_permissao')
+            : t('verificationCameraCapture.nao_consegui_acessar_a'),
         );
       }
     }
@@ -144,7 +146,7 @@ export function VerificationCameraCapture({
       })
       .catch(() => {
         setPhase('error');
-        setErrorMessage('Não consegui acessar a câmera de novo. Tenta pelo app de câmera do celular.');
+        setErrorMessage(t('verificationCameraCapture.nao_consegui_acessar_a_2'));
       });
   }
 
@@ -192,18 +194,18 @@ export function VerificationCameraCapture({
               className="px-5 py-3 rounded-xl text-white text-sm font-semibold"
               style={{ backgroundColor: primaryColor }}
             >
-              Abrir câmera do celular
+              {t('verificationCameraCapture.abrir_camera_do_celular')}
             </button>
           </div>
         ) : phase === 'preview' && capturedUrl ? (
           <div className="flex flex-col items-center gap-5">
             <img
               src={capturedUrl}
-              alt="Prévia da sua foto"
+              alt={t('verificationCameraCapture.previa_da_sua_foto')}
               className="w-56 h-72 rounded-[9999px] object-cover ring-4 ring-white/20"
             />
             <p className="text-white/70 text-sm text-center max-w-xs">
-              Ficou boa? Seu rosto precisa estar visível e bem iluminado.
+              {t('verificationCameraCapture.ficou_boa_seu_rosto')}
             </p>
             <div className="flex gap-3">
               <button
@@ -211,7 +213,7 @@ export function VerificationCameraCapture({
                 className="px-5 py-3 rounded-xl bg-white/10 text-white text-sm font-semibold flex items-center gap-2"
               >
                 <RotateCcw size={15} />
-                Tirar de novo
+                {t('verificationCameraCapture.tirar_de_novo')}
               </button>
               <button
                 onClick={handleConfirm}
@@ -219,7 +221,7 @@ export function VerificationCameraCapture({
                 style={{ backgroundColor: primaryColor }}
               >
                 <Check size={15} />
-                Usar essa foto
+                {t('verificationCameraCapture.usar_essa_foto')}
               </button>
             </div>
           </div>
@@ -254,13 +256,12 @@ export function VerificationCameraCapture({
 
         {phase === 'live' && (
           <p className="text-white/60 text-xs text-center mt-6 max-w-xs">
-            Posicione seu rosto dentro da guia, num local bem iluminado. Quando estiver pronto,
-            toque no botão abaixo.
+            {t('verificationCameraCapture.posicione_seu_rosto_dentro')}
           </p>
         )}
         {phase === 'counting' && (
           <p className="text-white/60 text-xs text-center mt-6 max-w-xs">
-            Se ajeite — a foto é tirada sozinha ao fim da contagem.
+            {t('verificationCameraCapture.se_ajeite_a_foto')}
           </p>
         )}
       </div>
@@ -269,7 +270,7 @@ export function VerificationCameraCapture({
         <div className="flex justify-center pb-10">
           <button
             onClick={handleStartCountdown}
-            aria-label="Iniciar contagem pra tirar a foto"
+            aria-label={t('verificationCameraCapture.iniciar_contagem_pra_tirar')}
             className="w-16 h-16 rounded-full flex items-center justify-center"
             style={{ backgroundColor: primaryColor }}
           >

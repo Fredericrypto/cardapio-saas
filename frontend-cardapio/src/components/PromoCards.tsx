@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nContext';
 import { useEffect, useState } from 'react';
 import { Clock, ChevronRight } from 'lucide-react';
 import type { Promotion } from '../types';
@@ -18,6 +19,7 @@ interface PromoCardsProps {
 // vira dias (evita mostrar algo tipo "600h restantes", que ninguém lê
 // como tempo de verdade). Atualiza a cada minuto.
 function useCountdownLabel(endsAt: string | null): string | null {
+  const { t } = useI18n();
   const [label, setLabel] = useState<string | null>(null);
 
   useEffect(() => {
@@ -28,7 +30,7 @@ function useCountdownLabel(endsAt: string | null): string | null {
     function tick() {
       const diffMs = new Date(endsAt!).getTime() - Date.now();
       if (diffMs <= 0) {
-        setLabel('Encerrada');
+        setLabel(t('promoCards.encerrada'));
         return;
       }
       const totalHours = diffMs / 3600000;
@@ -39,7 +41,7 @@ function useCountdownLabel(endsAt: string | null): string | null {
       }
       const hours = Math.floor(diffMs / 3600000);
       const minutes = Math.floor((diffMs % 3600000) / 60000);
-      setLabel(hours > 0 ? `${hours}h ${minutes}min` : `${minutes}min`);
+      setLabel(hours > 0 ? t('promoCards.hours_h_minutes_min', { hours: hours, minutes: minutes }) : `${minutes}min`);
     }
     tick();
     const interval = setInterval(tick, 60000);
@@ -82,6 +84,7 @@ function PromoCard({
   muted: boolean;
   shareUrl?: string;
 }) {
+  const { t } = useI18n();
   const countdownLabel = useCountdownLabel(promo.endsAt);
 
   return (
@@ -146,7 +149,7 @@ function PromoCard({
         {promo.alreadyUsedUp && (
           <div className="absolute inset-0 bg-black/55 flex items-center justify-center">
             <span className="bg-white text-gray-700 text-xs font-bold px-3 py-1 rounded-full shadow-sm">
-              Você já usou essa promoção
+              {t('promoCards.voce_ja_usou_essa')}
             </span>
           </div>
         )}
@@ -154,7 +157,7 @@ function PromoCard({
 
       {promo.minOrderValue > 0 && !promo.alreadyUsedUp && (
         <div className="bg-white px-3.5 py-1.5 text-[11px] text-gray-400 dark:text-gray-300">
-          Pedido mínimo R$ {Number(promo.minOrderValue).toFixed(2).replace('.', ',')}
+          {t('promoCards.pedido_minimo_r')} {Number(promo.minOrderValue).toFixed(2).replace('.', ',')}
         </div>
       )}
     </button>

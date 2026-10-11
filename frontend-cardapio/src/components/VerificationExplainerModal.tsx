@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nContext';
 import { useScrollLock } from '../hooks/useScrollLock';
 import { ShieldCheck } from 'lucide-react';
 
@@ -16,6 +17,7 @@ export function VerificationExplainerModal({
   onCancel,
   onContinue,
 }: VerificationExplainerModalProps) {
+  const { t } = useI18n();
   // Com o modal aberto a página atrás NÃO rola (02/10).
   useScrollLock(true);
   return (
@@ -28,20 +30,17 @@ export function VerificationExplainerModal({
           <ShieldCheck size={22} style={{ color: primaryColor }} />
         </div>
         <h2 className="font-display font-bold text-lg text-gray-900 mb-2">
-          Como funciona a verificação
+          {t('verificationExplainerModal.como_funciona_a_verificacao')}
         </h2>
         <ul className="flex flex-col gap-2.5 text-sm text-gray-600 mb-5">
-          <li>- Você vai tirar uma foto do seu rosto, na hora, pela câmera.</li>
+          <li>{t('verificationExplainerModal.voce_vai_tirar_uma')}</li>
           <li>
-            - A decisão de aprovar é do <strong>estabelecimento</strong> — ele pode recusar por
-            motivos específicos, como foto de baixa qualidade ou que não mostre seu rosto
-            claramente.
+            {t('verificationExplainerModal.a_decisao_de_aprovar')} <strong>estabelecimento</strong> {t('verificationExplainerModal.ele_pode_recusar_por')}
           </li>
-          <li>- Se for recusada, você vê o motivo e pode tentar de novo.</li>
-          <li>- A foto enviada é excluída assim que a decisão sair (aprovada ou recusada).</li>
+          <li>{t('verificationExplainerModal.se_for_recusada_voce')}</li>
+          <li>{t('verificationExplainerModal.a_foto_enviada_e')}</li>
           <li className="font-medium text-gray-800">
-            - Tire uma foto sua de verdade, com boa luz — fotos falsas ou de outra pessoa são
-            recusadas.
+            {t('verificationExplainerModal.tire_uma_foto_sua')}
           </li>
         </ul>
         <div className="flex gap-2">
@@ -49,14 +48,14 @@ export function VerificationExplainerModal({
             onClick={onCancel}
             className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600"
           >
-            Agora não
+            {t('reviewModal.agora_nao')}
           </button>
           <button
             onClick={onContinue}
             className="flex-1 py-3 rounded-xl text-white text-sm font-semibold"
             style={{ backgroundColor: primaryColor }}
           >
-            Entendi, continuar
+            {t('verificationExplainerModal.entendi_continuar')}
           </button>
         </div>
       </div>

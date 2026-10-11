@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nContext';
 import { useScrollLock } from '../hooks/useScrollLock';
 import { useState } from 'react';
 import { Star, X, EyeOff } from 'lucide-react';
@@ -63,6 +64,7 @@ interface ReviewModalProps {
 //      o cliente precisa saber disso ANTES de mandar, não descobrir
 //      depois tentando editar e não conseguindo.
 export function ReviewModal({ tenantId, token, orderId, target, stepLabel, onClose, onSubmitted }: ReviewModalProps) {
+  const { t } = useI18n();
   // Com o modal aberto a página atrás NÃO rola (02/10).
   useScrollLock(true);
   const [step, setStep] = useState<Step>('form');
@@ -79,7 +81,7 @@ export function ReviewModal({ tenantId, token, orderId, target, stepLabel, onClo
   function handleSubmitClick() {
     setError(null);
     if (rating === 0) {
-      setError('Escolhe de 1 a 5 estrelas primeiro.');
+      setError(t('reviewModal.escolhe_de_1_a'));
       return;
     }
     setStep('confirm-submit');
@@ -99,7 +101,7 @@ export function ReviewModal({ tenantId, token, orderId, target, stepLabel, onClo
       });
       onSubmitted(created);
     } catch (err: any) {
-      setError(err?.response?.data?.message ?? 'Não foi possível enviar. Tenta de novo.');
+      setError(err?.response?.data?.message ?? t('reviewModal.nao_foi_possivel_enviar'));
       setStep('form');
     } finally {
       setIsSaving(false);
@@ -120,7 +122,7 @@ export function ReviewModal({ tenantId, token, orderId, target, stepLabel, onClo
             <div className="flex items-center justify-between">
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
                 {stepLabel ? `${stepLabel} · ` : ''}
-                {target.type === 'restaurant' ? target.orderLabel : 'Avaliar item'}
+                {target.type === 'restaurant' ? target.orderLabel : t('reviewModal.avaliar_item')}
               </p>
               <button onClick={handleCancelClick} className="text-gray-400 p-1 -mr-1">
                 <X size={18} />
@@ -141,12 +143,12 @@ export function ReviewModal({ tenantId, token, orderId, target, stepLabel, onClo
                 <p className="text-lg font-display font-bold text-gray-900 text-center">
                   {target.productName}
                 </p>
-                <p className="text-sm text-gray-400 -mt-2">O que achou desse item?</p>
+                <p className="text-sm text-gray-400 -mt-2">{t('reviewModal.o_que_achou_desse')}</p>
               </div>
             ) : (
               <div className="text-center">
-                <p className="text-lg font-display font-bold text-gray-900">Como foi o seu pedido?</p>
-                <p className="text-sm text-gray-400 mt-0.5">Sua opinião ajuda todo mundo.</p>
+                <p className="text-lg font-display font-bold text-gray-900">{t('reviewModal.como_foi_o_seu')}</p>
+                <p className="text-sm text-gray-400 mt-0.5">{t('reviewModal.sua_opiniao_ajuda_todo')}</p>
               </div>
             )}
 
@@ -157,7 +159,7 @@ export function ReviewModal({ tenantId, token, orderId, target, stepLabel, onClo
                 <textarea
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
-                  placeholder="Conte como foi (opcional)"
+                  placeholder={t('reviewModal.conte_como_foi_opcional')}
                   maxLength={1000}
                   rows={3}
                   className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none resize-none w-full"
@@ -170,7 +172,7 @@ export function ReviewModal({ tenantId, token, orderId, target, stepLabel, onClo
                     className="w-4 h-4"
                   />
                   <EyeOff size={14} className="text-gray-400" />
-                  Publicar como anônimo
+                  {t('reviewModal.publicar_como_anonimo')}
                 </label>
               </>
             )}
@@ -181,13 +183,13 @@ export function ReviewModal({ tenantId, token, orderId, target, stepLabel, onClo
                 onClick={handleCancelClick}
                 className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600"
               >
-                Agora não
+                {t('reviewModal.agora_nao')}
               </button>
               <button
                 onClick={handleSubmitClick}
                 className="flex-1 py-3 rounded-xl bg-gray-900 text-white text-sm font-semibold"
               >
-                Enviar
+                {t('reviewModal.enviar')}
               </button>
             </div>
           </>
@@ -196,24 +198,23 @@ export function ReviewModal({ tenantId, token, orderId, target, stepLabel, onClo
         {step === 'confirm-cancel' && (
           <>
             <p className="text-lg font-display font-bold text-gray-900 text-center">
-              Não quer avaliar agora?
+              {t('reviewModal.nao_quer_avaliar_agora')}
             </p>
             <p className="text-sm text-gray-500 text-center">
-              Sem problema — essa avaliação não vai ser feita. Se mudar de ideia depois, dá pra
-              avaliar pelo histórico de pedidos, quando ainda for elegível.
+              {t('reviewModal.sem_problema_essa_avaliacao')}
             </p>
             <div className="flex gap-2 mt-1">
               <button
                 onClick={() => setStep('form')}
                 className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600"
               >
-                Voltar
+                {t('common.back')}
               </button>
               <button
                 onClick={onClose}
                 className="flex-1 py-3 rounded-xl bg-gray-900 text-white text-sm font-semibold"
               >
-                Confirmar
+                {t('common.confirm')}
               </button>
             </div>
           </>
@@ -224,11 +225,10 @@ export function ReviewModal({ tenantId, token, orderId, target, stepLabel, onClo
             <div className="flex justify-center">
               <StarPicker value={rating} onChange={() => {}} />
             </div>
-            <p className="text-lg font-display font-bold text-gray-900 text-center">Confirmar envio?</p>
+            <p className="text-lg font-display font-bold text-gray-900 text-center">{t('reviewModal.confirmar_envio')}</p>
             <p className="text-sm text-gray-500 text-center">
-              Depois de enviada, sua avaliação{' '}
-              <span className="font-semibold text-gray-700">não pode mais ser editada</span> — só
-              apagada, se você quiser. Confirma o envio?
+              {t('reviewModal.depois_de_enviada_sua')}{' '}
+              <span className="font-semibold text-gray-700">{t('reviewModal.nao_pode_mais_ser')}</span> {t('reviewModal.so_apagada_se_voce')}
             </p>
             <div className="flex gap-2 mt-1">
               <button
@@ -236,14 +236,14 @@ export function ReviewModal({ tenantId, token, orderId, target, stepLabel, onClo
                 disabled={isSaving}
                 className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 disabled:opacity-50"
               >
-                Revisar
+                {t('reviewModal.revisar')}
               </button>
               <button
                 onClick={handleConfirmSubmit}
                 disabled={isSaving}
                 className="flex-1 py-3 rounded-xl bg-gray-900 text-white text-sm font-semibold disabled:opacity-50"
               >
-                {isSaving ? 'Enviando...' : 'Confirmar'}
+                {isSaving ? 'Enviando...' : t('common.confirm')}
               </button>
             </div>
           </>

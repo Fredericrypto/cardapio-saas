@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nContext';
 import { useCart } from '../contexts/CartContext';
 
 interface CartBarProps {
@@ -6,6 +7,7 @@ interface CartBarProps {
 }
 
 export function CartBar({ primaryColor, onClick }: CartBarProps) {
+  const { t } = useI18n();
   const { totalItems, totalPrice } = useCart();
 
   if (totalItems === 0) return null;
@@ -17,7 +19,7 @@ export function CartBar({ primaryColor, onClick }: CartBarProps) {
       style={{ backgroundColor: primaryColor, transform: 'translateZ(0)' }}
     >
       <span className="text-sm">
-        {totalItems} {totalItems === 1 ? 'item' : 'itens'} no carrinho
+        {totalItems} {totalItems === 1 ? 'item' : 'itens'} {t('cartBar.no_carrinho')}
       </span>
       <span className="text-sm">
         R$ {totalPrice.toFixed(2).replace('.', ',')} →

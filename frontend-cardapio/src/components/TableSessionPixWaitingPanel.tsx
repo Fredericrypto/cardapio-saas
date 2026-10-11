@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nContext';
 import { useEffect, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Copy, Check } from 'lucide-react';
@@ -33,6 +34,7 @@ export function TableSessionPixWaitingPanel({
   onConfirmed: () => void;
   onFailed: () => void;
 }) {
+  const { t } = useI18n();
   const [copied, setCopied] = useState(false);
   const [msRemaining, setMsRemaining] = useState(() => {
     if (!session.pixExpiresAt) return 0;
@@ -85,10 +87,10 @@ export function TableSessionPixWaitingPanel({
 
   return (
     <div className="w-full bg-white rounded-2xl border border-gray-100 p-5 flex flex-col items-center gap-4">
-      <p className="text-sm font-semibold text-gray-900">Pagando a conta via Pix</p>
+      <p className="text-sm font-semibold text-gray-900">{t('tableSessionPixWaitingPanel.pagando_a_conta_via')}</p>
 
       <div className="text-center">
-        <p className="text-xs text-gray-400">Tempo</p>
+        <p className="text-xs text-gray-400">{t('pixWaitingPanel.tempo')}</p>
         <p
           className={`font-display text-3xl font-bold tabular-nums ${
             msRemaining < 60000 ? 'text-red-500' : 'text-gray-900'
@@ -105,12 +107,11 @@ export function TableSessionPixWaitingPanel({
         className="w-full flex items-center justify-center gap-1.5 border border-gray-200 rounded-xl py-2.5 text-sm font-medium text-gray-700"
       >
         {copied ? <Check size={15} /> : <Copy size={15} />}
-        {copied ? 'Código copiado!' : 'Copiar código Pix'}
+        {copied ? t('pixWaitingPanel.codigo_copiado') : t('pixWaitingPanel.copiar_codigo_pix')}
       </button>
 
       <p className="text-xs text-gray-400 text-center">
-        Abra o app do seu banco, escaneie o QR ou cole o código. Sua conta fecha sozinha
-        assim que {tenant.name} receber o pagamento — não precisa recarregar a página.
+        {t('tableSessionPixWaitingPanel.abra_o_app_do')} {tenant.name} {t('tableSessionPixWaitingPanel.receber_o_pagamento_nao')}
       </p>
     </div>
   );

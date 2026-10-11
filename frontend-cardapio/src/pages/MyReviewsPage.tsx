@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nContext';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
@@ -12,6 +13,7 @@ import { ItemReviewDisplay } from '../components/ItemReviewDisplay';
 // Pedido (itens) — cada avaliação mostrando a data e os detalhes do que
 // foi avaliado (já embutido nos dois componentes de exibição).
 export function MyReviewsPage() {
+  const { t } = useI18n();
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { tenant } = useTenant();
@@ -49,13 +51,13 @@ export function MyReviewsPage() {
         <button onClick={() => navigate(`/${slug}/conta-cliente/perfil`)}>
           <ArrowLeft size={20} />
         </button>
-        <h1 className="font-display font-bold text-lg">Minhas Avaliações</h1>
+        <h1 className="font-display font-bold text-lg">{t('profile.myReviews')}</h1>
       </div>
 
       <div className="px-4 mt-4 flex flex-col gap-5">
         {loadError && (
           <div className="flex flex-col items-center gap-2 py-8 text-center">
-            <p className="text-sm text-gray-500">Não foi possível carregar suas avaliações.</p>
+            <p className="text-sm text-gray-500">{t('myReviewsPage.nao_foi_possivel_carregar')}</p>
             <button
               onClick={() => {
                 setRestaurantReview(undefined);
@@ -72,26 +74,25 @@ export function MyReviewsPage() {
               }}
               className="text-sm font-semibold text-gray-900 underline"
             >
-              Tentar de novo
+              {t('optionalCustomerAuth.tentar_de_novo')}
             </button>
           </div>
         )}
 
         {!loadError && isLoadingReviews && (
-          <p className="text-sm text-gray-400 text-center py-8">Carregando...</p>
+          <p className="text-sm text-gray-400 text-center py-8">{t('common.loading')}</p>
         )}
 
         {!loadError && hasNothing && (
           <p className="text-sm text-gray-400 text-center py-12 px-4">
-            Você ainda não avaliou nada. Depois que um pedido for concluído, você recebe uma
-            notificação pra avaliar o restaurante e os itens que pediu.
+            {t('myReviewsPage.voce_ainda_nao_avaliou')}
           </p>
         )}
 
         {restaurantReview && (
           <div className="flex flex-col gap-2">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-1">
-              Restaurante
+              {t('reviewsShared.restaurante')}
             </p>
             <ReviewDisplay
               tenantId={tenant.id}
@@ -113,7 +114,7 @@ export function MyReviewsPage() {
 
         {itemReviews && itemReviews.length > 0 && (
           <div className="flex flex-col gap-2">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-1">Pedido</p>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-1">{t('myReviewsPage.pedido')}</p>
             <div className="flex flex-col gap-2.5">
               {itemReviews.map((review) => (
                 <ItemReviewDisplay

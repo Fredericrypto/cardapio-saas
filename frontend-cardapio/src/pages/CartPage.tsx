@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nContext';
 import { useStoreStatus } from '../hooks/useStoreStatus';
 import { useScrollLock } from '../hooks/useScrollLock';
 import { useEffect, useState } from 'react';
@@ -62,6 +63,7 @@ interface OrderSnapshot {
 }
 
 export function CartPage() {
+  const { t } = useI18n();
   const { slug, qrCodeToken } = useParams<{ slug: string; qrCodeToken?: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -255,7 +257,7 @@ export function CartPage() {
     })
       .then(setQuote)
       .catch(() =>
-        setQuoteError('Não conseguimos recalcular a taxa pro endereço salvo. Confira os dados.'),
+        setQuoteError(t('cartPage.nao_conseguimos_recalcular_a')),
       )
       .finally(() => setIsQuoting(false));
   }, [orderType, tenant, activeLocation, customer, deliveryStreet]);
@@ -293,7 +295,7 @@ export function CartPage() {
     } catch (err: any) {
       setQuoteError(
         err?.response?.data?.message ||
-          'Não conseguimos calcular a taxa de entrega para esse endereço.',
+          t('cartPage.nao_conseguimos_calcular_a'),
       );
     } finally {
       setIsQuoting(false);
@@ -441,7 +443,7 @@ export function CartPage() {
         tableSessionCtx?.recheckExpiry();
       }
       setErrorMessage(
-        backendMessage ?? 'Não foi possível enviar o pedido. Tente novamente.',
+        backendMessage ?? t('cartPage.nao_foi_possivel_enviar'),
       );
     } finally {
       setIsSubmitting(false);
@@ -456,7 +458,7 @@ export function CartPage() {
       await callWaiter(tenant.id, session.id, customerToken);
       setIsWaiterCallPending(true);
     } catch {
-      setCallWaiterError('Não foi possível chamar o garçom agora. Tente novamente.');
+      setCallWaiterError(t('cartPage.nao_foi_possivel_chamar'));
     } finally {
       setIsCallingWaiter(false);
     }
@@ -474,7 +476,7 @@ export function CartPage() {
 
   async function handleCancelOrder() {
     if (!tenant || !successOrder) return;
-    if (!confirm('Cancelar esse pedido? Essa ação não pode ser desfeita.')) return;
+    if (!confirm(t('cartPage.cancelar_esse_pedido_essa'))) return;
     setIsCancellingOrder(true);
     setCancelOrderError(null);
     try {
@@ -486,7 +488,7 @@ export function CartPage() {
           ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
           : undefined;
       setCancelOrderError(
-        backendMessage ?? 'Não foi possível cancelar o pedido agora. Tente novamente.',
+        backendMessage ?? t('cartPage.nao_foi_possivel_cancelar'),
       );
     } finally {
       setIsCancellingOrder(false);
@@ -508,7 +510,7 @@ export function CartPage() {
         err && typeof err === 'object' && 'response' in err
           ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
           : undefined;
-      setFlagAttentionError(backendMessage ?? 'Não foi possível chamar o atendente agora.');
+      setFlagAttentionError(backendMessage ?? t('cartPage.nao_foi_possivel_chamar_2'));
     } finally {
       setIsFlaggingAttention(false);
     }
@@ -611,8 +613,8 @@ export function CartPage() {
           <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-2xl mb-4 bg-gray-400">
             ✕
           </div>
-          <h1 className="font-display text-xl font-bold text-gray-900">Pedido cancelado</h1>
-          <p className="text-sm text-gray-500 mt-2">Voltando ao cardápio...</p>
+          <h1 className="font-display text-xl font-bold text-gray-900">{t('cartPage.pedido_cancelado')}</h1>
+          <p className="text-sm text-gray-500 mt-2">{t('cartPage.voltando_ao_cardapio')}</p>
         </div>
       );
     }
@@ -638,12 +640,12 @@ export function CartPage() {
             ✕
           </div>
           <h1 className="font-display text-xl font-bold text-gray-900">
-            {pixState === 'cancelled' ? 'O pedido foi cancelado' : 'O tempo pra pagar acabou'}
+            {pixState === 'cancelled' ? t('cartPage.o_pedido_foi_cancelado') : t('cartPage.o_tempo_pra_pagar')}
           </h1>
           <p className="text-sm text-gray-500 mt-2">
             {pixState === 'cancelled'
-              ? `${tenant.name} cancelou esse pedido. Se achar que foi engano, entre em contato antes de fazer um novo pedido.`
-              : 'Esse pedido foi cancelado porque o Pix não foi confirmado a tempo. Monte o pedido de novo pra tentar outra vez.'}
+              ? t('cartPage.name_cancelou_esse_pedido', { name: tenant.name })
+              : t('cartPage.esse_pedido_foi_cancelado')}
           </p>
           <button
             onClick={() => {
@@ -653,7 +655,7 @@ export function CartPage() {
             className="mt-6 text-white px-5 py-2.5 rounded-xl text-sm font-semibold"
             style={{ backgroundColor: tenant.primaryColor }}
           >
-            Voltar ao cardápio
+            {t('cartPage.voltar_ao_cardapio')}
           </button>
         </div>
       );
@@ -671,10 +673,10 @@ export function CartPage() {
       (successOrder.status === 'aguardando_pagamento' || successOrder.status === 'pendente');
     const receivingLabel =
       orderSnapshot.orderType === 'mesa'
-        ? orderSnapshot.tableNumber ?? 'Mesa'
+        ? orderSnapshot.tableNumber ?? t('receiptContent.mesa')
         : orderSnapshot.orderType === 'entrega'
-          ? 'Entrega'
-          : 'Balcão';
+          ? t('receiptContentStandalone.entrega')
+          : t('receiptContentStandalone.balcao');
 
     return (
       <div className="min-h-screen flex flex-col items-center px-6 py-8 max-w-md mx-auto">
@@ -685,12 +687,12 @@ export function CartPage() {
           ✓
         </div>
         <h1 className="font-display text-xl font-bold text-gray-900 text-center">
-          {pixState === 'confirmed' ? 'Pagamento confirmado!' : 'Pedido enviado!'}
+          {pixState === 'confirmed' ? t('cartPage.pagamento_confirmado') : t('cartPage.pedido_enviado')}
         </h1>
         <p className="text-sm text-gray-500 mt-1 text-center">
           {pixState === 'confirmed'
-            ? 'Seu Pix foi confirmado e o pedido já está na cozinha.'
-            : 'O estabelecimento já recebeu seu pedido e vai confirmar em instantes.'}
+            ? t('cartPage.seu_pix_foi_confirmado')
+            : t('cartPage.o_estabelecimento_ja_recebeu')}
         </p>
 
         <div className="w-full bg-white border border-gray-100 rounded-2xl mt-5 overflow-hidden">
@@ -745,7 +747,7 @@ export function CartPage() {
           <div className="px-4 py-3 flex flex-col gap-1.5 text-xs text-gray-500">
             {orderSnapshot.customerName && (
               <p>
-                Cliente: <span className="font-medium text-gray-700">{orderSnapshot.customerName}</span>
+                {t('cartPage.cliente')} <span className="font-medium text-gray-700">{orderSnapshot.customerName}</span>
               </p>
             )}
 
@@ -753,17 +755,17 @@ export function CartPage() {
               <>
                 <p className="font-semibold text-gray-500 flex items-center gap-1.5 mt-1">
                   <MapPin size={13} />
-                  Entrega para:
+                  {t('cartPage.entrega_para')}
                 </p>
                 <p className="text-sm font-medium text-gray-800">{orderSnapshot.deliveryAddress}</p>
                 {orderSnapshot.deliveryReferencePoint && (
-                  <p>Ref: {orderSnapshot.deliveryReferencePoint}</p>
+                  <p>{t('receiptContentStandalone.ref')} {orderSnapshot.deliveryReferencePoint}</p>
                 )}
                 {orderSnapshot.deliveryFee != null && (
                   <p>
-                    Taxa de entrega: R$ {orderSnapshot.deliveryFee.toFixed(2).replace('.', ',')}
+                    {t('cartPage.taxa_de_entrega_r')} {orderSnapshot.deliveryFee.toFixed(2).replace('.', ',')}
                     {orderSnapshot.deliveryDistanceKm != null &&
-                      ` (${orderSnapshot.deliveryDistanceKm.toFixed(1)} km)`}
+                      t('cartPage.v0_km', { v0: orderSnapshot.deliveryDistanceKm.toFixed(1) })}
                   </p>
                 )}
               </>
@@ -771,7 +773,7 @@ export function CartPage() {
 
             {orderSnapshot.orderType !== 'mesa' && orderSnapshot.paymentMethod && (
               <p>
-                Pagamento:{' '}
+                {t('cartPage.pagamento')}{' '}
                 <span className="font-medium text-gray-700">
                   {PAYMENT_METHOD_LABELS[orderSnapshot.paymentMethod]}
                 </span>{' '}
@@ -780,17 +782,17 @@ export function CartPage() {
             )}
 
             <p>
-              Gorjeta:{' '}
+              {t('cartPage.gorjeta')}{' '}
               <span className="font-medium text-gray-700">
                 {orderSnapshot.tipAmount > 0
                   ? `R$ ${orderSnapshot.tipAmount.toFixed(2).replace('.', ',')}`
-                  : 'Sem gorjeta'}
+                  : t('cartPage.sem_gorjeta')}
               </span>
             </p>
 
             {(successOrder.discountAmount ?? 0) > 0 && (
               <p className="text-red-600">
-                Desconto aplicado
+                {t('receiptContent.desconto_aplicado')}
                 {(() => {
                   const titles = successOrder.promotionTitlesSnapshot?.length
                     ? successOrder.promotionTitlesSnapshot
@@ -808,7 +810,7 @@ export function CartPage() {
 
             {(successOrder.cashbackUsed ?? 0) > 0 && (
               <p className="text-red-600">
-                Cashback usado:{' '}
+                {t('cartPage.cashback_usado')}{' '}
                 <span className="font-medium">
                   - R$ {Number(successOrder.cashbackUsed).toFixed(2).replace('.', ',')}
                 </span>
@@ -817,7 +819,7 @@ export function CartPage() {
 
             {successOrder.total != null && (
               <p className="pt-1 mt-1 border-t border-gray-100 flex justify-between text-sm">
-                <span className="font-bold text-gray-900">Total</span>
+                <span className="font-bold text-gray-900">{t('closingPaymentSheet.total')}</span>
                 <span className="font-bold text-gray-900">
                   R$ {(Number(successOrder.total) + orderSnapshot.tipAmount).toFixed(2).replace('.', ',')}
                 </span>
@@ -826,7 +828,7 @@ export function CartPage() {
 
             {orderSnapshot.notes && (
               <p>
-                Observação: <span className="font-medium text-gray-700">{orderSnapshot.notes}</span>
+                {t('cartPage.observacao')} <span className="font-medium text-gray-700">{orderSnapshot.notes}</span>
               </p>
             )}
           </div>
@@ -843,13 +845,13 @@ export function CartPage() {
                   className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-center"
                   style={{ backgroundColor: tenant.secondaryColor, color: 'white' }}
                 >
-                  Garçom chamado!
+                  {t('cartPage.garcom_chamado')}
                 </div>
                 <button
                   onClick={handleCancelWaiterCall}
                   className="py-2.5 px-3 rounded-xl text-xs font-semibold border border-gray-200 text-gray-500"
                 >
-                  Cancelar chamado
+                  {t('cartPage.cancelar_chamado')}
                 </button>
               </div>
             ) : (
@@ -858,7 +860,7 @@ export function CartPage() {
                 disabled={isCallingWaiter}
                 className="w-full py-2.5 rounded-xl text-sm font-semibold border border-gray-200 text-gray-700 disabled:opacity-50"
               >
-                {isCallingWaiter ? 'Chamando...' : 'Algo errado com o pedido? Chamar garçom'}
+                {isCallingWaiter ? 'Chamando...' : t('cartPage.algo_errado_com_o')}
               </button>
             )}
           </div>
@@ -874,7 +876,7 @@ export function CartPage() {
                 className="w-full py-2.5 rounded-xl text-sm font-semibold text-center text-white"
                 style={{ backgroundColor: tenant.secondaryColor }}
               >
-                Atendente chamado!
+                {t('cartPage.atendente_chamado')}
               </div>
             ) : (
               <button
@@ -882,7 +884,7 @@ export function CartPage() {
                 disabled={isFlaggingAttention}
                 className="w-full py-2.5 rounded-xl text-sm font-semibold border border-gray-200 text-gray-700 disabled:opacity-50"
               >
-                {isFlaggingAttention ? 'Chamando...' : 'Algo errado com o pedido? Chamar atendente'}
+                {isFlaggingAttention ? 'Chamando...' : t('cartPage.algo_errado_com_o_2')}
               </button>
             )}
           </div>
@@ -898,7 +900,7 @@ export function CartPage() {
               disabled={isCancellingOrder}
               className="w-full py-2.5 rounded-xl text-sm font-semibold text-red-600 border border-red-100 bg-red-50 disabled:opacity-50"
             >
-              {isCancellingOrder ? 'Cancelando...' : 'Cancelar pedido'}
+              {isCancellingOrder ? 'Cancelando...' : t('cartPage.cancelar_pedido')}
             </button>
           </div>
         )}
@@ -908,7 +910,7 @@ export function CartPage() {
           className="mt-5 text-sm font-semibold"
           style={{ color: tenant.primaryColor }}
         >
-          Voltar ao cardápio
+          {t('cartPage.voltar_ao_cardapio')}
         </button>
       </div>
     );
@@ -920,8 +922,8 @@ export function CartPage() {
         <div className="w-16 h-16 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center">
           <ShoppingBag size={26} strokeWidth={1.5} className="text-gray-300" />
         </div>
-        <p className="mt-5 text-base font-semibold text-gray-800">Seu carrinho está vazio</p>
-        <p className="mt-1 text-sm text-gray-400">Adicione itens do cardápio pra fazer seu pedido.</p>
+        <p className="mt-5 text-base font-semibold text-gray-800">{t('cartPage.seu_carrinho_esta_vazio')}</p>
+        <p className="mt-1 text-sm text-gray-400">{t('cartPage.adicione_itens_do_cardapio')}</p>
         {/* Mesmo visual do botão "Chamar garçom". */}
         <button
           onClick={() => navigate(isTableFlow ? `/${slug}/mesa/${qrCodeToken}` : `/${slug}`)}
@@ -929,7 +931,7 @@ export function CartPage() {
           style={{ backgroundColor: tenant.primaryColor }}
         >
           <BookOpen size={14} />
-          Ver cardápio
+          {t('cartPage.ver_cardapio')}
         </button>
       </div>
     );
@@ -1022,16 +1024,16 @@ export function CartPage() {
     : !activeLocation
       ? 'Carregando...'
       : !storeIsOpen
-        ? 'Estabelecimento fechado'
+        ? t('cartPage.estabelecimento_fechado')
         : orderType === 'mesa'
-          ? 'Confirmar pedido'
+          ? t('cartPage.confirmar_pedido')
           : checkoutStep === 'form'
             ? orderType === 'entrega' && !quote
-              ? 'Calcule a taxa de entrega'
-              : 'Ir para pagamento'
+              ? t('cartPage.calcule_a_taxa_de')
+              : t('cartPage.ir_para_pagamento')
             : checkoutStep === 'payment'
-              ? 'Revisar pedido'
-              : 'Confirmar pedido';
+              ? t('cartPage.revisar_pedido')
+              : t('cartPage.confirmar_pedido');
 
   return (
     <div className="min-h-screen bg-white max-w-md mx-auto pb-40">
@@ -1040,7 +1042,7 @@ export function CartPage() {
           <ArrowLeft size={20} />
         </button>
         <h1 className="font-display font-bold text-lg">
-          {showPaymentStep ? 'Pagamento' : showReviewStep ? 'Revisar pedido' : 'Seu pedido'}
+          {showPaymentStep ? t('receiptContent.pagamento') : showReviewStep ? t('cartPage.revisar_pedido') : t('cartPage.seu_pedido')}
         </h1>
       </div>
 
@@ -1090,7 +1092,7 @@ export function CartPage() {
                             <p className="text-xs text-gray-400 truncate">{optionsLabel}</p>
                           )}
                           <p className="text-[11px] font-semibold mt-0.5" style={{ color: tenant.primaryColor }}>
-                            <Tag size={11} strokeWidth={1.5} className="inline-block mr-1 -mt-0.5" />Cupom aplicado · R$ {(unitPrice * discountedQty).toFixed(2).replace('.', ',')}
+                            <Tag size={11} strokeWidth={1.5} className="inline-block mr-1 -mt-0.5" />{t('cartPage.cupom_aplicado_r')} {(unitPrice * discountedQty).toFixed(2).replace('.', ',')}
                           </p>
                         </div>
                         <div className="px-0.5">
@@ -1116,7 +1118,7 @@ export function CartPage() {
                         </p>
                         {discountedQty > 0 && (
                           <p className="text-[11px] font-semibold mt-0.5" style={{ color: tenant.primaryColor }}>
-                            <Tag size={11} strokeWidth={1.5} className="inline-block mr-1 -mt-0.5" />Cupom aplicado
+                            <Tag size={11} strokeWidth={1.5} className="inline-block mr-1 -mt-0.5" />{t('cartPage.cupom_aplicado')}
                           </p>
                         )}
                       </div>
@@ -1168,7 +1170,7 @@ export function CartPage() {
                           <p className="text-xs text-gray-400">
                             {result?.isEligible
                               ? `- R$ ${result.discountAmount.toFixed(2).replace('.', ',')}`
-                              : result?.reason ?? 'Não elegível pra esse carrinho'}
+                              : result?.reason ?? t('cartPage.nao_elegivel_pra_esse')}
                           </p>
                         </div>
                       </div>
@@ -1201,12 +1203,12 @@ export function CartPage() {
             >
               <span className="flex items-center gap-2 text-gray-600 font-semibold">
                 <Tag size={15} className="text-gray-400" />
-                {selectedPromotions.length > 0 ? 'Adicionar outro cupom' : 'Usar um cupom'}
+                {selectedPromotions.length > 0 ? t('cartPage.adicionar_outro_cupom') : t('cartPage.usar_um_cupom')}
               </span>
               <span className="text-xs text-gray-400">
                 {availablePromotionsCount > 0
-                  ? `${availablePromotionsCount} disponível(is)`
-                  : 'Nenhum disponível'}
+                  ? t('cartPage.availablepromotionscount_disponivel_is', { availablePromotionsCount: availablePromotionsCount })
+                  : t('cartPage.nenhum_disponivel')}
               </span>
             </button>
 
@@ -1258,8 +1260,8 @@ export function CartPage() {
                         <p className="text-sm font-semibold text-gray-800 truncate">{promo.title}</p>
                         <p className="text-xs text-gray-400">
                           {result?.isEligible
-                            ? `Economize R$ ${result.discountAmount.toFixed(2).replace('.', ',')}`
-                            : (result?.reason ?? 'Não elegível pra esse carrinho')}
+                            ? t('cartPage.economize_r_v0', { v0: result.discountAmount.toFixed(2).replace('.', ',') })
+                            : (result?.reason ?? t('cartPage.nao_elegivel_pra_esse'))}
                         </p>
                       </div>
                       <div
@@ -1281,7 +1283,7 @@ export function CartPage() {
           <div className="px-4 pt-2 pb-4 border-t border-gray-100 flex flex-col gap-3">
             <div>
               <label className="text-xs font-semibold text-gray-500">
-                Como você quer receber seu pedido?
+                {t('cartPage.como_voce_quer_receber')}
               </label>
               <div className="flex gap-2 mt-1.5">
                 {orderTypeOptions.map((type) => (
@@ -1299,7 +1301,7 @@ export function CartPage() {
                         : { borderColor: '#e5e5e5', color: '#666' }
                     }
                   >
-                    {type === 'balcao' ? 'Balcão' : type === 'mesa' ? 'Mesa' : 'Entrega'}
+                    {type === 'balcao' ? t('receiptContentStandalone.balcao') : type === 'mesa' ? t('receiptContent.mesa') : t('receiptContentStandalone.entrega')}
                   </button>
                 ))}
               </div>
@@ -1311,8 +1313,7 @@ export function CartPage() {
                   OrdersService.create) e mostrado no painel. */}
               {isTableFlow && orderType === 'entrega' && (
                 <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-2.5 py-2 mt-2">
-                  Você está na Mesa {session?.table?.number} agora. Pedir entrega é separado da
-                  conta da mesa — sua mesa continua aberta normalmente.
+                  {t('cartPage.voce_esta_na_mesa')} {session?.table?.number} {t('cartPage.agora_pedir_entrega_e')}
                 </p>
               )}
             </div>
@@ -1329,7 +1330,7 @@ export function CartPage() {
                   onBlur={() => setNameTouched(true)}
                   maxLength={GUEST_NAME_MAX}
                   autoComplete="off"
-                  placeholder="Seu nome"
+                  placeholder={t('auth.namePlaceholder')}
                   className="border rounded-lg px-3 py-2.5 text-sm outline-none"
                   style={
                     (showNameRequired || nameTouched) && guestNameError
@@ -1351,7 +1352,7 @@ export function CartPage() {
             )}
             {(hasSavedName || (orderType !== 'mesa' && hasSavedPhone)) && (
               <p className="text-xs text-gray-400">
-                Usando os dados da sua conta{hasSavedName ? ` (${customer!.name}` : ''}
+                {t('cartPage.usando_os_dados_da')}{hasSavedName ? ` (${customer!.name}` : ''}
                 {hasSavedName && orderType !== 'mesa' && hasSavedPhone ? ', ' : ''}
                 {orderType !== 'mesa' && hasSavedPhone ? customer!.phone : ''}
                 {hasSavedName ? ')' : ''}
@@ -1362,7 +1363,7 @@ export function CartPage() {
               <div className="flex flex-col gap-2 border border-gray-100 rounded-xl p-3">
                 <p className="text-xs font-semibold text-gray-500 flex items-center gap-1.5">
                   <MapPin size={13} />
-                  Endereço de entrega
+                  {t('cartPage.endereco_de_entrega')}
                 </p>
 
                 <div className="flex gap-2">
@@ -1375,7 +1376,7 @@ export function CartPage() {
                   <input
                     value={deliveryAddressNumber}
                     onChange={(e) => updateDeliveryField(setDeliveryAddressNumber)(e.target.value)}
-                    placeholder="Número"
+                    placeholder={t('cartPage.numero')}
                     className="flex-1 min-w-0 border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none"
                   />
                 </div>
@@ -1383,7 +1384,7 @@ export function CartPage() {
                 <input
                   value={deliveryNeighborhood}
                   onChange={(e) => updateDeliveryField(setDeliveryNeighborhood)(e.target.value)}
-                  placeholder="Bairro"
+                  placeholder={t('cartPage.bairro')}
                   className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none"
                 />
 
@@ -1391,7 +1392,7 @@ export function CartPage() {
                   <input
                     value={deliveryCity}
                     onChange={(e) => updateDeliveryField(setDeliveryCity)(e.target.value)}
-                    placeholder="Cidade"
+                    placeholder={t('cartPage.cidade')}
                     className="flex-[2] min-w-0 border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none"
                   />
                   <select
@@ -1399,7 +1400,7 @@ export function CartPage() {
                     onChange={(e) => updateDeliveryField(setDeliveryState)(e.target.value)}
                     className="flex-1 min-w-0 border border-gray-200 rounded-lg px-2 py-2.5 text-sm outline-none"
                   >
-                    <option value="">UF</option>
+                    <option value="">{t('cartPage.uf')}</option>
                     {BRAZIL_STATES.map((uf) => (
                       <option key={uf} value={uf}>
                         {uf}
@@ -1411,14 +1412,14 @@ export function CartPage() {
                 <input
                   value={deliveryPostcode}
                   onChange={(e) => updateDeliveryField(setDeliveryPostcode)(e.target.value)}
-                  placeholder="CEP (opcional, ajuda na precisão)"
+                  placeholder={t('cartPage.cep_opcional_ajuda_na')}
                   className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none"
                 />
 
                 <input
                   value={deliveryReferencePoint}
                   onChange={(e) => setDeliveryReferencePoint(e.target.value)}
-                  placeholder="Ponto de referência (opcional) — ex: portão azul, perto do mercado"
+                  placeholder={t('cartPage.ponto_de_referencia_opcional')}
                   className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none"
                 />
 
@@ -1429,7 +1430,7 @@ export function CartPage() {
                     className="py-2.5 rounded-lg text-sm font-semibold border disabled:opacity-50"
                     style={{ borderColor: tenant.primaryColor, color: tenant.primaryColor }}
                   >
-                    {isQuoting ? 'Calculando...' : 'Calcular taxa de entrega'}
+                    {isQuoting ? 'Calculando...' : t('cartPage.calcular_taxa_de_entrega')}
                   </button>
                 )}
 
@@ -1437,24 +1438,23 @@ export function CartPage() {
 
                 {quote && (
                   <div className="bg-gray-50 rounded-lg p-3 flex flex-col gap-1">
-                    <p className="text-xs text-gray-500">Endereço confirmado:</p>
+                    <p className="text-xs text-gray-500">{t('cartPage.endereco_confirmado')}</p>
                     <p className="text-sm font-medium text-gray-800">{quote.formattedAddress}</p>
                     <p className="text-xs text-gray-500 mt-1">
-                      Distância: {quote.distanceKm.toFixed(1)} km · Taxa de entrega: R${' '}
+                      {t('cartPage.distancia')} {quote.distanceKm.toFixed(1)} km · Taxa de entrega: R${' '}
                       {quote.fee.toFixed(2).replace('.', ',')}
                     </p>
                     {!quote.precise && (
                       <p className="text-xs text-amber-600 flex items-start gap-1 mt-1">
                         <AlertTriangle size={13} className="shrink-0 mt-0.5" />
-                        Não conseguimos confirmar o número exato — confira se o endereço acima está
-                        certo antes de continuar.
+                        {t('cartPage.nao_conseguimos_confirmar_o')}
                       </p>
                     )}
                     <button
                       onClick={() => setQuote(null)}
                       className="text-xs font-semibold text-gray-500 underline self-start mt-1"
                     >
-                      Recalcular
+                      {t('cartPage.recalcular')}
                     </button>
                   </div>
                 )}
@@ -1463,14 +1463,14 @@ export function CartPage() {
 
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-gray-500">
-                Alguma observação? (opcional)
+                {t('cartPage.alguma_observacao_opcional')}
               </label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 maxLength={280}
                 rows={2}
-                placeholder="Ex: sem cebola, ponto da carne, embrulhar pra presente..."
+                placeholder={t('cartPage.ex_sem_cebola_ponto')}
                 className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none resize-none"
               />
             </div>
@@ -1478,7 +1478,7 @@ export function CartPage() {
             {orderType !== 'mesa' && (
               <div className="flex flex-col gap-2 border border-gray-100 rounded-xl p-3">
                 <p className="text-xs font-semibold text-gray-500">
-                  Gorjeta {orderType === 'entrega' ? 'para o entregador' : '(opcional)'}
+                  {t('closingPaymentSheet.gorjeta')} {orderType === 'entrega' ? t('cartPage.para_o_entregador') : '(opcional)'}
                 </p>
                 <div className="flex gap-2">
                   {TIP_PERCENT_OPTIONS.map((percent) => {
@@ -1498,7 +1498,7 @@ export function CartPage() {
                             : { borderColor: '#e5e5e5', color: '#666' }
                         }
                       >
-                        {percent === 0 ? 'Sem gorjeta' : `${percent}%`}
+                        {percent === 0 ? t('cartPage.sem_gorjeta') : `${percent}%`}
                       </button>
                     );
                   })}
@@ -1509,7 +1509,7 @@ export function CartPage() {
                     setTipSelection('custom');
                     setTipAmountCents(cents);
                   }}
-                  placeholder="Outro valor (R$)"
+                  placeholder={t('cartPage.outro_valor_r')}
                   className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none"
                 />
               </div>
@@ -1525,9 +1525,7 @@ export function CartPage() {
       {showPaymentStep && (
         <div className="p-4 flex flex-col gap-3">
           <p className="text-xs text-gray-500">
-            Como você prefere pagar {orderType === 'entrega' ? 'na entrega' : 'na retirada'}? Ainda
-            não processamos pagamento pelo app — isso só avisa o estabelecimento de como você vai
-            pagar.
+            {t('cartPage.como_voce_prefere_pagar')} {orderType === 'entrega' ? t('cartPage.na_entrega') : t('cartPage.na_retirada')}{t('cartPage.ainda_nao_processamos_pagamento')}
           </p>
 
           <div className="flex flex-col gap-2">
@@ -1555,10 +1553,10 @@ export function CartPage() {
 
           <p className="text-xs text-gray-400">
             {paymentMethod === 'dinheiro' &&
-              'Tenha o troco combinado com quem entregar/atender, se precisar.'}
-            {paymentMethod === 'cartao' && 'Maquininha na entrega/retirada.'}
+              t('cartPage.tenha_o_troco_combinado')}
+            {paymentMethod === 'cartao' && t('cartPage.maquininha_na_entrega_retirada')}
             {paymentMethod === 'pix' &&
-              'O QR code do Pix será gerado pelo estabelecimento na hora da entrega/retirada.'}
+              t('cartPage.o_qr_code_do')}
           </p>
         </div>
       )}
@@ -1593,20 +1591,20 @@ export function CartPage() {
                   minute: '2-digit',
                 })}
                 {' · '}
-                {orderType === 'entrega' ? 'Entrega' : 'Balcão'}
+                {orderType === 'entrega' ? t('receiptContentStandalone.entrega') : t('receiptContentStandalone.balcao')}
               </p>
             </div>
           </div>
 
           {customerName && (
             <div className="flex flex-col gap-1 -mt-1">
-              <p className="text-xs font-semibold text-gray-500">Cliente</p>
+              <p className="text-xs font-semibold text-gray-500">{t('receiptContent.cliente')}</p>
               <p className="text-sm text-gray-700">{customerName}</p>
             </div>
           )}
 
           <div className="flex flex-col gap-2">
-            <p className="text-xs font-semibold text-gray-500">Itens</p>
+            <p className="text-xs font-semibold text-gray-500">{t('cartPage.itens')}</p>
             {items.map((item) => {
               const unitPrice =
                 Number(item.product.promoPrice ?? item.product.price) +
@@ -1630,7 +1628,7 @@ export function CartPage() {
                         {discountedQty}x {item.product.name}
                         {optionsLabel && <span className="block text-xs text-gray-400">{optionsLabel}</span>}
                         <span className="block text-[11px] font-semibold" style={{ color: tenant.primaryColor }}>
-                          <Tag size={11} strokeWidth={1.5} className="inline-block mr-1 -mt-0.5" />Cupom aplicado
+                          <Tag size={11} strokeWidth={1.5} className="inline-block mr-1 -mt-0.5" />{t('cartPage.cupom_aplicado')}
                         </span>
                       </span>
                       <span className="text-gray-500 shrink-0 ml-2">
@@ -1658,7 +1656,7 @@ export function CartPage() {
                     )}
                     {discountedQty > 0 && (
                       <span className="block text-[11px] font-semibold" style={{ color: tenant.primaryColor }}>
-                        <Tag size={11} strokeWidth={1.5} className="inline-block mr-1 -mt-0.5" />Cupom aplicado
+                        <Tag size={11} strokeWidth={1.5} className="inline-block mr-1 -mt-0.5" />{t('cartPage.cupom_aplicado')}
                       </span>
                     )}
                   </span>
@@ -1674,14 +1672,14 @@ export function CartPage() {
             <div className="flex flex-col gap-1 border-t border-gray-100 pt-3">
               <p className="text-xs font-semibold text-gray-500 flex items-center gap-1.5">
                 <MapPin size={13} />
-                Endereço
+                {t('receiptContentStandalone.endereco')}
               </p>
               <p className="text-sm text-gray-700">{quote.formattedAddress}</p>
             </div>
           )}
 
           <div className="flex flex-col gap-1 border-t border-gray-100 pt-3">
-            <p className="text-xs font-semibold text-gray-500">Pagamento</p>
+            <p className="text-xs font-semibold text-gray-500">{t('receiptContent.pagamento')}</p>
             <p className="text-sm text-gray-700">
               {PAYMENT_METHOD_LABELS[paymentMethod]} na {orderType === 'entrega' ? 'entrega' : 'retirada'}
             </p>
@@ -1714,40 +1712,39 @@ export function CartPage() {
                   onChange={(e) => setUseCashback(e.target.checked)}
                   className="w-4 h-4"
                 />
-                Usar meu saldo de cashback
+                {t('cartPage.usar_meu_saldo_de')}
               </label>
               <span className="text-xs font-semibold text-gray-500 shrink-0">
                 {cashbackBalance > 0
-                  ? `R$ ${cashbackBalance.toFixed(2).replace('.', ',')} disponível`
-                  : 'R$ 0,00 disponível'}
+                  ? t('cartPage.r_v0_disponivel', { v0: cashbackBalance.toFixed(2).replace('.', ',') })
+                  : t('cartPage.r_0_00_disponivel')}
               </span>
             </div>
           )}
 
           {customerToken && estimatedCashbackEarn > 0 && (
             <p className="text-xs text-green-600 -mt-1">
-              <Coins size={12} strokeWidth={1.5} className="inline-block mr-1 -mt-0.5" />Você vai ganhar ~R$ {estimatedCashbackEarn.toFixed(2).replace('.', ',')} de cashback
-              nesse pedido.
+              <Coins size={12} strokeWidth={1.5} className="inline-block mr-1 -mt-0.5" />{t('cartPage.voce_vai_ganhar_r')} {estimatedCashbackEarn.toFixed(2).replace('.', ',')} {t('cartPage.de_cashback_nesse_pedido')}
             </p>
           )}
 
           <div className="flex flex-col gap-1 border-t border-gray-100 pt-3">
-            <p className="text-xs font-semibold text-gray-500">Gorjeta</p>
+            <p className="text-xs font-semibold text-gray-500">{t('closingPaymentSheet.gorjeta')}</p>
             <p className="text-sm text-gray-700">
-              {resolvedTip > 0 ? `R$ ${resolvedTip.toFixed(2).replace('.', ',')}` : 'Sem gorjeta'}
+              {resolvedTip > 0 ? `R$ ${resolvedTip.toFixed(2).replace('.', ',')}` : t('cartPage.sem_gorjeta')}
             </p>
           </div>
 
           {notes.trim() && (
             <div className="flex flex-col gap-1 border-t border-gray-100 pt-3">
-              <p className="text-xs font-semibold text-gray-500">Observação</p>
+              <p className="text-xs font-semibold text-gray-500">{t('cartPage.observacao_2')}</p>
               <p className="text-sm text-gray-700">{notes}</p>
             </div>
           )}
 
           <div className="flex flex-col gap-1.5 border-t border-gray-100 pt-3 text-sm">
             <div className="flex justify-between text-gray-500">
-              <span>Subtotal</span>
+              <span>{t('closingPaymentSheet.subtotal')}</span>
               <span>R$ {totalPrice.toFixed(2).replace('.', ',')}</span>
             </div>
             {selectedPromotions.map((promo) => {
@@ -1755,31 +1752,31 @@ export function CartPage() {
               if (!result?.isEligible) return null;
               return (
                 <div key={promo.id} className="flex justify-between text-red-600">
-                  <span>Cupom ({promo.title})</span>
+                  <span>{t('cartPage.cupom')}{promo.title})</span>
                   <span>- R$ {result.discountAmount.toFixed(2).replace('.', ',')}</span>
                 </div>
               );
             })}
             {orderType === 'entrega' && quote && (
               <div className="flex justify-between text-gray-500">
-                <span>Taxa de entrega</span>
+                <span>{t('cartPage.taxa_de_entrega')}</span>
                 <span>R$ {quote.fee.toFixed(2).replace('.', ',')}</span>
               </div>
             )}
             {cashbackToUseEstimate > 0 && (
               <div className="flex justify-between text-red-600">
-                <span>Cashback usado</span>
+                <span>{t('receiptContent.cashback_usado')}</span>
                 <span>- R$ {cashbackToUseEstimate.toFixed(2).replace('.', ',')}</span>
               </div>
             )}
             {resolvedTip > 0 && (
               <div className="flex justify-between text-gray-500">
-                <span>Gorjeta</span>
+                <span>{t('closingPaymentSheet.gorjeta')}</span>
                 <span>R$ {resolvedTip.toFixed(2).replace('.', ',')}</span>
               </div>
             )}
             <div className="flex justify-between font-bold text-gray-900 text-base pt-1">
-              <span>Total</span>
+              <span>{t('closingPaymentSheet.total')}</span>
               <span>R$ {displayTotal.toFixed(2).replace('.', ',')}</span>
             </div>
           </div>
@@ -1821,10 +1818,10 @@ export function CartPage() {
         <div className="fixed inset-0 bg-black/40 flex items-end justify-center z-30 max-w-md mx-auto">
           <div className="bg-white rounded-t-2xl w-full p-5 flex flex-col gap-4">
             <div>
-              <p className="font-semibold text-gray-900">Remover item?</p>
+              <p className="font-semibold text-gray-900">{t('cartPage.remover_item')}</p>
               <p className="text-sm text-gray-500 mt-1">
                 {items.find((i) => i.product.id === itemPendingRemoval)?.product.name}{' '}
-                será removido do seu carrinho.
+                {t('cartPage.sera_removido_do_seu')}
               </p>
             </div>
             <div className="flex gap-3">
@@ -1832,7 +1829,7 @@ export function CartPage() {
                 onClick={() => setItemPendingRemoval(null)}
                 className="flex-1 py-2.5 rounded-lg border border-gray-200 text-sm font-semibold text-gray-600"
               >
-                Cancelar
+                {t('common.cancel')}
               </button>
               <button
                 onClick={() => {
@@ -1842,7 +1839,7 @@ export function CartPage() {
                 className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white"
                 style={{ backgroundColor: tenant.primaryColor }}
               >
-                Remover
+                {t('cartPage.remover')}
               </button>
             </div>
           </div>

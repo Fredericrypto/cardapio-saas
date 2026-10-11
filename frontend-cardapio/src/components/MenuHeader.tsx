@@ -97,7 +97,7 @@ export function MenuHeader({ tenant, location, onBack }: MenuHeaderProps) {
               <div>
                 <p className="text-xs font-semibold text-gray-700">{t('menu.acceptsDelivery')}</p>
                 <p className="text-[11px] text-gray-400">
-                  Taxa a partir de R$ {location.deliveryFee.toFixed(2).replace('.', ',')}
+                  {t('menuHeader.taxa_a_partir_de')} {location.deliveryFee.toFixed(2).replace('.', ',')}
                 </p>
               </div>
             </div>

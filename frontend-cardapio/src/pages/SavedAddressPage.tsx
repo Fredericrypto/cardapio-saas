@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nContext';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, MapPin, AlertTriangle, Trash2 } from 'lucide-react';
@@ -16,6 +17,7 @@ const BRAZIL_STATES = [
 // salvo, o carrinho de Entrega preenche isso sozinho, sem redigitar —
 // igual iFood.
 export function SavedAddressPage() {
+  const { t } = useI18n();
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { tenant } = useTenant();
@@ -67,7 +69,7 @@ export function SavedAddressPage() {
     } catch (err: any) {
       setError(
         err?.response?.data?.message ||
-          'Não conseguimos localizar esse endereço. Confira os dados e tente de novo.',
+          t('savedAddressPage.nao_conseguimos_localizar_esse'),
       );
     } finally {
       setIsSaving(false);
@@ -109,7 +111,7 @@ export function SavedAddressPage() {
         <button onClick={() => navigate(`/${slug}/conta-cliente/perfil`)}>
           <ArrowLeft size={20} />
         </button>
-        <h1 className="font-display font-bold text-lg">Endereço salvo</h1>
+        <h1 className="font-display font-bold text-lg">{t('profile.savedAddress')}</h1>
       </div>
 
       <div className="px-4 mt-4">
@@ -117,16 +119,16 @@ export function SavedAddressPage() {
           <div className="bg-white rounded-2xl p-4">
             <p className="text-xs font-semibold text-gray-500 flex items-center gap-1.5 mb-1.5">
               <MapPin size={13} />
-              Endereço confirmado
+              {t('savedAddressPage.endereco_confirmado')}
             </p>
             <p className="text-sm font-medium text-gray-800">{customer.address.formatted}</p>
             {customer.address.referencePoint && (
-              <p className="text-xs text-gray-500 mt-1">Ref: {customer.address.referencePoint}</p>
+              <p className="text-xs text-gray-500 mt-1">{t('receiptContentStandalone.ref')} {customer.address.referencePoint}</p>
             )}
             {customer.address.precise === false && (
               <p className="text-xs text-amber-600 flex items-start gap-1 mt-2">
                 <AlertTriangle size={13} className="shrink-0 mt-0.5" />
-                Não conseguimos confirmar o número exato — confira se está certo.
+                {t('savedAddressPage.nao_conseguimos_confirmar_o')}
               </p>
             )}
             <div className="flex gap-2 mt-3">
@@ -134,7 +136,7 @@ export function SavedAddressPage() {
                 onClick={() => setIsEditing(true)}
                 className="flex-1 py-2 rounded-lg text-xs font-semibold border border-gray-200 text-gray-600"
               >
-                Editar
+                {t('customerPixWalletPage.editar')}
               </button>
               <button
                 onClick={handleRemove}
@@ -159,21 +161,21 @@ export function SavedAddressPage() {
               <input
                 value={number}
                 onChange={(e) => setNumber(e.target.value)}
-                placeholder="Número"
+                placeholder={t('cartPage.numero')}
                 className="flex-1 min-w-0 border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none"
               />
             </div>
             <input
               value={neighborhood}
               onChange={(e) => setNeighborhood(e.target.value)}
-              placeholder="Bairro"
+              placeholder={t('cartPage.bairro')}
               className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none"
             />
             <div className="flex gap-2">
               <input
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
-                placeholder="Cidade"
+                placeholder={t('cartPage.cidade')}
                 className="flex-[2] min-w-0 border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none"
               />
               <select
@@ -181,7 +183,7 @@ export function SavedAddressPage() {
                 onChange={(e) => setState(e.target.value)}
                 className="flex-1 min-w-0 border border-gray-200 rounded-lg px-2 py-2.5 text-sm outline-none"
               >
-                <option value="">UF</option>
+                <option value="">{t('cartPage.uf')}</option>
                 {BRAZIL_STATES.map((uf) => (
                   <option key={uf} value={uf}>
                     {uf}
@@ -192,13 +194,13 @@ export function SavedAddressPage() {
             <input
               value={postcode}
               onChange={(e) => setPostcode(e.target.value)}
-              placeholder="CEP (opcional, ajuda na precisão)"
+              placeholder={t('cartPage.cep_opcional_ajuda_na')}
               className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none"
             />
             <input
               value={referencePoint}
               onChange={(e) => setReferencePoint(e.target.value)}
-              placeholder="Ponto de referência (opcional)"
+              placeholder={t('savedAddressPage.ponto_de_referencia_opcional')}
               className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none"
             />
 
@@ -210,7 +212,7 @@ export function SavedAddressPage() {
               className="py-3 rounded-xl text-white font-semibold text-sm disabled:opacity-60 mt-1"
               style={{ backgroundColor: tenant.primaryColor }}
             >
-              {isSaving ? 'Confirmando...' : 'Confirmar endereço'}
+              {isSaving ? 'Confirmando...' : t('savedAddressPage.confirmar_endereco')}
             </button>
           </div>
         )}

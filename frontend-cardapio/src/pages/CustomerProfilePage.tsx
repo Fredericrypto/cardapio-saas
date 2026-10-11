@@ -353,6 +353,7 @@ function MenuRow({
   disabled,
   disabledSuffix = true,
 }: MenuRowProps) {
+  const { t } = useI18n();
   return (
     <button
       onClick={onClick}
@@ -365,7 +366,7 @@ function MenuRow({
         style={labelColor ? { color: labelColor } : undefined}
       >
         {label}
-        {disabled && disabledSuffix && <span className="text-xs text-gray-400 font-normal"> · em breve</span>}
+        {disabled && disabledSuffix && <span className="text-xs text-gray-400 font-normal"> {t('customerProfilePage.em_breve')}</span>}
       </span>
       {!disabled && <ChevronRight size={18} className="text-gray-300" />}
     </button>

@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nContext';
 import { useState } from 'react';
 import { QrCode } from 'lucide-react';
 import { QrScannerModal } from './QrScannerModal';
@@ -13,6 +14,7 @@ interface QrScanButtonProps {
 // Deixa o cliente escanear o QR da mesa direto de dentro do app, sem
 // precisar sair e abrir a câmera nativa do celular manualmente.
 export function QrScanButton({ variant = 'inline' }: QrScanButtonProps) {
+  const { t } = useI18n();
   const [showScanner, setShowScanner] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -25,7 +27,7 @@ export function QrScanButton({ variant = 'inline' }: QrScanButtonProps) {
     <>
       <button
         onClick={() => setShowScanner(true)}
-        aria-label="Escanear QR code da mesa"
+        aria-label={t('qrScanButton.escanear_qr_code_da')}
         className={`rounded-full bg-gray-50 flex items-center justify-center text-gray-500 shrink-0 ${positionClass}`}
       >
         <QrCode size={15} />

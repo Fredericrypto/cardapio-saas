@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nContext';
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
 import { fetchTenantBySlug } from '../lib/menu-api';
@@ -27,6 +28,7 @@ const TenantContext = createContext<TenantContextValue | null>(null);
 // separadamente, o que parecia (e na prática se comportava como) um
 // loop infinito.
 export function TenantProvider({ children }: { children: ReactNode }) {
+  const { t } = useI18n();
   const { slug } = useParams<{ slug: string }>();
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -45,7 +47,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       .catch((err) => {
         if (cancelled) return;
         setError(
-          err?.response?.data?.message || err?.message || 'Não foi possível carregar o restaurante.',
+          err?.response?.data?.message || err?.message || t('tenantContext.nao_foi_possivel_carregar'),
         );
       })
       .finally(() => {

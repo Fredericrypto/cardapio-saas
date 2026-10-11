@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nContext';
 import { ArrowLeft, Star, User } from 'lucide-react';
 import type { PublicReview, ReviewSummary } from '../lib/customer-api';
 import { useTenant } from '../contexts/TenantContext';
@@ -89,6 +90,7 @@ export function RestaurantResponse({
   responseText: string;
   className?: string;
 }) {
+  const { t } = useI18n();
   const { tenant } = useTenant();
   return (
     <div className={`bg-gray-50 rounded-xl px-3 py-2.5 border border-gray-100 ${className}`}>
@@ -105,7 +107,7 @@ export function RestaurantResponse({
             </div>
           )}
         </div>
-        <p className="text-xs font-semibold text-gray-700 truncate">{tenant?.name ?? 'Restaurante'}</p>
+        <p className="text-xs font-semibold text-gray-700 truncate">{tenant?.name ?? t('reviewsShared.restaurante')}</p>
       </div>
       <p className="text-sm text-gray-700 mt-2">{responseText}</p>
     </div>
@@ -159,14 +161,15 @@ export function ReviewsPageLayout({
   isLoading: boolean;
   onLoadMore: () => void;
 }) {
+  const { t } = useI18n();
   return (
     <div className="min-h-screen bg-gray-50 pb-10 max-w-md mx-auto">
       <div className="flex items-center gap-3 px-4 py-4 bg-white border-b border-gray-100">
-        <button onClick={onBack} aria-label="Voltar">
+        <button onClick={onBack} aria-label={t('common.back')}>
           <ArrowLeft size={20} />
         </button>
         <div className="min-w-0">
-          <h1 className="font-display font-bold text-lg leading-tight">Avaliações</h1>
+          <h1 className="font-display font-bold text-lg leading-tight">{t('reviewsShared.avaliacoes')}</h1>
           {subtitle && <p className="text-xs text-gray-400 truncate">{subtitle}</p>}
         </div>
       </div>
@@ -180,7 +183,7 @@ export function ReviewsPageLayout({
               </p>
               {summary.count > 0 && <Stars rating={Math.round(summary.average)} />}
               <p className="text-[11px] text-gray-400 mt-0.5">
-                {summary.count} {summary.count === 1 ? 'avaliação' : 'avaliações'}
+                {summary.count} {summary.count === 1 ? t('reviewsShared.avaliacao') : t('reviewsShared.avaliacoes_2')}
               </p>
             </div>
             <div className="flex-1 flex flex-col gap-1">
@@ -203,7 +206,7 @@ export function ReviewsPageLayout({
 
       <div className="px-4 mt-4 flex flex-col gap-3">
         {!isLoading && reviews.length === 0 && (
-          <p className="text-sm text-gray-400 text-center py-12">Ainda não há avaliações por aqui.</p>
+          <p className="text-sm text-gray-400 text-center py-12">{t('reviewsShared.ainda_nao_ha_avaliacoes')}</p>
         )}
 
         {reviews.map((review) => (
@@ -216,7 +219,7 @@ export function ReviewsPageLayout({
             disabled={isLoading}
             className="py-2.5 text-sm font-semibold text-gray-500"
           >
-            {isLoading ? 'Carregando...' : 'Ver mais avaliações'}
+            {isLoading ? 'Carregando...' : t('reviewsShared.ver_mais_avaliacoes')}
           </button>
         )}
       </div>

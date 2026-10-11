@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nContext';
 import { useScrollLock } from '../hooks/useScrollLock';
 import { VerifiedBadge } from './VerifiedBadge';
 
@@ -10,6 +11,7 @@ interface VerificationCongratsModalProps {
 // controlado pelo campo `verificationCongratsPending` do perfil (some
 // pra sempre assim que `onClose` chama o endpoint de "já vi").
 export function VerificationCongratsModal({ primaryColor, onClose }: VerificationCongratsModalProps) {
+  const { t } = useI18n();
   // Com o modal aberto a página atrás NÃO rola (02/10).
   useScrollLock(true);
   return (
@@ -19,18 +21,17 @@ export function VerificationCongratsModal({ primaryColor, onClose }: Verificatio
           <VerifiedBadge variant="icon" size={56} />
         </div>
         <h2 className="font-display font-bold text-lg text-gray-900 mb-1.5">
-          Você foi verificado!
+          {t('verificationCongratsModal.voce_foi_verificado')}
         </h2>
         <p className="text-sm text-gray-500 mb-6">
-          Seu perfil agora tem o selo de cliente verificado. Ele aparece pro estabelecimento
-          sempre que você fizer um pedido.
+          {t('verificationCongratsModal.seu_perfil_agora_tem')}
         </p>
         <button
           onClick={onClose}
           className="w-full py-3 rounded-xl text-white text-sm font-semibold"
           style={{ backgroundColor: primaryColor }}
         >
-          Legal!
+          {t('verificationCongratsModal.legal')}
         </button>
       </div>
     </div>

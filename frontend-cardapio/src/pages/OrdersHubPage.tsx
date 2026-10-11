@@ -56,7 +56,7 @@ export function OrdersHubPage() {
           className="mt-4 text-white px-5 py-2.5 rounded-xl text-sm font-semibold"
           style={{ backgroundColor: tenant.primaryColor }}
         >
-          Entrar
+          {t('common.enter')}
         </button>
         <BottomNav slug={slug!} qrCodeToken={activeMesaToken} tenantId={tenant.id} primaryColor={tenant.primaryColor} />
       </div>

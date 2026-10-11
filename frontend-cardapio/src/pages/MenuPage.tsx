@@ -1,3 +1,4 @@
+import { categoryLabel } from '../i18n/categoryLabel';
 import { useI18n } from '../i18n/I18nContext';
 import { FloatingNotice } from '../components/FloatingNotice';
 import { useEffect, useMemo, useState } from 'react';
@@ -127,7 +128,7 @@ export function MenuPage() {
         setCategories(categoriesData);
         setProducts(productsData);
       } catch {
-        setLoadError('Não foi possível carregar este cardápio. Verifique o link.');
+        setLoadError(t('menuPage.nao_foi_possivel_carregar'));
       } finally {
         setIsLoadingMenu(false);
       }
@@ -190,7 +191,7 @@ export function MenuPage() {
         err && typeof err === 'object' && 'response' in err
           ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
           : undefined;
-      setCallWaiterError(backendMessage ?? 'Não foi possível chamar o garçom agora. Tente novamente.');
+      setCallWaiterError(backendMessage ?? t('cartPage.nao_foi_possivel_chamar'));
     } finally {
       setIsCallingWaiter(false);
     }
@@ -246,8 +247,7 @@ export function MenuPage() {
     return (
       <div className="flex flex-col items-center justify-center h-screen px-6 text-center">
         <p className="text-gray-500">
-          Este QR code não pertence a este restaurante. Escaneie novamente o código impresso
-          na mesa.
+          {t('menuPage.este_qr_code_nao')}
         </p>
       </div>
     );
@@ -317,7 +317,7 @@ export function MenuPage() {
       {isTableFlow && isWaiterCallPending && (
         <FloatingNotice
           persistent
-          message="Garçom chamado! Alguém vai até a sua mesa em instantes."
+          message={t('menuPage.garcom_chamado_alguem_vai')}
         />
       )}
       {isTableFlow && callWaiterError && (
@@ -341,12 +341,12 @@ export function MenuPage() {
               esquerda + nome + seta de recolher (decisão do Felipe, 30/09). */}
           <button
             onClick={() => setShowPromotions((v) => !v)}
-            aria-label={showPromotions ? 'Ocultar promoções' : 'Mostrar promoções'}
+            aria-label={showPromotions ? t('menuPage.ocultar_promocoes') : t('menuPage.mostrar_promocoes')}
             aria-expanded={showPromotions}
             className="w-full flex items-center gap-2 px-4 pt-4 pb-1.5 text-gray-700"
           >
             <PromocoesIcon size={16} />
-            <span className="text-sm font-semibold flex-1 text-left">Promoções</span>
+            <span className="text-sm font-semibold flex-1 text-left">{t('notifications.type.promotion.label')}</span>
             <ChevronDown
               size={16}
               strokeWidth={1.5}
@@ -364,7 +364,7 @@ export function MenuPage() {
                 onSelect={(id) => navigate(promotionHref(id))}
               />
             ) : (
-              <p className="text-xs text-gray-400 px-4 pt-1 pb-1">Nenhuma promoção no momento</p>
+              <p className="text-xs text-gray-400 px-4 pt-1 pb-1">{t('menuPage.nenhuma_promocao_no_momento')}</p>
             ))}
         </div>
 
@@ -378,7 +378,7 @@ export function MenuPage() {
 
         {filteredProducts.length === 0 ? (
           <p className="text-center text-gray-400 text-sm py-12">
-            Nenhum produto encontrado.
+            {t('menuPage.nenhum_produto_encontrado')}
           </p>
         ) : activeCategoryId !== null ? (
           <div className="grid grid-cols-2 gap-3 px-4 pt-3 pb-4">
@@ -419,7 +419,7 @@ export function MenuPage() {
                     aria-expanded={!isCollapsed}
                   >
                     {Icon && <Icon size={16} />}
-                    <span className="text-sm font-semibold flex-1 text-left">{category.name}</span>
+                    <span className="text-sm font-semibold flex-1 text-left">{categoryLabel(category, t)}</span>
                     <ChevronDown
                       size={16}
                       strokeWidth={1.5}

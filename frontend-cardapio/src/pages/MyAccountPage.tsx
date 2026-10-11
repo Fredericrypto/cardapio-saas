@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nContext';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { PeopleOrders } from '../components/PeopleOrders';
 import { useEffect, useRef, useState } from 'react';
@@ -24,6 +25,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export function MyAccountPage() {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const { slug, qrCodeToken } = useParams<{ slug: string; qrCodeToken: string }>();
   const { session } = useTableSessionContext()!;
@@ -64,7 +66,7 @@ export function MyAccountPage() {
       } else {
         // Falha de rede: NÃO finge que saiu (o servidor pode ainda
         // considerar o assento ativo). Pede pra tentar de novo.
-        setLeaveError('Não foi possível sair da mesa agora. Tente novamente.');
+        setLeaveError(t('myAccountPage.nao_foi_possivel_sair'));
       }
     } finally {
       setIsLeaving(false);
@@ -121,7 +123,7 @@ export function MyAccountPage() {
         const before = previous[order.id];
         if (before && before !== order.status) {
           const label = STATUS_LABELS[order.status] ?? order.status;
-          setStatusNotification(`Seu pedido agora está: ${label}`);
+          setStatusNotification(t('myAccountPage.seu_pedido_agora_esta', { label: label }));
           setTimeout(() => setStatusNotification(null), 5000);
           break; // mostra uma notificação por vez, mesmo se vários mudarem juntos
         }
@@ -218,7 +220,7 @@ export function MyAccountPage() {
           : undefined;
       setRequestError(
         backendMessage ??
-          'Não foi possível solicitar o fechamento. Tente novamente ou chame um garçom.',
+          t('myAccountPage.nao_foi_possivel_solicitar'),
       );
     } finally {
       setIsRequesting(false);
@@ -243,10 +245,10 @@ export function MyAccountPage() {
           ✓
         </div>
         <h1 className="font-display text-xl font-bold text-gray-900">
-          Conta fechada
+          {t('myAccountPage.conta_fechada')}
         </h1>
         <p className="text-sm text-gray-500 mt-2">
-          Obrigado pela visita! Sua conta já foi paga e encerrada.
+          {t('myAccountPage.obrigado_pela_visita_sua')}
         </p>
       </div>
     );
@@ -279,7 +281,7 @@ export function MyAccountPage() {
         <button onClick={() => navigate(-1)}>
           <ArrowLeft size={20} />
         </button>
-        <h1 className="font-display font-bold text-lg flex-1">Minha conta</h1>
+        <h1 className="font-display font-bold text-lg flex-1">{t('tableMenuHeader.minha_conta')}</h1>
       </div>
       {/* Fora da barra do cabeçalho de propósito — o relógio de prazo
           (TableSessionTimer, variant="fixed") flutua no canto superior
@@ -294,16 +296,14 @@ export function MyAccountPage() {
             className="flex-1 rounded-xl py-2.5 flex items-center justify-center gap-1.5 text-xs font-semibold text-gray-700 bg-gray-50 border border-gray-100 disabled:opacity-50"
           >
             <LogOut size={14} />
-            {isLeaving ? 'Saindo...' : 'Sair da mesa'}
+            {isLeaving ? 'Saindo...' : t('myAccountPage.sair_da_mesa')}
           </button>
         </div>
       )}
       {confirmingLeave && (
         <ConfirmModal
-          message={`Tem certeza que quer sair dessa mesa?${
-            isOpener ? ' Você abriu a mesa, mas a conta continua pra quem ficar.' : ''
-          } Pra voltar, só escaneando o QR code da mesa de novo.`}
-          confirmLabel="Sim, sair da mesa"
+          message={t('myAccountPage.tem_certeza_que_quer', { v0: isOpener ? t('myAccountPage.voce_abriu_a_mesa') : '' })}
+          confirmLabel={t('myAccountPage.sim_sair_da_mesa')}
           onConfirm={handleLeaveTable}
           onCancel={() => setConfirmingLeave(false)}
         />
@@ -367,7 +367,7 @@ export function MyAccountPage() {
         </div>
       ) : summary.orders.length === 0 ? (
         <p className="text-center text-gray-400 text-sm py-12">
-          Você ainda não fez nenhum pedido nessa mesa.
+          {t('myAccountPage.voce_ainda_nao_fez')}
         </p>
       ) : (
         <div className="p-4 flex flex-col gap-4">
@@ -412,7 +412,7 @@ export function MyAccountPage() {
         {!closingRequested && summary.orders.length > 0 && (
           <div>
             <p className="text-xs font-semibold text-gray-500 mb-1.5">
-              Gorjeta (opcional)
+              {t('myAccountPage.gorjeta_opcional')}
             </p>
             <div className="flex gap-2">
               {[0, 10, 15].map((percent) => (
@@ -430,7 +430,7 @@ export function MyAccountPage() {
                       : { borderColor: '#e5e5e5', color: '#666' }
                   }
                 >
-                  {percent === 0 ? 'Sem gorjeta' : `${percent}%`}
+                  {percent === 0 ? t('cartPage.sem_gorjeta') : `${percent}%`}
                 </button>
               ))}
               <button
@@ -446,7 +446,7 @@ export function MyAccountPage() {
                     : { borderColor: '#e5e5e5', color: '#666' }
                 }
               >
-                Outro
+                {t('myAccountPage.outro')}
               </button>
             </div>
             {tipPercent === 'custom' && (
@@ -455,7 +455,7 @@ export function MyAccountPage() {
                 step="0.01"
                 value={customTip}
                 onChange={(e) => setCustomTip(e.target.value)}
-                placeholder="Valor da gorjeta (R$)"
+                placeholder={t('myAccountPage.valor_da_gorjeta_r')}
                 className="mt-2 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none"
               />
             )}
@@ -463,7 +463,7 @@ export function MyAccountPage() {
         )}
 
         <div className="flex justify-between items-center text-sm text-gray-500">
-          <span>Subtotal</span>
+          <span>{t('closingPaymentSheet.subtotal')}</span>
           <span>R$ {summary.total.toFixed(2).replace('.', ',')}</span>
         </div>
 
@@ -473,7 +473,7 @@ export function MyAccountPage() {
             "Gorjeta" sumir mesmo com gorjeta aplicada. */}
         {(closingRequested ? summary.tipAmount : calculateTipAmount()) > 0 && (
           <div className="flex justify-between items-center text-sm text-gray-500">
-            <span>Gorjeta</span>
+            <span>{t('closingPaymentSheet.gorjeta')}</span>
             <span>
               R${' '}
               {(closingRequested ? summary.tipAmount : calculateTipAmount())
@@ -484,7 +484,7 @@ export function MyAccountPage() {
         )}
 
         <div className="flex justify-between items-center">
-          <span className="text-sm font-semibold text-gray-500">Total</span>
+          <span className="text-sm font-semibold text-gray-500">{t('closingPaymentSheet.total')}</span>
           <span className="text-lg font-bold" style={{ color: tenant.primaryColor }}>
             R${' '}
             {closingRequested
@@ -514,20 +514,20 @@ export function MyAccountPage() {
           ) : summary.session.paymentStatus === 'falhou' ? (
             <div className="flex flex-col items-center gap-2 py-2">
               <p className="text-sm font-semibold text-red-500 text-center">
-                O Pix não foi confirmado a tempo.
+                {t('myAccountPage.o_pix_nao_foi')}
               </p>
               <button
                 onClick={() => setShowPaymentSheet(true)}
                 className="w-full py-3 rounded-xl text-white font-semibold"
                 style={{ backgroundColor: tenant.primaryColor }}
               >
-                Tentar de novo
+                {t('optionalCustomerAuth.tentar_de_novo')}
               </button>
             </div>
           ) : (
             <div className="flex items-center justify-center gap-2 py-3 text-sm font-semibold text-gray-500">
               <CheckCircle2 size={16} />
-              Fechamento solicitado — aguarde o garçom
+              {t('myAccountPage.fechamento_solicitado_aguarde_o')}
             </div>
           )
         ) : (
@@ -537,7 +537,7 @@ export function MyAccountPage() {
             className="w-full py-3.5 rounded-xl text-white font-semibold disabled:opacity-60"
             style={{ backgroundColor: tenant.primaryColor }}
           >
-            Solicitar fechamento da conta
+            {t('myAccountPage.solicitar_fechamento_da_conta')}
           </button>
         )}
       </div>

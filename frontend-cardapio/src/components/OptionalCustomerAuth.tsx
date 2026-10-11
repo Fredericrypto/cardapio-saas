@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nContext';
 import { type ReactNode } from 'react';
 import { useTenant } from '../contexts/TenantContext';
 
@@ -19,6 +20,7 @@ import { useTenant } from '../contexts/TenantContext';
 // aparecem normalmente pra quem já está logado — isso aqui só para de
 // FORÇAR quem não está.
 export function OptionalCustomerAuth({ children }: { children: ReactNode }) {
+  const { t } = useI18n();
   const { tenant, isLoading: isLoadingTenant, error: tenantError, retry: retryTenant } = useTenant();
 
   if (tenantError) {
@@ -26,7 +28,7 @@ export function OptionalCustomerAuth({ children }: { children: ReactNode }) {
       <div className="flex flex-col items-center justify-center h-screen gap-3 px-6 text-center">
         <p className="text-sm text-gray-500">{tenantError}</p>
         <button onClick={retryTenant} className="text-sm font-semibold text-gray-900 underline">
-          Tentar de novo
+          {t('optionalCustomerAuth.tentar_de_novo')}
         </button>
       </div>
     );

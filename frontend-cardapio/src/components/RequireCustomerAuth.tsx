@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nContext';
 import { type ReactNode } from 'react';
 import { useParams, useLocation, Navigate } from 'react-router-dom';
 import { useTenant } from '../contexts/TenantContext';
@@ -17,6 +18,7 @@ import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 // serem buscados aqui — ver o comentário em CustomerAuthContext.tsx
 // pro motivo real disso ter mudado.
 export function RequireCustomerAuth({ children }: { children: ReactNode }) {
+  const { t } = useI18n();
   const { slug } = useParams<{ slug: string }>();
   const location = useLocation();
   const { tenant, isLoading: isLoadingTenant, error: tenantError, retry: retryTenant } = useTenant();
@@ -27,7 +29,7 @@ export function RequireCustomerAuth({ children }: { children: ReactNode }) {
       <div className="flex flex-col items-center justify-center h-screen gap-3 px-6 text-center">
         <p className="text-sm text-gray-500">{tenantError}</p>
         <button onClick={retryTenant} className="text-sm font-semibold text-gray-900 underline">
-          Tentar de novo
+          {t('optionalCustomerAuth.tentar_de_novo')}
         </button>
       </div>
     );
@@ -54,10 +56,10 @@ export function RequireCustomerAuth({ children }: { children: ReactNode }) {
     return (
       <div className="flex flex-col items-center justify-center h-screen gap-3 px-6 text-center">
         <p className="text-sm text-gray-500">
-          Não foi possível confirmar sua sessão agora. Sua conexão pode estar instável.
+          {t('requireCustomerAuth.nao_foi_possivel_confirmar')}
         </p>
         <button onClick={retryAuth} className="text-sm font-semibold text-gray-900 underline">
-          Tentar de novo
+          {t('optionalCustomerAuth.tentar_de_novo')}
         </button>
       </div>
     );
