@@ -4,16 +4,16 @@ import { ChevronDown, MapPin, Clock, Phone, Info } from 'lucide-react';
 import type { Tenant, Location } from '../types';
 import { getWeekScheduleLines } from '../lib/openingHours';
 import {
-  WhatsAppIcon,
-  InstagramIcon,
-  YoutubeIcon,
-  FacebookIcon,
-  TikTokIcon,
-  TwitterXIcon,
-  TelegramIcon,
-  MessengerIcon,
-  GmailIcon,
-} from './BrandIcons';
+  WhatsAppOutlineIcon,
+  InstagramOutlineIcon,
+  YoutubeOutlineIcon,
+  FacebookOutlineIcon,
+  TikTokOutlineIcon,
+  XOutlineIcon,
+  TelegramOutlineIcon,
+  MessengerOutlineIcon,
+  EmailOutlineIcon,
+} from './SocialOutlineIcons';
 import { ACTION_BUTTON_BASE } from '../lib/uiClasses';
 import {
   buildWhatsappLink,
@@ -143,40 +143,40 @@ export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelPro
   const { t } = useI18n();
   const weekSchedule = getWeekScheduleLines(location?.openingHours ?? null, t);
 
-  // Pedido do Felipe (18/09, cores atualizadas 19/09): só os ícones (sem
-  // número/usuário escrito do lado), maiores, com a aparência oficial de cada
-  // app (ver BrandIcons.tsx). Admin escolhe quais usar preenchendo (ou não)
-  // cada campo nas configurações — o que não foi preenchido nem aparece.
+  // Só os ícones (sem número/usuário escrito do lado). Desde a z6-09 todos são
+  // OUTLINED, do mesmo tamanho e na cor do texto do tema (SocialOutlineIcons),
+  // sem cores de marca. Admin escolhe quais usar preenchendo (ou não) cada
+  // campo nas configurações — o que não foi preenchido nem aparece.
   // Os links abrem no app nativo de cada plataforma quando ele está instalado
   // (o domínio oficial de cada uma já é reconhecido pelo celular como link do
   // app) e caem no site normal quando não está.
   const socialLinks: SocialLinkItem[] = [];
   if (location?.whatsappNumber) {
-    socialLinks.push({ key: 'whatsapp', href: buildWhatsappLink(location.whatsappNumber), label: 'WhatsApp', Icon: WhatsAppIcon, external: true });
+    socialLinks.push({ key: 'whatsapp', href: buildWhatsappLink(location.whatsappNumber), label: 'WhatsApp', Icon: WhatsAppOutlineIcon, external: true });
   }
   if (location?.telegramUsername) {
-    socialLinks.push({ key: 'telegram', href: buildTelegramLink(location.telegramUsername), label: 'Telegram', Icon: TelegramIcon, external: true });
+    socialLinks.push({ key: 'telegram', href: buildTelegramLink(location.telegramUsername), label: 'Telegram', Icon: TelegramOutlineIcon, external: true });
   }
   if (tenant.instagramHandle) {
-    socialLinks.push({ key: 'instagram', href: buildInstagramLink(tenant.instagramHandle), label: 'Instagram', Icon: InstagramIcon, external: true });
+    socialLinks.push({ key: 'instagram', href: buildInstagramLink(tenant.instagramHandle), label: 'Instagram', Icon: InstagramOutlineIcon, external: true });
   }
   if (tenant.facebookUrl) {
-    socialLinks.push({ key: 'facebook', href: buildFacebookLink(tenant.facebookUrl), label: 'Facebook', Icon: FacebookIcon, external: true });
+    socialLinks.push({ key: 'facebook', href: buildFacebookLink(tenant.facebookUrl), label: 'Facebook', Icon: FacebookOutlineIcon, external: true });
   }
   if (tenant.youtubeUrl) {
-    socialLinks.push({ key: 'youtube', href: buildYoutubeLink(tenant.youtubeUrl), label: 'YouTube', Icon: YoutubeIcon, external: true });
+    socialLinks.push({ key: 'youtube', href: buildYoutubeLink(tenant.youtubeUrl), label: 'YouTube', Icon: YoutubeOutlineIcon, external: true });
   }
   if (tenant.tiktokHandle) {
-    socialLinks.push({ key: 'tiktok', href: buildTiktokLink(tenant.tiktokHandle), label: 'TikTok', Icon: TikTokIcon, external: true });
+    socialLinks.push({ key: 'tiktok', href: buildTiktokLink(tenant.tiktokHandle), label: 'TikTok', Icon: TikTokOutlineIcon, external: true });
   }
   if (tenant.twitterHandle) {
-    socialLinks.push({ key: 'twitter', href: buildTwitterLink(tenant.twitterHandle), label: 'X (Twitter)', Icon: TwitterXIcon, external: true });
+    socialLinks.push({ key: 'twitter', href: buildTwitterLink(tenant.twitterHandle), label: 'X (Twitter)', Icon: XOutlineIcon, external: true });
   }
   if (tenant.messengerUsername) {
-    socialLinks.push({ key: 'messenger', href: buildMessengerLink(tenant.messengerUsername), label: 'Messenger', Icon: MessengerIcon, external: true });
+    socialLinks.push({ key: 'messenger', href: buildMessengerLink(tenant.messengerUsername), label: 'Messenger', Icon: MessengerOutlineIcon, external: true });
   }
   if (tenant.gmailAddress) {
-    socialLinks.push({ key: 'gmail', href: buildGmailLink(tenant.gmailAddress), label: t('info.email'), Icon: GmailIcon, external: false });
+    socialLinks.push({ key: 'gmail', href: buildGmailLink(tenant.gmailAddress), label: t('info.email'), Icon: EmailOutlineIcon, external: false });
   }
 
   const hasSocialLinks = socialLinks.length > 0;
@@ -242,16 +242,16 @@ export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelPro
             {hasContactBlock && (
               <div className="flex flex-col items-center gap-4 w-full md:items-start">
                 {hasSocialLinks && (
-                  <div className="flex items-center justify-center gap-3 flex-wrap md:justify-start">
+                  <div className="flex flex-row flex-wrap items-center justify-center gap-x-1.5 gap-y-2 md:gap-x-3 md:justify-start">
                     {socialLinks.map(({ key, href, label, Icon, external }) => (
                       <a
                         key={key}
                         href={href}
                         {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-                        className="active:opacity-70 md:hover:opacity-80 transition-opacity"
+                        className={`w-7 h-7 md:w-9 md:h-9 shrink-0 rounded-full flex items-center justify-center transition-colors active:opacity-70 md:hover:bg-[#F3F4F6] dark:md:hover:bg-white/10 ${MENU_TEXT_BODY} md:hover:text-[#111827] dark:md:hover:text-[#E3E2E6]`}
                         aria-label={label}
                       >
-                        <Icon size={30} />
+                        <Icon size={20} />
                       </a>
                     ))}
                   </div>
