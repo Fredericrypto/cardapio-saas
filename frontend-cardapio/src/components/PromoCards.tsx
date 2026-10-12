@@ -1,10 +1,11 @@
 import { localizedText } from '../i18n/categoryLabel';
 import { useI18n } from '../i18n/I18nContext';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Clock } from 'lucide-react';
 import type { Promotion } from '../types';
 import { CLOSED_MUTED_CLASS } from '../lib/storeStatus';
 import { ShareButton } from './ShareButton';
+import { useWheelHorizontalScroll } from '../hooks/useWheelHorizontalScroll';
 
 interface PromoCardsProps {
   promotions: Promotion[];
@@ -58,6 +59,11 @@ function useCountdownLabel(endsAt: string | null): string | null {
 // PromotionsService.attachDisplayImage). Só mostra promoções cadastradas
 // de verdade, nunca inventa desconto.
 export function PromoCards({ promotions, primaryColor, onSelect, muted = false, buildShareUrl }: PromoCardsProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  // Roda do mouse sobre o carrossel rola na horizontal (celular/janela estreita;
+  // no desktop o container vira grade e o hook não faz nada).
+  useWheelHorizontalScroll(scrollRef, promotions.length > 0);
+
   if (promotions.length === 0) return null;
 
   // pb-4 + -mb-3: o container rola na horizontal, o que corta a sombra no
@@ -66,7 +72,7 @@ export function PromoCards({ promotions, primaryColor, onSelect, muted = false, 
   // Desktop (md+): carrossel vira grade (sem rolagem lateral, que não é
   // natural com mouse) com 2/3/4 colunas.
   return (
-    <div className="flex gap-3 px-4 pt-1 pb-4 -mb-3 overflow-x-auto no-scrollbar snap-x snap-mandatory md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 md:items-start md:gap-4 md:px-0 md:overflow-visible md:snap-none">
+    <div ref={scrollRef} className="flex gap-3 px-4 pt-1 pb-4 -mb-3 overflow-x-auto no-scrollbar snap-x snap-mandatory md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 md:items-start md:gap-4 md:px-0 md:overflow-visible md:snap-none">
       {promotions.map((promo) => (
         <PromoCard key={promo.id} promo={promo} primaryColor={primaryColor} onSelect={onSelect} muted={muted} shareUrl={buildShareUrl?.(promo.id)} />
       ))}

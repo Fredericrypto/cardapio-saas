@@ -7,6 +7,7 @@ import type { Tenant, Location } from '../types';
 import { RestaurantInfoPanel } from './RestaurantInfoPanel';
 import { QrScanButton } from './QrScanButton';
 import { ReviewBadge, OpenStatusRow } from './HeaderStatus';
+import { ThemeToggle } from './ThemeToggle';
 import {
   MENU_BANNER_BASE,
   MENU_BORDER,
@@ -33,7 +34,8 @@ interface MenuHeaderProps {
 // centralizado). Desktop (md+): UM ÚNICO cartão arredondado e com borda que
 // encapsula tudo — banner baixo em cima e, embaixo, logo + nome/nota/status à
 // esquerda e, à direita, o indicador de unidade e o cartão de entrega
-// empilhados. Voltar vira um botão com rótulo sobre o banner.
+// empilhados. No desktop o Voltar some (a troca de unidade fica no seletor).
+// O alternador de tema claro/escuro fica no canto superior direito do banner.
 //
 // Todas as cores vêm de lib/menuTheme (par claro/escuro explícito): nenhuma
 // superfície fica branca no tema escuro.
@@ -73,13 +75,24 @@ export function MenuHeader({ tenant, location, onBack }: MenuHeaderProps) {
             <ChevronLeft size={20} strokeWidth={1.5} className="shrink-0" />
           </button>
         )}
+
+        {/* Alternador de tema (claro/escuro), mesmo posicionamento do header de mesa. */}
+        <div className="absolute top-3.5 right-3.5 z-10">
+          <ThemeToggle variant="floating" />
+        </div>
       </div>
 
       {/* Sheet (celular) / corpo do cartão da loja (desktop) */}
       <div className={MENU_HEADER_SHEET}>
         <div className="md:flex md:items-center md:gap-8">
           <div className="flex flex-col items-center text-center md:flex-row md:gap-5 md:text-left md:flex-1 md:min-w-0">
-            <div className={`shrink-0 transition-[filter] ${!isOpenNow ? 'grayscale' : ''}`}>
+            {/* Desktop: a logo fica numa caixa 64x64 centralizada na vertical com
+                o bloco de 3 linhas (nome / avaliação / status) e sem nenhuma
+                margem ou deslocamento herdado do LogoViewer. No celular o
+                desenho original (logo sobrepondo o banner) não muda. */}
+            <div
+              className={`shrink-0 transition-[filter] md:self-center md:flex md:items-center md:justify-center md:w-16 md:h-16 md:[&>*]:!m-0 md:[&>*]:!top-0 md:[&>*]:!translate-y-0 ${!isOpenNow ? 'grayscale' : ''}`}
+            >
               <LogoViewer tenant={tenant} size="w-16 h-16" />
             </div>
 
