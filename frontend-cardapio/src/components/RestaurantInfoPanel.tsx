@@ -132,9 +132,10 @@ interface SocialLinkItem {
 // escolhida (cada filial tem os seus); as outras redes sociais são da MARCA
 // inteira.
 //
-// Celular: coluna centralizada (desenho original). Desktop (md+): colunas
-// alinhadas à esquerda — endereço | horário | contato (redes + telefone) —,
-// numa grade que se ajusta sozinha ao número de blocos preenchidos.
+// Celular: coluna centralizada (desenho original). Desktop (md+): colunas de
+// mesma largura, com título e conteúdo centralizados e um divisor vertical
+// fino entre elas — endereço | horário | contato (redes + telefone). O número
+// de colunas acompanha os blocos preenchidos.
 //
 // Vive dentro do cabeçalho (MenuHeader / TableMenuHeader); cores vêm de
 // lib/menuTheme, com par claro/escuro explícito.
@@ -198,6 +199,12 @@ export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelPro
 
   if (!hasCollapsibleInfo) return null;
 
+  // Colunas presentes (só as preenchidas). Cada coluna, exceto a primeira,
+  // desenha o divisor vertical à sua esquerda.
+  const showAddress = Boolean(location?.address);
+  const showHours = Boolean(weekSchedule);
+  const columnCount = [showAddress, showHours, hasContactBlock].filter(Boolean).length;
+
   return (
     <div className={`mt-3 md:mt-4 pt-4 border-t flex flex-col gap-4 ${MENU_BORDER}`}>
       <div>
@@ -213,15 +220,15 @@ export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelPro
 
         {expanded && (
           <div
-            className={`mt-3 px-2 pb-1 flex flex-col items-center gap-4 text-xs text-center md:grid md:grid-cols-[repeat(auto-fit,minmax(15rem,1fr))] md:items-start md:gap-x-10 md:gap-y-6 md:px-1 md:text-left ${MENU_TEXT_BODY}`}
+            className={`mt-3 px-2 pb-1 flex flex-col items-center gap-4 text-xs text-center md:grid ${INFO_GRID_COLS[columnCount]} md:items-stretch md:gap-x-8 md:gap-y-6 md:px-1 ${MENU_TEXT_BODY}`}
           >
             {location?.address && (
               <InfoColumn title={label('info.address', 'Endereço')}>
-                <div className="flex flex-col items-center gap-1 md:flex-row md:items-start md:gap-2.5">
-                  <MapPin size={13} strokeWidth={1.5} className={`shrink-0 md:mt-0.5 ${MENU_TEXT_MUTED}`} />
+                <div className="flex flex-col items-center gap-1 md:flex-row md:justify-center md:gap-2.5">
+                  <MapPin size={13} strokeWidth={1.5} className={`shrink-0 ${MENU_TEXT_MUTED}`} />
                   {/* Endereço em duas linhas (rua e bairro / cidade - UF, CEP);
                       formato diferente do geocodificado cai numa linha só. */}
-                  <div className="flex flex-col items-center md:items-start">
+                  <div className="flex flex-col items-center text-center">
                     {formatAddressLines(location.address).map((line, idx) => (
                       <span key={idx}>{line}</span>
                     ))}
@@ -231,7 +238,7 @@ export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelPro
             )}
 
             {weekSchedule && (
-              <InfoColumn title={label('info.hours', 'Horários')}>
+              <InfoColumn title={label('info.hours', 'Horários')} divider={showAddress}>
                 <div className="flex flex-col gap-1 text-left">
                   {/* Relógio em TODAS as linhas; dia fechado em vermelho. */}
                   {weekSchedule.map((line) => (
@@ -249,9 +256,10 @@ export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelPro
             {hasContactBlock && (
               <InfoColumn
                 title={hasSocialLinks ? label('info.social', 'Redes sociais') : label('info.contact', 'Contato')}
+                divider={showAddress || showHours}
               >
                 {hasSocialLinks && (
-                  <div className="flex flex-row flex-wrap items-center justify-center gap-x-1.5 gap-y-2 md:gap-x-2 md:justify-start">
+                  <div className="flex flex-row flex-wrap items-center justify-center gap-x-1.5 gap-y-2 md:gap-x-2">
                     {socialLinks.map(({ key, href, label: linkLabel, Icon, external }) => (
                       <a
                         key={key}
@@ -287,16 +295,44 @@ export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelPro
   );
 }
 
-// Coluna do painel de informações. No desktop leva um título pequeno em cima
-// (Endereço / Horários / Redes sociais); no celular o título fica oculto e o
-// desenho centralizado original é mantido.
-function InfoColumn({ title, children }: { title: string; children: ReactNode }) {
+// Número de colunas do desktop por quantidade de blocos preenchidos (classes
+// literais pro Tailwind enxergar).
+const INFO_GRID_COLS: Record<number, string> = {
+  1: 'md:grid-cols-1',
+  2: 'md:grid-cols-2',
+  3: 'md:grid-cols-3',
+};
+
+// Coluna do painel de informações. No desktop: título centralizado no topo e o
+// conteúdo centralizado (horizontal e vertical) na área abaixo dele. O divisor
+// vertical (só desktop) mora nessa área, no meio do espaço entre colunas, e
+// usa só ~76% da altura — nunca encosta no título nem na base do painel. No
+// celular o título fica oculto e o desenho centralizado original é mantido.
+function InfoColumn({
+  title,
+  divider = false,
+  children,
+}: {
+  title: string;
+  divider?: boolean;
+  children: ReactNode;
+}) {
   return (
-    <div className="flex flex-col items-center gap-2 w-full md:items-start">
-      <h3 className={`hidden md:block text-[11px] font-semibold uppercase tracking-wider ${MENU_TEXT_MUTED}`}>
+    <div className="flex flex-col items-center gap-2 w-full md:h-full">
+      <h3
+        className={`hidden md:block w-full text-center text-[11px] font-semibold uppercase tracking-wider ${MENU_TEXT_MUTED}`}
+      >
         {title}
       </h3>
-      {children}
+      <div className="relative flex flex-col items-center justify-center gap-4 w-full text-center md:flex-1">
+        {divider && (
+          <span
+            aria-hidden="true"
+            className="hidden md:block absolute -left-4 top-[12%] bottom-[12%] w-px bg-[#E5E7EB] dark:bg-white/10"
+          />
+        )}
+        {children}
+      </div>
     </div>
   );
 }
