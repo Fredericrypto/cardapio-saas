@@ -5,6 +5,7 @@ import { Clock, ChevronRight } from 'lucide-react';
 import type { Promotion } from '../types';
 import { CLOSED_MUTED_CLASS } from '../lib/storeStatus';
 import { ShareButton } from './ShareButton';
+import { MENU_SURFACE, MENU_TEXT_MUTED } from '../lib/menuTheme';
 
 interface PromoCardsProps {
   promotions: Promotion[];
@@ -66,7 +67,7 @@ export function PromoCards({ promotions, primaryColor, onSelect, muted = false, 
   // Desktop (md+): carrossel vira grade (sem rolagem lateral, que não é
   // natural com mouse) com 2/3/4 colunas.
   return (
-    <div className="flex gap-3 px-4 pt-1 pb-4 -mb-3 overflow-x-auto no-scrollbar snap-x snap-mandatory md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 md:items-start md:gap-4 md:overflow-visible md:snap-none">
+    <div className="flex gap-3 px-4 pt-1 pb-4 -mb-3 overflow-x-auto no-scrollbar snap-x snap-mandatory md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 md:items-start md:gap-4 md:px-0 md:overflow-visible md:snap-none">
       {promotions.map((promo) => (
         <PromoCard key={promo.id} promo={promo} primaryColor={primaryColor} onSelect={onSelect} muted={muted} shareUrl={buildShareUrl?.(promo.id)} />
       ))}
@@ -159,7 +160,7 @@ function PromoCard({
       </div>
 
       {promo.minOrderValue > 0 && !promo.alreadyUsedUp && (
-        <div className="bg-white px-3.5 py-1.5 text-[11px] text-gray-400 dark:text-gray-300">
+        <div className={`px-3.5 py-1.5 text-[11px] ${MENU_SURFACE} ${MENU_TEXT_MUTED}`}>
           {t('promoCards.pedido_minimo_r')} {Number(promo.minOrderValue).toFixed(2).replace('.', ',')}
         </div>
       )}

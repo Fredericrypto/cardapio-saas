@@ -28,11 +28,22 @@ import { ProductCard } from '../components/ProductCard';
 import { CartBar } from '../components/CartBar';
 import { BottomNav, DesktopNav } from '../components/BottomNav';
 import { buildShareUrl } from '../lib/shareLinks';
+import {
+  MENU_PAGE_BG,
+  MENU_TEXT_BODY,
+  MENU_TEXT_MUTED,
+  MENU_TEXT_SOFT,
+} from '../lib/menuTheme';
 
 // Grade de produtos adaptativa: 2 colunas no celular (desenho atual do
 // ProductCard), 3 no tablet (sm), 4 no desktop (lg) e 5 em monitores largos (xl).
 const PRODUCT_GRID_CLASS =
-  'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4 px-4';
+  'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4 px-4 md:px-0';
+
+// Cabeçalho de seção (Promoções e cada categoria da aba "Todos"). No desktop
+// o recuo lateral some (`md:px-0`) pra o título alinhar com a borda do cartão
+// do cabeçalho e dos cards.
+const SECTION_HEADER_CLASS = `w-full flex items-center gap-2 px-4 md:px-0 pt-4 md:pt-6 pb-1.5 ${MENU_TEXT_SOFT}`;
 
 // Cardápio único pro cliente — atende tanto quem escaneou o QR de uma
 // mesa (`/:slug/mesa/:qrCodeToken`) quanto quem chegou por um link geral
@@ -250,8 +261,8 @@ export function MenuPage() {
   // divergência de verdade depois que o tenant termina de carregar.
   if (isTableFlow && !isTenantLoading && tenant && session && session.tenantId !== tenant.id) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen px-6 text-center">
-        <p className="text-gray-500">
+      <div className={`flex flex-col items-center justify-center h-screen px-6 text-center ${MENU_PAGE_BG}`}>
+        <p className={MENU_TEXT_BODY}>
           {t('menuPage.este_qr_code_nao')}
         </p>
       </div>
@@ -260,8 +271,8 @@ export function MenuPage() {
 
   if (loadError) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen px-6 text-center">
-        <p className="text-gray-500">{loadError}</p>
+      <div className={`flex flex-col items-center justify-center h-screen px-6 text-center ${MENU_PAGE_BG}`}>
+        <p className={MENU_TEXT_BODY}>{loadError}</p>
       </div>
     );
   }
@@ -279,8 +290,8 @@ export function MenuPage() {
     isWaitingForLocationChoice
   ) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="w-8 h-8 border-2 border-gray-200 border-t-gray-500 rounded-full animate-spin" />
+      <div className={`flex items-center justify-center h-screen ${MENU_PAGE_BG}`}>
+        <div className="w-8 h-8 border-2 border-[#E5E7EB] border-t-[#6B7280] dark:border-white/10 dark:border-t-[#C4C7C5] rounded-full animate-spin" />
       </div>
     );
   }
@@ -288,7 +299,7 @@ export function MenuPage() {
   const isOpenNow = activeLocation?.isOpenNow ?? true;
 
   return (
-    <div className="min-h-screen bg-white pb-24 md:pb-10 relative">
+    <div className={`min-h-screen ${MENU_PAGE_BG} pb-24 md:pb-28 relative`}>
       <DesktopNav
         slug={slug!}
         qrCodeToken={qrCodeToken}
@@ -342,9 +353,9 @@ export function MenuPage() {
         )}
 
         {!isOpenNow && (
-          <div className="bg-red-50 border-b border-red-100 px-4 py-2.5 text-center">
-            <p className="text-xs font-bold text-red-600">{t('store.closedEstablishment')}</p>
-            <p className="text-[11px] text-red-500 mt-0.5">{t('store.closedHint')}</p>
+          <div className="bg-red-50 border-b border-red-100 dark:bg-red-500/10 dark:border-red-500/20 md:mt-4 md:rounded-2xl md:border px-4 py-2.5 text-center">
+            <p className="text-xs font-bold text-red-600 dark:text-red-300">{t('store.closedEstablishment')}</p>
+            <p className="text-[11px] text-red-500 dark:text-red-300/80 mt-0.5">{t('store.closedHint')}</p>
           </div>
         )}
 
@@ -360,14 +371,14 @@ export function MenuPage() {
               onClick={() => setShowPromotions((v) => !v)}
               aria-label={showPromotions ? t('menuPage.ocultar_promocoes') : t('menuPage.mostrar_promocoes')}
               aria-expanded={showPromotions}
-              className="w-full flex items-center gap-2 px-4 pt-4 pb-1.5 text-gray-700"
+              className={SECTION_HEADER_CLASS}
             >
               <PromocoesIcon size={16} />
               <span className="text-sm font-semibold flex-1 text-left">{t('notifications.type.promotion.label')}</span>
               <ChevronDown
                 size={16}
                 strokeWidth={1.5}
-                className={`text-gray-400 transition-transform ${showPromotions ? '' : '-rotate-90'}`}
+                className={`transition-transform ${MENU_TEXT_MUTED} ${showPromotions ? '' : '-rotate-90'}`}
               />
             </button>
 
@@ -381,7 +392,7 @@ export function MenuPage() {
                   onSelect={(id) => navigate(promotionHref(id))}
                 />
               ) : (
-                <p className="text-xs text-gray-400 px-4 pt-1 pb-1">{t('menuPage.nenhuma_promocao_no_momento')}</p>
+                <p className={`text-xs px-4 md:px-0 pt-1 pb-1 ${MENU_TEXT_MUTED}`}>{t('menuPage.nenhuma_promocao_no_momento')}</p>
               ))}
           </div>
 
@@ -389,7 +400,7 @@ export function MenuPage() {
             <SearchBar value={searchTerm} onChange={setSearchTerm} />
           </div>
           {/* Desktop: categorias fixas logo abaixo da barra superior (h-16). */}
-          <div className="md:sticky md:top-16 md:z-30 md:bg-white">
+          <div className={`md:sticky md:top-16 md:z-30 ${MENU_PAGE_BG}`}>
             <CategoryChips
               categories={categories}
               activeCategoryId={activeCategoryId}
@@ -399,7 +410,7 @@ export function MenuPage() {
           </div>
 
           {filteredProducts.length === 0 ? (
-            <p className="text-center text-gray-400 text-sm py-12">
+            <p className={`text-center text-sm py-12 ${MENU_TEXT_MUTED}`}>
               {t('menuPage.nenhum_produto_encontrado')}
             </p>
           ) : activeCategoryId !== null ? (
@@ -437,7 +448,7 @@ export function MenuPage() {
                           return next;
                         })
                       }
-                      className="w-full flex items-center gap-2 px-4 pt-4 pb-1.5 text-gray-700"
+                      className={SECTION_HEADER_CLASS}
                       aria-expanded={!isCollapsed}
                     >
                       {Icon && <Icon size={16} />}
@@ -445,7 +456,7 @@ export function MenuPage() {
                       <ChevronDown
                         size={16}
                         strokeWidth={1.5}
-                        className={`text-gray-400 transition-transform ${isCollapsed ? '-rotate-90' : ''}`}
+                        className={`transition-transform ${MENU_TEXT_MUTED} ${isCollapsed ? '-rotate-90' : ''}`}
                       />
                     </button>
                     {!isCollapsed && (

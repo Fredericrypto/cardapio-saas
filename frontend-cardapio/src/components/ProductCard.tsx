@@ -6,6 +6,14 @@ import { useCart } from '../contexts/CartContext';
 import { CLOSED_MUTED_CLASS } from '../lib/storeStatus';
 import { ShareButton } from './ShareButton';
 import { useAccentColor } from '../hooks/useAccentColor';
+import {
+  MENU_BORDER,
+  MENU_SURFACE,
+  MENU_SURFACE_SUBTLE,
+  MENU_TEXT,
+  MENU_TEXT_FAINT,
+  MENU_TEXT_MUTED,
+} from '../lib/menuTheme';
 
 interface ProductCardProps {
   product: Product;
@@ -35,9 +43,9 @@ export function ProductCard({ product, primaryColor, onClick, storeClosed = fals
   return (
     <button
       onClick={onClick}
-      className={`flex flex-col h-full text-left rounded-2xl overflow-hidden bg-white border border-gray-100 shadow-[0_2px_10px_rgba(0,0,0,0.04)] md:hover:shadow-[0_8px_22px_rgba(0,0,0,0.09)] active:scale-[0.985] transition-[transform,box-shadow] ${isUnavailable ? 'opacity-90' : ''}`}
+      className={`flex flex-col h-full text-left rounded-2xl overflow-hidden border shadow-[0_2px_10px_rgba(0,0,0,0.04)] md:hover:shadow-[0_8px_22px_rgba(0,0,0,0.09)] active:scale-[0.985] transition-[transform,box-shadow] ${MENU_SURFACE} ${MENU_BORDER} ${isUnavailable ? 'opacity-90' : ''}`}
     >
-      <div className="relative aspect-square md:aspect-[4/3] bg-gray-100">
+      <div className={`relative aspect-square md:aspect-[4/3] ${MENU_SURFACE_SUBTLE}`}>
         {product.imageUrl ? (
           <img
             src={product.imageUrl}
@@ -45,7 +53,7 @@ export function ProductCard({ product, primaryColor, onClick, storeClosed = fals
             className={`w-full h-full object-cover ${isUnavailable ? 'grayscale opacity-60' : storeClosed ? CLOSED_MUTED_CLASS : ''}`}
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-gray-300 text-xs">
+          <div className={`w-full h-full flex items-center justify-center text-xs ${MENU_TEXT_FAINT}`}>
             {t('productCard.sem_foto')}
           </div>
         )}
@@ -108,22 +116,22 @@ export function ProductCard({ product, primaryColor, onClick, storeClosed = fals
       </div>
 
       <div className="flex flex-col flex-1 px-2.5 pt-2.5 pb-3 md:px-3.5 md:pt-4 md:pb-4">
-        <p className={`font-display font-bold text-[13px] md:text-sm leading-tight line-clamp-1 ${isUnavailable ? 'text-gray-400' : 'text-gray-900'}`}>
+        <p className={`font-display font-bold text-[13px] md:text-sm leading-tight line-clamp-1 ${isUnavailable ? MENU_TEXT_MUTED : MENU_TEXT}`}>
           {localizedText(product.name)}
         </p>
         {product.description && (
-          <p className="text-[11px] md:text-xs text-gray-400 mt-0.5 line-clamp-1 leading-snug">
+          <p className={`text-[11px] md:text-xs mt-0.5 line-clamp-1 leading-snug ${MENU_TEXT_MUTED}`}>
             {localizedText(product.description)}
           </p>
         )}
         <div className="flex items-baseline gap-1.5 mt-auto pt-1.5">
           {hasPromo && (
-            <span className="text-[11px] text-gray-300 line-through">
+            <span className={`text-[11px] line-through ${MENU_TEXT_FAINT}`}>
               R$ {Number(product.price).toFixed(2).replace('.', ',')}
             </span>
           )}
           <span
-            className={`font-bold text-sm md:text-base ${!isUnavailable && !hasPromo ? 'text-[#111827] dark:text-gray-100' : ''}`}
+            className={`font-bold text-sm md:text-base ${!isUnavailable && !hasPromo ? MENU_TEXT : ''}`}
             style={isUnavailable ? { color: '#9ca3af' } : hasPromo ? { color: accent } : undefined}
           >
             R$ {Number(displayPrice).toFixed(2).replace('.', ',')}

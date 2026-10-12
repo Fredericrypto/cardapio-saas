@@ -7,6 +7,16 @@ import { TableSessionTimer } from './TableSessionTimer';
 import { ReviewBadge, OpenStatusRow } from './HeaderStatus';
 import { ACTION_BUTTON_BASE } from '../lib/uiClasses';
 import { ThemeToggle } from './ThemeToggle';
+import {
+  MENU_BANNER_BASE,
+  MENU_BORDER,
+  MENU_HEADER_SHEET,
+  MENU_HEADER_SHELL,
+  MENU_SURFACE_SUBTLE,
+  MENU_TEXT,
+  MENU_TEXT_MUTED,
+  MENU_TEXT_SOFT,
+} from '../lib/menuTheme';
 
 interface TableMenuHeaderProps {
   tenant: Tenant;
@@ -20,15 +30,11 @@ interface TableMenuHeaderProps {
   onExpiryTick?: () => void;
 }
 
-// Mesmo esqueleto visual do MenuHeader (banner + sheet branco flutuante)
-// pra ficar consistente com o fluxo geral — só troca o conteúdo do
-// sheet pelas ações específicas de mesa (chamar garçom / minha conta)
-// no lugar do card de entrega.
-//
-// Responsivo: igual ao MenuHeader — banner mais alto com cantos
-// arredondados a partir de `md`, conteúdo do sheet numa coluna centralizada
-// (`md:max-w-3xl`) e os botões de ação com largura contida (`md:max-w-md`)
-// em vez de esticados pelo monitor inteiro.
+// Mesmo esqueleto visual do MenuHeader (banner + sheet flutuante no celular,
+// cartão único encapsulado no desktop) pra ficar consistente com o fluxo
+// geral — só troca o conteúdo do sheet pelas ações específicas de mesa
+// (chamar garçom / minha conta) no lugar do card de entrega. As cores vêm de
+// lib/menuTheme (par claro/escuro explícito).
 export function TableMenuHeader({
   tenant,
   location,
@@ -42,9 +48,9 @@ export function TableMenuHeader({
 }: TableMenuHeaderProps) {
   const { t } = useI18n();
   return (
-    <div>
+    <div className={MENU_HEADER_SHELL}>
       <div
-        className="relative h-32 md:h-36 lg:h-44 w-full overflow-hidden md:rounded-3xl"
+        className={`${MENU_BANNER_BASE} h-32 md:h-32 lg:h-36`}
         style={
           tenant.coverImageUrl
             ? undefined
@@ -58,8 +64,8 @@ export function TableMenuHeader({
         </div>
       </div>
 
-      <div className="relative -mt-6 md:mt-4 rounded-t-3xl md:rounded-3xl bg-white px-4 pt-3.5 pb-1 md:px-6 md:py-5 md:border md:border-gray-100 z-10">
-        <div className="md:flex md:items-center md:gap-6">
+      <div className={MENU_HEADER_SHEET}>
+        <div className="md:flex md:items-center md:gap-8">
           <div className="flex flex-col items-center text-center md:flex-row md:gap-5 md:text-left md:flex-1 md:min-w-0">
             <div className="shrink-0">
               <LogoViewer tenant={tenant} size="w-16 h-16" />
@@ -70,7 +76,7 @@ export function TableMenuHeader({
                   timer da mesa, que fica preso no canto esquerdo). */}
               <div className="relative w-full mt-1.5 md:mt-0 px-14 md:px-0 md:flex md:items-center md:gap-3">
                 <h1
-                  className="font-display text-lg md:text-xl font-bold leading-tight text-gray-900 text-center md:text-left text-balance"
+                  className={`font-display text-lg md:text-2xl font-bold leading-tight text-center md:text-left text-balance ${MENU_TEXT}`}
                   style={{ overflowWrap: 'anywhere' }}
                 >
                   {tenant.name}
@@ -90,7 +96,7 @@ export function TableMenuHeader({
                       o cardápio genérico (MenuHeader) já mostra o dele. Div
                       vazia só pra manter o título centralizado no layout. */}
               </div>
-              <p className="text-xs text-gray-400 mt-0.5">
+              <p className={`text-xs mt-0.5 ${MENU_TEXT_MUTED}`}>
                 {/* O admin já pode nomear a mesa como "Mesa 1" ou "Balcão 1"
                     (campo livre) — prefixar de novo aqui sempre virava "Mesa
                     Mesa 1"/"Mesa Balcão 1". Com `kind` disponível, decide o
@@ -126,7 +132,7 @@ export function TableMenuHeader({
             </button>
             <button
               onClick={onOpenAccount}
-              className={`flex-1 text-gray-700 bg-gray-50 border border-gray-100 ${ACTION_BUTTON_BASE}`}
+              className={`flex-1 border ${MENU_TEXT_SOFT} ${MENU_SURFACE_SUBTLE} ${MENU_BORDER} ${ACTION_BUTTON_BASE}`}
             >
               <Receipt size={14} strokeWidth={1.5} />
               {t('tableMenuHeader.minha_conta')}

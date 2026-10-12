@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import { ArrowRight } from 'lucide-react';
 import type { Category } from '../types';
 import { getCategoryIcon } from './CategoryIcon';
+import { useAccentColor } from '../hooks/useAccentColor';
+import { MENU_BORDER, MENU_TEXT_MUTED } from '../lib/menuTheme';
 
 interface CategoryChipsProps {
   categories: Category[];
@@ -59,12 +61,12 @@ export function CategoryChips({
   }, [activeCategoryId]);
 
   return (
-    <div className="relative border-b border-gray-100">
+    <div className={`relative border-b ${MENU_BORDER}`}>
     <div ref={scrollRef} className="overflow-x-auto no-scrollbar">
       {/* `w-max min-w-full justify-center` centraliza quando cabe na tela e, quando não
           cabe, continua rolando normal pra esquerda (justify-center
           direto cortaria o começo da lista). */}
-      <div className="flex w-max min-w-full justify-center md:justify-start gap-2 md:gap-1 px-3 md:px-4 pt-1.5 md:pt-0">
+      <div className="flex w-max min-w-full justify-center md:justify-start gap-2 md:gap-1 px-3 md:px-0 pt-1.5 md:pt-0">
       <Tab
         label={t('categoryChips.todos')}
         isActive={activeCategoryId === null}
@@ -84,8 +86,8 @@ export function CategoryChips({
       </div>
     </div>
     {hasMoreToRight && (
-      <div className="pointer-events-none absolute right-0 top-0 h-full w-10 flex items-center justify-end pr-1.5 bg-gradient-to-l from-white via-white/90 to-transparent dark:from-[#1E1E20] dark:via-[#1E1E20]/90 dark:to-transparent">
-        <ArrowRight size={14} strokeWidth={2} className="text-gray-400" />
+      <div className="pointer-events-none absolute right-0 top-0 h-full w-10 flex items-center justify-end pr-1.5 bg-gradient-to-l from-[#FFFFFF] via-[#FFFFFF]/90 to-transparent dark:from-[#131314] dark:via-[#131314]/90 dark:to-transparent">
+        <ArrowRight size={14} strokeWidth={2} className={MENU_TEXT_MUTED} />
       </div>
     )}
     </div>
@@ -106,6 +108,10 @@ function Tab({
   primaryColor: string;
 }) {
   const Icon = getCategoryIcon(categoryKey ?? (label === 'Todos' ? 'todos' : null), label);
+  // Friso da aba ativa: a cor principal do restaurante pode ser escura demais
+  // sobre o fundo escuro (o padrão é #3d3846) — o hook devolve uma variante
+  // legível, a mesma usada no preço promocional do ProductCard.
+  const accent = useAccentColor(primaryColor);
   const colorClass = isActive
     ? 'text-[#111827] dark:text-white'
     : 'text-[#9CA3AF] dark:text-[#8E918F]';
@@ -114,9 +120,9 @@ function Tab({
     <button
       onClick={onClick}
       data-active={isActive ? 'true' : 'false'}
-      className={`shrink-0 flex flex-col md:flex-row items-center gap-2 px-4 pt-2 pb-2 md:py-3 min-w-[76px] md:min-w-0 transition-colors active:bg-gray-50 md:hover:bg-gray-50 dark:active:bg-[#282A2C] rounded-t-xl ${colorClass}`}
+      className={`shrink-0 flex flex-col md:flex-row items-center gap-2 px-4 pt-2 pb-2 md:py-3 min-w-[76px] md:min-w-0 transition-colors active:bg-[#F9FAFB] md:hover:bg-[#F9FAFB] dark:active:bg-[#282A2C] dark:md:hover:bg-[#282A2C] rounded-t-xl ${colorClass}`}
       style={{
-        borderBottom: isActive ? `2.5px solid ${primaryColor}` : '2.5px solid transparent',
+        borderBottom: isActive ? `2.5px solid ${accent}` : '2.5px solid transparent',
       }}
     >
       {Icon && (

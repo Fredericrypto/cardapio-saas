@@ -7,6 +7,7 @@ import { getStoreStatus } from '../lib/storeStatus';
 import { fetchReviewsSummary } from '../lib/customer-api';
 import { useMinuteClock } from '../hooks/useMinuteClock';
 import { useI18n } from '../i18n/I18nContext';
+import { MENU_TEXT_FAINT, MENU_TEXT_MUTED, MENU_TEXT_SOFT } from '../lib/menuTheme';
 
 // Peças do header compartilhadas entre o cardápio geral (MenuHeader) e o
 // cardápio de mesa (TableMenuHeader) — pedido do Felipe (28/09): nota do
@@ -35,12 +36,12 @@ export function ReviewBadge({ tenant, location }: { tenant: Tenant; location: Lo
       <Star
         size={13}
         fill={summary.count > 0 ? '#F59E0B' : 'transparent'}
-        className={summary.count > 0 ? 'text-amber-500' : 'text-gray-300'}
+        className={summary.count > 0 ? 'text-amber-500' : MENU_TEXT_FAINT}
       />
       {summary.count > 0 && (
-        <span className="text-xs font-semibold text-gray-700">{summary.average.toFixed(1)}</span>
+        <span className={`text-xs font-semibold ${MENU_TEXT_SOFT}`}>{summary.average.toFixed(1)}</span>
       )}
-      <span className="text-xs text-gray-400 underline">
+      <span className={`text-xs underline ${MENU_TEXT_MUTED}`}>
         {summary.count === 1
           ? t('store.reviewsCountOne', { count: summary.count })
           : t('store.reviewsCount', { count: summary.count })}
@@ -71,16 +72,16 @@ export function OpenStatusRow({ location }: { location: Location | null }) {
         >
           {status.isOpen ? t('store.open') : t('store.closed')}
         </span>
-        {todayHoursLabel && <span className="text-xs text-gray-400">{todayHoursLabel}</span>}
+        {todayHoursLabel && <span className={`text-xs ${MENU_TEXT_MUTED}`}>{todayHoursLabel}</span>}
         {status.isOpen && status.closingInMinutes != null && !status.isOpen24h && (
           <span className="text-xs font-bold text-red-500">{t('store.closesIn', { minutes: status.closingInMinutes })}</span>
         )}
         {location?.distanceKm != null && (
-          <span className="text-xs text-gray-400">• {location.distanceKm.toFixed(1)} km</span>
+          <span className={`text-xs ${MENU_TEXT_MUTED}`}>• {location.distanceKm.toFixed(1)} km</span>
         )}
       </div>
       {nextOpeningLabel && (
-        <span data-testid="store-next-opening" className="text-[11px] text-gray-400">
+        <span data-testid="store-next-opening" className={`text-[11px] ${MENU_TEXT_MUTED}`}>
           {nextOpeningLabel}
         </span>
       )}

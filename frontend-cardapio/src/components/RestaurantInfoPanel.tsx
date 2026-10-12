@@ -1,5 +1,5 @@
 import { useI18n } from '../i18n/I18nContext';
-import { useState } from 'react';
+import { useState, type ComponentType } from 'react';
 import { ChevronDown, MapPin, Clock, Phone, Info } from 'lucide-react';
 import type { Tenant, Location } from '../types';
 import { getWeekScheduleLines } from '../lib/openingHours';
@@ -27,6 +27,11 @@ import {
   buildGmailLink,
   buildPhoneLink,
 } from '../lib/socialLinks';
+import {
+  MENU_BORDER,
+  MENU_TEXT_BODY,
+  MENU_TEXT_MUTED,
+} from '../lib/menuTheme';
 
 interface RestaurantInfoPanelProps {
   tenant: Tenant;
@@ -92,221 +97,185 @@ function formatAddressLines(address: string): string[] {
   return [address];
 }
 
-// WhatsApp e Instagram ficam sempre visíveis (não fazem sentido escondidos
-// atrás de um "ver mais" — são a forma mais rápida do cliente confirmar
-// que achou o restaurante certo, e são links tocáveis pro app de verdade).
-// Só endereço, horário completo (7 dias) e telefone de contato ficam atrás
-// do colapsável "Informações do estabelecimento", já que ocupam mais
-// espaço. WhatsApp, Telegram, telefone de contato e endereço/horário vêm
-// da LOJA escolhida (cada filial tem os seus); as outras redes sociais são
-// da MARCA inteira.
+// Telefone brasileiro legível: "(48) 99999-9999" (celular), "(48) 3333-4444"
+// (fixo), "4003-1234" (sem DDD) e "0800 123 4567". Aceita o número já com
+// máscara, com +55/55 na frente ou só dígitos; qualquer coisa que não bata
+// com esses formatos volta INTACTA (nunca inventa nem corta dígito). Só
+// afeta o que é MOSTRADO — o link `tel:` continua usando o valor cru.
+function formatPhoneBR(raw: string): string {
+  const digits = raw.replace(/\D/g, '');
+  if (digits.length === 11 && /^0[38]00/.test(digits)) {
+    return `${digits.slice(0, 4)} ${digits.slice(4, 7)} ${digits.slice(7)}`;
+  }
+  const national = digits.length >= 12 && digits.startsWith('55') ? digits.slice(2) : digits;
+  if (national.startsWith('0')) return raw;
+  if (national.length === 11) return `(${national.slice(0, 2)}) ${national.slice(2, 7)}-${national.slice(7)}`;
+  if (national.length === 10) return `(${national.slice(0, 2)}) ${national.slice(2, 6)}-${national.slice(6)}`;
+  if (national.length === 9) return `${national.slice(0, 5)}-${national.slice(5)}`;
+  if (national.length === 8) return `${national.slice(0, 4)}-${national.slice(4)}`;
+  return raw;
+}
+
+interface SocialLinkItem {
+  key: string;
+  href: string;
+  label: string;
+  Icon: ComponentType<{ size: number }>;
+  // Gmail abre o app de e-mail na mesma aba; as demais abrem em nova aba.
+  external: boolean;
+}
+
+// Painel "Informações" do cabeçalho. Recolhido por padrão; ao abrir mostra
+// endereço, horário de funcionamento (7 dias), redes sociais e telefone de
+// contato — só o que o restaurante preencheu (campo vazio nem aparece).
+// WhatsApp, Telegram, telefone de contato e endereço/horário vêm da LOJA
+// escolhida (cada filial tem os seus); as outras redes sociais são da MARCA
+// inteira.
 //
-// Vive dentro do sheet branco flutuante do header (ver MenuHeader) —
-// por isso as cores são escuras sobre fundo claro, não mais texto branco
-// sobre a cor do tenant como na versão anterior.
+// Celular: coluna centralizada (desenho original). Desktop (md+): colunas
+// alinhadas à esquerda — endereço | horário | contato (redes + telefone) —,
+// numa grade que se ajusta sozinha ao número de blocos preenchidos.
+//
+// Vive dentro do cabeçalho (MenuHeader / TableMenuHeader); cores vêm de
+// lib/menuTheme, com par claro/escuro explícito.
 export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelProps) {
   const [expanded, setExpanded] = useState(false);
   const { t } = useI18n();
   const weekSchedule = getWeekScheduleLines(location?.openingHours ?? null, t);
 
-  const hasSocialLinks =
-    Boolean(location?.whatsappNumber) ||
-    Boolean(location?.telegramUsername) ||
-    Boolean(tenant.instagramHandle) ||
-    Boolean(tenant.youtubeUrl) ||
-    Boolean(tenant.facebookUrl) ||
-    Boolean(tenant.tiktokHandle) ||
-    Boolean(tenant.twitterHandle) ||
-    Boolean(tenant.messengerUsername) ||
-    Boolean(tenant.gmailAddress);
+  // Pedido do Felipe (18/09, cores atualizadas 19/09): só os ícones (sem
+  // número/usuário escrito do lado), maiores, com a aparência oficial de cada
+  // app (ver BrandIcons.tsx). Admin escolhe quais usar preenchendo (ou não)
+  // cada campo nas configurações — o que não foi preenchido nem aparece.
+  // Os links abrem no app nativo de cada plataforma quando ele está instalado
+  // (o domínio oficial de cada uma já é reconhecido pelo celular como link do
+  // app) e caem no site normal quando não está.
+  const socialLinks: SocialLinkItem[] = [];
+  if (location?.whatsappNumber) {
+    socialLinks.push({ key: 'whatsapp', href: buildWhatsappLink(location.whatsappNumber), label: 'WhatsApp', Icon: WhatsAppIcon, external: true });
+  }
+  if (location?.telegramUsername) {
+    socialLinks.push({ key: 'telegram', href: buildTelegramLink(location.telegramUsername), label: 'Telegram', Icon: TelegramIcon, external: true });
+  }
+  if (tenant.instagramHandle) {
+    socialLinks.push({ key: 'instagram', href: buildInstagramLink(tenant.instagramHandle), label: 'Instagram', Icon: InstagramIcon, external: true });
+  }
+  if (tenant.facebookUrl) {
+    socialLinks.push({ key: 'facebook', href: buildFacebookLink(tenant.facebookUrl), label: 'Facebook', Icon: FacebookIcon, external: true });
+  }
+  if (tenant.youtubeUrl) {
+    socialLinks.push({ key: 'youtube', href: buildYoutubeLink(tenant.youtubeUrl), label: 'YouTube', Icon: YoutubeIcon, external: true });
+  }
+  if (tenant.tiktokHandle) {
+    socialLinks.push({ key: 'tiktok', href: buildTiktokLink(tenant.tiktokHandle), label: 'TikTok', Icon: TikTokIcon, external: true });
+  }
+  if (tenant.twitterHandle) {
+    socialLinks.push({ key: 'twitter', href: buildTwitterLink(tenant.twitterHandle), label: 'X (Twitter)', Icon: TwitterXIcon, external: true });
+  }
+  if (tenant.messengerUsername) {
+    socialLinks.push({ key: 'messenger', href: buildMessengerLink(tenant.messengerUsername), label: 'Messenger', Icon: MessengerIcon, external: true });
+  }
+  if (tenant.gmailAddress) {
+    socialLinks.push({ key: 'gmail', href: buildGmailLink(tenant.gmailAddress), label: t('info.email'), Icon: GmailIcon, external: false });
+  }
+
+  const hasSocialLinks = socialLinks.length > 0;
   const hasContactPhone = Boolean(location?.contactPhoneNumber);
-  // Redes sociais agora moram DENTRO de "Informações" (entre o horário de
-  // funcionamento e o botão de telefone).
-  const hasCollapsibleInfo =
-    Boolean(location?.address) || Boolean(weekSchedule) || hasSocialLinks || hasContactPhone;
+  const hasContactBlock = hasSocialLinks || hasContactPhone;
+
+  // Redes sociais moram DENTRO de "Informações" (junto do telefone).
+  const hasCollapsibleInfo = Boolean(location?.address) || Boolean(weekSchedule) || hasContactBlock;
 
   if (!hasCollapsibleInfo) return null;
 
   return (
-    <div className="mt-3 pt-4 border-t border-gray-100 flex flex-col gap-4">
-      {hasCollapsibleInfo && (
-        <div>
-          <button
-            onClick={() => setExpanded((v) => !v)}
-            className="flex items-center justify-center gap-1.5 w-full text-xs font-semibold text-gray-500 py-1"
+    <div className={`mt-3 md:mt-4 pt-4 border-t flex flex-col gap-4 ${MENU_BORDER}`}>
+      <div>
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          aria-expanded={expanded}
+          className={`flex items-center justify-center gap-1.5 w-full text-xs font-semibold py-1 ${MENU_TEXT_BODY}`}
+        >
+          <Info size={15} strokeWidth={1.5} className="shrink-0" />
+          <span>{t('info.title')}</span>
+          <ChevronDown size={14} strokeWidth={1.5} className={`transition-transform ${expanded ? 'rotate-180' : ''}`} />
+        </button>
+
+        {expanded && (
+          <div
+            className={`mt-3 px-2 pb-1 flex flex-col items-center gap-4 text-xs text-center md:grid md:grid-cols-[repeat(auto-fit,minmax(15rem,1fr))] md:items-start md:gap-x-10 md:gap-y-6 md:px-1 md:text-left ${MENU_TEXT_BODY}`}
           >
-            <Info size={15} strokeWidth={1.5} className="shrink-0" />
-            <span>{t('info.title')}</span>
-            <ChevronDown size={14} strokeWidth={1.5} className={`transition-transform ${expanded ? 'rotate-180' : ''}`} />
-          </button>
-
-          {expanded && (
-            <div className="mt-3 px-2 pb-1 flex flex-col items-center gap-3 text-xs text-gray-500 text-center md:flex-row md:flex-wrap md:items-start md:justify-center md:gap-x-12 md:gap-y-4 md:text-left">
-              {location?.address && (
-                <div className="flex flex-col items-center md:items-start gap-1">
-                  <MapPin size={13} strokeWidth={1.5} className="shrink-0 text-gray-400" />
-                  {/* Pedido do Felipe (19/09): endereço em duas linhas
-                      — rua/bairro numa, cidade/estado/CEP na outra —
-                      as duas centralizadas, uma embaixo da outra. O
-                      endereço geocodificado sempre vem nesse formato
-                      exato (rua, bairro, cidade, estado, CEP — ver
-                      GeocodingService.buildFormattedAddress no
-                      backend); se por algum motivo vier diferente
-                      (menos partes que o esperado), cai de volta pra
-                      mostrar o endereço inteiro numa linha só, sem
-                      quebrar o layout. */}
-                  <div className="flex flex-col items-center md:items-start">
-                    {formatAddressLines(location.address).map((line, idx) => (
-                      <span key={idx}>{line}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {weekSchedule && (
-                <div className="flex flex-col gap-1 text-left">
-                  {/* Pedido do Felipe (19/09): ícone de relógio em
-                      TODAS as linhas dos dias, não só uma vez pro bloco
-                      inteiro — e dia marcado como fechado (pelo admin,
-                      na aba "Lojas") aparece em vermelho. */}
-                  {weekSchedule.map((line) => (
-                    <span key={line.day} className="flex items-center gap-1.5">
-                      <Clock size={13} strokeWidth={1.5} className="shrink-0 text-gray-400" />
-                      <span className={line.hours === 'Fechado' ? 'text-red-500 font-medium' : ''}>
-                        {line.day}: {line.hours}
-                      </span>
-                    </span>
+            {location?.address && (
+              <div className="flex flex-col items-center gap-1 md:flex-row md:items-start md:gap-2.5">
+                <MapPin size={13} strokeWidth={1.5} className={`shrink-0 md:mt-0.5 ${MENU_TEXT_MUTED}`} />
+                {/* Pedido do Felipe (19/09): endereço em duas linhas — rua e
+                    bairro numa, cidade/estado/CEP na outra. O endereço
+                    geocodificado sempre vem nesse formato exato (ver
+                    GeocodingService.buildFormattedAddress no backend); se por
+                    algum motivo vier diferente, cai de volta pra mostrar o
+                    endereço inteiro numa linha só, sem quebrar o layout. */}
+                <div className="flex flex-col items-center md:items-start">
+                  {formatAddressLines(location.address).map((line, idx) => (
+                    <span key={idx}>{line}</span>
                   ))}
                 </div>
-              )}
+              </div>
+            )}
 
-              {hasSocialLinks && (
-        // Pedido do Felipe (18/09, cores atualizadas 19/09): só os
-        // ícones (sem número/usuário escrito do lado), maiores e mais
-        // visíveis, com a aparência oficial (e cores atuais) de cada
-        // app (ver BrandIcons.tsx). Admin escolhe quais usar
-        // simplesmente preenchendo (ou não) cada campo nas
-        // configurações — o que não foi preenchido nem aparece aqui.
-        // Os links abrem no app nativo de cada plataforma quando ele
-        // está instalado (o próprio domínio oficial de cada uma —
-        // instagram.com, t.me, m.me etc — já é reconhecido pelo
-        // celular como link do app, sem precisar de nada especial
-        // aqui) e caem no site normal quando não está.
-        <div className="flex items-center justify-center gap-3 flex-wrap">
-          {location?.whatsappNumber && (
-            <a
-              href={buildWhatsappLink(location.whatsappNumber)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="active:opacity-70"
-              aria-label="WhatsApp"
-            >
-              <WhatsAppIcon size={30} />
-            </a>
-          )}
-          {location?.telegramUsername && (
-            <a
-              href={buildTelegramLink(location.telegramUsername)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="active:opacity-70"
-              aria-label="Telegram"
-            >
-              <TelegramIcon size={30} />
-            </a>
-          )}
-          {tenant.instagramHandle && (
-            <a
-              href={buildInstagramLink(tenant.instagramHandle)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="active:opacity-70"
-              aria-label="Instagram"
-            >
-              <InstagramIcon size={30} />
-            </a>
-          )}
-          {tenant.facebookUrl && (
-            <a
-              href={buildFacebookLink(tenant.facebookUrl)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="active:opacity-70"
-              aria-label="Facebook"
-            >
-              <FacebookIcon size={30} />
-            </a>
-          )}
-          {tenant.youtubeUrl && (
-            <a
-              href={buildYoutubeLink(tenant.youtubeUrl)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="active:opacity-70"
-              aria-label="YouTube"
-            >
-              <YoutubeIcon size={30} />
-            </a>
-          )}
-          {tenant.tiktokHandle && (
-            <a
-              href={buildTiktokLink(tenant.tiktokHandle)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="active:opacity-70"
-              aria-label="TikTok"
-            >
-              <TikTokIcon size={30} />
-            </a>
-          )}
-          {tenant.twitterHandle && (
-            <a
-              href={buildTwitterLink(tenant.twitterHandle)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="active:opacity-70"
-              aria-label="X (Twitter)"
-            >
-              <TwitterXIcon size={30} />
-            </a>
-          )}
-          {tenant.messengerUsername && (
-            <a
-              href={buildMessengerLink(tenant.messengerUsername)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="active:opacity-70"
-              aria-label="Messenger"
-            >
-              <MessengerIcon size={30} />
-            </a>
-          )}
-          {tenant.gmailAddress && (
-            <a href={buildGmailLink(tenant.gmailAddress)} className="active:opacity-70" aria-label={t('info.email')}>
-              <GmailIcon size={30} />
-            </a>
-          )}
-        </div>
-      )}
+            {weekSchedule && (
+              <div className="flex flex-col gap-1 text-left">
+                {/* Pedido do Felipe (19/09): ícone de relógio em TODAS as
+                    linhas dos dias, não só uma vez pro bloco inteiro — e dia
+                    marcado como fechado (pelo admin, na aba "Lojas") aparece
+                    em vermelho. */}
+                {weekSchedule.map((line) => (
+                  <span key={line.day} className="flex items-center gap-1.5">
+                    <Clock size={13} strokeWidth={1.5} className={`shrink-0 ${MENU_TEXT_MUTED}`} />
+                    <span className={line.hours === 'Fechado' ? 'text-red-500 dark:text-red-400 font-medium' : ''}>
+                      {line.day}: {line.hours}
+                    </span>
+                  </span>
+                ))}
+              </div>
+            )}
 
-              {/* Pedido do Felipe (19/09): telefone de contato "puro"
-                  (sem ser WhatsApp), numa área separada dos ícones de
-                  rede social — aqui dentro de "Informações do
-                  estabelecimento". Abre o discador nativo do aparelho. */}
-              {location?.contactPhoneNumber && (
-                <a
-                  href={buildPhoneLink(location.contactPhoneNumber)}
-                  className={`w-full md:w-auto md:px-6 text-white ${ACTION_BUTTON_BASE}`}
-                  style={{ backgroundColor: tenant.primaryColor }}
-                >
-                  <Phone size={14} strokeWidth={1.5} className="shrink-0" />
-                  <span>{location.contactPhoneNumber}</span>
-                </a>
-              )}
-            </div>
-          )}
-        </div>
-      )}
+            {hasContactBlock && (
+              <div className="flex flex-col items-center gap-4 w-full md:items-start">
+                {hasSocialLinks && (
+                  <div className="flex items-center justify-center gap-3 flex-wrap md:justify-start">
+                    {socialLinks.map(({ key, href, label, Icon, external }) => (
+                      <a
+                        key={key}
+                        href={href}
+                        {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                        className="active:opacity-70 md:hover:opacity-80 transition-opacity"
+                        aria-label={label}
+                      >
+                        <Icon size={30} />
+                      </a>
+                    ))}
+                  </div>
+                )}
+
+                {/* Pedido do Felipe (19/09): telefone de contato "puro" (sem
+                    ser WhatsApp), numa área separada dos ícones de rede
+                    social. Mostrado formatado; abre o discador nativo do
+                    aparelho com o número original. */}
+                {location?.contactPhoneNumber && (
+                  <a
+                    href={buildPhoneLink(location.contactPhoneNumber)}
+                    className={`w-full text-white ${ACTION_BUTTON_BASE}`}
+                    style={{ backgroundColor: tenant.primaryColor }}
+                  >
+                    <Phone size={14} strokeWidth={1.5} className="shrink-0" />
+                    <span>{formatPhoneBR(location.contactPhoneNumber)}</span>
+                  </a>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
