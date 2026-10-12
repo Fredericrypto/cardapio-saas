@@ -1,5 +1,6 @@
 import { useI18n } from '../i18n/I18nContext';
 import { RestaurantResponse } from './ReviewsShared';
+import { Tooltip } from './Tooltip';
 import { useState } from 'react';
 import { Star, Trash2, EyeOff } from 'lucide-react';
 import { deleteReview } from '../lib/customer-api';
@@ -58,13 +59,15 @@ export function ReviewDisplay({
       <div className="flex items-center justify-between">
         <p className="text-sm font-semibold text-gray-900">{t('reviewDisplay.sua_avaliacao')}</p>
         {!isConfirmingDelete && (
-          <button
-            onClick={() => setIsConfirmingDelete(true)}
-            className="text-gray-400 p-1"
-            aria-label={t('itemReviewDisplay.apagar_avaliacao')}
-          >
-            <Trash2 size={15} />
-          </button>
+          <Tooltip label={t('itemReviewDisplay.apagar_avaliacao')}>
+            <button
+              onClick={() => setIsConfirmingDelete(true)}
+              className="text-gray-400 p-1"
+              aria-label={t('itemReviewDisplay.apagar_avaliacao')}
+            >
+              <Trash2 size={15} />
+            </button>
+          </Tooltip>
         )}
       </div>
       <Stars rating={review.rating} />

@@ -1,0 +1,2076 @@
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
+
+interface TooltipProps {
+  /** Texto exibido no balão. Vazio = nenhum balão. */
+  label: string;
+  children: ReactNode;
+  /** Lado preferido; se não couber na tela, inverte sozinho. */
+  placement?: 'top' | 'bottom';
+  /**
+   * Só mostra o balão quando algum descendente marcado com `data-truncate`
+   * está de fato cortado (reticências). Texto que cabe inteiro não gera balão.
+   */
+  onlyIfTruncated?: boolean;
+  disabled?: boolean;
+  /**
+   * Classes do invólucro. O padrão (`inline-flex`) faz o invólucro ter
+   * exatamente a caixa do filho. Use `contents` quando o filho é
+   * posicionado de forma absoluta e não pode ganhar um pai com caixa.
+   */
+  className?: string;
+}
+
+const GAP = 8; // distância entre o elemento e o balão
+const EDGE = 8; // margem mínima até a borda da janela
+const SHOW_DELAY_MS = 250; // evita piscar ao varrer uma fileira de ícones
+
+function hasTruncatedText(root: HTMLElement): boolean {
+  const candidates = [root, ...Array.from(root.querySelectorAll<HTMLElement>('[data-truncate]'))];
+  return candidates.some((el) => el.hasAttribute('data-truncate') && el.scrollWidth > el.clientWidth + 1);
+}
+
+function isKeyboardFocus(target: EventTarget): boolean {
+  try {
+    return (target as Element).matches(':focus-visible');
+  } catch {
+    return false;
+  }
+}
+
+// Tooltip minimalista (hover no desktop, foco por teclado). Renderiza num
+// portal em `position: fixed`, então NUNCA é cortado por um pai com
+// `overflow` (carrossel de promoções, barra de categorias, painel de infos).
+//
+// - Toque (celular) não abre balão: só `pointerType === 'mouse'` e foco por
+//   teclado (`:focus-visible`). Em tela de toque o balão ficaria preso.
+// - O balão é `aria-hidden`: todo gatilho do app já tem nome acessível
+//   (`aria-label` ou o próprio texto), e repetir leria duas vezes.
+// - Cores: claro = fundo escuro com texto branco; escuro = fundo claro
+//   (#E3E2E6) com texto #131314, a paleta do tema do app.
+export function Tooltip({
+  label,
+  children,
+  placement = 'top',
+  onlyIfTruncated = false,
+  disabled = false,
+  className = 'inline-flex',
+}: TooltipProps) {
+  const wrapperRef = useRef<HTMLSpanElement>(null);
+  const tipRef = useRef<HTMLDivElement>(null);
+  const timerRef = useRef<number | undefined>(undefined);
+  const [open, setOpen] = useState(false);
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
+  const [shown, setShown] = useState(false);
+
+  const clearTimer = useCallback(() => {
+    if (timerRef.current !== undefined) {
+      window.clearTimeout(timerRef.current);
+      timerRef.current = undefined;
+    }
+  }, []);
+
+  const hide = useCallback(() => {
+    clearTimer();
+    setOpen(false);
+    setShown(false);
+    setCoords(null);
+  }, [clearTimer]);
+
+  const scheduleShow = useCallback(
+    (delay: number) => {
+      if (disabled || !label) return;
+      clearTimer();
+      timerRef.current = window.setTimeout(() => {
+        const el = wrapperRef.current;
+        if (!el) return;
+        if (onlyIfTruncated && !hasTruncatedText(el)) return;
+        setOpen(true);
+      }, delay);
+    },
+    [disabled, label, onlyIfTruncated, clearTimer],
+  );
+
+  // Mede e posiciona (antes de pintar) e só então faz o fade-in.
+  useLayoutEffect(() => {
+    if (!open) return;
+    const wrapper = wrapperRef.current;
+    const tip = tipRef.current;
+    if (!wrapper || !tip) return;
+
+    // `contents` não tem caixa própria: mede o primeiro filho.
+    const anchor = (wrapper.firstElementChild as HTMLElement | null) ?? wrapper;
+    const a = anchor.getBoundingClientRect();
+    const tipW = tip.offsetWidth;
+    const tipH = tip.offsetHeight;
+
+    const fitsTop = a.top - GAP - tipH >= EDGE;
+    const fitsBottom = a.bottom + GAP + tipH <= window.innerHeight - EDGE;
+    const useTop = placement === 'top' ? fitsTop || !fitsBottom : !fitsBottom && fitsTop;
+
+    const top = useTop ? a.top - GAP - tipH : a.bottom + GAP;
+    const rawLeft = a.left + a.width / 2 - tipW / 2;
+    const left = Math.min(Math.max(rawLeft, EDGE), Math.max(EDGE, window.innerWidth - tipW - EDGE));
+
+    setCoords({ top, left });
+    const raf = window.requestAnimationFrame(() => setShown(true));
+    return () => window.cancelAnimationFrame(raf);
+  }, [open, label, placement]);
+
+  // Enquanto aberto: rolagem, redimensionamento e Esc fecham (a posição
+  // calculada ficaria velha).
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') hide();
+    };
+    window.addEventListener('scroll', hide, true);
+    window.addEventListener('resize', hide);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('scroll', hide, true);
+      window.removeEventListener('resize', hide);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [open, hide]);
+
+  useEffect(() => clearTimer, [clearTimer]);
+
+  return (
+    <span
+      ref={wrapperRef}
+      className={className}
+      onPointerEnter={(e) => {
+        if (e.pointerType === 'mouse') scheduleShow(SHOW_DELAY_MS);
+      }}
+      onPointerLeave={hide}
+      onPointerDown={hide}
+      onFocus={(e) => {
+        if (isKeyboardFocus(e.target)) scheduleShow(0);
+      }}
+      onBlur={hide}
+    >
+      {children}
+      {open &&
+        createPortal(
+          <div
+            ref={tipRef}
+            aria-hidden="true"
+            style={{
+              position: 'fixed',
+              top: coords?.top ?? 0,
+              left: coords?.left ?? 0,
+              visibility: coords ? 'visible' : 'hidden',
+              opacity: shown ? 1 : 0,
+            }}
+            className="pointer-events-none select-none z-[1000] max-w-[16rem] break-words rounded-md px-2 py-1 text-center text-[11px] font-medium leading-tight shadow-lg ring-1 ring-black/5 transition-opacity duration-150 motion-reduce:transition-none bg-[#111827] text-white dark:bg-[#E3E2E6] dark:text-[#131314] dark:ring-white/10"
+          >
+            {label}
+          </div>,
+          document.body,
+        )}
+    </span>
+  );
+}
+import { useI18n } from '../i18n/I18nContext';
+import { useStoreStatus } from '../hooks/useStoreStatus';
+import { BannerViewer, LogoViewer } from './LogoViewer';
+import { Bike, ChevronDown, ChevronLeft, MapPin } from 'lucide-react';
+import { CLOSED_MUTED_CLASS } from '../lib/storeStatus';
+import type { Tenant, Location } from '../types';
+import { RestaurantInfoPanel } from './RestaurantInfoPanel';
+import { QrScanButton } from './QrScanButton';
+import { ReviewBadge, OpenStatusRow } from './HeaderStatus';
+import { ThemeToggle } from './ThemeToggle';
+import { Tooltip } from './Tooltip';
+import { useLabel } from '../hooks/useLabel';
+import {
+  MENU_BANNER_BASE,
+  MENU_BORDER,
+  MENU_DIVIDER,
+  MENU_HEADER_SHEET,
+  MENU_HEADER_SHELL,
+  MENU_SURFACE_SUBTLE,
+  MENU_TEXT,
+  MENU_TEXT_MUTED,
+  MENU_TEXT_SOFT,
+} from '../lib/menuTheme';
+
+interface MenuHeaderProps {
+  tenant: Tenant;
+  location: Location | null;
+  onBack?: () => void;
+}
+
+// Header estilo delivery app de verdade (McDonald's/FoodyPro): banner
+// (foto de capa da loja) e, logo abaixo, nome, status e o cartão de infos de
+// entrega.
+//
+// Celular: desenho vertical original (banner + "sheet" que sobe sobre ele,
+// centralizado). Desktop (md+): UM ÚNICO cartão arredondado e com borda que
+// encapsula tudo — banner baixo em cima e, embaixo, logo + nome/nota/status à
+// esquerda e, à direita, o indicador de unidade e o cartão de entrega
+// empilhados. No desktop o Voltar some (a troca de unidade fica no seletor).
+// O alternador de tema claro/escuro fica no canto superior direito do banner.
+//
+// Todas as cores vêm de lib/menuTheme (par claro/escuro explícito): nenhuma
+// superfície fica branca no tema escuro.
+export function MenuHeader({ tenant, location, onBack }: MenuHeaderProps) {
+  const { t } = useI18n();
+  const label = useLabel();
+  const deliveryAvailable = location?.latitude != null && location?.longitude != null;
+  const isOpenNow = useStoreStatus(location).isOpen;
+
+  return (
+    // Loja fechada: só banner, logo e o card de entrega ficam em tom atenuado.
+    // Selo "Fechado" (vermelho), avaliações e Informações/redes sociais mantêm
+    // as cores e continuam clicáveis.
+    <div className={MENU_HEADER_SHELL}>
+      {/* Banner / capa */}
+      <div
+        className={`${MENU_BANNER_BASE} h-40 md:h-32 lg:h-36 transition-[filter] ${!isOpenNow ? 'grayscale' : ''}`}
+        style={
+          tenant.coverImageUrl
+            ? undefined
+            : {
+                background: `linear-gradient(135deg, ${tenant.primaryColor}, ${tenant.secondaryColor})`,
+              }
+        }
+      >
+        <BannerViewer tenant={tenant} />
+
+        {/* Voltar (só existe quando há mais de uma unidade): círculo no
+            celular; no desktop fica oculto (a troca de unidade é feita pelo
+            seletor ao lado do cartão). Sobre a foto, então
+            no escuro usa vidro preto translúcido em vez de círculo branco. */}
+        {onBack && (
+          <button
+            onClick={onBack}
+            aria-label={t('common.back')}
+            className="absolute z-10 top-3.5 left-3.5 md:hidden h-9 w-9 rounded-full bg-white/90 text-[#374151] dark:bg-black/55 dark:text-white backdrop-blur-sm flex items-center justify-center shadow-sm active:scale-90 transition-transform"
+          >
+            <ChevronLeft size={20} strokeWidth={1.5} className="shrink-0" />
+          </button>
+        )}
+
+        {/* Alternador de tema (claro/escuro), mesmo posicionamento do header de mesa. */}
+        <div className="absolute top-3.5 right-3.5 z-10">
+          <ThemeToggle variant="floating" />
+        </div>
+      </div>
+
+      {/* Sheet (celular) / corpo do cartão da loja (desktop) */}
+      <div className={MENU_HEADER_SHEET}>
+        <div className="md:flex md:items-center md:gap-8">
+          <div className="flex flex-col items-center text-center md:flex-row md:gap-5 md:text-left md:flex-1 md:min-w-0">
+            {/* Desktop: a logo fica numa caixa 64x64 centralizada na vertical com
+                o bloco de 3 linhas (nome / avaliação / status) e sem nenhuma
+                margem ou deslocamento herdado do LogoViewer. No celular o
+                desenho original (logo sobrepondo o banner) não muda. */}
+            <div
+              className={`shrink-0 transition-[filter] md:self-center md:flex md:items-center md:justify-center md:w-16 md:h-16 md:[&>*]:!m-0 md:[&>*]:!top-0 md:[&>*]:!translate-y-0 ${!isOpenNow ? 'grayscale' : ''}`}
+            >
+              <LogoViewer tenant={tenant} size="w-16 h-16" />
+            </div>
+
+            <div className="flex flex-col items-center md:items-start w-full md:w-auto md:flex-1 md:min-w-0">
+              {/* Nome do restaurante SEM truncar: quebra em quantas linhas
+                  precisar (text-balance deixa as linhas equilibradas) e
+                  `overflowWrap: anywhere` cobre até uma palavra gigante. No
+                  celular o botão de QR fica preso no canto direito,
+                  centralizado na vertical; o padding lateral simétrico
+                  (px-11) reserva o espaço dele nos DOIS lados, então o nome
+                  continua centralizado e nunca passa por baixo do botão. No
+                  desktop o botão passa a ficar ao lado do nome (em linha). */}
+              <div className="relative w-full mt-1.5 md:mt-0 px-11 md:px-0 md:flex md:items-center md:gap-3">
+                <h1
+                  className={`font-display text-lg md:text-2xl font-bold leading-tight text-center md:text-left text-balance ${MENU_TEXT}`}
+                  style={{ overflowWrap: 'anywhere' }}
+                >
+                  {tenant.name}
+                </h1>
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 md:static md:translate-y-0 md:shrink-0">
+                  <Tooltip label={label('tooltip.qrScan', 'Escanear QR Code')} className="flex">
+                    <QrScanButton />
+                  </Tooltip>
+                </div>
+              </div>
+              {/* No celular o nome da unidade fica sob o nome do restaurante;
+                  no desktop ele vira o indicador de unidade (ao lado). */}
+              {location && <p className={`text-xs mt-0.5 md:hidden ${MENU_TEXT_MUTED}`}>{location.name}</p>}
+              <ReviewBadge tenant={tenant} location={location} />
+              <OpenStatusRow location={location} />
+            </div>
+          </div>
+
+          {(location || deliveryAvailable) && (
+            <div className={`${deliveryAvailable ? 'mt-3' : ''} md:mt-0 md:w-80 md:shrink-0 flex flex-col gap-2`}>
+              {location && <UnitIndicator name={location.name} onChange={onBack} />}
+
+              {deliveryAvailable && location && (
+                <div
+                  className={`rounded-2xl border px-3.5 py-2.5 flex items-center justify-between gap-3 ${MENU_SURFACE_SUBTLE} ${MENU_BORDER} ${!isOpenNow ? CLOSED_MUTED_CLASS : ''}`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-white shrink-0"
+                      style={{ backgroundColor: tenant.primaryColor }}
+                    >
+                      <Bike size={15} strokeWidth={1.5} />
+                    </span>
+                    <div className="min-w-0">
+                      <p className={`text-xs font-semibold ${MENU_TEXT_SOFT}`}>{t('menu.acceptsDelivery')}</p>
+                      <p className={`text-[11px] ${MENU_TEXT_MUTED}`}>
+                        {t('menuHeader.taxa_a_partir_de')} {location.deliveryFee.toFixed(2).replace('.', ',')}
+                      </p>
+                    </div>
+                  </div>
+                  {location.minOrderValue > 0 && (
+                    <div className={`text-right shrink-0 pl-3 border-l ${MENU_DIVIDER}`}>
+                      <p className={`text-[11px] ${MENU_TEXT_MUTED}`}>{t('menu.minimumOrder')}</p>
+                      <p className={`text-xs font-bold ${MENU_TEXT_SOFT}`}>
+                        R$ {location.minOrderValue.toFixed(2).replace('.', ',')}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <RestaurantInfoPanel tenant={tenant} location={location} />
+      </div>
+    </div>
+  );
+}
+
+// Indicador de unidade — só no desktop (no celular o nome da unidade já
+// aparece sob o nome do restaurante). Com mais de uma unidade (`onChange`
+// presente) vira um seletor: tocar leva à tela de escolha de loja, a mesma
+// rota do botão Voltar. Com uma unidade só é um rótulo estático.
+function UnitIndicator({ name, onChange }: { name: string; onChange?: () => void }) {
+  const base = `hidden md:flex items-center gap-2 w-full rounded-xl border px-3 py-2 text-left ${MENU_SURFACE_SUBTLE} ${MENU_BORDER}`;
+  const content = (
+    <>
+      <MapPin size={15} strokeWidth={1.5} className={`shrink-0 ${MENU_TEXT_MUTED}`} />
+      <Tooltip label={name} onlyIfTruncated className="flex flex-1 min-w-0">
+        <span data-truncate className={`flex-1 min-w-0 truncate text-sm font-medium ${MENU_TEXT_SOFT}`}>
+          {name}
+        </span>
+      </Tooltip>
+      {onChange && <ChevronDown size={15} strokeWidth={1.5} className={`shrink-0 ${MENU_TEXT_MUTED}`} />}
+    </>
+  );
+
+  if (!onChange) return <div className={base}>{content}</div>;
+  return (
+    <button
+      type="button"
+      onClick={onChange}
+      aria-label={name}
+      className={`${base} transition-colors md:hover:brightness-95 dark:md:hover:brightness-110`}
+    >
+      {content}
+    </button>
+  );
+}
+import { useI18n } from '../i18n/I18nContext';
+import { useState, type ComponentType, type ReactNode } from 'react';
+import { ChevronDown, MapPin, Clock, Phone, Info } from 'lucide-react';
+import type { Tenant, Location } from '../types';
+import { getWeekScheduleLines } from '../lib/openingHours';
+import {
+  WhatsAppOutlineIcon,
+  InstagramOutlineIcon,
+  YoutubeOutlineIcon,
+  FacebookOutlineIcon,
+  TikTokOutlineIcon,
+  XOutlineIcon,
+  TelegramOutlineIcon,
+  MessengerOutlineIcon,
+  EmailOutlineIcon,
+} from './SocialOutlineIcons';
+import { ACTION_BUTTON_BASE } from '../lib/uiClasses';
+import { Tooltip } from './Tooltip';
+import { useLabel } from '../hooks/useLabel';
+import {
+  buildWhatsappLink,
+  buildInstagramLink,
+  buildYoutubeLink,
+  buildFacebookLink,
+  buildTiktokLink,
+  buildTwitterLink,
+  buildTelegramLink,
+  buildMessengerLink,
+  buildGmailLink,
+  buildPhoneLink,
+} from '../lib/socialLinks';
+import {
+  MENU_BORDER,
+  MENU_TEXT_BODY,
+  MENU_TEXT_MUTED,
+} from '../lib/menuTheme';
+
+interface RestaurantInfoPanelProps {
+  tenant: Tenant;
+  location: Location | null;
+}
+
+// Pedido do Felipe (19/09): "Rua X, Bairro" numa linha, "Cidade: Y -
+// Estado, CEP" na outra. O endereço geocodificado sempre vem como
+// "rua, bairro, cidade, estado, CEP" (ver GeocodingService no backend)
+// — quando bate esse formato exato, separa bonito; caso venha
+// diferente (endereço digitado manualmente antes de existir
+// geocodificação, por exemplo), mostra inteiro numa linha só em vez de
+// arriscar cortar errado.
+// Nome do estado por extenso (como vem do geocoding) → sigla de 2
+// letras, pro formato compacto que o Felipe pediu ("Araranguá - SC").
+const BR_STATE_ABBREVIATIONS: Record<string, string> = {
+  acre: 'AC',
+  alagoas: 'AL',
+  amapá: 'AP',
+  amazonas: 'AM',
+  bahia: 'BA',
+  ceará: 'CE',
+  'distrito federal': 'DF',
+  'espírito santo': 'ES',
+  goiás: 'GO',
+  maranhão: 'MA',
+  'mato grosso': 'MT',
+  'mato grosso do sul': 'MS',
+  'minas gerais': 'MG',
+  pará: 'PA',
+  paraíba: 'PB',
+  paraná: 'PR',
+  pernambuco: 'PE',
+  piauí: 'PI',
+  'rio de janeiro': 'RJ',
+  'rio grande do norte': 'RN',
+  'rio grande do sul': 'RS',
+  rondônia: 'RO',
+  roraima: 'RR',
+  'santa catarina': 'SC',
+  'são paulo': 'SP',
+  sergipe: 'SE',
+  tocantins: 'TO',
+};
+
+function abbreviateState(state: string): string {
+  return BR_STATE_ABBREVIATIONS[state.trim().toLowerCase()] ?? state;
+}
+
+// Pedido do Felipe (19/09): "Rua X, Bairro" numa linha, "Cidade -
+// Estado, CEP" na outra (estado abreviado, sem o prefixo "Cidade:").
+// O endereço geocodificado sempre vem como "rua, bairro, cidade,
+// estado, CEP" (ver GeocodingService no backend) — quando bate esse
+// formato exato, separa bonito; caso venha diferente (endereço
+// digitado manualmente antes de existir geocodificação, por exemplo),
+// mostra inteiro numa linha só em vez de arriscar cortar errado.
+function formatAddressLines(address: string): string[] {
+  const parts = address.split(',').map((p) => p.trim());
+  if (parts.length === 5) {
+    const [street, neighborhood, city, state, zip] = parts;
+    return [`${street}, ${neighborhood}`, `${city} - ${abbreviateState(state)}, ${zip}`];
+  }
+  return [address];
+}
+
+// Telefone brasileiro legível: "(48) 99999-9999" (celular), "(48) 3333-4444"
+// (fixo), "4003-1234" (sem DDD) e "0800 123 4567". Aceita o número já com
+// máscara, com +55/55 na frente ou só dígitos; qualquer coisa que não bata
+// com esses formatos volta INTACTA (nunca inventa nem corta dígito). Só
+// afeta o que é MOSTRADO — o link `tel:` continua usando o valor cru.
+function formatPhoneBR(raw: string): string {
+  const digits = raw.replace(/\D/g, '');
+  if (digits.length === 11 && /^0[38]00/.test(digits)) {
+    return `${digits.slice(0, 4)} ${digits.slice(4, 7)} ${digits.slice(7)}`;
+  }
+  const national = digits.length >= 12 && digits.startsWith('55') ? digits.slice(2) : digits;
+  if (national.startsWith('0')) return raw;
+  if (national.length === 11) return `(${national.slice(0, 2)}) ${national.slice(2, 7)}-${national.slice(7)}`;
+  if (national.length === 10) return `(${national.slice(0, 2)}) ${national.slice(2, 6)}-${national.slice(6)}`;
+  if (national.length === 9) return `${national.slice(0, 5)}-${national.slice(5)}`;
+  if (national.length === 8) return `${national.slice(0, 4)}-${national.slice(4)}`;
+  return raw;
+}
+
+interface SocialLinkItem {
+  key: string;
+  href: string;
+  label: string;
+  Icon: ComponentType<{ size: number }>;
+  // Gmail abre o app de e-mail na mesma aba; as demais abrem em nova aba.
+  external: boolean;
+}
+
+// Painel "Informações" do cabeçalho. Recolhido por padrão; ao abrir mostra
+// endereço, horário de funcionamento (7 dias), redes sociais e telefone de
+// contato — só o que o restaurante preencheu (campo vazio nem aparece).
+// WhatsApp, Telegram, telefone de contato e endereço/horário vêm da LOJA
+// escolhida (cada filial tem os seus); as outras redes sociais são da MARCA
+// inteira.
+//
+// Celular: coluna centralizada (desenho original). Desktop (md+): colunas de
+// mesma largura, com título e conteúdo centralizados e um divisor vertical
+// fino entre elas — endereço | horário | contato (redes + telefone). O número
+// de colunas acompanha os blocos preenchidos.
+//
+// Vive dentro do cabeçalho (MenuHeader / TableMenuHeader); cores vêm de
+// lib/menuTheme, com par claro/escuro explícito.
+export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelProps) {
+  const [expanded, setExpanded] = useState(false);
+  const { t } = useI18n();
+  const weekSchedule = getWeekScheduleLines(location?.openingHours ?? null, t);
+
+  // Títulos das colunas e textos dos tooltips: chave do dicionário (PT/EN) com
+  // fallback em português se a chave ainda não existir (ver hooks/useLabel).
+  const label = useLabel();
+
+  // Só os ícones (sem número/usuário escrito do lado). Desde a z6-09 todos são
+  // OUTLINED, do mesmo tamanho e na cor do texto do tema (SocialOutlineIcons),
+  // sem cores de marca. Admin escolhe quais usar preenchendo (ou não) cada
+  // campo nas configurações — o que não foi preenchido nem aparece.
+  // Os links abrem no app nativo de cada plataforma quando ele está instalado
+  // (o domínio oficial de cada uma já é reconhecido pelo celular como link do
+  // app) e caem no site normal quando não está.
+  const socialLinks: SocialLinkItem[] = [];
+  if (location?.whatsappNumber) {
+    socialLinks.push({ key: 'whatsapp', href: buildWhatsappLink(location.whatsappNumber), label: 'WhatsApp', Icon: WhatsAppOutlineIcon, external: true });
+  }
+  if (location?.telegramUsername) {
+    socialLinks.push({ key: 'telegram', href: buildTelegramLink(location.telegramUsername), label: 'Telegram', Icon: TelegramOutlineIcon, external: true });
+  }
+  if (tenant.instagramHandle) {
+    socialLinks.push({ key: 'instagram', href: buildInstagramLink(tenant.instagramHandle), label: 'Instagram', Icon: InstagramOutlineIcon, external: true });
+  }
+  if (tenant.facebookUrl) {
+    socialLinks.push({ key: 'facebook', href: buildFacebookLink(tenant.facebookUrl), label: 'Facebook', Icon: FacebookOutlineIcon, external: true });
+  }
+  if (tenant.youtubeUrl) {
+    socialLinks.push({ key: 'youtube', href: buildYoutubeLink(tenant.youtubeUrl), label: 'YouTube', Icon: YoutubeOutlineIcon, external: true });
+  }
+  if (tenant.tiktokHandle) {
+    socialLinks.push({ key: 'tiktok', href: buildTiktokLink(tenant.tiktokHandle), label: 'TikTok', Icon: TikTokOutlineIcon, external: true });
+  }
+  if (tenant.twitterHandle) {
+    socialLinks.push({ key: 'twitter', href: buildTwitterLink(tenant.twitterHandle), label: 'X / Twitter', Icon: XOutlineIcon, external: true });
+  }
+  if (tenant.messengerUsername) {
+    socialLinks.push({ key: 'messenger', href: buildMessengerLink(tenant.messengerUsername), label: 'Messenger', Icon: MessengerOutlineIcon, external: true });
+  }
+  if (tenant.gmailAddress) {
+    socialLinks.push({ key: 'gmail', href: buildGmailLink(tenant.gmailAddress), label: t('info.email'), Icon: EmailOutlineIcon, external: false });
+  }
+
+  const hasSocialLinks = socialLinks.length > 0;
+  const hasContactPhone = Boolean(location?.contactPhoneNumber);
+  const hasContactBlock = hasSocialLinks || hasContactPhone;
+
+  // Redes sociais moram DENTRO de "Informações" (junto do telefone).
+  const hasCollapsibleInfo = Boolean(location?.address) || Boolean(weekSchedule) || hasContactBlock;
+
+  if (!hasCollapsibleInfo) return null;
+
+  // Colunas presentes (só as preenchidas). Cada coluna, exceto a primeira,
+  // desenha o divisor vertical à sua esquerda.
+  const showAddress = Boolean(location?.address);
+  const showHours = Boolean(weekSchedule);
+  const columnCount = [showAddress, showHours, hasContactBlock].filter(Boolean).length;
+
+  return (
+    <div className={`mt-3 md:mt-4 pt-4 border-t flex flex-col gap-4 ${MENU_BORDER}`}>
+      <div>
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          aria-expanded={expanded}
+          className={`flex items-center justify-center gap-1.5 w-full text-xs font-semibold py-1 ${MENU_TEXT_BODY}`}
+        >
+          <Info size={15} strokeWidth={1.5} className="shrink-0" />
+          <span>{t('info.title')}</span>
+          <ChevronDown size={14} strokeWidth={1.5} className={`transition-transform ${expanded ? 'rotate-180' : ''}`} />
+        </button>
+
+        {expanded && (
+          <div
+            className={`mt-3 px-2 pb-1 flex flex-col items-center gap-4 text-xs text-center md:grid ${INFO_GRID_COLS[columnCount]} md:items-stretch md:gap-x-8 md:gap-y-6 md:px-1 ${MENU_TEXT_BODY}`}
+          >
+            {location?.address && (
+              <InfoColumn title={label('info.address', 'Endereço')}>
+                <div className="flex flex-col items-center gap-1 md:flex-row md:justify-center md:gap-2.5">
+                  <MapPin size={13} strokeWidth={1.5} className={`shrink-0 ${MENU_TEXT_MUTED}`} />
+                  {/* Endereço em duas linhas (rua e bairro / cidade - UF, CEP);
+                      formato diferente do geocodificado cai numa linha só. */}
+                  <div className="flex flex-col items-center text-center">
+                    {formatAddressLines(location.address).map((line, idx) => (
+                      <span key={idx}>{line}</span>
+                    ))}
+                  </div>
+                </div>
+              </InfoColumn>
+            )}
+
+            {weekSchedule && (
+              <InfoColumn title={label('info.hours', 'Horários')} divider={showAddress}>
+                <div className="flex flex-col gap-1 text-left">
+                  {/* Relógio em TODAS as linhas; dia fechado em vermelho. */}
+                  {weekSchedule.map((line) => (
+                    <span key={line.day} className="flex items-center gap-1.5">
+                      <Clock size={13} strokeWidth={1.5} className={`shrink-0 ${MENU_TEXT_MUTED}`} />
+                      <span className={line.hours === 'Fechado' ? 'text-red-500 dark:text-red-400 font-medium' : ''}>
+                        {line.day}: {line.hours}
+                      </span>
+                    </span>
+                  ))}
+                </div>
+              </InfoColumn>
+            )}
+
+            {hasContactBlock && (
+              <InfoColumn
+                title={hasSocialLinks ? label('info.social', 'Redes sociais') : label('info.contact', 'Contato')}
+                divider={showAddress || showHours}
+              >
+                {hasSocialLinks && (
+                  <div className="flex flex-row flex-wrap items-center justify-center gap-x-1.5 gap-y-2 md:gap-x-2">
+                    {socialLinks.map(({ key, href, label: linkLabel, Icon, external }) => (
+                      <Tooltip key={key} label={linkLabel} className="inline-flex shrink-0">
+                        <a
+                          href={href}
+                          {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                          className={`w-9 h-9 md:w-10 md:h-10 shrink-0 rounded-full flex items-center justify-center transition-colors active:opacity-70 md:hover:bg-[#F3F4F6] dark:md:hover:bg-white/10 ${MENU_TEXT_BODY} md:hover:text-[#111827] dark:md:hover:text-[#E3E2E6]`}
+                          aria-label={linkLabel}
+                        >
+                          <Icon size={24} />
+                        </a>
+                      </Tooltip>
+                    ))}
+                  </div>
+                )}
+
+                {/* Telefone de contato "puro" (não WhatsApp), formatado; abre o
+                    discador com o número original. */}
+                {location?.contactPhoneNumber && (
+                  <Tooltip label={label('tooltip.call', 'Ligar')} className="flex w-full">
+                    <a
+                      href={buildPhoneLink(location.contactPhoneNumber)}
+                      className={`w-full text-white ${ACTION_BUTTON_BASE}`}
+                      style={{ backgroundColor: tenant.primaryColor }}
+                    >
+                      <Phone size={14} strokeWidth={1.5} className="shrink-0" />
+                      <span>{formatPhoneBR(location.contactPhoneNumber)}</span>
+                    </a>
+                  </Tooltip>
+                )}
+              </InfoColumn>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Número de colunas do desktop por quantidade de blocos preenchidos (classes
+// literais pro Tailwind enxergar).
+const INFO_GRID_COLS: Record<number, string> = {
+  1: 'md:grid-cols-1',
+  2: 'md:grid-cols-2',
+  3: 'md:grid-cols-3',
+};
+
+// Coluna do painel de informações. No desktop: título centralizado no topo e o
+// conteúdo centralizado (horizontal e vertical) na área abaixo dele. O divisor
+// vertical (só desktop) mora nessa área, no meio do espaço entre colunas, e
+// usa só ~76% da altura — nunca encosta no título nem na base do painel. No
+// celular o título fica oculto e o desenho centralizado original é mantido.
+function InfoColumn({
+  title,
+  divider = false,
+  children,
+}: {
+  title: string;
+  divider?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex flex-col items-center gap-2 w-full md:h-full">
+      <h3
+        className={`hidden md:block w-full text-center text-[11px] font-semibold uppercase tracking-wider ${MENU_TEXT_MUTED}`}
+      >
+        {title}
+      </h3>
+      <div className="relative flex flex-col items-center justify-center gap-4 w-full text-center md:flex-1">
+        {divider && (
+          <span
+            aria-hidden="true"
+            className="hidden md:block absolute -left-4 top-[12%] bottom-[12%] w-px bg-[#E5E7EB] dark:bg-white/10"
+          />
+        )}
+        {children}
+      </div>
+    </div>
+  );
+}
+import { DEFAULT_LANGUAGE, type AppLanguage } from './languages';
+import { ptBR, type TranslationKey } from './dictionaries/pt-BR';
+import { en } from './dictionaries/en';
+import { es } from './dictionaries/es';
+
+export type TranslationParams = Record<string, string | number>;
+
+const DICTIONARIES: Record<AppLanguage, Record<TranslationKey, string>> = { 'pt-BR': ptBR, en, es };
+
+function interpolate(template: string, params?: TranslationParams): string {
+  if (!params) return template;
+  return template.replace(/\{(\w+)\}/g, (match, name: string) =>
+    Object.prototype.hasOwnProperty.call(params, name) ? String(params[name]) : match,
+  );
+}
+
+// Tradução pura (sem React): `{nome}` é substituído por params.nome. Chave
+// ausente no idioma cai em pt-BR — nunca mostra a chave crua na tela.
+export function translate(language: AppLanguage, key: TranslationKey, params?: TranslationParams): string {
+  const text = DICTIONARIES[language]?.[key] ?? DICTIONARIES[DEFAULT_LANGUAGE][key] ?? key;
+  return interpolate(text, params);
+}
+
+export function getDictionary(language: AppLanguage): Record<TranslationKey, string> {
+  return DICTIONARIES[language];
+}
+import type { TranslationKey } from './pt-BR';
+
+export const en: Record<TranslationKey, string> = {
+  'common.cancel': 'Cancel',
+  'common.confirm': 'Confirm',
+  'common.back': 'Back',
+  'common.close': 'Close',
+  'common.loading': 'Loading...',
+  'common.enter': 'Sign in',
+  'common.current': 'Current',
+
+  'nav.menu': 'Menu',
+  'nav.cart': 'Cart',
+  'nav.account': 'Account',
+
+  'day.name.domingo': 'Sunday',
+  'day.name.segunda': 'Monday',
+  'day.name.terca': 'Tuesday',
+  'day.name.quarta': 'Wednesday',
+  'day.name.quinta': 'Thursday',
+  'day.name.sexta': 'Friday',
+  'day.name.sabado': 'Saturday',
+  'day.short.domingo': 'Sunday',
+  'day.short.segunda': 'Monday',
+  'day.short.terca': 'Tuesday',
+  'day.short.quarta': 'Wednesday',
+  'day.short.quinta': 'Thursday',
+  'day.short.sexta': 'Friday',
+  'day.short.sabado': 'Saturday',
+
+  'store.open': 'Open',
+  'store.closed': 'Closed',
+  'store.openNow': 'Open now',
+  'store.open24h': 'Open 24h',
+  'store.todayOpen24h': 'Today: open 24h',
+  'store.todayHours': 'Today: {open} to {close}',
+  'store.hoursRange': '{open} to {close}',
+  'store.todayClosed': 'Closed today',
+  'store.closesIn': 'Closes in {minutes} min',
+  'store.opensWhen': 'Opens {when} at {time}',
+  'store.whenToday': 'today',
+  'store.hoursClosedDay': 'Closed',
+  'store.reviewsCount': '({count} reviews)',
+  'store.reviewsCountOne': '({count} review)',
+
+  'profile.notLoggedIn': 'You have not signed in yet.',
+  'profile.myData': 'My details',
+  'profile.verifyAccount': 'Verify my account',
+  'profile.verificationPending': 'Verification pending',
+  'profile.verificationRejectedRetry': 'Verification declined — try again',
+  'profile.verificationRejectedTitle': 'Your verification was declined',
+  'profile.myOrders': 'My orders',
+  'profile.savedAddress': 'Saved address',
+  'profile.pixWallet': 'Pix wallet',
+  'profile.cashback': 'My Cashback',
+  'profile.myReviews': 'My Reviews',
+  'profile.language': 'Language',
+  'profile.notifications': 'Notifications',
+  'profile.notificationsBlocked': 'Blocked in your browser settings',
+  'profile.notificationsOn': 'On — tap to choose which types',
+  'profile.notificationsOff': 'Get notified when something important happens',
+  'profile.logout': 'Sign out',
+  'profile.logoutConfirm': 'Are you sure you want to sign out of your account?',
+  'profile.logoutConfirmYes': 'Yes, sign out',
+  'profile.photoSendError': 'We could not send your photo right now. Please try again.',
+  'profile.sendingPhoto': 'Sending your photo...',
+
+  'language.title': 'Languages',
+  'language.notice':
+    'The whole app and notifications will be translated into the selected language, except monetary values (R$), establishment/customer names and addresses.',
+  'language.confirmMessage': 'Change the app language to {language}?',
+  'language.confirmAction': 'Change language',
+  'language.syncError': 'The language was changed on this device, but we could not save it to your profile right now.',
+  'language.applying': 'Applying language...',
+
+  'notifications.title': 'Notifications',
+  'notifications.globalOff':
+    'Notifications are turned off overall. Turn them on in "My Account" to receive any of the options below.',
+  'notifications.footer': 'Every type starts turned on. Turn off only what you do not want to receive.',
+  'notifications.type.review_prompt.label': 'Order review',
+  'notifications.type.review_prompt.description': 'When you can review a completed order.',
+  'notifications.type.order_delivered.label': 'Order delivered',
+  'notifications.type.order_delivered.description': 'When your order arrives or is ready for pickup.',
+  'notifications.type.payment_completed.label': 'Payment completed',
+  'notifications.type.payment_completed.description': 'Confirmation that your payment was processed.',
+  'notifications.type.cashback.label': 'Cashback',
+  'notifications.type.cashback.description': 'When you earn cashback or are about to lose it.',
+  'notifications.type.promotion.label': 'Deals',
+  'notifications.type.promotion.description': 'New promotions and coupons from the restaurant.',
+  'notifications.type.loyalty.label': 'Loyalty',
+  'notifications.type.loyalty.description': 'Loyalty card progress and unlocked rewards.',
+  'notifications.type.complaint.label': 'Complaints',
+  'notifications.type.complaint.description': 'Updates about a complaint you opened.',
+
+  'location.title': 'Choose the store closest to you',
+  'location.searching': 'Finding your location...',
+
+  'info.title': 'Information',
+  'info.email': 'Email',
+
+  'auth.welcomeBack': 'Welcome back',
+  'auth.createTitle': 'Create your account',
+  'auth.loginSubtitle': 'Sign in to place your order.',
+  'auth.registerSubtitle': 'It takes less than a minute.',
+  'auth.namePlaceholder': 'Your name',
+  'auth.emailPlaceholder': 'Email',
+  'auth.passwordPlaceholder': 'Password',
+  'auth.wait': 'Please wait...',
+  'auth.createAccount': 'Create account',
+  'auth.or': 'or',
+  'auth.google': 'Continue with Google',
+  'auth.googleSoon': 'Google sign-in is coming soon.',
+  'auth.noAccount': 'No account? Create one now',
+  'auth.haveAccount': 'Already have an account? Sign in',
+  'auth.submitError': 'We could not complete this. Check your details and try again.',
+  'ordersHub.needLogin': 'You need to sign in to see your orders.',
+  'ordersHub.loading': 'Loading orders...',
+  'ordersHub.none': 'No orders yet',
+  'ordersHub.count': '{count} orders',
+  'ordersHub.countOne': '{count} order',
+  'ordersHub.last': ' · last on {date}',
+  'store.closedEstablishment': 'Establishment Closed',
+  'store.closedHint': 'You can browse the menu and promotions, but orders cannot be placed right now.',
+  'menu.acceptsDelivery': 'Accepts delivery',
+  'menu.minimumOrder': 'Minimum order',
+  'verified.label': 'Verified',
+  'verified.title': 'Verified customer',
+  'product.promotion': 'Promotion',
+  'product.unavailable': '{name} unavailable',
+  'product.add': 'Add {name}',
+  'share.share': 'Share',
+  'share.shareItem': 'Share {title}',
+  'share.copied': 'Link copied!',
+  'share.failed': 'We could not share. Copy the link manually.',
+  'table.backToMine': 'Back to my table',
+  'table.goGeneral': 'Go to the general menu',
+  'table.backGeneral': 'Back to the general menu',
+  'table.leftTitle': 'You left this table',
+  'table.leftHint': 'To come back, scan the table\'s physical QR code again.',
+  'table.endedTitle': 'Session ended',
+  'table.endedHint': 'This table\'s tab has already been closed. If you are still at the restaurant, scan the table\'s physical QR code again to open a new tab.',
+  'logo.viewLogo': 'View restaurant logo',
+  'logo.viewBanner': 'View restaurant banner',
+
+  'avatarCropModal.usar_foto': 'Use photo',
+  'avatarPickerModal.formato_invalido_use_jpeg': 'Invalid format. Use JPEG, PNG or WebP.',
+  'avatarPickerModal.imagem_muito_grande_escolha': 'Image too large. Choose a smaller photo.',
+  'avatarPickerModal.escolher_foto_de_perfil': 'Choose profile photo',
+  'avatarPickerModal.tirar_ou_escolher_foto': 'Take or choose a photo',
+  'avatarPickerModal.ou_escolha_um_avatar': 'Or choose an avatar',
+  'cartBar.no_carrinho': 'in cart',
+  'cashbackLoginNotice.faca_login_ou_crie': 'Sign in or create an account to enjoy the cashback benefits',
+  'cashbackLoginNotice.entrar_ou_criar_conta': 'Sign in or create account',
+  'categoryChips.todos': 'All',
+  'closingPaymentSheet.fechar_minha_conta': 'Close my tab',
+  'closingPaymentSheet.subtotal': 'Subtotal',
+  'closingPaymentSheet.gorjeta': 'Tip',
+  'closingPaymentSheet.cashback_aplicado': 'Cashback applied',
+  'closingPaymentSheet.total': 'Total',
+  'closingPaymentSheet.pagar_com_cashback': 'Pay with cashback',
+  'closingPaymentSheet.usar_meu_cashback': 'Use my cashback',
+  'closingPaymentSheet.cobre_a_conta_inteira': 'Covers the whole tab — nothing left to pay · ',
+  'closingPaymentSheet.como_voce_vai_pagar': 'How will you pay?',
+  'closingPaymentSheet.prefere_pagar_onde': 'Where would you prefer to pay?',
+  'closingPaymentSheet.vou_pagar_no_balcao': 'I will pay at the counter',
+  'closingPaymentSheet.atendente_vem_a_mesa': 'A staff member comes to the table',
+  'closingPaymentSheet.se_o_restaurante_tiver': 'If the restaurant has automatic Pix set up, the QR appears on the next screen and the tab closes by itself as soon as you pay. Otherwise, the waiter brings the QR to you.',
+  'closingPaymentSheet.o_garcom_vai_levar': 'The waiter will bring the card machine to you.',
+  'closingPaymentSheet.essa_mesa_teve_mais': 'More than one person ordered at this table. The cashback this tab generates goes:',
+  'closingPaymentSheet.cada_pessoa_recebe_o': 'Each person gets the cashback for what they ordered',
+  'closingPaymentSheet.so_pra_mim_ja': 'Only to me, since I am closing the tab',
+  'itemReviewDisplay.apagar_avaliacao': 'Delete review',
+  'itemReviewDisplay.apagar_nao_permite_avaliar': 'Deleting does not let you review this item again — only a new order with it unlocks a new review. Are you sure?',
+  'itemReviewDisplay.apagar_mesmo_assim': 'Delete anyway',
+  'menuHeader.taxa_a_partir_de': 'Fee from R$',
+  'optionalCustomerAuth.tentar_de_novo': 'Try again',
+  'peopleOrders.voce': '(you)',
+  'peopleOrders.abriu_a_mesa': 'Opened the table',
+  'peopleOrders.outros_pedidos': 'Other orders',
+  'phoneInput.telefone_incompleto_confira_o': 'Incomplete phone number — check the area code and the number.',
+  'pixWaitingPanel.tempo': 'Time',
+  'pixWaitingPanel.codigo_copiado': 'Code copied!',
+  'pixWaitingPanel.copiar_codigo_pix': 'Copy Pix code',
+  'pixWaitingPanel.abra_o_app_do': 'Open your bank app, scan the QR or paste the code, and pay within',
+  'pixWaitingPanel.receber_o_pagamento': 'to receive the payment.',
+  'productCard.sem_foto': 'No photo',
+  'productCard.indisponivel': 'Unavailable',
+  'promoCards.encerrada': 'Ended',
+  'promoCards.hours_h_minutes_min': '{hours}h {minutes}min',
+  'promoCards.voce_ja_usou_essa': 'You already used this promotion',
+  'promoCards.pedido_minimo_r': 'Minimum order R$',
+  'qrScanButton.escanear_qr_code_da': 'Scan the table QR code',
+  'qrScannerModal.nao_foi_possivel_acessar': 'Could not access the camera. Check the browser permission or scan with your phone camera.',
+  'qrScannerModal.esse_qr_code_nao': 'This QR code is not recognized. Scan the restaurant table QR code.',
+  'qrScannerModal.esse_qr_code_e': 'This QR code is from another restaurant — it cannot be opened here.',
+  'receiptAuthenticityCode.codigo_de_autenticidade': 'Authenticity code',
+  'receiptContent.de_cashback': 'of cashback',
+  'receiptContent.simples_conferencia_da_conta': '*** SIMPLE TAB CHECK ***',
+  'receiptContent.nao_e_documento_fiscal': '*** NOT A TAX DOCUMENT ***',
+  'receiptContent.mesa': 'Table',
+  'receiptContent.mesa_compartilhada_por': 'Table shared by:',
+  'receiptContent.abriu_a_mesa': 'opened the table',
+  'receiptContent.cliente': 'Customer',
+  'receiptContent.aberto_em': 'Opened at',
+  'receiptContent.fechado_em': 'Closed at',
+  'receiptContent.sem_pedidos': 'No orders',
+  'receiptContent.desconto_aplicado': 'Discount applied',
+  'receiptContent.ja_refletido_no_subtotal': 'already reflected in the subtotal',
+  'receiptContent.cashback_usado': 'Cashback used',
+  'receiptContent.cashback_usado_no_fechamento': 'Cashback used at closing',
+  'receiptContent.total': 'TOTAL',
+  'receiptContent.cashback_recebido_nesse_pedido': 'Cashback received on this order',
+  'receiptContent.pagamento': 'Payment',
+  'receiptContent.recebido': 'Received',
+  'receiptContent.troco': 'Change',
+  'receiptContent.obrigado_pela_preferencia': 'Thank you for your preference!',
+  'receiptContent.volte_sempre': 'Come back soon',
+  'receiptContentStandalone.entrega': 'Delivery',
+  'receiptContentStandalone.balcao': 'Counter',
+  'receiptContentStandalone.endereco': 'Address',
+  'receiptContentStandalone.ref': 'Ref:',
+  'receiptContentStandalone.endereco_nao_confirmado_com': 'address not confirmed exactly',
+  'receiptContentStandalone.pedido_em': 'Ordered at',
+  'receiptContentStandalone.ja_refletido_no_total': 'already reflected in the total',
+  'requireCustomerAuth.nao_foi_possivel_confirmar': 'Could not confirm your session right now. Your connection may be unstable.',
+  'reviewDisplay.sua_avaliacao': 'Your review',
+  'reviewDisplay.publicada_como_anonimo': 'Posted anonymously',
+  'reviewDisplay.apagar_nao_permite_avaliar': 'Deleting does not let you review this order again — only a new purchase unlocks a new review. Are you sure?',
+  'reviewModal.escolhe_de_1_a': 'Pick 1 to 5 stars first.',
+  'reviewModal.nao_foi_possivel_enviar': 'Could not send. Try again.',
+  'reviewModal.avaliar_item': 'Review item',
+  'reviewModal.o_que_achou_desse': 'What did you think of this item?',
+  'reviewModal.como_foi_o_seu': 'How was your order?',
+  'reviewModal.sua_opiniao_ajuda_todo': 'Your opinion helps everyone.',
+  'reviewModal.conte_como_foi_opcional': 'Tell us how it went (optional)',
+  'reviewModal.publicar_como_anonimo': 'Post anonymously',
+  'reviewModal.agora_nao': 'Not now',
+  'reviewModal.enviar': 'Send',
+  'reviewModal.nao_quer_avaliar_agora': 'Do not want to review now?',
+  'reviewModal.sem_problema_essa_avaliacao': 'No problem — this review will not be made. If you change your mind, you can review from your order history while still eligible.',
+  'reviewModal.confirmar_envio': 'Confirm sending?',
+  'reviewModal.depois_de_enviada_sua': 'Once sent, your review',
+  'reviewModal.nao_pode_mais_ser': 'can no longer be edited',
+  'reviewModal.so_apagada_se_voce': '— only deleted, if you wish. Confirm sending?',
+  'reviewModal.revisar': 'Review',
+  'reviewPromptProvider.avaliacao_do_restaurante': 'Restaurant review',
+  'reviewsShared.restaurante': 'Restaurant',
+  'reviewsShared.avaliacoes': 'Reviews',
+  'reviewsShared.avaliacao': 'review',
+  'reviewsShared.avaliacoes_2': 'reviews',
+  'reviewsShared.ainda_nao_ha_avaliacoes': 'There are no reviews here yet.',
+  'reviewsShared.ver_mais_avaliacoes': 'See more reviews',
+  'searchBar.buscar_no_cardapio': 'Search the menu',
+  'tableMenuHeader.balcao_tablenumber': 'Counter {tableNumber}',
+  'tableMenuHeader.mesa_tablenumber': 'Table {tableNumber}',
+  'tableMenuHeader.consumo_no_local': 'Dine-in',
+  'tableMenuHeader.chamar_garcom': 'Call waiter',
+  'tableMenuHeader.minha_conta': 'My tab',
+  'tableSessionGate.ja_existe_uma_secao': 'There is already an open session at this table. Do you want to join?',
+  'tableSessionGate.sim': 'Yes',
+  'tableSessionPixWaitingPanel.pagando_a_conta_via': 'Paying the tab via Pix',
+  'tableSessionPixWaitingPanel.abra_o_app_do': 'Open your bank app, scan the QR or paste the code. Your tab closes by itself as soon as we',
+  'tableSessionPixWaitingPanel.receber_o_pagamento_nao': 'receive the payment — no need to reload the page.',
+  'themeToggle.ativar_modo_claro': 'Switch to light mode',
+  'themeToggle.ativar_modo_escuro': 'Switch to dark mode',
+  'verificationCameraCapture.esse_navegador_nao_permite': 'This browser does not allow direct camera access. Tap below to take the photo with your phone camera app.',
+  'verificationCameraCapture.voce_nao_deu_permissao': 'You did not allow camera access. Allow it in your browser settings and try again, or use the phone camera app below.',
+  'verificationCameraCapture.nao_consegui_acessar_a': 'Could not access the camera. Tap below to take the photo with your phone camera app.',
+  'verificationCameraCapture.nao_consegui_acessar_a_2': 'Could not access the camera again. Try with the phone camera app.',
+  'verificationCameraCapture.abrir_camera_do_celular': 'Open phone camera',
+  'verificationCameraCapture.previa_da_sua_foto': 'Your photo preview',
+  'verificationCameraCapture.ficou_boa_seu_rosto': 'Looks good? Your face must be visible and well lit.',
+  'verificationCameraCapture.tirar_de_novo': 'Retake',
+  'verificationCameraCapture.usar_essa_foto': 'Use this photo',
+  'verificationCameraCapture.posicione_seu_rosto_dentro': 'Place your face inside the guide, in a well-lit spot. When ready, tap the button below.',
+  'verificationCameraCapture.se_ajeite_a_foto': 'Get ready — the photo is taken automatically at the end of the countdown.',
+  'verificationCameraCapture.iniciar_contagem_pra_tirar': 'Start countdown to take the photo',
+  'verificationCongratsModal.voce_foi_verificado': 'You are verified!',
+  'verificationCongratsModal.seu_perfil_agora_tem': 'Your profile now has the verified customer badge. It shows to the establishment whenever you place an order.',
+  'verificationCongratsModal.legal': 'Great!',
+  'verificationExplainerModal.como_funciona_a_verificacao': 'How verification works',
+  'verificationExplainerModal.voce_vai_tirar_uma': '- You will take a photo of your face, right now, with the camera.',
+  'verificationExplainerModal.a_decisao_de_aprovar': '- The decision to approve belongs to the',
+  'verificationExplainerModal.ele_pode_recusar_por': '— it may decline for specific reasons, such as a low-quality photo or one that does not clearly show your face.',
+  'verificationExplainerModal.se_for_recusada_voce': '- If declined, you see the reason and can try again.',
+  'verificationExplainerModal.a_foto_enviada_e': '- The submitted photo is deleted as soon as the decision is made (approved or declined).',
+  'verificationExplainerModal.tire_uma_foto_sua': '- Take a real photo of yourself, with good light — fake photos or photos of someone else are declined.',
+  'verificationExplainerModal.entendi_continuar': 'Got it, continue',
+  'tenantContext.nao_foi_possivel_carregar': 'Could not load the restaurant.',
+  'cartPage.nao_conseguimos_recalcular_a': 'We could not recalculate the fee for the saved address. Check the details.',
+  'cartPage.nao_conseguimos_calcular_a': 'We could not calculate the delivery fee for this address.',
+  'cartPage.nao_foi_possivel_enviar': 'Could not send the order. Please try again.',
+  'cartPage.nao_foi_possivel_chamar': 'Could not call the waiter right now. Please try again.',
+  'cartPage.cancelar_esse_pedido_essa': 'Cancel this order? This action cannot be undone.',
+  'cartPage.nao_foi_possivel_cancelar': 'Could not cancel the order right now. Please try again.',
+  'cartPage.nao_foi_possivel_chamar_2': 'Could not call the staff right now.',
+  'cartPage.pedido_cancelado': 'Order cancelled',
+  'cartPage.voltando_ao_cardapio': 'Going back to the menu...',
+  'cartPage.o_pedido_foi_cancelado': 'The order was cancelled',
+  'cartPage.o_tempo_pra_pagar': 'The time to pay ran out',
+  'cartPage.name_cancelou_esse_pedido': '{name} cancelled this order. If you think it was a mistake, get in touch before placing a new order.',
+  'cartPage.esse_pedido_foi_cancelado': 'This order was cancelled because the Pix was not confirmed in time. Build the order again to try once more.',
+  'cartPage.voltar_ao_cardapio': 'Back to the menu',
+  'cartPage.pagamento_confirmado': 'Payment confirmed!',
+  'cartPage.pedido_enviado': 'Order sent!',
+  'cartPage.seu_pix_foi_confirmado': 'Your Pix was confirmed and the order is already in the kitchen.',
+  'cartPage.o_estabelecimento_ja_recebeu': 'The establishment already received your order and will confirm shortly.',
+  'cartPage.cliente': 'Customer:',
+  'cartPage.entrega_para': 'Deliver to:',
+  'cartPage.taxa_de_entrega_r': 'Delivery fee: R$',
+  'cartPage.v0_km': ' ({v0} km)',
+  'cartPage.pagamento': 'Payment:',
+  'cartPage.gorjeta': 'Tip:',
+  'cartPage.sem_gorjeta': 'No tip',
+  'cartPage.cashback_usado': 'Cashback used:',
+  'cartPage.observacao': 'Note:',
+  'cartPage.garcom_chamado': 'Waiter called!',
+  'cartPage.cancelar_chamado': 'Cancel call',
+  'cartPage.algo_errado_com_o': 'Something wrong with the order? Call waiter',
+  'cartPage.atendente_chamado': 'Staff called!',
+  'cartPage.algo_errado_com_o_2': 'Something wrong with the order? Call staff',
+  'cartPage.cancelar_pedido': 'Cancel order',
+  'cartPage.seu_carrinho_esta_vazio': 'Your cart is empty',
+  'cartPage.adicione_itens_do_cardapio': 'Add items from the menu to place your order.',
+  'cartPage.ver_cardapio': 'See menu',
+  'cartPage.estabelecimento_fechado': 'Establishment closed',
+  'cartPage.confirmar_pedido': 'Confirm order',
+  'cartPage.calcule_a_taxa_de': 'Calculate the delivery fee',
+  'cartPage.ir_para_pagamento': 'Go to payment',
+  'cartPage.revisar_pedido': 'Review order',
+  'cartPage.seu_pedido': 'Your order',
+  'cartPage.cupom_aplicado_r': 'Coupon applied · R$',
+  'cartPage.cupom_aplicado': 'Coupon applied',
+  'cartPage.nao_elegivel_pra_esse': 'Not eligible for this cart',
+  'cartPage.adicionar_outro_cupom': 'Add another coupon',
+  'cartPage.usar_um_cupom': 'Use a coupon',
+  'cartPage.availablepromotionscount_disponivel_is': '{availablePromotionsCount} available',
+  'cartPage.nenhum_disponivel': 'None available',
+  'cartPage.economize_r_v0': 'Save R$ {v0}',
+  'cartPage.como_voce_quer_receber': 'How do you want to receive your order?',
+  'cartPage.voce_esta_na_mesa': 'You are at Table',
+  'cartPage.agora_pedir_entrega_e': 'now. Ordering delivery is separate from the table tab — your table stays open normally.',
+  'cartPage.usando_os_dados_da': 'Using your account details',
+  'cartPage.endereco_de_entrega': 'Delivery address',
+  'cartPage.numero': 'Number',
+  'cartPage.bairro': 'Neighborhood',
+  'cartPage.cidade': 'City',
+  'cartPage.uf': 'State',
+  'cartPage.cep_opcional_ajuda_na': 'ZIP code (optional, helps accuracy)',
+  'cartPage.ponto_de_referencia_opcional': 'Landmark (optional) — e.g. blue gate, near the market',
+  'cartPage.calcular_taxa_de_entrega': 'Calculate delivery fee',
+  'cartPage.endereco_confirmado': 'Address confirmed:',
+  'cartPage.distancia': 'Distance:',
+  'cartPage.nao_conseguimos_confirmar_o': 'We could not confirm the exact number — check that the address above is correct before continuing.',
+  'cartPage.recalcular': 'Recalculate',
+  'cartPage.alguma_observacao_opcional': 'Any notes? (optional)',
+  'cartPage.ex_sem_cebola_ponto': 'E.g. no onion, how the meat is cooked, gift wrapping...',
+  'cartPage.para_o_entregador': 'for the courier',
+  'cartPage.outro_valor_r': 'Other amount (R$)',
+  'cartPage.como_voce_prefere_pagar': 'How do you prefer to pay',
+  'cartPage.na_entrega': 'on delivery',
+  'cartPage.na_retirada': 'on pickup',
+  'cartPage.ainda_nao_processamos_pagamento': '? We do not process payment in the app yet — this only tells the establishment how you will pay.',
+  'cartPage.tenha_o_troco_combinado': 'Have the change arranged with whoever delivers/serves, if needed.',
+  'cartPage.maquininha_na_entrega_retirada': 'Card machine on delivery/pickup.',
+  'cartPage.o_qr_code_do': 'The Pix QR code will be generated by the establishment at delivery/pickup time.',
+  'cartPage.itens': 'Items',
+  'cartPage.usar_meu_saldo_de': 'Use my cashback balance',
+  'cartPage.r_v0_disponivel': 'R$ {v0} available',
+  'cartPage.r_0_00_disponivel': 'R$ 0,00 available',
+  'cartPage.voce_vai_ganhar_r': 'You will earn ~R$',
+  'cartPage.de_cashback_nesse_pedido': 'in cashback on this order.',
+  'cartPage.observacao_2': 'Note',
+  'cartPage.cupom': 'Coupon (',
+  'cartPage.taxa_de_entrega': 'Delivery fee',
+  'cartPage.remover_item': 'Remove item?',
+  'cartPage.sera_removido_do_seu': 'will be removed from your cart.',
+  'cartPage.remover': 'Remove',
+  'customerCashbackPage.vence_em_breve': 'Expires soon',
+  'customerCashbackPage.valido': 'Valid',
+  'customerCashbackPage.sem_data_de_validade': 'No expiry date',
+  'customerCashbackPage.credito_original_de': 'Original credit of',
+  'customerCashbackPage.expirado': 'Expired',
+  'customerCashbackPage.ganho_em': 'Earned on',
+  'customerCashbackPage.expirou_dia': 'Expired on',
+  'customerCashbackPage.nao_utilizado_credito_original': 'Unused (original credit of',
+  'customerCashbackPage.cashback_utilizado': 'Cashback used',
+  'customerCashbackPage.utilizado': 'Used',
+  'customerCashbackPage.total_do_pedido': 'Order total:',
+  'customerCashbackPage.indisponivel': 'unavailable',
+  'customerCashbackPage.voce_nao_tem_cashback': 'You have no cashback available right now. Place an order to start earning!',
+  'customerCashbackPage.nenhum_cashback_expirou_ate': 'No cashback has expired so far.',
+  'customerCashbackPage.voce_ainda_nao_usou': 'You have not used cashback on any order yet.',
+  'customerCashbackPage.saldo_disponivel': 'Available balance',
+  'customerCashbackPage.use_no_carrinho_quando': 'Use it in the cart whenever you like — check the "Use my cashback balance" box at checkout.',
+  'customerCashbackPage.categorias_de_cashback': 'Cashback categories',
+  'customerPixWalletPage.nao_foi_possivel_salvar': 'Could not save your Pix key right now.',
+  'customerPixWalletPage.guardamos_so_a_sua': 'We only keep your key — no balance stays with us. It is used to',
+  'customerPixWalletPage.devolver_dinheiro_direto_pra': 'send money back directly to you if an order is cancelled or refunded.',
+  'customerPixWalletPage.chave_salva': 'Saved key',
+  'customerPixWalletPage.editar': 'Edit',
+  'customerPixWalletPage.tipo_de_chave': 'Key type',
+  'customerPixWalletPage.celular': 'Mobile',
+  'customerPixWalletPage.cpf': 'CPF',
+  'customerPixWalletPage.chave_aleatoria': 'Random key',
+  'customerPixWalletPage.sua_chave_pix': 'Your Pix key',
+  'customerPixWalletPage.salvar_chave_pix': 'Save Pix key',
+  'customerProfilePage.em_breve': '· coming soon',
+  'editProfilePage.nao_foi_possivel_enviar': 'Could not upload the photo. Please try again.',
+  'editProfilePage.nao_foi_possivel_definir': 'Could not set the avatar. Please try again.',
+  'editProfilePage.informe_seu_nome': 'Enter your name.',
+  'editProfilePage.nao_foi_possivel_salvar': 'Could not save. Check the details and try again.',
+  'editProfilePage.alterar_foto': 'Change photo',
+  'editProfilePage.nome': 'Name',
+  'editProfilePage.whatsapp': 'WhatsApp',
+  'editProfilePage.pronomes_pessoais': 'Personal pronouns',
+  'editProfilePage.escolha_ate_2_aparecem': 'Choose up to 2. They only show in your Account and to the restaurant, next to your name at the table.',
+  'editProfilePage.genero': 'Gender',
+  'editProfilePage.salvo': 'Saved!',
+  'editProfilePage.salvar': 'Save',
+  'menuPage.nao_foi_possivel_carregar': 'Could not load this menu. Check the link.',
+  'menuPage.este_qr_code_nao': 'This QR code does not belong to this restaurant. Scan the code printed on the table again.',
+  'menuPage.garcom_chamado_alguem_vai': 'Waiter called! Someone will come to your table shortly.',
+  'menuPage.ocultar_promocoes': 'Hide deals',
+  'menuPage.mostrar_promocoes': 'Show deals',
+  'menuPage.nenhuma_promocao_no_momento': 'No deals right now',
+  'menuPage.nenhum_produto_encontrado': 'No products found.',
+  'myAccountPage.nao_foi_possivel_sair': 'Could not leave the table right now. Please try again.',
+  'myAccountPage.seu_pedido_agora_esta': 'Your order is now: {label}',
+  'myAccountPage.nao_foi_possivel_solicitar': 'Could not request closing. Try again or call a waiter.',
+  'myAccountPage.conta_fechada': 'Tab closed',
+  'myAccountPage.obrigado_pela_visita_sua': 'Thanks for visiting! Your tab has been paid and closed.',
+  'myAccountPage.sair_da_mesa': 'Leave table',
+  'myAccountPage.tem_certeza_que_quer': 'Are you sure you want to leave this table?{v0} To come back, you can only scan the table QR code again.',
+  'myAccountPage.sim_sair_da_mesa': 'Yes, leave table',
+  'myAccountPage.voce_ainda_nao_fez': 'You have not placed any order at this table yet.',
+  'myAccountPage.gorjeta_opcional': 'Tip (optional)',
+  'myAccountPage.outro': 'Other',
+  'myAccountPage.valor_da_gorjeta_r': 'Tip amount (R$)',
+  'myAccountPage.o_pix_nao_foi': 'The Pix was not confirmed in time.',
+  'myAccountPage.fechamento_solicitado_aguarde_o': 'Closing requested — wait for the waiter',
+  'myAccountPage.solicitar_fechamento_da_conta': 'Request tab closing',
+  'myReviewsPage.nao_foi_possivel_carregar': 'Could not load your reviews.',
+  'myReviewsPage.voce_ainda_nao_avaliou': 'You have not reviewed anything yet. Once an order is completed, you get a notification to review the restaurant and the items you ordered.',
+  'myReviewsPage.pedido': 'Order',
+  'orderHistoryPage.historico_de_pedidos': 'Order history',
+  'orderHistoryPage.voce_ainda_nao_fez': 'You have not placed any order here yet.',
+  'orderHistoryPage.mostrar_pedidos_de_label': 'Show orders from {label}',
+  'orderHistoryPage.esconder_pedidos_de_label': 'Hide orders from {label}',
+  'orderHistoryPage.pedido_feito': 'order placed',
+  'orderHistoryPage.pedidos_feitos': 'orders placed',
+  'orderReceiptAvulsoPage.nao_foi_possivel_salvar': 'Could not save the receipt. Try again in a few seconds.',
+  'orderReceiptAvulsoPage.cupom': 'Receipt —',
+  'orderReceiptAvulsoPage.nao_foi_possivel_carregar': 'Could not load this receipt.',
+  'productDetailPage.produto_nao_encontrado': 'Product not found.',
+  'productDetailPage.maximo_de_maxselect_opcoes': 'Maximum of {maxSelect} options in "{groupName}".',
+  'productDetailPage.escolha_uma_opcao_em': 'Choose an option in "{name}" before continuing.',
+  'productDetailPage.escolha_pelo_menos_minselect': 'Choose at least {minSelect} options in "{name}" before continuing.',
+  'productDetailPage.olha_esse_item_de': 'Check out this item from {name}',
+  'productDetailPage.ver_avaliacoes_desse_item': 'See reviews for this item',
+  'productDetailPage.adicionar': 'Add',
+  'promotionDetailPage.essa_promocao_nao_esta': 'This promotion is no longer available.',
+  'promotionDetailPage.voltar_pro_cardapio': 'Back to the menu',
+  'promotionDetailPage.promocao_de_name': 'Promotion from {name}',
+  'promotionDetailPage.detalhes_e_condicoes': 'DETAILS AND CONDITIONS',
+  'promotionDetailPage.discountvalue_de_desconto': '{discountValue}% off',
+  'promotionDetailPage.r_v0_de_desconto': 'R$ {v0} off',
+  'promotionDetailPage.pedido_minimo_de_r': 'Minimum order of R$ {v0}',
+  'promotionDetailPage.valida_para_todos_os': 'Valid for all menu items',
+  'promotionDetailPage.valida_so_para_v0': 'Valid only for: {v0}',
+  'promotionDetailPage.valida_para_itens_selecionados': 'Valid for selected items',
+  'promotionDetailPage.limite_de_1_uso': 'Limit of 1 use per customer',
+  'promotionDetailPage.limite_de_usagelimitpercustomer_usos': 'Limit of {usageLimitPerCustomer} uses per customer',
+  'promotionDetailPage.valida_ate_v0': 'Valid until {v0}',
+  'promotionDetailPage.voce_ja_usou_essa': 'You already used this promotion.',
+  'promotionDetailPage.voce_economiza': 'You save',
+  'promotionDetailPage.com_o_carrinho_atual': 'with the current cart.',
+  'promotionDetailPage.promocao_ja_utilizada': 'Promotion already used',
+  'promotionDetailPage.remover_promocao': 'Remove promotion',
+  'promotionDetailPage.usar_promocao': 'Use promotion',
+  'savedAddressPage.nao_conseguimos_localizar_esse': 'We could not locate this address. Check the details and try again.',
+  'savedAddressPage.endereco_confirmado': 'Address confirmed',
+  'savedAddressPage.nao_conseguimos_confirmar_o': 'We could not confirm the exact number — check that it is right.',
+  'savedAddressPage.ponto_de_referencia_opcional': 'Landmark (optional)',
+  'savedAddressPage.confirmar_endereco': 'Confirm address',
+  'category.lanches': 'Snacks',
+  'category.hamburgueres': 'Burgers',
+  'category.hot-dogs': 'Hot Dogs',
+  'category.sanduiches': 'Sandwiches / Wraps',
+  'category.pizzas': 'Pizzas',
+  'category.tacos-burritos': 'Tacos / Burritos',
+  'category.sushi': 'Sushi / Sashimi',
+  'category.pratos-japoneses': 'Temaki / Yakisoba / Japanese Dishes',
+  'category.massas-risotos': 'Pasta and Risotto',
+  'category.pratos-principais': 'Main Courses',
+  'category.pratos-executivos': 'Daily Specials / Set Lunch',
+  'category.carnes-grelhados': 'Meats and Grills',
+  'category.peixes-frutos-do-mar': 'Fish and Seafood',
+  'category.entradas': 'Starters',
+  'category.petiscos': 'Small Bites / Appetizers',
+  'category.porcoes': 'Sharing Portions',
+  'category.tabuas-frios': 'Boards / Cold Cuts',
+  'category.saladas': 'Salads',
+  'category.sopas-caldos': 'Soups and Broths',
+  'category.acompanhamentos': 'Sides',
+  'category.combinados': 'Combos',
+  'category.pratos-compartilhar': 'Sharing Plates',
+  'category.menu-vegetariano': 'Vegetarian / Vegan Menu',
+  'category.menu-infantil': 'Kids Menu',
+  'category.menu-degustacao': 'Tasting Menu',
+  'category.cafe-da-manha': 'Breakfast / Brunch',
+  'category.paes-panificados': 'Breads / Bakery',
+  'category.bebidas': 'Drinks',
+  'category.cafes': 'Coffees',
+  'category.cafes-especiais': 'Specialty Coffees',
+  'category.chas': 'Teas / Infusions',
+  'category.sucos': 'Juices',
+  'category.refrigerantes': 'Soft Drinks',
+  'category.aguas': 'Water',
+  'category.energeticos': 'Energy Drinks',
+  'category.cervejas': 'Beers',
+  'category.drinks': 'Drinks / Cocktails',
+  'category.destilados': 'Spirits',
+  'category.vinhos': 'Wines',
+  'category.espumantes': 'Sparkling Wines',
+  'category.sobremesas': 'Desserts',
+  'category.doces-confeitaria': 'Sweets / Pastry',
+  'category.bolos': 'Cakes',
+  'category.tortas': 'Pies / Tarts',
+  'category.sorvetes': 'Ice Cream',
+  'category.acai': 'Açaí',
+  'category.milkshakes': 'Milkshakes',
+  'category.donuts': 'Donuts',
+  'category.cupcakes': 'Cupcakes',
+  'category.cookies': 'Cookies',
+  'category.chocolates': 'Chocolates',
+  'category.pudins': 'Puddings / Flans',
+  'category.waffles-panquecas': 'Waffles / Pancakes',
+  'category.frutas': 'Fruits / Fruit Salad',
+  'category.bowls': 'Bowls',
+  'category.avocado-toasts': 'Avocado / Toasts',
+  'category.pratos-saudaveis': 'Healthy Dishes',
+  'category.low-carb': 'Low Carb',
+  'category.fitness-proteicos': 'Fitness / High Protein',
+  'category.smoothies': 'Smoothies / Detox',
+  'category.nigiri': 'Nigiri',
+  'category.uramaki': 'Uramaki',
+  'category.hossomaki': 'Hossomaki',
+  'category.temaki': 'Temaki',
+  'category.hot-roll': 'Hot Roll',
+  'category.yakissoba': 'Yakisoba',
+  'category.donburi': 'Donburi',
+  'category.rodizio': 'All-You-Can-Eat',
+  'category.molhos-extras': 'Sauces / Extras',
+  'category.entradas-chinesas': 'Chinese Starters',
+  'category.dumplings-pasteis': 'Dumplings / Pastries',
+  'category.rolinhos-primavera': 'Spring Rolls',
+  'category.sopas-chinesas': 'Chinese Soups',
+  'category.arroz-chao-fan': 'Rice / Chao Fan',
+  'category.yakisoba-chines': 'Chinese Noodles',
+  'category.frango-xadrez-kung-pao': 'Kung Pao Chicken',
+  'category.porco-agridoce': 'Sweet and Sour Pork',
+  'category.pato-especialidades': 'Duck / Specialties',
+  'category.combinados-chineses': 'Chinese Combos',
+  'category.vegetarianos-chineses': 'Chinese Vegetarian Dishes',
+  'category.bebidas-chinesas-chas': 'Chinese Drinks / Teas',
+  'category.entradas-coreanas': 'Korean Starters',
+  'category.kimchi-banchan': 'Kimchi / Banchan',
+  'category.mandu': 'Mandu (Korean Dumplings)',
+  'category.bibimbap': 'Bibimbap',
+  'category.bulgogi': 'Bulgogi',
+  'category.japchae': 'Japchae',
+  'category.ramyeon': 'Ramen / Ramyeon',
+  'category.tteokbokki': 'Tteokbokki',
+  'category.frango-frito-coreano': 'Korean Fried Chicken',
+  'category.combinados-coreanos': 'Korean Combos',
+  'category.vegetarianos-coreanos': 'Korean Vegetarian Dishes',
+  'category.bebidas-coreanas-soju': 'Korean Drinks / Soju',
+  'category.pizzas-doces': 'Sweet Pizzas',
+  'category.pizzas-especiais': 'Specialty Pizzas',
+  'category.calzones': 'Calzones',
+  'category.esfihas': 'Esfihas',
+  'category.salgados': 'Savory Snacks',
+  'category.croissants-viennoiseries': 'Croissants / Viennoiseries',
+  'category.caipirinhas': 'Caipirinhas',
+  'category.shots': 'Shots',
+  'category.whisky': 'Whisky',
+
+  'myAccountPage.voce_abriu_a_mesa': ' You opened the table, but the tab stays with whoever remains.',
+
+  'pronoun.ela': 'she',
+  'pronoun.dela': 'her',
+  'pronoun.elas': 'they',
+  'pronoun.delas': 'them',
+  'pronoun.ele': 'he',
+  'pronoun.dele': 'him',
+  'pronoun.eles': 'they',
+  'pronoun.deles': 'them',
+  'pronoun.groupFeminine': 'Traditional feminine',
+  'pronoun.groupMasculine': 'Traditional masculine',
+  'verification.reasons.foto_sem_rosto_claro': 'The photo does not clearly show your face',
+  'verification.reasons.foto_baixa_qualidade': 'The photo is low quality (blurry, dark or cropped)',
+  'verification.reasons.suspeita_falsificacao': 'The photo looks like a screen, a printout or an internet image',
+  'verification.reasons.nao_condiz_com_perfil': 'The photo does not seem to match the rest of your profile',
+  'verification.reasons.multiplas_pessoas': 'The photo shows more than one person',
+  'verification.reasons.outro_motivo': 'Another reason',
+  'cashback.tab.available': 'Available',
+  'cashback.tab.expired': 'Expired',
+  'cashback.tab.used': 'Used',
+  'cashback.earnedOn': 'earned on',
+  'cashback.at': 'at',
+  'cashback.expiresOn': 'Expires on {date}',
+  'cashback.expiredOn': 'Expired on {date}',
+  'cashback.expiresInHm': 'Expires in {h}h {m}min',
+  'cashback.expiresInM': 'Expires in {m} min',
+  'cashback.desc.order': 'Order cashback',
+  'cashback.desc.loyalty': 'Loyalty reward',
+  'cashback.desc.adjustment': 'Restaurant adjustment',
+  'cashback.desc.usedInOrder': 'Used on an order',
+
+  'status.awaitingPix': 'Awaiting Pix',
+  'status.pending': 'Pending',
+  'status.confirmed': 'Confirmed',
+  'status.preparing': 'Preparing',
+  'status.ready': 'Ready',
+  'status.delivered': 'Delivered',
+  'status.cancelled': 'Cancelled',
+  'status.open': 'Open',
+  'status.closing': 'Closing',
+  'status.closed': 'Closed',
+  'payment.pix': 'Pix',
+  'payment.card': 'Card',
+  'payment.cash': 'Cash',
+  'pixKey.email': 'Email',
+  'pixKey.phone': 'Mobile',
+  'pixKey.cpf': 'CPF',
+  'pixKey.random': 'Random key',
+  'gender.male': 'Male',
+  'gender.female': 'Female',
+  'gender.other': 'Other',
+  'gender.unspecified': 'Prefer not to say',
+  'addons.chooseUpTo': 'Choose up to {max}',
+  'addons.chooseOne': 'Choose 1',
+  'addons.chooseN': 'Choose {min}',
+  'addons.chooseRange': 'Choose {min} to {max}',
+  'promotions.min_amount_remaining': 'R$ {missing} short of the R$ {minimum} minimum order.',
+  'promotions.reason.alreadyUsed': 'You already used this promotion.',
+  'promotions.reason.noEligibleItems': 'None of the items in your cart are eligible for this promotion.',
+  'promotions.reason.noItemsLeft': 'No items left in the cart for this coupon after the others were applied.',
+  'promotions.reason.noDiscount': 'This promotion gives no discount for this cart.',
+  'peopleOrders.ainda_nao_pediu_nada': 'Has not ordered anything yet',
+  'address.street': 'Street',
+  'cart.distanceAndFee': 'Distance: {km} km · Delivery fee: R$ {fee}',
+  'cart.payOnDelivery': '{method} on delivery',
+  'cart.payOnPickup': '{method} on pickup',
+  'closing.availableBalance': 'Available balance: R$ {amount}',
+  'pix.countdownNotification': 'Order awaiting Pix payment • {minutes}:{seconds} left',
+
+  'error.generic': 'Oops, something went wrong while loading this screen.',
+  'error.backHome': 'Back to start',
+};
+// Dicionário-base (pt-BR). É a FONTE das chaves: en.ts e es.ts são tipados com
+// `Record<TranslationKey, string>`, então esquecer uma tradução quebra o `tsc`.
+//
+// Nunca traduzir aqui: moeda (R$), valores/regras de cashback, nomes de
+// clientes, estabelecimentos, produtos, categorias e endereços — esses são
+// dados dinâmicos e entram nos textos por parâmetro `{nome}`.
+export const ptBR = {
+  // Comum
+  'common.cancel': 'Cancelar',
+  'common.confirm': 'Confirmar',
+  'common.back': 'Voltar',
+  'common.close': 'Fechar',
+  'common.loading': 'Carregando...',
+  'common.enter': 'Entrar',
+  'common.current': 'Atual',
+
+  // Navegação inferior
+  'nav.menu': 'Cardápio',
+  'nav.cart': 'Carrinho',
+  'nav.account': 'Conta',
+
+  // Dias da semana (usados em "Abre Segunda-feira às 09:30")
+  'day.name.domingo': 'Domingo',
+  'day.name.segunda': 'Segunda-feira',
+  'day.name.terca': 'Terça-feira',
+  'day.name.quarta': 'Quarta-feira',
+  'day.name.quinta': 'Quinta-feira',
+  'day.name.sexta': 'Sexta-feira',
+  'day.name.sabado': 'Sábado',
+  'day.short.domingo': 'Domingo',
+  'day.short.segunda': 'Segunda',
+  'day.short.terca': 'Terça',
+  'day.short.quarta': 'Quarta',
+  'day.short.quinta': 'Quinta',
+  'day.short.sexta': 'Sexta',
+  'day.short.sabado': 'Sábado',
+
+  // Status e horário da loja
+  'store.open': 'Aberto',
+  'store.closed': 'Fechado',
+  'store.openNow': 'Aberto agora',
+  'store.open24h': 'Aberto 24h',
+  'store.todayOpen24h': 'Hoje: aberto 24h',
+  'store.todayHours': 'Hoje: {open} às {close}',
+  'store.hoursRange': '{open} às {close}',
+  'store.todayClosed': 'Fechado hoje',
+  'store.closesIn': 'Fecha em {minutes} min',
+  'store.opensWhen': 'Abre {when} às {time}',
+  'store.whenToday': 'Hoje',
+  'store.hoursClosedDay': 'Fechado',
+  'store.reviewsCount': '({count} avaliações)',
+  'store.reviewsCountOne': '({count} avaliação)',
+
+  // Perfil / Conta
+  'profile.notLoggedIn': 'Você ainda não entrou na sua conta.',
+  'profile.myData': 'Meus dados',
+  'profile.verifyAccount': 'Verificar minha conta',
+  'profile.verificationPending': 'Verificação pendente',
+  'profile.verificationRejectedRetry': 'Verificação recusada — tentar de novo',
+  'profile.verificationRejectedTitle': 'Sua verificação foi recusada',
+  'profile.myOrders': 'Meus pedidos',
+  'profile.savedAddress': 'Endereço salvo',
+  'profile.pixWallet': 'Carteira Pix',
+  'profile.cashback': 'Meu Cashback',
+  'profile.myReviews': 'Minhas Avaliações',
+  'profile.language': 'Idioma',
+  'profile.notifications': 'Notificações',
+  'profile.notificationsBlocked': 'Bloqueadas nas configurações do navegador',
+  'profile.notificationsOn': 'Ativadas — toque pra escolher quais tipos',
+  'profile.notificationsOff': 'Avise quando algo importante acontecer',
+  'profile.logout': 'Sair da conta',
+  'profile.logoutConfirm': 'Tem certeza que deseja sair da sua conta?',
+  'profile.logoutConfirmYes': 'Sim, sair da conta',
+  'profile.photoSendError': 'Não foi possível enviar sua foto agora. Tenta de novo.',
+  'profile.sendingPhoto': 'Enviando sua foto...',
+
+  // Tela de idioma
+  'language.title': 'Idiomas',
+  'language.notice':
+    'Todo o aplicativo e notificações serão traduzidos para o idioma selecionado, exceto valores monetários (R$), nomes de estabelecimentos/clientes e endereços.',
+  'language.confirmMessage': 'Alterar o idioma do aplicativo para {language}?',
+  'language.confirmAction': 'Alterar idioma',
+  'language.syncError': 'O idioma foi alterado neste aparelho, mas não conseguimos salvar no seu perfil agora.',
+  'language.applying': 'Aplicando idioma...',
+
+  // Notificações (preferências)
+  'notifications.title': 'Notificações',
+  'notifications.globalOff':
+    'Notificações estão desativadas no geral. Ative em "Minha Conta" pra receber qualquer uma das opções abaixo.',
+  'notifications.footer': 'Todo tipo começa ativado. Desligue só o que você não quer receber.',
+  'notifications.type.review_prompt.label': 'Avaliação de pedido',
+  'notifications.type.review_prompt.description': 'Quando você pode avaliar um pedido concluído.',
+  'notifications.type.order_delivered.label': 'Pedido entregue',
+  'notifications.type.order_delivered.description': 'Quando seu pedido chega ou fica pronto pra retirar.',
+  'notifications.type.payment_completed.label': 'Pagamento concluído',
+  'notifications.type.payment_completed.description': 'Confirmação de que seu pagamento foi processado.',
+  'notifications.type.cashback.label': 'Cashback',
+  'notifications.type.cashback.description': 'Quando você ganha ou está prestes a perder cashback.',
+  'notifications.type.promotion.label': 'Promoções',
+  'notifications.type.promotion.description': 'Novas promoções e cupons do restaurante.',
+  'notifications.type.loyalty.label': 'Fidelidade',
+  'notifications.type.loyalty.description': 'Progresso no cartão fidelidade e prêmios liberados.',
+  'notifications.type.complaint.label': 'Reclamações',
+  'notifications.type.complaint.description': 'Atualizações sobre uma reclamação que você abriu.',
+
+  'location.title': 'Escolha a loja mais perto de você',
+  'location.searching': 'Buscando sua localização...',
+
+  'info.title': 'Informações',
+  'info.email': 'E-mail',
+
+  'auth.welcomeBack': 'Bem-vindo de volta',
+  'auth.createTitle': 'Criar sua conta',
+  'auth.loginSubtitle': 'Entre pra fazer seu pedido.',
+  'auth.registerSubtitle': 'Leva menos de um minuto.',
+  'auth.namePlaceholder': 'Seu nome',
+  'auth.emailPlaceholder': 'E-mail',
+  'auth.passwordPlaceholder': 'Senha',
+  'auth.wait': 'Aguarde...',
+  'auth.createAccount': 'Criar conta',
+  'auth.or': 'ou',
+  'auth.google': 'Continuar com Google',
+  'auth.googleSoon': 'Login com Google chegando em breve por aqui.',
+  'auth.noAccount': 'Não tem conta? Criar uma agora',
+  'auth.haveAccount': 'Já tem conta? Entrar',
+  'auth.submitError': 'Não foi possível concluir. Confira os dados e tente de novo.',
+  'ordersHub.needLogin': 'Você precisa entrar na sua conta pra ver seus pedidos.',
+  'ordersHub.loading': 'Carregando pedidos...',
+  'ordersHub.none': 'Nenhum pedido ainda',
+  'ordersHub.count': '{count} pedidos',
+  'ordersHub.countOne': '{count} pedido',
+  'ordersHub.last': ' · último em {date}',
+  'store.closedEstablishment': 'Estabelecimento Fechado',
+  'store.closedHint': 'Você pode ver o cardápio e as promoções, mas não é possível fazer pedidos agora.',
+  'menu.acceptsDelivery': 'Aceita entrega',
+  'menu.minimumOrder': 'Pedido mínimo',
+  'verified.label': 'Verificado',
+  'verified.title': 'Cliente verificado',
+  'product.promotion': 'Promoção',
+  'product.unavailable': '{name} indisponível',
+  'product.add': 'Adicionar {name}',
+  'share.share': 'Compartilhar',
+  'share.shareItem': 'Compartilhar {title}',
+  'share.copied': 'Link copiado!',
+  'share.failed': 'Não foi possível compartilhar. Copie o link manualmente.',
+  'table.backToMine': 'Voltar pra minha mesa',
+  'table.goGeneral': 'Ir pro cardápio geral',
+  'table.backGeneral': 'Voltar ao cardápio geral',
+  'table.leftTitle': 'Você saiu desta mesa',
+  'table.leftHint': 'Pra voltar, escaneie o QR code físico da mesa de novo.',
+  'table.endedTitle': 'Sessão encerrada',
+  'table.endedHint': 'A conta dessa mesa já foi fechada. Se ainda estiver no restaurante, escaneie o QR code físico da mesa de novo pra abrir uma conta nova.',
+  'logo.viewLogo': 'Ver logo do restaurante',
+  'logo.viewBanner': 'Ver banner do restaurante',
+
+  'avatarCropModal.usar_foto': 'Usar foto',
+  'avatarPickerModal.formato_invalido_use_jpeg': 'Formato inválido. Use JPEG, PNG ou WebP.',
+  'avatarPickerModal.imagem_muito_grande_escolha': 'Imagem muito grande. Escolha uma foto menor.',
+  'avatarPickerModal.escolher_foto_de_perfil': 'Escolher foto de perfil',
+  'avatarPickerModal.tirar_ou_escolher_foto': 'Tirar ou escolher foto',
+  'avatarPickerModal.ou_escolha_um_avatar': 'Ou escolha um avatar',
+  'cartBar.no_carrinho': 'no carrinho',
+  'cashbackLoginNotice.faca_login_ou_crie': 'Faça login ou crie uma conta para usufruir dos benefícios do cashback',
+  'cashbackLoginNotice.entrar_ou_criar_conta': 'Entrar ou criar conta',
+  'categoryChips.todos': 'Todos',
+  'closingPaymentSheet.fechar_minha_conta': 'Fechar minha conta',
+  'closingPaymentSheet.subtotal': 'Subtotal',
+  'closingPaymentSheet.gorjeta': 'Gorjeta',
+  'closingPaymentSheet.cashback_aplicado': 'Cashback aplicado',
+  'closingPaymentSheet.total': 'Total',
+  'closingPaymentSheet.pagar_com_cashback': 'Pagar com cashback',
+  'closingPaymentSheet.usar_meu_cashback': 'Usar meu cashback',
+  'closingPaymentSheet.cobre_a_conta_inteira': 'Cobre a conta inteira — nada mais a pagar · ',
+  'closingPaymentSheet.como_voce_vai_pagar': 'Como você vai pagar?',
+  'closingPaymentSheet.prefere_pagar_onde': 'Prefere pagar onde?',
+  'closingPaymentSheet.vou_pagar_no_balcao': 'Vou pagar no balcão',
+  'closingPaymentSheet.atendente_vem_a_mesa': 'Atendente vem à mesa',
+  'closingPaymentSheet.se_o_restaurante_tiver': 'Se o restaurante tiver Pix automático configurado, o QR aparece na próxima tela e a conta fecha sozinha assim que você pagar. Senão, o garçom leva o QR até você.',
+  'closingPaymentSheet.o_garcom_vai_levar': 'O garçom vai levar a maquininha até você.',
+  'closingPaymentSheet.essa_mesa_teve_mais': 'Essa mesa teve mais de uma pessoa pedindo. O cashback que essa conta vai gerar fica:',
+  'closingPaymentSheet.cada_pessoa_recebe_o': 'Cada pessoa recebe o cashback do que ela mesma pediu',
+  'closingPaymentSheet.so_pra_mim_ja': 'Só pra mim, já que estou fechando a conta',
+  'itemReviewDisplay.apagar_avaliacao': 'Apagar avaliação',
+  'itemReviewDisplay.apagar_nao_permite_avaliar': 'Apagar não permite avaliar esse item de novo — só um pedido novo com ele libera uma avaliação nova. Tem certeza?',
+  'itemReviewDisplay.apagar_mesmo_assim': 'Apagar mesmo assim',
+  'menuHeader.taxa_a_partir_de': 'Taxa a partir de R$',
+  'optionalCustomerAuth.tentar_de_novo': 'Tentar de novo',
+  'peopleOrders.voce': '(você)',
+  'peopleOrders.abriu_a_mesa': 'Abriu a mesa',
+  'peopleOrders.outros_pedidos': 'Outros pedidos',
+  'phoneInput.telefone_incompleto_confira_o': 'Telefone incompleto — confira o DDD e o número.',
+  'pixWaitingPanel.tempo': 'Tempo',
+  'pixWaitingPanel.codigo_copiado': 'Código copiado!',
+  'pixWaitingPanel.copiar_codigo_pix': 'Copiar código Pix',
+  'pixWaitingPanel.abra_o_app_do': 'Abra o app do seu banco, escaneie o QR ou cole o código, e pague em até',
+  'pixWaitingPanel.receber_o_pagamento': 'receber o pagamento.',
+  'productCard.sem_foto': 'Sem foto',
+  'productCard.indisponivel': 'Indisponível',
+  'promoCards.encerrada': 'Encerrada',
+  'promoCards.hours_h_minutes_min': '{hours}h {minutes}min',
+  'promoCards.voce_ja_usou_essa': 'Você já usou essa promoção',
+  'promoCards.pedido_minimo_r': 'Pedido mínimo R$',
+  'qrScanButton.escanear_qr_code_da': 'Escanear QR code da mesa',
+  'qrScannerModal.nao_foi_possivel_acessar': 'Não foi possível acessar a câmera. Confirme a permissão do navegador ou escaneie com a câmera do celular.',
+  'qrScannerModal.esse_qr_code_nao': 'Esse QR code não é reconhecido. Escaneia o QR code da mesa do restaurante.',
+  'qrScannerModal.esse_qr_code_e': 'Esse QR code é de outro restaurante — não dá pra abrir por aqui.',
+  'receiptAuthenticityCode.codigo_de_autenticidade': 'Código de autenticidade',
+  'receiptContent.de_cashback': 'de cashback',
+  'receiptContent.simples_conferencia_da_conta': '*** SIMPLES CONFERÊNCIA DA CONTA ***',
+  'receiptContent.nao_e_documento_fiscal': '*** NÃO É DOCUMENTO FISCAL ***',
+  'receiptContent.mesa': 'Mesa',
+  'receiptContent.mesa_compartilhada_por': 'Mesa compartilhada por:',
+  'receiptContent.abriu_a_mesa': 'abriu a mesa',
+  'receiptContent.cliente': 'Cliente',
+  'receiptContent.aberto_em': 'Aberto em',
+  'receiptContent.fechado_em': 'Fechado em',
+  'receiptContent.sem_pedidos': 'Sem pedidos',
+  'receiptContent.desconto_aplicado': 'Desconto aplicado',
+  'receiptContent.ja_refletido_no_subtotal': 'já refletido no subtotal',
+  'receiptContent.cashback_usado': 'Cashback usado',
+  'receiptContent.cashback_usado_no_fechamento': 'Cashback usado no fechamento',
+  'receiptContent.total': 'TOTAL',
+  'receiptContent.cashback_recebido_nesse_pedido': 'Cashback recebido nesse pedido',
+  'receiptContent.pagamento': 'Pagamento',
+  'receiptContent.recebido': 'Recebido',
+  'receiptContent.troco': 'Troco',
+  'receiptContent.obrigado_pela_preferencia': 'Obrigado pela preferência!',
+  'receiptContent.volte_sempre': 'Volte sempre',
+  'receiptContentStandalone.entrega': 'Entrega',
+  'receiptContentStandalone.balcao': 'Balcão',
+  'receiptContentStandalone.endereco': 'Endereço',
+  'receiptContentStandalone.ref': 'Ref:',
+  'receiptContentStandalone.endereco_nao_confirmado_com': 'endereço não confirmado com exatidão',
+  'receiptContentStandalone.pedido_em': 'Pedido em',
+  'receiptContentStandalone.ja_refletido_no_total': 'já refletido no total',
+  'requireCustomerAuth.nao_foi_possivel_confirmar': 'Não foi possível confirmar sua sessão agora. Sua conexão pode estar instável.',
+  'reviewDisplay.sua_avaliacao': 'Sua avaliação',
+  'reviewDisplay.publicada_como_anonimo': 'Publicada como anônimo',
+  'reviewDisplay.apagar_nao_permite_avaliar': 'Apagar não permite avaliar esse pedido de novo — só uma compra nova libera uma nova avaliação. Tem certeza?',
+  'reviewModal.escolhe_de_1_a': 'Escolhe de 1 a 5 estrelas primeiro.',
+  'reviewModal.nao_foi_possivel_enviar': 'Não foi possível enviar. Tenta de novo.',
+  'reviewModal.avaliar_item': 'Avaliar item',
+  'reviewModal.o_que_achou_desse': 'O que achou desse item?',
+  'reviewModal.como_foi_o_seu': 'Como foi o seu pedido?',
+  'reviewModal.sua_opiniao_ajuda_todo': 'Sua opinião ajuda todo mundo.',
+  'reviewModal.conte_como_foi_opcional': 'Conte como foi (opcional)',
+  'reviewModal.publicar_como_anonimo': 'Publicar como anônimo',
+  'reviewModal.agora_nao': 'Agora não',
+  'reviewModal.enviar': 'Enviar',
+  'reviewModal.nao_quer_avaliar_agora': 'Não quer avaliar agora?',
+  'reviewModal.sem_problema_essa_avaliacao': 'Sem problema — essa avaliação não vai ser feita. Se mudar de ideia depois, dá pra avaliar pelo histórico de pedidos, quando ainda for elegível.',
+  'reviewModal.confirmar_envio': 'Confirmar envio?',
+  'reviewModal.depois_de_enviada_sua': 'Depois de enviada, sua avaliação',
+  'reviewModal.nao_pode_mais_ser': 'não pode mais ser editada',
+  'reviewModal.so_apagada_se_voce': '— só apagada, se você quiser. Confirma o envio?',
+  'reviewModal.revisar': 'Revisar',
+  'reviewPromptProvider.avaliacao_do_restaurante': 'Avaliação do restaurante',
+  'reviewsShared.restaurante': 'Restaurante',
+  'reviewsShared.avaliacoes': 'Avaliações',
+  'reviewsShared.avaliacao': 'avaliação',
+  'reviewsShared.avaliacoes_2': 'avaliações',
+  'reviewsShared.ainda_nao_ha_avaliacoes': 'Ainda não há avaliações por aqui.',
+  'reviewsShared.ver_mais_avaliacoes': 'Ver mais avaliações',
+  'searchBar.buscar_no_cardapio': 'Buscar no cardápio',
+  'tableMenuHeader.balcao_tablenumber': 'Balcão {tableNumber}',
+  'tableMenuHeader.mesa_tablenumber': 'Mesa {tableNumber}',
+  'tableMenuHeader.consumo_no_local': 'Consumo no local',
+  'tableMenuHeader.chamar_garcom': 'Chamar garçom',
+  'tableMenuHeader.minha_conta': 'Minha conta',
+  'tableSessionGate.ja_existe_uma_secao': 'Já existe uma seção em aberto nesta mesa. Deseja se juntar?',
+  'tableSessionGate.sim': 'Sim',
+  'tableSessionPixWaitingPanel.pagando_a_conta_via': 'Pagando a conta via Pix',
+  'tableSessionPixWaitingPanel.abra_o_app_do': 'Abra o app do seu banco, escaneie o QR ou cole o código. Sua conta fecha sozinha assim que',
+  'tableSessionPixWaitingPanel.receber_o_pagamento_nao': 'receber o pagamento — não precisa recarregar a página.',
+  'themeToggle.ativar_modo_claro': 'Ativar modo claro',
+  'themeToggle.ativar_modo_escuro': 'Ativar modo escuro',
+  'verificationCameraCapture.esse_navegador_nao_permite': 'Esse navegador não permite acessar a câmera diretamente. Toque abaixo pra tirar a foto pelo app de câmera do celular.',
+  'verificationCameraCapture.voce_nao_deu_permissao': 'Você não deu permissão pra câmera. Permite o acesso nas configurações do navegador e tenta de novo, ou usa o app de câmera do celular abaixo.',
+  'verificationCameraCapture.nao_consegui_acessar_a': 'Não consegui acessar a câmera. Toque abaixo pra tirar a foto pelo app de câmera do celular.',
+  'verificationCameraCapture.nao_consegui_acessar_a_2': 'Não consegui acessar a câmera de novo. Tenta pelo app de câmera do celular.',
+  'verificationCameraCapture.abrir_camera_do_celular': 'Abrir câmera do celular',
+  'verificationCameraCapture.previa_da_sua_foto': 'Prévia da sua foto',
+  'verificationCameraCapture.ficou_boa_seu_rosto': 'Ficou boa? Seu rosto precisa estar visível e bem iluminado.',
+  'verificationCameraCapture.tirar_de_novo': 'Tirar de novo',
+  'verificationCameraCapture.usar_essa_foto': 'Usar essa foto',
+  'verificationCameraCapture.posicione_seu_rosto_dentro': 'Posicione seu rosto dentro da guia, num local bem iluminado. Quando estiver pronto, toque no botão abaixo.',
+  'verificationCameraCapture.se_ajeite_a_foto': 'Se ajeite — a foto é tirada sozinha ao fim da contagem.',
+  'verificationCameraCapture.iniciar_contagem_pra_tirar': 'Iniciar contagem pra tirar a foto',
+  'verificationCongratsModal.voce_foi_verificado': 'Você foi verificado!',
+  'verificationCongratsModal.seu_perfil_agora_tem': 'Seu perfil agora tem o selo de cliente verificado. Ele aparece pro estabelecimento sempre que você fizer um pedido.',
+  'verificationCongratsModal.legal': 'Legal!',
+  'verificationExplainerModal.como_funciona_a_verificacao': 'Como funciona a verificação',
+  'verificationExplainerModal.voce_vai_tirar_uma': '- Você vai tirar uma foto do seu rosto, na hora, pela câmera.',
+  'verificationExplainerModal.a_decisao_de_aprovar': '- A decisão de aprovar é do',
+  'verificationExplainerModal.ele_pode_recusar_por': '— ele pode recusar por motivos específicos, como foto de baixa qualidade ou que não mostre seu rosto claramente.',
+  'verificationExplainerModal.se_for_recusada_voce': '- Se for recusada, você vê o motivo e pode tentar de novo.',
+  'verificationExplainerModal.a_foto_enviada_e': '- A foto enviada é excluída assim que a decisão sair (aprovada ou recusada).',
+  'verificationExplainerModal.tire_uma_foto_sua': '- Tire uma foto sua de verdade, com boa luz — fotos falsas ou de outra pessoa são recusadas.',
+  'verificationExplainerModal.entendi_continuar': 'Entendi, continuar',
+  'tenantContext.nao_foi_possivel_carregar': 'Não foi possível carregar o restaurante.',
+  'cartPage.nao_conseguimos_recalcular_a': 'Não conseguimos recalcular a taxa pro endereço salvo. Confira os dados.',
+  'cartPage.nao_conseguimos_calcular_a': 'Não conseguimos calcular a taxa de entrega para esse endereço.',
+  'cartPage.nao_foi_possivel_enviar': 'Não foi possível enviar o pedido. Tente novamente.',
+  'cartPage.nao_foi_possivel_chamar': 'Não foi possível chamar o garçom agora. Tente novamente.',
+  'cartPage.cancelar_esse_pedido_essa': 'Cancelar esse pedido? Essa ação não pode ser desfeita.',
+  'cartPage.nao_foi_possivel_cancelar': 'Não foi possível cancelar o pedido agora. Tente novamente.',
+  'cartPage.nao_foi_possivel_chamar_2': 'Não foi possível chamar o atendente agora.',
+  'cartPage.pedido_cancelado': 'Pedido cancelado',
+  'cartPage.voltando_ao_cardapio': 'Voltando ao cardápio...',
+  'cartPage.o_pedido_foi_cancelado': 'O pedido foi cancelado',
+  'cartPage.o_tempo_pra_pagar': 'O tempo pra pagar acabou',
+  'cartPage.name_cancelou_esse_pedido': '{name} cancelou esse pedido. Se achar que foi engano, entre em contato antes de fazer um novo pedido.',
+  'cartPage.esse_pedido_foi_cancelado': 'Esse pedido foi cancelado porque o Pix não foi confirmado a tempo. Monte o pedido de novo pra tentar outra vez.',
+  'cartPage.voltar_ao_cardapio': 'Voltar ao cardápio',
+  'cartPage.pagamento_confirmado': 'Pagamento confirmado!',
+  'cartPage.pedido_enviado': 'Pedido enviado!',
+  'cartPage.seu_pix_foi_confirmado': 'Seu Pix foi confirmado e o pedido já está na cozinha.',
+  'cartPage.o_estabelecimento_ja_recebeu': 'O estabelecimento já recebeu seu pedido e vai confirmar em instantes.',
+  'cartPage.cliente': 'Cliente:',
+  'cartPage.entrega_para': 'Entrega para:',
+  'cartPage.taxa_de_entrega_r': 'Taxa de entrega: R$',
+  'cartPage.v0_km': ' ({v0} km)',
+  'cartPage.pagamento': 'Pagamento:',
+  'cartPage.gorjeta': 'Gorjeta:',
+  'cartPage.sem_gorjeta': 'Sem gorjeta',
+  'cartPage.cashback_usado': 'Cashback usado:',
+  'cartPage.observacao': 'Observação:',
+  'cartPage.garcom_chamado': 'Garçom chamado!',
+  'cartPage.cancelar_chamado': 'Cancelar chamado',
+  'cartPage.algo_errado_com_o': 'Algo errado com o pedido? Chamar garçom',
+  'cartPage.atendente_chamado': 'Atendente chamado!',
+  'cartPage.algo_errado_com_o_2': 'Algo errado com o pedido? Chamar atendente',
+  'cartPage.cancelar_pedido': 'Cancelar pedido',
+  'cartPage.seu_carrinho_esta_vazio': 'Seu carrinho está vazio',
+  'cartPage.adicione_itens_do_cardapio': 'Adicione itens do cardápio pra fazer seu pedido.',
+  'cartPage.ver_cardapio': 'Ver cardápio',
+  'cartPage.estabelecimento_fechado': 'Estabelecimento fechado',
+  'cartPage.confirmar_pedido': 'Confirmar pedido',
+  'cartPage.calcule_a_taxa_de': 'Calcule a taxa de entrega',
+  'cartPage.ir_para_pagamento': 'Ir para pagamento',
+  'cartPage.revisar_pedido': 'Revisar pedido',
+  'cartPage.seu_pedido': 'Seu pedido',
+  'cartPage.cupom_aplicado_r': 'Cupom aplicado · R$',
+  'cartPage.cupom_aplicado': 'Cupom aplicado',
+  'cartPage.nao_elegivel_pra_esse': 'Não elegível pra esse carrinho',
+  'cartPage.adicionar_outro_cupom': 'Adicionar outro cupom',
+  'cartPage.usar_um_cupom': 'Usar um cupom',
+  'cartPage.availablepromotionscount_disponivel_is': '{availablePromotionsCount} disponível(is)',
+  'cartPage.nenhum_disponivel': 'Nenhum disponível',
+  'cartPage.economize_r_v0': 'Economize R$ {v0}',
+  'cartPage.como_voce_quer_receber': 'Como você quer receber seu pedido?',
+  'cartPage.voce_esta_na_mesa': 'Você está na Mesa',
+  'cartPage.agora_pedir_entrega_e': 'agora. Pedir entrega é separado da conta da mesa — sua mesa continua aberta normalmente.',
+  'cartPage.usando_os_dados_da': 'Usando os dados da sua conta',
+  'cartPage.endereco_de_entrega': 'Endereço de entrega',
+  'cartPage.numero': 'Número',
+  'cartPage.bairro': 'Bairro',
+  'cartPage.cidade': 'Cidade',
+  'cartPage.uf': 'UF',
+  'cartPage.cep_opcional_ajuda_na': 'CEP (opcional, ajuda na precisão)',
+  'cartPage.ponto_de_referencia_opcional': 'Ponto de referência (opcional) — ex: portão azul, perto do mercado',
+  'cartPage.calcular_taxa_de_entrega': 'Calcular taxa de entrega',
+  'cartPage.endereco_confirmado': 'Endereço confirmado:',
+  'cartPage.distancia': 'Distância:',
+  'cartPage.nao_conseguimos_confirmar_o': 'Não conseguimos confirmar o número exato — confira se o endereço acima está certo antes de continuar.',
+  'cartPage.recalcular': 'Recalcular',
+  'cartPage.alguma_observacao_opcional': 'Alguma observação? (opcional)',
+  'cartPage.ex_sem_cebola_ponto': 'Ex: sem cebola, ponto da carne, embrulhar pra presente...',
+  'cartPage.para_o_entregador': 'para o entregador',
+  'cartPage.outro_valor_r': 'Outro valor (R$)',
+  'cartPage.como_voce_prefere_pagar': 'Como você prefere pagar',
+  'cartPage.na_entrega': 'na entrega',
+  'cartPage.na_retirada': 'na retirada',
+  'cartPage.ainda_nao_processamos_pagamento': '? Ainda não processamos pagamento pelo app — isso só avisa o estabelecimento de como você vai pagar.',
+  'cartPage.tenha_o_troco_combinado': 'Tenha o troco combinado com quem entregar/atender, se precisar.',
+  'cartPage.maquininha_na_entrega_retirada': 'Maquininha na entrega/retirada.',
+  'cartPage.o_qr_code_do': 'O QR code do Pix será gerado pelo estabelecimento na hora da entrega/retirada.',
+  'cartPage.itens': 'Itens',
+  'cartPage.usar_meu_saldo_de': 'Usar meu saldo de cashback',
+  'cartPage.r_v0_disponivel': 'R$ {v0} disponível',
+  'cartPage.r_0_00_disponivel': 'R$ 0,00 disponível',
+  'cartPage.voce_vai_ganhar_r': 'Você vai ganhar ~R$',
+  'cartPage.de_cashback_nesse_pedido': 'de cashback nesse pedido.',
+  'cartPage.observacao_2': 'Observação',
+  'cartPage.cupom': 'Cupom (',
+  'cartPage.taxa_de_entrega': 'Taxa de entrega',
+  'cartPage.remover_item': 'Remover item?',
+  'cartPage.sera_removido_do_seu': 'será removido do seu carrinho.',
+  'cartPage.remover': 'Remover',
+  'customerCashbackPage.vence_em_breve': 'Vence em breve',
+  'customerCashbackPage.valido': 'Válido',
+  'customerCashbackPage.sem_data_de_validade': 'Sem data de validade',
+  'customerCashbackPage.credito_original_de': 'Crédito original de',
+  'customerCashbackPage.expirado': 'Expirado',
+  'customerCashbackPage.ganho_em': 'Ganho em',
+  'customerCashbackPage.expirou_dia': 'Expirou dia',
+  'customerCashbackPage.nao_utilizado_credito_original': 'Não utilizado (crédito original de',
+  'customerCashbackPage.cashback_utilizado': 'Cashback utilizado',
+  'customerCashbackPage.utilizado': 'Utilizado',
+  'customerCashbackPage.total_do_pedido': 'Total do pedido:',
+  'customerCashbackPage.indisponivel': 'indisponível',
+  'customerCashbackPage.voce_nao_tem_cashback': 'Você não tem cashback disponível agora. Faça um pedido pra começar a ganhar!',
+  'customerCashbackPage.nenhum_cashback_expirou_ate': 'Nenhum cashback expirou até agora.',
+  'customerCashbackPage.voce_ainda_nao_usou': 'Você ainda não usou cashback em nenhum pedido.',
+  'customerCashbackPage.saldo_disponivel': 'Saldo disponível',
+  'customerCashbackPage.use_no_carrinho_quando': 'Use no carrinho quando quiser — marque a caixinha "Usar meu saldo de cashback" no checkout.',
+  'customerCashbackPage.categorias_de_cashback': 'Categorias de cashback',
+  'customerPixWalletPage.nao_foi_possivel_salvar': 'Não foi possível salvar sua chave Pix agora.',
+  'customerPixWalletPage.guardamos_so_a_sua': 'Guardamos só a sua chave — nenhum saldo fica com a gente. Ela serve pra',
+  'customerPixWalletPage.devolver_dinheiro_direto_pra': 'devolver dinheiro direto pra você, caso um pedido seja cancelado ou reembolsado.',
+  'customerPixWalletPage.chave_salva': 'Chave salva',
+  'customerPixWalletPage.editar': 'Editar',
+  'customerPixWalletPage.tipo_de_chave': 'Tipo de chave',
+  'customerPixWalletPage.celular': 'Celular',
+  'customerPixWalletPage.cpf': 'CPF',
+  'customerPixWalletPage.chave_aleatoria': 'Chave aleatória',
+  'customerPixWalletPage.sua_chave_pix': 'Sua chave Pix',
+  'customerPixWalletPage.salvar_chave_pix': 'Salvar chave Pix',
+  'customerProfilePage.em_breve': '· em breve',
+  'editProfilePage.nao_foi_possivel_enviar': 'Não foi possível enviar a foto. Tente novamente.',
+  'editProfilePage.nao_foi_possivel_definir': 'Não foi possível definir o avatar. Tente novamente.',
+  'editProfilePage.informe_seu_nome': 'Informe seu nome.',
+  'editProfilePage.nao_foi_possivel_salvar': 'Não foi possível salvar. Confira os dados e tente de novo.',
+  'editProfilePage.alterar_foto': 'Alterar foto',
+  'editProfilePage.nome': 'Nome',
+  'editProfilePage.whatsapp': 'WhatsApp',
+  'editProfilePage.pronomes_pessoais': 'Pronomes pessoais',
+  'editProfilePage.escolha_ate_2_aparecem': 'Escolha até 2. Aparecem só na sua Conta e para o restaurante, ao lado do seu nome na mesa.',
+  'editProfilePage.genero': 'Gênero',
+  'editProfilePage.salvo': 'Salvo!',
+  'editProfilePage.salvar': 'Salvar',
+  'menuPage.nao_foi_possivel_carregar': 'Não foi possível carregar este cardápio. Verifique o link.',
+  'menuPage.este_qr_code_nao': 'Este QR code não pertence a este restaurante. Escaneie novamente o código impresso na mesa.',
+  'menuPage.garcom_chamado_alguem_vai': 'Garçom chamado! Alguém vai até a sua mesa em instantes.',
+  'menuPage.ocultar_promocoes': 'Ocultar promoções',
+  'menuPage.mostrar_promocoes': 'Mostrar promoções',
+  'menuPage.nenhuma_promocao_no_momento': 'Nenhuma promoção no momento',
+  'menuPage.nenhum_produto_encontrado': 'Nenhum produto encontrado.',
+  'myAccountPage.nao_foi_possivel_sair': 'Não foi possível sair da mesa agora. Tente novamente.',
+  'myAccountPage.seu_pedido_agora_esta': 'Seu pedido agora está: {label}',
+  'myAccountPage.nao_foi_possivel_solicitar': 'Não foi possível solicitar o fechamento. Tente novamente ou chame um garçom.',
+  'myAccountPage.conta_fechada': 'Conta fechada',
+  'myAccountPage.obrigado_pela_visita_sua': 'Obrigado pela visita! Sua conta já foi paga e encerrada.',
+  'myAccountPage.sair_da_mesa': 'Sair da mesa',
+  'myAccountPage.tem_certeza_que_quer': 'Tem certeza que quer sair dessa mesa?{v0} Pra voltar, só escaneando o QR code da mesa de novo.',
+  'myAccountPage.sim_sair_da_mesa': 'Sim, sair da mesa',
+  'myAccountPage.voce_ainda_nao_fez': 'Você ainda não fez nenhum pedido nessa mesa.',
+  'myAccountPage.gorjeta_opcional': 'Gorjeta (opcional)',
+  'myAccountPage.outro': 'Outro',
+  'myAccountPage.valor_da_gorjeta_r': 'Valor da gorjeta (R$)',
+  'myAccountPage.o_pix_nao_foi': 'O Pix não foi confirmado a tempo.',
+  'myAccountPage.fechamento_solicitado_aguarde_o': 'Fechamento solicitado — aguarde o garçom',
+  'myAccountPage.solicitar_fechamento_da_conta': 'Solicitar fechamento da conta',
+  'myReviewsPage.nao_foi_possivel_carregar': 'Não foi possível carregar suas avaliações.',
+  'myReviewsPage.voce_ainda_nao_avaliou': 'Você ainda não avaliou nada. Depois que um pedido for concluído, você recebe uma notificação pra avaliar o restaurante e os itens que pediu.',
+  'myReviewsPage.pedido': 'Pedido',
+  'orderHistoryPage.historico_de_pedidos': 'Histórico de pedidos',
+  'orderHistoryPage.voce_ainda_nao_fez': 'Você ainda não fez nenhum pedido aqui.',
+  'orderHistoryPage.mostrar_pedidos_de_label': 'Mostrar pedidos de {label}',
+  'orderHistoryPage.esconder_pedidos_de_label': 'Esconder pedidos de {label}',
+  'orderHistoryPage.pedido_feito': 'pedido feito',
+  'orderHistoryPage.pedidos_feitos': 'pedidos feitos',
+  'orderReceiptAvulsoPage.nao_foi_possivel_salvar': 'Não foi possível salvar o cupom. Tenta de novo em alguns segundos.',
+  'orderReceiptAvulsoPage.cupom': 'Cupom —',
+  'orderReceiptAvulsoPage.nao_foi_possivel_carregar': 'Não foi possível carregar esse cupom.',
+  'productDetailPage.produto_nao_encontrado': 'Produto não encontrado.',
+  'productDetailPage.maximo_de_maxselect_opcoes': 'Máximo de {maxSelect} opções em "{groupName}".',
+  'productDetailPage.escolha_uma_opcao_em': 'Escolha uma opção em "{name}" antes de continuar.',
+  'productDetailPage.escolha_pelo_menos_minselect': 'Escolha pelo menos {minSelect} opções em "{name}" antes de continuar.',
+  'productDetailPage.olha_esse_item_de': 'Olha esse item de {name}',
+  'productDetailPage.ver_avaliacoes_desse_item': 'Ver avaliações desse item',
+  'productDetailPage.adicionar': 'Adicionar',
+  'promotionDetailPage.essa_promocao_nao_esta': 'Essa promoção não está mais disponível.',
+  'promotionDetailPage.voltar_pro_cardapio': 'Voltar pro cardápio',
+  'promotionDetailPage.promocao_de_name': 'Promoção de {name}',
+  'promotionDetailPage.detalhes_e_condicoes': 'DETALHES E CONDIÇÕES',
+  'promotionDetailPage.discountvalue_de_desconto': '{discountValue}% de desconto',
+  'promotionDetailPage.r_v0_de_desconto': 'R$ {v0} de desconto',
+  'promotionDetailPage.pedido_minimo_de_r': 'Pedido mínimo de R$ {v0}',
+  'promotionDetailPage.valida_para_todos_os': 'Válida para todos os itens do cardápio',
+  'promotionDetailPage.valida_so_para_v0': 'Válida só para: {v0}',
+  'promotionDetailPage.valida_para_itens_selecionados': 'Válida para itens selecionados',
+  'promotionDetailPage.limite_de_1_uso': 'Limite de 1 uso por cliente',
+  'promotionDetailPage.limite_de_usagelimitpercustomer_usos': 'Limite de {usageLimitPerCustomer} usos por cliente',
+  'promotionDetailPage.valida_ate_v0': 'Válida até {v0}',
+  'promotionDetailPage.voce_ja_usou_essa': 'Você já usou essa promoção.',
+  'promotionDetailPage.voce_economiza': 'Você economiza',
+  'promotionDetailPage.com_o_carrinho_atual': 'com o carrinho atual.',
+  'promotionDetailPage.promocao_ja_utilizada': 'Promoção já utilizada',
+  'promotionDetailPage.remover_promocao': 'Remover promoção',
+  'promotionDetailPage.usar_promocao': 'Usar promoção',
+  'savedAddressPage.nao_conseguimos_localizar_esse': 'Não conseguimos localizar esse endereço. Confira os dados e tente de novo.',
+  'savedAddressPage.endereco_confirmado': 'Endereço confirmado',
+  'savedAddressPage.nao_conseguimos_confirmar_o': 'Não conseguimos confirmar o número exato — confira se está certo.',
+  'savedAddressPage.ponto_de_referencia_opcional': 'Ponto de referência (opcional)',
+  'savedAddressPage.confirmar_endereco': 'Confirmar endereço',
+  'category.lanches': 'Lanches',
+  'category.hamburgueres': 'Hambúrgueres',
+  'category.hot-dogs': 'Hot Dogs',
+  'category.sanduiches': 'Sanduíches / Wraps',
+  'category.pizzas': 'Pizzas',
+  'category.tacos-burritos': 'Tacos / Burritos',
+  'category.sushi': 'Sushi / Sashimi',
+  'category.pratos-japoneses': 'Temakis / Yakisoba / Pratos Japoneses',
+  'category.massas-risotos': 'Massas e Risotos',
+  'category.pratos-principais': 'Pratos Principais',
+  'category.pratos-executivos': 'Pratos do Dia / Executivos',
+  'category.carnes-grelhados': 'Carnes e Grelhados',
+  'category.peixes-frutos-do-mar': 'Peixes e Frutos do Mar',
+  'category.entradas': 'Entradas',
+  'category.petiscos': 'Petiscos / Aperitivos',
+  'category.porcoes': 'Porções',
+  'category.tabuas-frios': 'Tábuas / Frios',
+  'category.saladas': 'Saladas',
+  'category.sopas-caldos': 'Sopas e Caldos',
+  'category.acompanhamentos': 'Acompanhamentos / Guarnições',
+  'category.combinados': 'Combinados',
+  'category.pratos-compartilhar': 'Pratos para Compartilhar',
+  'category.menu-vegetariano': 'Menu Vegetariano / Vegano',
+  'category.menu-infantil': 'Menu Infantil / Kids',
+  'category.menu-degustacao': 'Menu Degustação',
+  'category.cafe-da-manha': 'Café da Manhã / Brunch',
+  'category.paes-panificados': 'Pães / Panificados',
+  'category.bebidas': 'Bebidas',
+  'category.cafes': 'Cafés',
+  'category.cafes-especiais': 'Cafés Especiais',
+  'category.chas': 'Chás / Infusões',
+  'category.sucos': 'Sucos',
+  'category.refrigerantes': 'Refrigerantes',
+  'category.aguas': 'Águas',
+  'category.energeticos': 'Energéticos',
+  'category.cervejas': 'Cervejas',
+  'category.drinks': 'Drinks / Coquetéis',
+  'category.destilados': 'Destilados',
+  'category.vinhos': 'Vinhos',
+  'category.espumantes': 'Espumantes',
+  'category.sobremesas': 'Sobremesas',
+  'category.doces-confeitaria': 'Doces / Confeitaria',
+  'category.bolos': 'Bolos',
+  'category.tortas': 'Tortas',
+  'category.sorvetes': 'Sorvetes',
+  'category.acai': 'Açaí',
+  'category.milkshakes': 'Milkshakes',
+  'category.donuts': 'Donuts',
+  'category.cupcakes': 'Cupcakes',
+  'category.cookies': 'Cookies',
+  'category.chocolates': 'Chocolates',
+  'category.pudins': 'Pudins / Flans',
+  'category.waffles-panquecas': 'Waffles / Panquecas',
+  'category.frutas': 'Frutas / Salada de Frutas',
+  'category.bowls': 'Bowls',
+  'category.avocado-toasts': 'Avocado / Toasts',
+  'category.pratos-saudaveis': 'Pratos Saudáveis',
+  'category.low-carb': 'Low Carb',
+  'category.fitness-proteicos': 'Fitness / Proteicos',
+  'category.smoothies': 'Smoothies / Detox',
+  'category.nigiri': 'Nigiri',
+  'category.uramaki': 'Uramaki',
+  'category.hossomaki': 'Hossomaki',
+  'category.temaki': 'Temaki',
+  'category.hot-roll': 'Hot',
+  'category.yakissoba': 'Yakissoba',
+  'category.donburi': 'Donburi',
+  'category.rodizio': 'Rodízio',
+  'category.molhos-extras': 'Molhos / Extras',
+  'category.entradas-chinesas': 'Entradas Chinesas',
+  'category.dumplings-pasteis': 'Dumplings / Pastéis',
+  'category.rolinhos-primavera': 'Rolinhos Primavera',
+  'category.sopas-chinesas': 'Sopas Chinesas',
+  'category.arroz-chao-fan': 'Arroz / Chao Fan',
+  'category.yakisoba-chines': 'Yakisoba Chinês / Macarrão',
+  'category.frango-xadrez-kung-pao': 'Frango Xadrez / Kung Pao',
+  'category.porco-agridoce': 'Porco Agridoce',
+  'category.pato-especialidades': 'Pato / Especialidades',
+  'category.combinados-chineses': 'Combinados Chineses',
+  'category.vegetarianos-chineses': 'Pratos Vegetarianos Chineses',
+  'category.bebidas-chinesas-chas': 'Bebidas Chinesas / Chás',
+  'category.entradas-coreanas': 'Entradas Coreanas',
+  'category.kimchi-banchan': 'Kimchi / Banchan',
+  'category.mandu': 'Mandu (Dumplings Coreanos)',
+  'category.bibimbap': 'Bibimbap',
+  'category.bulgogi': 'Bulgogi',
+  'category.japchae': 'Japchae',
+  'category.ramyeon': 'Ramen / Ramyeon',
+  'category.tteokbokki': 'Tteokbokki',
+  'category.frango-frito-coreano': 'Fried Chicken Coreano',
+  'category.combinados-coreanos': 'Combinados Coreanos',
+  'category.vegetarianos-coreanos': 'Pratos Vegetarianos Coreanos',
+  'category.bebidas-coreanas-soju': 'Bebidas Coreanas / Soju',
+  'category.pizzas-doces': 'Pizzas Doces',
+  'category.pizzas-especiais': 'Pizzas Especiais',
+  'category.calzones': 'Calzones',
+  'category.esfihas': 'Esfihas',
+  'category.salgados': 'Salgados',
+  'category.croissants-viennoiseries': 'Croissants / Viennoiseries',
+  'category.caipirinhas': 'Caipirinhas',
+  'category.shots': 'Shots',
+  'category.whisky': 'Whisky',
+
+  'myAccountPage.voce_abriu_a_mesa': ' Você abriu a mesa, mas a conta continua pra quem ficar.',
+
+  'pronoun.ela': 'ela',
+  'pronoun.dela': 'dela',
+  'pronoun.elas': 'elas',
+  'pronoun.delas': 'delas',
+  'pronoun.ele': 'ele',
+  'pronoun.dele': 'dele',
+  'pronoun.eles': 'eles',
+  'pronoun.deles': 'deles',
+  'pronoun.groupFeminine': 'Tradicionais Femininos',
+  'pronoun.groupMasculine': 'Tradicionais Masculinos',
+  'verification.reasons.foto_sem_rosto_claro': 'A foto não mostra seu rosto claramente',
+  'verification.reasons.foto_baixa_qualidade': 'A foto está com qualidade baixa (borrada, escura ou cortada)',
+  'verification.reasons.suspeita_falsificacao': 'A foto parece ser de uma tela, impressão ou imagem da internet',
+  'verification.reasons.nao_condiz_com_perfil': 'A foto não parece condizer com o restante do seu perfil',
+  'verification.reasons.multiplas_pessoas': 'A foto mostra mais de uma pessoa',
+  'verification.reasons.outro_motivo': 'Outro motivo',
+  'cashback.tab.available': 'Disponíveis',
+  'cashback.tab.expired': 'Expirados',
+  'cashback.tab.used': 'Utilizados',
+  'cashback.earnedOn': 'ganho em',
+  'cashback.at': 'às',
+  'cashback.expiresOn': 'Vence dia {date}',
+  'cashback.expiredOn': 'Venceu dia {date}',
+  'cashback.expiresInHm': 'Vence em {h}h {m}min',
+  'cashback.expiresInM': 'Vence em {m} min',
+  'cashback.desc.order': 'Cashback do pedido',
+  'cashback.desc.loyalty': 'Prêmio de fidelidade',
+  'cashback.desc.adjustment': 'Ajuste do restaurante',
+  'cashback.desc.usedInOrder': 'Usado em um pedido',
+
+  'status.awaitingPix': 'Aguardando Pix',
+  'status.pending': 'Pendente',
+  'status.confirmed': 'Confirmado',
+  'status.preparing': 'Preparando',
+  'status.ready': 'Pronto',
+  'status.delivered': 'Entregue',
+  'status.cancelled': 'Cancelado',
+  'status.open': 'Em aberto',
+  'status.closing': 'Fechando',
+  'status.closed': 'Fechada',
+  'payment.pix': 'Pix',
+  'payment.card': 'Cartão',
+  'payment.cash': 'Dinheiro',
+  'pixKey.email': 'E-mail',
+  'pixKey.phone': 'Celular',
+  'pixKey.cpf': 'CPF',
+  'pixKey.random': 'Chave aleatória',
+  'gender.male': 'Masculino',
+  'gender.female': 'Feminino',
+  'gender.other': 'Outro',
+  'gender.unspecified': 'Prefiro não dizer',
+  'addons.chooseUpTo': 'Escolha até {max}',
+  'addons.chooseOne': 'Escolha 1',
+  'addons.chooseN': 'Escolha {min}',
+  'addons.chooseRange': 'Escolha de {min} a {max}',
+  'promotions.min_amount_remaining': 'Faltam R$ {missing} pro pedido mínimo de R$ {minimum}.',
+  'promotions.reason.alreadyUsed': 'Você já usou essa promoção.',
+  'promotions.reason.noEligibleItems': 'Nenhum item do seu carrinho é elegível pra essa promoção.',
+  'promotions.reason.noItemsLeft': 'Nenhum item sobrou no carrinho pra esse cupom depois dos outros aplicados.',
+  'promotions.reason.noDiscount': 'Essa promoção não gera desconto pra esse carrinho.',
+  'peopleOrders.ainda_nao_pediu_nada': 'Ainda não pediu nada',
+  'address.street': 'Rua',
+  'cart.distanceAndFee': 'Distância: {km} km · Taxa de entrega: R$ {fee}',
+  'cart.payOnDelivery': '{method} na entrega',
+  'cart.payOnPickup': '{method} na retirada',
+  'closing.availableBalance': 'Saldo disponível: R$ {amount}',
+  'pix.countdownNotification': 'Pedido aguardando pagamento Pix • faltam {minutes}:{seconds}',
+
+  // Erros genéricos
+  'error.generic': 'Ops, algo deu errado ao carregar essa tela.',
+  'error.backHome': 'Voltar ao início',
+} as const;
+
+export type TranslationKey = keyof typeof ptBR;

@@ -60,14 +60,18 @@ export function TableMenuHeader({
         <BannerViewer tenant={tenant} />
 
         <div className="absolute top-3.5 right-3.5 z-10">
-          <ThemeToggle variant="floating" />
+          <ThemeToggle />
         </div>
       </div>
 
       <div className={MENU_HEADER_SHEET}>
         <div className="md:flex md:items-center md:gap-8">
           <div className="flex flex-col items-center text-center md:flex-row md:gap-5 md:text-left md:flex-1 md:min-w-0">
-            <div className="shrink-0">
+            {/* Mesma caixa do MenuHeader: no desktop o LogoViewer traz `-mt-10`
+                (a logo sobe sobre o banner no celular), o que aqui a deixava
+                40 px acima do bloco de nome/status. A caixa 64x64 centraliza a
+                logo na vertical e zera a margem/deslocamento herdados. */}
+            <div className="shrink-0 md:self-center md:flex md:items-center md:justify-center md:w-16 md:h-16 md:[&>*]:!m-0 md:[&>*]:!top-0 md:[&>*]:!translate-y-0">
               <LogoViewer tenant={tenant} size="w-16 h-16" />
             </div>
             <div className="flex flex-col items-center md:items-start w-full md:w-auto md:flex-1 md:min-w-0">

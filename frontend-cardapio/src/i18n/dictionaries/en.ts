@@ -148,7 +148,8 @@ export const en: Record<TranslationKey, string> = {
   'avatarPickerModal.escolher_foto_de_perfil': 'Choose profile photo',
   'avatarPickerModal.tirar_ou_escolher_foto': 'Take or choose a photo',
   'avatarPickerModal.ou_escolha_um_avatar': 'Or choose an avatar',
-  'cartBar.no_carrinho': 'in cart',
+  'cartBar.itemOne': '{count} item in your cart',
+  'cartBar.itemMany': '{count} items in your cart',
   'cashbackLoginNotice.faca_login_ou_crie': 'Sign in or create an account to enjoy the cashback benefits',
   'cashbackLoginNotice.entrar_ou_criar_conta': 'Sign in or create account',
   'categoryChips.todos': 'All',
@@ -658,4 +659,22 @@ export const en: Record<TranslationKey, string> = {
 
   'error.generic': 'Oops, something went wrong while loading this screen.',
   'error.backHome': 'Back to start',
+
+  // Painel de informações e tooltips (hover)
+  'info.address': 'Address',
+  'info.hours': 'Opening Hours',
+  'info.social': 'Social Media',
+  'info.contact': 'Contact',
+  'tooltip.cart': 'Cart',
+  'tooltip.profile': 'My account',
+  'tooltip.search': 'Search',
+  'tooltip.back': 'Back',
+  'tooltip.qrScan': 'Scan QR code',
+  'tooltip.call': 'Call',
+  'tooltip.changeUnit': 'Change location',
+  'tooltip.increase': 'Add one',
+  'tooltip.decrease': 'Remove one',
+  'tooltip.remove': 'Remove item',
+  'tooltip.viewCart': 'View cart',
+  'tooltip.delete': 'Delete',
 };

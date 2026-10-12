@@ -1,5 +1,6 @@
 import { activeDateLocale } from '../i18n/languages';
 import { useI18n } from '../i18n/I18nContext';
+import { Tooltip } from './Tooltip';
 import { useState } from 'react';
 import { Star, Trash2 } from 'lucide-react';
 import { deleteReview } from '../lib/customer-api';
@@ -62,13 +63,15 @@ export function ItemReviewDisplay({
           <Stars rating={review.rating} />
         </div>
         {!isConfirmingDelete && (
-          <button
-            onClick={() => setIsConfirmingDelete(true)}
-            className="text-gray-400 p-1 shrink-0"
-            aria-label={t('itemReviewDisplay.apagar_avaliacao')}
-          >
-            <Trash2 size={15} />
-          </button>
+          <Tooltip label={t('itemReviewDisplay.apagar_avaliacao')} className="inline-flex shrink-0">
+            <button
+              onClick={() => setIsConfirmingDelete(true)}
+              className="text-gray-400 p-1 shrink-0"
+              aria-label={t('itemReviewDisplay.apagar_avaliacao')}
+            >
+              <Trash2 size={15} />
+            </button>
+          </Tooltip>
         )}
       </div>
       <p className="text-[11px] text-gray-400">

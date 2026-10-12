@@ -1,6 +1,7 @@
 import { useI18n } from '../i18n/I18nContext';
 import { useCart } from '../contexts/CartContext';
 import { ArrowRight, ShoppingBag } from 'lucide-react';
+import { Tooltip } from './Tooltip';
 
 interface CartBarProps {
   primaryColor: string;
@@ -21,26 +22,33 @@ export function CartBar({ primaryColor, onClick }: CartBarProps) {
 
   if (totalItems === 0) return null;
 
+  // "3 items in your cart" / "1 item in your cart": um texto completo por
+  // idioma (singular e plural em chaves próprias) em vez de montar "N itens" +
+  // "no carrinho" em português por dentro do componente.
+  const itemsLabel = t(totalItems === 1 ? 'cartBar.itemOne' : 'cartBar.itemMany', { count: totalItems });
+
   return (
-    <button
-      onClick={onClick}
-      className="fixed bottom-20 left-4 right-4 max-w-md mx-auto md:bottom-8 md:left-auto md:right-8 md:mx-0 md:w-[22rem] md:max-w-none rounded-2xl pl-3 pr-3.5 py-3 flex items-center gap-3 text-white text-left shadow-[0_10px_28px_rgba(0,0,0,0.22)] ring-1 ring-black/5 dark:ring-white/15 md:hover:brightness-110 transition-[filter] z-50"
-      style={{ backgroundColor: primaryColor, transform: 'translateZ(0)' }}
-    >
-      <span className="shrink-0 w-10 h-10 rounded-full bg-white/15 flex items-center justify-center">
-        <ShoppingBag size={18} strokeWidth={1.5} />
-      </span>
-      <span className="flex-1 min-w-0">
-        <span className="block text-[11px] leading-tight text-white/80">
-          {totalItems} {totalItems === 1 ? 'item' : 'itens'} {t('cartBar.no_carrinho')}
+    // `contents`: o botão é `fixed`; o invólucro não pode ganhar caixa própria.
+    <Tooltip label={t('tooltip.viewCart')} className="contents">
+      <button
+        onClick={onClick}
+        aria-label={`${itemsLabel} · ${t('tooltip.viewCart')}`}
+        className="fixed bottom-20 left-4 right-4 max-w-md mx-auto md:bottom-8 md:left-auto md:right-8 md:mx-0 md:w-[22rem] md:max-w-none rounded-2xl pl-3 pr-3.5 py-3 flex items-center gap-3 text-white text-left shadow-[0_10px_28px_rgba(0,0,0,0.22)] ring-1 ring-black/5 dark:ring-white/15 md:hover:brightness-110 transition-[filter] z-50"
+        style={{ backgroundColor: primaryColor, transform: 'translateZ(0)' }}
+      >
+        <span className="shrink-0 w-10 h-10 rounded-full bg-white/15 flex items-center justify-center">
+          <ShoppingBag size={18} strokeWidth={1.5} />
         </span>
-        <span className="block text-base font-bold leading-tight mt-0.5">
-          R$ {totalPrice.toFixed(2).replace('.', ',')}
+        <span className="flex-1 min-w-0">
+          <span className="block text-[11px] leading-tight text-white/80 truncate">{itemsLabel}</span>
+          <span className="block text-base font-bold leading-tight mt-0.5">
+            R$ {totalPrice.toFixed(2).replace('.', ',')}
+          </span>
         </span>
-      </span>
-      <span className="shrink-0 w-8 h-8 rounded-full bg-white/15 flex items-center justify-center">
-        <ArrowRight size={16} strokeWidth={2} />
-      </span>
-    </button>
+        <span className="shrink-0 w-8 h-8 rounded-full bg-white/15 flex items-center justify-center">
+          <ArrowRight size={16} strokeWidth={2} />
+        </span>
+      </button>
+    </Tooltip>
   );
 }

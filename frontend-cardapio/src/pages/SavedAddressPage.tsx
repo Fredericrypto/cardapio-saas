@@ -1,4 +1,5 @@
 import { useI18n } from '../i18n/I18nContext';
+import { Tooltip } from '../components/Tooltip';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, MapPin, AlertTriangle, Trash2 } from 'lucide-react';
@@ -138,13 +139,16 @@ export function SavedAddressPage() {
               >
                 {t('customerPixWalletPage.editar')}
               </button>
-              <button
-                onClick={handleRemove}
-                disabled={isRemoving}
-                className="py-2 px-3 rounded-lg border border-red-100 text-red-500"
-              >
-                <Trash2 size={14} />
-              </button>
+              <Tooltip label={t('tooltip.delete')}>
+                <button
+                  onClick={handleRemove}
+                  disabled={isRemoving}
+                  aria-label={t('tooltip.delete')}
+                  className="py-2 px-3 rounded-lg border border-red-100 text-red-500"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </Tooltip>
             </div>
           </div>
         )}

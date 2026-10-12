@@ -15,6 +15,7 @@ import {
   EmailOutlineIcon,
 } from './SocialOutlineIcons';
 import { ACTION_BUTTON_BASE } from '../lib/uiClasses';
+import { Tooltip } from './Tooltip';
 import {
   buildWhatsappLink,
   buildInstagramLink,
@@ -143,16 +144,10 @@ export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelPro
   const [expanded, setExpanded] = useState(false);
   const { t } = useI18n();
   const weekSchedule = getWeekScheduleLines(location?.openingHours ?? null, t);
+  // O texto de dia fechado vem do dicionário ("Fechado" / "Closed" / "Cerrado"); comparar com o
+  // literal em português deixava o dia fechado sem o vermelho em inglês e espanhol.
+  const closedDayLabel = t('store.hoursClosedDay');
 
-  // Títulos das colunas. `t` só aceita as chaves tipadas do dicionário, então a
-  // chave entra com o tipo que o próprio `t` declara (nenhuma chave nova é
-  // inventada aqui). Se ela ainda não existir no dicionário (t devolve vazio ou
-  // a própria chave), cai no texto em português.
-  type TranslationKey = Parameters<typeof t>[0];
-  const label = (key: string, fallback: string) => {
-    const value: unknown = t(key as TranslationKey);
-    return typeof value === 'string' && value && value !== key ? value : fallback;
-  };
 
   // Só os ícones (sem número/usuário escrito do lado). Desde a z6-09 todos são
   // OUTLINED, do mesmo tamanho e na cor do texto do tema (SocialOutlineIcons),
@@ -181,7 +176,7 @@ export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelPro
     socialLinks.push({ key: 'tiktok', href: buildTiktokLink(tenant.tiktokHandle), label: 'TikTok', Icon: TikTokOutlineIcon, external: true });
   }
   if (tenant.twitterHandle) {
-    socialLinks.push({ key: 'twitter', href: buildTwitterLink(tenant.twitterHandle), label: 'X (Twitter)', Icon: XOutlineIcon, external: true });
+    socialLinks.push({ key: 'twitter', href: buildTwitterLink(tenant.twitterHandle), label: 'X / Twitter', Icon: XOutlineIcon, external: true });
   }
   if (tenant.messengerUsername) {
     socialLinks.push({ key: 'messenger', href: buildMessengerLink(tenant.messengerUsername), label: 'Messenger', Icon: MessengerOutlineIcon, external: true });
@@ -223,7 +218,7 @@ export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelPro
             className={`mt-3 px-2 pb-1 flex flex-col items-center gap-4 text-xs text-center md:grid ${INFO_GRID_COLS[columnCount]} md:items-stretch md:gap-x-8 md:gap-y-6 md:px-1 ${MENU_TEXT_BODY}`}
           >
             {location?.address && (
-              <InfoColumn title={label('info.address', 'Endereço')}>
+              <InfoColumn title={t('info.address')}>
                 <div className="flex flex-col items-center gap-1 md:flex-row md:justify-center md:gap-2.5">
                   <MapPin size={13} strokeWidth={1.5} className={`shrink-0 ${MENU_TEXT_MUTED}`} />
                   {/* Endereço em duas linhas (rua e bairro / cidade - UF, CEP);
@@ -238,13 +233,13 @@ export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelPro
             )}
 
             {weekSchedule && (
-              <InfoColumn title={label('info.hours', 'Horários')} divider={showAddress}>
+              <InfoColumn title={t('info.hours')} divider={showAddress}>
                 <div className="flex flex-col gap-1 text-left">
                   {/* Relógio em TODAS as linhas; dia fechado em vermelho. */}
                   {weekSchedule.map((line) => (
                     <span key={line.day} className="flex items-center gap-1.5">
                       <Clock size={13} strokeWidth={1.5} className={`shrink-0 ${MENU_TEXT_MUTED}`} />
-                      <span className={line.hours === 'Fechado' ? 'text-red-500 dark:text-red-400 font-medium' : ''}>
+                      <span className={line.hours === closedDayLabel ? 'text-red-500 dark:text-red-400 font-medium' : ''}>
                         {line.day}: {line.hours}
                       </span>
                     </span>
@@ -255,21 +250,22 @@ export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelPro
 
             {hasContactBlock && (
               <InfoColumn
-                title={hasSocialLinks ? label('info.social', 'Redes sociais') : label('info.contact', 'Contato')}
+                title={hasSocialLinks ? t('info.social') : t('info.contact')}
                 divider={showAddress || showHours}
               >
                 {hasSocialLinks && (
                   <div className="flex flex-row flex-wrap items-center justify-center gap-x-1.5 gap-y-2 md:gap-x-2">
                     {socialLinks.map(({ key, href, label: linkLabel, Icon, external }) => (
-                      <a
-                        key={key}
-                        href={href}
-                        {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-                        className={`w-9 h-9 md:w-10 md:h-10 shrink-0 rounded-full flex items-center justify-center transition-colors active:opacity-70 md:hover:bg-[#F3F4F6] dark:md:hover:bg-white/10 ${MENU_TEXT_BODY} md:hover:text-[#111827] dark:md:hover:text-[#E3E2E6]`}
-                        aria-label={linkLabel}
-                      >
-                        <Icon size={24} />
-                      </a>
+                      <Tooltip key={key} label={linkLabel} className="inline-flex shrink-0">
+                        <a
+                          href={href}
+                          {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                          className={`w-9 h-9 md:w-10 md:h-10 shrink-0 rounded-full flex items-center justify-center transition-colors active:opacity-70 md:hover:bg-[#F3F4F6] dark:md:hover:bg-white/10 ${MENU_TEXT_BODY} md:hover:text-[#111827] dark:md:hover:text-[#E3E2E6]`}
+                          aria-label={linkLabel}
+                        >
+                          <Icon size={24} />
+                        </a>
+                      </Tooltip>
                     ))}
                   </div>
                 )}
@@ -277,14 +273,16 @@ export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelPro
                 {/* Telefone de contato "puro" (não WhatsApp), formatado; abre o
                     discador com o número original. */}
                 {location?.contactPhoneNumber && (
-                  <a
-                    href={buildPhoneLink(location.contactPhoneNumber)}
-                    className={`w-full text-white ${ACTION_BUTTON_BASE}`}
-                    style={{ backgroundColor: tenant.primaryColor }}
-                  >
-                    <Phone size={14} strokeWidth={1.5} className="shrink-0" />
-                    <span>{formatPhoneBR(location.contactPhoneNumber)}</span>
-                  </a>
+                  <Tooltip label={t('tooltip.call')} className="flex w-full">
+                    <a
+                      href={buildPhoneLink(location.contactPhoneNumber)}
+                      className={`w-full text-white ${ACTION_BUTTON_BASE}`}
+                      style={{ backgroundColor: tenant.primaryColor }}
+                    >
+                      <Phone size={14} strokeWidth={1.5} className="shrink-0" />
+                      <span>{formatPhoneBR(location.contactPhoneNumber)}</span>
+                    </a>
+                  </Tooltip>
                 )}
               </InfoColumn>
             )}

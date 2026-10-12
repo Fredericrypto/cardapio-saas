@@ -5,6 +5,7 @@ import type { Product } from '../types';
 import { useCart } from '../contexts/CartContext';
 import { CLOSED_MUTED_CLASS } from '../lib/storeStatus';
 import { ShareButton } from './ShareButton';
+import { Tooltip } from './Tooltip';
 import { useAccentColor } from '../hooks/useAccentColor';
 import {
   MENU_BORDER,
@@ -80,49 +81,67 @@ export function ProductCard({ product, primaryColor, onClick, storeClosed = fals
           </span>
         )}
 
+        {/* Os três estados do botão redondo (loja fechada, item indisponível,
+            adicionar) usam o `Tooltip` com invólucro `contents`: o botão segue
+            posicionado (absolute) em relação à foto, como antes. Sem `title`
+            nativo (seria um segundo balão). */}
         {storeClosed && !isUnavailable ? (
-          <span
-            aria-label={`${localizedField(product, 'name')}: ${t('store.closedEstablishment')}`}
-            title={t('store.closedEstablishment')}
-            className="absolute -bottom-3 right-2.5 md:-bottom-4 md:right-3 w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center text-white shadow-md border-2 border-white dark:border-[#1E1E20] bg-gray-400 cursor-not-allowed"
-          >
-            <Ban size={15} strokeWidth={1.5} />
-          </span>
+          <Tooltip label={t('store.closedEstablishment')} className="contents">
+            <span
+              aria-label={`${localizedField(product, 'name')}: ${t('store.closedEstablishment')}`}
+              className="absolute -bottom-3 right-2.5 md:-bottom-4 md:right-3 w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center text-white shadow-md border-2 border-white dark:border-[#1E1E20] bg-gray-400 cursor-not-allowed"
+            >
+              <Ban size={15} strokeWidth={1.5} />
+            </span>
+          </Tooltip>
         ) : isUnavailable ? (
-          <span
-            aria-label={t('product.unavailable', { name: localizedField(product, 'name') })}
-            className="absolute -bottom-3 right-2.5 md:-bottom-4 md:right-3 w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center text-white shadow-md border-2 border-white dark:border-[#1E1E20] bg-gray-400 cursor-not-allowed"
-          >
-            <Ban size={15} strokeWidth={1.5} />
-          </span>
+          <Tooltip label={t('productCard.indisponivel')} className="contents">
+            <span
+              aria-label={t('product.unavailable', { name: localizedField(product, 'name') })}
+              className="absolute -bottom-3 right-2.5 md:-bottom-4 md:right-3 w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center text-white shadow-md border-2 border-white dark:border-[#1E1E20] bg-gray-400 cursor-not-allowed"
+            >
+              <Ban size={15} strokeWidth={1.5} />
+            </span>
+          </Tooltip>
         ) : (
-        <span
-            role="button"
-            aria-label={t('product.add', { name: product.name })}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (hasRequiredOptions) {
-                onClick(); // tem escolha obrigatória — precisa passar pela tela de detalhe
-              } else {
-                addItem(product);
-              }
-            }}
-            className="absolute -bottom-3 right-2.5 md:-bottom-4 md:right-3 w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center text-white shadow-md active:scale-90 transition-transform border-2 border-white dark:border-[#1E1E20]"
-            style={{ backgroundColor: primaryColor }}
-          >
-            <Plus size={16} strokeWidth={2.75} />
-          </span>
+          <Tooltip label={t('product.add', { name: localizedField(product, 'name') })} className="contents">
+            <span
+              role="button"
+              aria-label={t('product.add', { name: localizedField(product, 'name') })}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (hasRequiredOptions) {
+                  onClick(); // tem escolha obrigatória — precisa passar pela tela de detalhe
+                } else {
+                  addItem(product);
+                }
+              }}
+              className="absolute -bottom-3 right-2.5 md:-bottom-4 md:right-3 w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center text-white shadow-md active:scale-90 transition-transform border-2 border-white dark:border-[#1E1E20]"
+              style={{ backgroundColor: primaryColor }}
+            >
+              <Plus size={16} strokeWidth={2.75} />
+            </span>
+          </Tooltip>
         )}
       </div>
 
       <div className="flex flex-col flex-1 px-2.5 pt-2.5 pb-3 md:px-3.5 md:pt-4 md:pb-4">
-        <p className={`font-display font-bold text-[13px] md:text-sm leading-tight line-clamp-1 ${isUnavailable ? MENU_TEXT_MUTED : MENU_TEXT}`}>
-          {localizedField(product, 'name')}
-        </p>
-        {product.description && (
-          <p className={`text-[11px] md:text-xs mt-0.5 line-clamp-1 leading-snug ${MENU_TEXT_MUTED}`}>
-            {localizedField(product, 'description')}
+        {/* Nome e descrição de uma linha só: o balão com o texto completo abre
+            apenas quando o texto está cortado (reticências). */}
+        <Tooltip label={localizedField(product, 'name')} onlyIfTruncated className="block min-w-0">
+          <p
+            data-truncate
+            className={`font-display font-bold text-[13px] md:text-sm leading-tight truncate ${isUnavailable ? MENU_TEXT_MUTED : MENU_TEXT}`}
+          >
+            {localizedField(product, 'name')}
           </p>
+        </Tooltip>
+        {product.description && (
+          <Tooltip label={localizedField(product, 'description')} onlyIfTruncated className="block min-w-0">
+            <p data-truncate className={`text-[11px] md:text-xs mt-0.5 truncate leading-snug ${MENU_TEXT_MUTED}`}>
+              {localizedField(product, 'description')}
+            </p>
+          </Tooltip>
         )}
         <div className="flex items-baseline gap-1.5 mt-auto pt-1.5">
           {hasPromo && (

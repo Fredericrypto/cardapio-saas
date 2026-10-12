@@ -8,6 +8,7 @@ import { RestaurantInfoPanel } from './RestaurantInfoPanel';
 import { QrScanButton } from './QrScanButton';
 import { ReviewBadge, OpenStatusRow } from './HeaderStatus';
 import { ThemeToggle } from './ThemeToggle';
+import { Tooltip } from './Tooltip';
 import {
   MENU_BANNER_BASE,
   MENU_BORDER,
@@ -67,18 +68,20 @@ export function MenuHeader({ tenant, location, onBack }: MenuHeaderProps) {
             seletor ao lado do cartão). Sobre a foto, então
             no escuro usa vidro preto translúcido em vez de círculo branco. */}
         {onBack && (
-          <button
-            onClick={onBack}
-            aria-label={t('common.back')}
-            className="absolute z-10 top-3.5 left-3.5 md:hidden h-9 w-9 rounded-full bg-white/90 text-[#374151] dark:bg-black/55 dark:text-white backdrop-blur-sm flex items-center justify-center shadow-sm active:scale-90 transition-transform"
-          >
-            <ChevronLeft size={20} strokeWidth={1.5} className="shrink-0" />
-          </button>
+          <Tooltip label={t('tooltip.back')} className="contents">
+            <button
+              onClick={onBack}
+              aria-label={t('common.back')}
+              className="absolute z-10 top-3.5 left-3.5 md:hidden h-9 w-9 rounded-full bg-white/90 text-[#374151] dark:bg-black/55 dark:text-white backdrop-blur-sm flex items-center justify-center shadow-sm active:scale-90 transition-transform"
+            >
+              <ChevronLeft size={20} strokeWidth={1.5} className="shrink-0" />
+            </button>
+          </Tooltip>
         )}
 
         {/* Alternador de tema (claro/escuro), mesmo posicionamento do header de mesa. */}
         <div className="absolute top-3.5 right-3.5 z-10">
-          <ThemeToggle variant="floating" />
+          <ThemeToggle />
         </div>
       </div>
 
@@ -113,7 +116,9 @@ export function MenuHeader({ tenant, location, onBack }: MenuHeaderProps) {
                   {tenant.name}
                 </h1>
                 <div className="absolute right-0 top-1/2 -translate-y-1/2 md:static md:translate-y-0 md:shrink-0">
-                  <QrScanButton />
+                  <Tooltip label={t('tooltip.qrScan')} className="contents">
+                    <QrScanButton />
+                  </Tooltip>
                 </div>
               </div>
               {/* No celular o nome da unidade fica sob o nome do restaurante;
@@ -171,26 +176,39 @@ export function MenuHeader({ tenant, location, onBack }: MenuHeaderProps) {
 // presente) vira um seletor: tocar leva à tela de escolha de loja, a mesma
 // rota do botão Voltar. Com uma unidade só é um rótulo estático.
 function UnitIndicator({ name, onChange }: { name: string; onChange?: () => void }) {
+  const { t } = useI18n();
   const base = `hidden md:flex items-center gap-2 w-full rounded-xl border px-3 py-2 text-left ${MENU_SURFACE_SUBTLE} ${MENU_BORDER}`;
   const content = (
     <>
       <MapPin size={15} strokeWidth={1.5} className={`shrink-0 ${MENU_TEXT_MUTED}`} />
-      <span className={`flex-1 min-w-0 truncate text-sm font-medium ${MENU_TEXT_SOFT}`} title={name}>
+      <span data-truncate className={`flex-1 min-w-0 truncate text-sm font-medium ${MENU_TEXT_SOFT}`}>
         {name}
       </span>
       {onChange && <ChevronDown size={15} strokeWidth={1.5} className={`shrink-0 ${MENU_TEXT_MUTED}`} />}
     </>
   );
 
-  if (!onChange) return <div className={base}>{content}</div>;
+  // Uma unidade só: rótulo estático; o balão (nome completo) só aparece se o
+  // nome estiver cortado. Várias unidades: botão que troca de unidade — o balão
+  // sempre aparece ("Trocar de unidade: <nome>"). O invólucro replica o
+  // `hidden md:flex` do indicador (some no celular, sem ocupar espaço).
+  if (!onChange) {
+    return (
+      <Tooltip label={name} onlyIfTruncated className="hidden md:flex w-full">
+        <div className={base}>{content}</div>
+      </Tooltip>
+    );
+  }
   return (
-    <button
-      type="button"
-      onClick={onChange}
-      aria-label={name}
-      className={`${base} transition-colors md:hover:brightness-95 dark:md:hover:brightness-110`}
-    >
-      {content}
-    </button>
+    <Tooltip label={`${t('tooltip.changeUnit')}: ${name}`} className="hidden md:flex w-full">
+      <button
+        type="button"
+        onClick={onChange}
+        aria-label={name}
+        className={`${base} transition-colors md:hover:brightness-95 dark:md:hover:brightness-110`}
+      >
+        {content}
+      </button>
+    </Tooltip>
   );
 }

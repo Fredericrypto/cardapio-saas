@@ -2,6 +2,7 @@ import { useI18n } from '../i18n/I18nContext';
 import { useCallback, useState } from 'react';
 import { Share2 } from 'lucide-react';
 import { FloatingNotice } from './FloatingNotice';
+import { Tooltip } from './Tooltip';
 
 interface ShareButtonProps {
   url: string;
@@ -39,6 +40,12 @@ async function copyToClipboard(text: string): Promise<boolean> {
 // e-mail...) e, onde ela não existe (desktop), copia o link e avisa.
 // Usa <span role="button"> quando está dentro de um card clicável (um <button>
 // dentro de <button> é HTML inválido) — o clique não propaga para o card.
+//
+// É o ÚNICO botão de compartilhar do app (cards de item, cards de promoção e
+// páginas de detalhe) e já traz o balão "Share" do `Tooltip` embutido: quem usa
+// não envolve em outro Tooltip e não há `title` nativo (seria um segundo balão).
+// O invólucro é `contents` porque o botão é posicionado (absolute) pelo chamador
+// em relação ao card e não pode ganhar um pai com caixa.
 export function ShareButton({ url, title, text, variant = 'overlay', className = '' }: ShareButtonProps) {
   const { t } = useI18n();
   const [notice, setNotice] = useState<string | null>(null);
@@ -66,19 +73,20 @@ export function ShareButton({ url, title, text, variant = 'overlay', className =
 
   return (
     <>
-      <span
-        role="button"
-        tabIndex={0}
-        aria-label={t('share.shareItem', { title })}
-        title={t('share.share')}
-        onClick={share}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') void share(e);
-        }}
-        className={`${look} rounded-full flex items-center justify-center text-gray-700 dark:text-gray-200 active:scale-90 transition-transform cursor-pointer ${className}`}
-      >
-        <Share2 size={variant === 'overlay' ? 17 : 14} strokeWidth={1.5} />
-      </span>
+      <Tooltip label={t('share.share')} className="contents">
+        <span
+          role="button"
+          tabIndex={0}
+          aria-label={t('share.shareItem', { title })}
+          onClick={share}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') void share(e);
+          }}
+          className={`${look} rounded-full flex items-center justify-center text-gray-700 dark:text-gray-200 active:scale-90 transition-transform cursor-pointer ${className}`}
+        >
+          <Share2 size={variant === 'overlay' ? 17 : 14} strokeWidth={1.5} />
+        </span>
+      </Tooltip>
       {notice && <FloatingNotice message={notice} onDone={clearNotice} durationMs={3000} />}
     </>
   );

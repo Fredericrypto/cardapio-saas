@@ -6,6 +6,7 @@ import type { Promotion } from '../types';
 import { CLOSED_MUTED_CLASS } from '../lib/storeStatus';
 import { ShareButton } from './ShareButton';
 import { useWheelHorizontalScroll } from '../hooks/useWheelHorizontalScroll';
+import { Tooltip } from './Tooltip';
 
 interface PromoCardsProps {
   promotions: Promotion[];
@@ -143,9 +144,13 @@ function PromoCard({
               {localizedField(promo, 'title')}
             </p>
             {promo.description && (
-              <p className="text-white/90 text-[11px] mt-0.5 line-clamp-1 leading-snug">
-                {localizedField(promo, 'description')}
-              </p>
+              // Descrição de uma linha: o balão com o texto completo só abre
+              // quando ela está de fato cortada (reticências).
+              <Tooltip label={localizedField(promo, 'description')} onlyIfTruncated className="block min-w-0">
+                <p data-truncate className="text-white/90 text-[11px] mt-0.5 truncate leading-snug">
+                  {localizedField(promo, 'description')}
+                </p>
+              </Tooltip>
             )}
           </div>
         </div>

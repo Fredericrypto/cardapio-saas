@@ -15,6 +15,7 @@ import { useTenant } from '../contexts/TenantContext';
 import { CartIcon } from '../components/MenuIcons';
 import { useActiveLocation } from '../hooks/useActiveLocation';
 import { ShareButton } from '../components/ShareButton';
+import { Tooltip } from '../components/Tooltip';
 import { buildShareUrl } from '../lib/shareLinks';
 
 // Texto mínimo necessário pro grupo, no estilo iFood: nada quando é
@@ -184,19 +185,21 @@ export function ProductDetailPage() {
             {t('productCard.sem_foto')}
           </div>
         )}
-        <button
-          // Link compartilhado abre direto aqui (sem histórico para voltar):
-          // nesse caso "voltar" leva ao cardápio em vez de sair do app.
-          onClick={() =>
-            routerLocation.key === 'default'
-              ? navigate(qrCodeToken ? `/${slug}/mesa/${qrCodeToken}` : `/${slug}`, { replace: true })
-              : navigate(-1)
-          }
-          aria-label={t('common.back')}
-          className="absolute top-4 left-4 w-9 h-9 rounded-full bg-white/90 dark:bg-[#1E1E20]/90 flex items-center justify-center shadow-md"
-        >
-          <ArrowLeft size={18} strokeWidth={1.5} />
-        </button>
+        <Tooltip label={t('tooltip.back')} className="contents">
+          <button
+            // Link compartilhado abre direto aqui (sem histórico para voltar):
+            // nesse caso "voltar" leva ao cardápio em vez de sair do app.
+            onClick={() =>
+              routerLocation.key === 'default'
+                ? navigate(qrCodeToken ? `/${slug}/mesa/${qrCodeToken}` : `/${slug}`, { replace: true })
+                : navigate(-1)
+            }
+            aria-label={t('common.back')}
+            className="absolute top-4 left-4 w-9 h-9 rounded-full bg-white/90 dark:bg-[#1E1E20]/90 flex items-center justify-center shadow-md"
+          >
+            <ArrowLeft size={18} strokeWidth={1.5} />
+          </button>
+        </Tooltip>
         {slug && (
           <ShareButton
             className="absolute top-4 right-4"
@@ -247,19 +250,25 @@ export function ProductDetailPage() {
           </span>
 
           <div className="flex items-center gap-3 bg-gray-100 rounded-full px-1 py-1">
-            <button
-              onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-              className="w-8 h-8 rounded-full bg-white dark:bg-[#3A3C3E] flex items-center justify-center font-bold text-gray-600 dark:text-gray-100 shadow-sm"
-            >
-              −
-            </button>
+            <Tooltip label={t('tooltip.decrease')}>
+              <button
+                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                aria-label={t('tooltip.decrease')}
+                className="w-8 h-8 rounded-full bg-white dark:bg-[#3A3C3E] flex items-center justify-center font-bold text-gray-600 dark:text-gray-100 shadow-sm"
+              >
+                −
+              </button>
+            </Tooltip>
             <span className="w-6 text-center font-semibold">{quantity}</span>
-            <button
-              onClick={() => setQuantity((q) => q + 1)}
-              className="w-8 h-8 rounded-full bg-white dark:bg-[#3A3C3E] flex items-center justify-center font-bold text-gray-600 dark:text-gray-100 shadow-sm"
-            >
-              +
-            </button>
+            <Tooltip label={t('tooltip.increase')}>
+              <button
+                onClick={() => setQuantity((q) => q + 1)}
+                aria-label={t('tooltip.increase')}
+                className="w-8 h-8 rounded-full bg-white dark:bg-[#3A3C3E] flex items-center justify-center font-bold text-gray-600 dark:text-gray-100 shadow-sm"
+              >
+                +
+              </button>
+            </Tooltip>
           </div>
         </div>
 

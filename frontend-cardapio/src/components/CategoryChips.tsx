@@ -7,6 +7,7 @@ import { getCategoryIcon } from './CategoryIcon';
 import { useAccentColor } from '../hooks/useAccentColor';
 import { useWheelHorizontalScroll } from '../hooks/useWheelHorizontalScroll';
 import { MENU_BORDER, MENU_TEXT_MUTED } from '../lib/menuTheme';
+import { Tooltip } from './Tooltip';
 
 interface CategoryChipsProps {
   categories: Category[];
@@ -150,22 +151,30 @@ function Tab({
     : 'text-[#9CA3AF] dark:text-[#8E918F]';
 
   return (
-    <button
-      onClick={onClick}
-      data-active={isActive ? 'true' : 'false'}
-      className={`shrink-0 flex flex-col md:flex-row items-center gap-2 px-4 pt-2 pb-2 md:py-3 min-w-[76px] md:min-w-0 transition-colors active:bg-[#F9FAFB] md:hover:bg-[#F9FAFB] dark:active:bg-[#282A2C] dark:md:hover:bg-[#282A2C] rounded-t-xl ${colorClass}`}
-      style={{
-        borderBottom: isActive ? `2.5px solid ${accent}` : '2.5px solid transparent',
-      }}
-    >
-      {Icon && (
-        <span className="h-6 md:h-5 flex items-center justify-center">
-          <Icon size={22} />
+    // Tooltip só quando o nome está cortado (reticências): nome que cabe não
+    // gera balão.
+    <Tooltip label={label} onlyIfTruncated className="flex shrink-0">
+      <button
+        onClick={onClick}
+        data-active={isActive ? 'true' : 'false'}
+        className={`shrink-0 flex flex-col md:flex-row items-center gap-2 px-4 pt-2 pb-2 md:py-3 min-w-[76px] md:min-w-0 transition-colors active:bg-[#F9FAFB] md:hover:bg-[#F9FAFB] dark:active:bg-[#282A2C] dark:md:hover:bg-[#282A2C] rounded-t-xl ${colorClass}`}
+        style={{
+          borderBottom: isActive ? `2.5px solid ${accent}` : '2.5px solid transparent',
+        }}
+      >
+        {Icon && (
+          <span className="h-6 md:h-5 flex items-center justify-center">
+            <Icon size={22} />
+          </span>
+        )}
+        <span
+          data-truncate
+          className="text-sm whitespace-nowrap max-w-[14rem] truncate"
+          style={{ fontWeight: isActive ? 700 : 500 }}
+        >
+          {label}
         </span>
-      )}
-      <span className="text-sm whitespace-nowrap" style={{ fontWeight: isActive ? 700 : 500 }}>
-        {label}
-      </span>
-    </button>
+      </button>
+    </Tooltip>
   );
 }

@@ -23,6 +23,7 @@ import type { ActiveCashbackSettings } from '../lib/customer-api';
 import { CurrencyInput } from '../components/CurrencyInput';
 import { PhoneInput } from '../components/PhoneInput';
 import { isValidBrazilPhone } from '../lib/phone';
+import { Tooltip } from '../components/Tooltip';
 
 const BRAZIL_STATES = [
   'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS',
@@ -1189,28 +1190,37 @@ export function CartPage() {
                     )}
                   </div>
                   <div className="flex items-center gap-2 bg-gray-100 rounded-full px-1 py-1">
-                    <button
-                      onClick={() => decreaseItem(item.lineKey)}
-                      className="w-7 h-7 rounded-full bg-white flex items-center justify-center shadow-sm"
-                    >
-                      <Minus size={13} />
-                    </button>
+                    <Tooltip label={t('tooltip.decrease')}>
+                      <button
+                        onClick={() => decreaseItem(item.lineKey)}
+                        aria-label={t('tooltip.decrease')}
+                        className="w-7 h-7 rounded-full bg-white flex items-center justify-center shadow-sm"
+                      >
+                        <Minus size={13} />
+                      </button>
+                    </Tooltip>
                     <span className="w-4 text-center text-sm font-semibold">
                       {item.quantity}
                     </span>
-                    <button
-                      onClick={() => increaseItem(item.lineKey)}
-                      className="w-7 h-7 rounded-full bg-white flex items-center justify-center shadow-sm"
-                    >
-                      <Plus size={13} />
-                    </button>
+                    <Tooltip label={t('tooltip.increase')}>
+                      <button
+                        onClick={() => increaseItem(item.lineKey)}
+                        aria-label={t('tooltip.increase')}
+                        className="w-7 h-7 rounded-full bg-white flex items-center justify-center shadow-sm"
+                      >
+                        <Plus size={13} />
+                      </button>
+                    </Tooltip>
                   </div>
-                  <button
-                    onClick={() => setItemPendingRemoval(item.lineKey)}
-                    className="text-gray-300"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  <Tooltip label={t('tooltip.remove')}>
+                    <button
+                      onClick={() => setItemPendingRemoval(item.lineKey)}
+                      aria-label={t('tooltip.remove')}
+                      className="text-gray-300"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </Tooltip>
 
                 </div>
               );

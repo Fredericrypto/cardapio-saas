@@ -159,7 +159,8 @@ export const ptBR = {
   'avatarPickerModal.escolher_foto_de_perfil': 'Escolher foto de perfil',
   'avatarPickerModal.tirar_ou_escolher_foto': 'Tirar ou escolher foto',
   'avatarPickerModal.ou_escolha_um_avatar': 'Ou escolha um avatar',
-  'cartBar.no_carrinho': 'no carrinho',
+  'cartBar.itemOne': '{count} item no carrinho',
+  'cartBar.itemMany': '{count} itens no carrinho',
   'cashbackLoginNotice.faca_login_ou_crie': 'Faça login ou crie uma conta para usufruir dos benefícios do cashback',
   'cashbackLoginNotice.entrar_ou_criar_conta': 'Entrar ou criar conta',
   'categoryChips.todos': 'Todos',
@@ -670,6 +671,24 @@ export const ptBR = {
   // Erros genéricos
   'error.generic': 'Ops, algo deu errado ao carregar essa tela.',
   'error.backHome': 'Voltar ao início',
+
+  // Painel de informações e tooltips (hover)
+  'info.address': 'Endereço',
+  'info.hours': 'Horários',
+  'info.social': 'Redes Sociais',
+  'info.contact': 'Contato',
+  'tooltip.cart': 'Carrinho',
+  'tooltip.profile': 'Minha conta',
+  'tooltip.search': 'Pesquisar',
+  'tooltip.back': 'Voltar',
+  'tooltip.qrScan': 'Escanear QR Code',
+  'tooltip.call': 'Ligar',
+  'tooltip.changeUnit': 'Trocar de unidade',
+  'tooltip.increase': 'Adicionar um',
+  'tooltip.decrease': 'Remover um',
+  'tooltip.remove': 'Remover item',
+  'tooltip.viewCart': 'Ver carrinho',
+  'tooltip.delete': 'Excluir',
 } as const;
 
 export type TranslationKey = keyof typeof ptBR;

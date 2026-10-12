@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Ban, Percent, Clock, Users, Tag, CheckCircle2 } from 'lucide-react';
 import { ShareButton } from '../components/ShareButton';
+import { Tooltip } from '../components/Tooltip';
 import { buildShareUrl } from '../lib/shareLinks';
 import { fetchActivePromotions, fetchCategories, fetchProducts, fetchLocationById } from '../lib/menu-api';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
@@ -159,14 +160,16 @@ export function PromotionDetailPage() {
           />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-        <button
-          // Link compartilhado abre direto aqui (sem histórico): voltar leva ao cardápio.
-          onClick={() => (routerLocation.key === 'default' ? navigate(backHref, { replace: true }) : navigate(-1))}
-          aria-label={t('common.back')}
-          className="absolute top-4 left-4 w-9 h-9 rounded-full bg-white/90 dark:bg-[#1E1E20]/90 flex items-center justify-center shadow-md"
-        >
-          <ArrowLeft size={18} strokeWidth={1.5} />
-        </button>
+        <Tooltip label={t('tooltip.back')} className="contents">
+          <button
+            // Link compartilhado abre direto aqui (sem histórico): voltar leva ao cardápio.
+            onClick={() => (routerLocation.key === 'default' ? navigate(backHref, { replace: true }) : navigate(-1))}
+            aria-label={t('common.back')}
+            className="absolute top-4 left-4 w-9 h-9 rounded-full bg-white/90 dark:bg-[#1E1E20]/90 flex items-center justify-center shadow-md"
+          >
+            <ArrowLeft size={18} strokeWidth={1.5} />
+          </button>
+        </Tooltip>
         {slug && (
           <ShareButton
             className="absolute top-4 right-4"

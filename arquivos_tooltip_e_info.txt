@@ -1,0 +1,1128 @@
+import { useI18n } from '../i18n/I18nContext';
+import { useStoreStatus } from '../hooks/useStoreStatus';
+import { BannerViewer, LogoViewer } from './LogoViewer';
+import { Bike, ChevronDown, ChevronLeft, MapPin } from 'lucide-react';
+import { CLOSED_MUTED_CLASS } from '../lib/storeStatus';
+import type { Tenant, Location } from '../types';
+import { RestaurantInfoPanel } from './RestaurantInfoPanel';
+import { QrScanButton } from './QrScanButton';
+import { ReviewBadge, OpenStatusRow } from './HeaderStatus';
+import { ThemeToggle } from './ThemeToggle';
+import {
+  MENU_BANNER_BASE,
+  MENU_BORDER,
+  MENU_DIVIDER,
+  MENU_HEADER_SHEET,
+  MENU_HEADER_SHELL,
+  MENU_SURFACE_SUBTLE,
+  MENU_TEXT,
+  MENU_TEXT_MUTED,
+  MENU_TEXT_SOFT,
+} from '../lib/menuTheme';
+
+interface MenuHeaderProps {
+  tenant: Tenant;
+  location: Location | null;
+  onBack?: () => void;
+}
+
+// Header estilo delivery app de verdade (McDonald's/FoodyPro): banner
+// (foto de capa da loja) e, logo abaixo, nome, status e o cartão de infos de
+// entrega.
+//
+// Celular: desenho vertical original (banner + "sheet" que sobe sobre ele,
+// centralizado). Desktop (md+): UM ÚNICO cartão arredondado e com borda que
+// encapsula tudo — banner baixo em cima e, embaixo, logo + nome/nota/status à
+// esquerda e, à direita, o indicador de unidade e o cartão de entrega
+// empilhados. No desktop o Voltar some (a troca de unidade fica no seletor).
+// O alternador de tema claro/escuro fica no canto superior direito do banner.
+//
+// Todas as cores vêm de lib/menuTheme (par claro/escuro explícito): nenhuma
+// superfície fica branca no tema escuro.
+export function MenuHeader({ tenant, location, onBack }: MenuHeaderProps) {
+  const { t } = useI18n();
+  const deliveryAvailable = location?.latitude != null && location?.longitude != null;
+  const isOpenNow = useStoreStatus(location).isOpen;
+
+  return (
+    // Loja fechada: só banner, logo e o card de entrega ficam em tom atenuado.
+    // Selo "Fechado" (vermelho), avaliações e Informações/redes sociais mantêm
+    // as cores e continuam clicáveis.
+    <div className={MENU_HEADER_SHELL}>
+      {/* Banner / capa */}
+      <div
+        className={`${MENU_BANNER_BASE} h-40 md:h-32 lg:h-36 transition-[filter] ${!isOpenNow ? 'grayscale' : ''}`}
+        style={
+          tenant.coverImageUrl
+            ? undefined
+            : {
+                background: `linear-gradient(135deg, ${tenant.primaryColor}, ${tenant.secondaryColor})`,
+              }
+        }
+      >
+        <BannerViewer tenant={tenant} />
+
+        {/* Voltar (só existe quando há mais de uma unidade): círculo no
+            celular; no desktop fica oculto (a troca de unidade é feita pelo
+            seletor ao lado do cartão). Sobre a foto, então
+            no escuro usa vidro preto translúcido em vez de círculo branco. */}
+        {onBack && (
+          <button
+            onClick={onBack}
+            aria-label={t('common.back')}
+            className="absolute z-10 top-3.5 left-3.5 md:hidden h-9 w-9 rounded-full bg-white/90 text-[#374151] dark:bg-black/55 dark:text-white backdrop-blur-sm flex items-center justify-center shadow-sm active:scale-90 transition-transform"
+          >
+            <ChevronLeft size={20} strokeWidth={1.5} className="shrink-0" />
+          </button>
+        )}
+
+        {/* Alternador de tema (claro/escuro), mesmo posicionamento do header de mesa. */}
+        <div className="absolute top-3.5 right-3.5 z-10">
+          <ThemeToggle variant="floating" />
+        </div>
+      </div>
+
+      {/* Sheet (celular) / corpo do cartão da loja (desktop) */}
+      <div className={MENU_HEADER_SHEET}>
+        <div className="md:flex md:items-center md:gap-8">
+          <div className="flex flex-col items-center text-center md:flex-row md:gap-5 md:text-left md:flex-1 md:min-w-0">
+            {/* Desktop: a logo fica numa caixa 64x64 centralizada na vertical com
+                o bloco de 3 linhas (nome / avaliação / status) e sem nenhuma
+                margem ou deslocamento herdado do LogoViewer. No celular o
+                desenho original (logo sobrepondo o banner) não muda. */}
+            <div
+              className={`shrink-0 transition-[filter] md:self-center md:flex md:items-center md:justify-center md:w-16 md:h-16 md:[&>*]:!m-0 md:[&>*]:!top-0 md:[&>*]:!translate-y-0 ${!isOpenNow ? 'grayscale' : ''}`}
+            >
+              <LogoViewer tenant={tenant} size="w-16 h-16" />
+            </div>
+
+            <div className="flex flex-col items-center md:items-start w-full md:w-auto md:flex-1 md:min-w-0">
+              {/* Nome do restaurante SEM truncar: quebra em quantas linhas
+                  precisar (text-balance deixa as linhas equilibradas) e
+                  `overflowWrap: anywhere` cobre até uma palavra gigante. No
+                  celular o botão de QR fica preso no canto direito,
+                  centralizado na vertical; o padding lateral simétrico
+                  (px-11) reserva o espaço dele nos DOIS lados, então o nome
+                  continua centralizado e nunca passa por baixo do botão. No
+                  desktop o botão passa a ficar ao lado do nome (em linha). */}
+              <div className="relative w-full mt-1.5 md:mt-0 px-11 md:px-0 md:flex md:items-center md:gap-3">
+                <h1
+                  className={`font-display text-lg md:text-2xl font-bold leading-tight text-center md:text-left text-balance ${MENU_TEXT}`}
+                  style={{ overflowWrap: 'anywhere' }}
+                >
+                  {tenant.name}
+                </h1>
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 md:static md:translate-y-0 md:shrink-0">
+                  <QrScanButton />
+                </div>
+              </div>
+              {/* No celular o nome da unidade fica sob o nome do restaurante;
+                  no desktop ele vira o indicador de unidade (ao lado). */}
+              {location && <p className={`text-xs mt-0.5 md:hidden ${MENU_TEXT_MUTED}`}>{location.name}</p>}
+              <ReviewBadge tenant={tenant} location={location} />
+              <OpenStatusRow location={location} />
+            </div>
+          </div>
+
+          {(location || deliveryAvailable) && (
+            <div className={`${deliveryAvailable ? 'mt-3' : ''} md:mt-0 md:w-80 md:shrink-0 flex flex-col gap-2`}>
+              {location && <UnitIndicator name={location.name} onChange={onBack} />}
+
+              {deliveryAvailable && location && (
+                <div
+                  className={`rounded-2xl border px-3.5 py-2.5 flex items-center justify-between gap-3 ${MENU_SURFACE_SUBTLE} ${MENU_BORDER} ${!isOpenNow ? CLOSED_MUTED_CLASS : ''}`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-white shrink-0"
+                      style={{ backgroundColor: tenant.primaryColor }}
+                    >
+                      <Bike size={15} strokeWidth={1.5} />
+                    </span>
+                    <div className="min-w-0">
+                      <p className={`text-xs font-semibold ${MENU_TEXT_SOFT}`}>{t('menu.acceptsDelivery')}</p>
+                      <p className={`text-[11px] ${MENU_TEXT_MUTED}`}>
+                        {t('menuHeader.taxa_a_partir_de')} {location.deliveryFee.toFixed(2).replace('.', ',')}
+                      </p>
+                    </div>
+                  </div>
+                  {location.minOrderValue > 0 && (
+                    <div className={`text-right shrink-0 pl-3 border-l ${MENU_DIVIDER}`}>
+                      <p className={`text-[11px] ${MENU_TEXT_MUTED}`}>{t('menu.minimumOrder')}</p>
+                      <p className={`text-xs font-bold ${MENU_TEXT_SOFT}`}>
+                        R$ {location.minOrderValue.toFixed(2).replace('.', ',')}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <RestaurantInfoPanel tenant={tenant} location={location} />
+      </div>
+    </div>
+  );
+}
+
+// Indicador de unidade — só no desktop (no celular o nome da unidade já
+// aparece sob o nome do restaurante). Com mais de uma unidade (`onChange`
+// presente) vira um seletor: tocar leva à tela de escolha de loja, a mesma
+// rota do botão Voltar. Com uma unidade só é um rótulo estático.
+function UnitIndicator({ name, onChange }: { name: string; onChange?: () => void }) {
+  const base = `hidden md:flex items-center gap-2 w-full rounded-xl border px-3 py-2 text-left ${MENU_SURFACE_SUBTLE} ${MENU_BORDER}`;
+  const content = (
+    <>
+      <MapPin size={15} strokeWidth={1.5} className={`shrink-0 ${MENU_TEXT_MUTED}`} />
+      <span className={`flex-1 min-w-0 truncate text-sm font-medium ${MENU_TEXT_SOFT}`} title={name}>
+        {name}
+      </span>
+      {onChange && <ChevronDown size={15} strokeWidth={1.5} className={`shrink-0 ${MENU_TEXT_MUTED}`} />}
+    </>
+  );
+
+  if (!onChange) return <div className={base}>{content}</div>;
+  return (
+    <button
+      type="button"
+      onClick={onChange}
+      aria-label={name}
+      className={`${base} transition-colors md:hover:brightness-95 dark:md:hover:brightness-110`}
+    >
+      {content}
+    </button>
+  );
+}
+import { useI18n } from '../i18n/I18nContext';
+import { BannerViewer, LogoViewer } from './LogoViewer';
+import { Bell, Receipt } from 'lucide-react';
+import type { Tenant, Location, TableSession } from '../types';
+import { RestaurantInfoPanel } from './RestaurantInfoPanel';
+import { TableSessionTimer } from './TableSessionTimer';
+import { ReviewBadge, OpenStatusRow } from './HeaderStatus';
+import { ACTION_BUTTON_BASE } from '../lib/uiClasses';
+import { ThemeToggle } from './ThemeToggle';
+import {
+  MENU_BANNER_BASE,
+  MENU_BORDER,
+  MENU_HEADER_SHEET,
+  MENU_HEADER_SHELL,
+  MENU_SURFACE_SUBTLE,
+  MENU_TEXT,
+  MENU_TEXT_MUTED,
+  MENU_TEXT_SOFT,
+} from '../lib/menuTheme';
+
+interface TableMenuHeaderProps {
+  tenant: Tenant;
+  location: Location | null;
+  tableNumber?: string;
+  tableKind?: 'mesa' | 'balcao';
+  onCallWaiter: () => void;
+  onOpenAccount: () => void;
+  isCallingWaiter: boolean;
+  session?: TableSession | null;
+  onExpiryTick?: () => void;
+}
+
+// Mesmo esqueleto visual do MenuHeader (banner + sheet flutuante no celular,
+// cartão único encapsulado no desktop) pra ficar consistente com o fluxo
+// geral — só troca o conteúdo do sheet pelas ações específicas de mesa
+// (chamar garçom / minha conta) no lugar do card de entrega. As cores vêm de
+// lib/menuTheme (par claro/escuro explícito).
+export function TableMenuHeader({
+  tenant,
+  location,
+  tableNumber,
+  tableKind,
+  onCallWaiter,
+  onOpenAccount,
+  isCallingWaiter,
+  session,
+  onExpiryTick,
+}: TableMenuHeaderProps) {
+  const { t } = useI18n();
+  return (
+    <div className={MENU_HEADER_SHELL}>
+      <div
+        className={`${MENU_BANNER_BASE} h-32 md:h-32 lg:h-36`}
+        style={
+          tenant.coverImageUrl
+            ? undefined
+            : { background: `linear-gradient(135deg, ${tenant.primaryColor}, ${tenant.secondaryColor})` }
+        }
+      >
+        <BannerViewer tenant={tenant} />
+
+        <div className="absolute top-3.5 right-3.5 z-10">
+          <ThemeToggle variant="floating" />
+        </div>
+      </div>
+
+      <div className={MENU_HEADER_SHEET}>
+        <div className="md:flex md:items-center md:gap-8">
+          <div className="flex flex-col items-center text-center md:flex-row md:gap-5 md:text-left md:flex-1 md:min-w-0">
+            <div className="shrink-0">
+              <LogoViewer tenant={tenant} size="w-16 h-16" />
+            </div>
+            <div className="flex flex-col items-center md:items-start w-full md:w-auto md:flex-1 md:min-w-0">
+              {/* Nome sem truncar (quebra em várias linhas se preciso, sempre
+                  centralizado — padding simétrico px-14 reserva o espaço do
+                  timer da mesa, que fica preso no canto esquerdo). */}
+              <div className="relative w-full mt-1.5 md:mt-0 px-14 md:px-0 md:flex md:items-center md:gap-3">
+                <h1
+                  className={`font-display text-lg md:text-2xl font-bold leading-tight text-center md:text-left text-balance ${MENU_TEXT}`}
+                  style={{ overflowWrap: 'anywhere' }}
+                >
+                  {tenant.name}
+                </h1>
+                {session?.expiresAt && onExpiryTick && (
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 md:static md:translate-y-0 md:shrink-0">
+                    <TableSessionTimer session={session} onExpiryTick={onExpiryTick} variant="inline" />
+                  </div>
+                )}
+                {/* Pedido do Felipe (13/09): o ícone de escanear QR não
+                      deve aparecer aqui — dentro do fluxo de mesa já existe
+                      uma sessão ativa, então usar o scanner pra "entrar"
+                      numa mesa diferente por cima da atual só cria confusão
+                      (a conta antiga continua aberta no painel do admin sem
+                      jeito do cliente fechar pelo celular). O ícone só faz
+                      sentido quando NÃO há sessão de mesa ativa — nesse caso
+                      o cardápio genérico (MenuHeader) já mostra o dele. Div
+                      vazia só pra manter o título centralizado no layout. */}
+              </div>
+              <p className={`text-xs mt-0.5 ${MENU_TEXT_MUTED}`}>
+                {/* O admin já pode nomear a mesa como "Mesa 1" ou "Balcão 1"
+                    (campo livre) — prefixar de novo aqui sempre virava "Mesa
+                    Mesa 1"/"Mesa Balcão 1". Com `kind` disponível, decide o
+                    prefixo certo direto por ele em vez de adivinhar pelo
+                    texto; sem `kind` (sessões antigas), cai no teste de texto
+                    de antes como fallback. */}
+                {tableNumber
+                  ? tableKind === 'balcao'
+                    ? /^balc/i.test(tableNumber.trim())
+                      ? tableNumber
+                      : t('tableMenuHeader.balcao_tablenumber', { tableNumber: tableNumber })
+                    : /^mesa\b/i.test(tableNumber.trim())
+                      ? tableNumber
+                      : t('tableMenuHeader.mesa_tablenumber', { tableNumber: tableNumber })
+                  : t('tableMenuHeader.consumo_no_local')}
+              </p>
+              <ReviewBadge tenant={tenant} location={location} />
+              {/* Horário de funcionamento + selo Aberto/Fechado (e "Fecha em X
+                  min") continuam visíveis dentro do fluxo de mesa. */}
+              <OpenStatusRow location={location} />
+            </div>
+          </div>
+
+          <div className="flex gap-2 mt-3 md:mt-0 md:w-80 md:shrink-0">
+            <button
+              onClick={onCallWaiter}
+              disabled={isCallingWaiter}
+              className={`flex-1 text-white ${ACTION_BUTTON_BASE}`}
+              style={{ backgroundColor: tenant.primaryColor }}
+            >
+              <Bell size={14} strokeWidth={1.5} />
+              {isCallingWaiter ? 'Chamando...' : t('tableMenuHeader.chamar_garcom')}
+            </button>
+            <button
+              onClick={onOpenAccount}
+              className={`flex-1 border ${MENU_TEXT_SOFT} ${MENU_SURFACE_SUBTLE} ${MENU_BORDER} ${ACTION_BUTTON_BASE}`}
+            >
+              <Receipt size={14} strokeWidth={1.5} />
+              {t('tableMenuHeader.minha_conta')}
+            </button>
+          </div>
+        </div>
+
+        <RestaurantInfoPanel tenant={tenant} location={location} />
+      </div>
+    </div>
+  );
+}
+import type { ReactNode } from 'react';
+
+// Ícones de redes sociais em TRAÇO FINO (outlined), todos no mesmo desenho
+// base: viewBox 24x24, `currentColor`, traço 1.5 e pontas arredondadas — o
+// mesmo estilo dos ícones lucide usados no resto do app. A cor vem do texto
+// do pai (nada de cores de marca), então acompanham o tema claro/escuro.
+//
+// Usados só no painel "Informações" do cardápio. Os ícones coloridos oficiais
+// continuam em BrandIcons.tsx (usados em outros lugares).
+
+interface OutlineIconProps {
+  size?: number;
+}
+
+function Outline({ size = 20, children }: OutlineIconProps & { children: ReactNode }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+    >
+      {children}
+    </svg>
+  );
+}
+
+export function WhatsAppOutlineIcon(props: OutlineIconProps) {
+  return (
+    <Outline {...props}>
+      <path d="M3 21l1.65-3.8a9 9 0 1 1 3.4 2.9L3 21" />
+      <path d="M9 10a.5.5 0 0 0 1 0V9a.5.5 0 0 0-1 0v1a5 5 0 0 0 5 5h1a.5.5 0 0 0 0-1h-1a.5.5 0 0 0 0 1" />
+    </Outline>
+  );
+}
+
+export function TelegramOutlineIcon(props: OutlineIconProps) {
+  return (
+    <Outline {...props}>
+      <path d="m22 2-7 20-4-9-9-4Z" />
+      <path d="M22 2 11 13" />
+    </Outline>
+  );
+}
+
+export function InstagramOutlineIcon(props: OutlineIconProps) {
+  return (
+    <Outline {...props}>
+      <rect x="2.5" y="2.5" width="19" height="19" rx="5" />
+      <circle cx="12" cy="12" r="4" />
+      <path d="M17.5 6.5h.01" />
+    </Outline>
+  );
+}
+
+export function FacebookOutlineIcon(props: OutlineIconProps) {
+  return (
+    <Outline {...props}>
+      <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
+    </Outline>
+  );
+}
+
+export function YoutubeOutlineIcon(props: OutlineIconProps) {
+  return (
+    <Outline {...props}>
+      <path d="M2.5 17a24.12 24.12 0 0 1 0-10 2 2 0 0 1 1.4-1.4 49.56 49.56 0 0 1 16.2 0A2 2 0 0 1 21.5 7a24.12 24.12 0 0 1 0 10 2 2 0 0 1-1.4 1.4 49.55 49.55 0 0 1-16.2 0A2 2 0 0 1 2.5 17" />
+      <path d="m10 15 5-3-5-3z" />
+    </Outline>
+  );
+}
+
+export function TikTokOutlineIcon(props: OutlineIconProps) {
+  return (
+    <Outline {...props}>
+      <path d="M21 7.917v4.034a9.948 9.948 0 0 1-5-1.951v4.5a6.5 6.5 0 1 1-8-6.326v4.326a2.5 2.5 0 1 0 4 2v-11.5h4.083a6.005 6.005 0 0 0 4.917 4.917z" />
+    </Outline>
+  );
+}
+
+export function XOutlineIcon(props: OutlineIconProps) {
+  return (
+    <Outline {...props}>
+      <path d="M4 4l11.733 16h4.267l-11.733-16z" />
+      <path d="M4 20l6.768-6.768m2.46-2.46L20 4" />
+    </Outline>
+  );
+}
+
+export function MessengerOutlineIcon(props: OutlineIconProps) {
+  return (
+    <Outline {...props}>
+      <path d="M3 20l1.3-3.9c-2.324-3.437-1.426-7.872 2.1-10.374 3.526-2.501 8.59-2.296 11.845.48 3.255 2.777 3.695 7.266 1.029 10.501-2.666 3.235-7.615 4.215-11.574 2.293l-4.7 1" />
+      <path d="M8 13l3-2 2 2 3-2" />
+    </Outline>
+  );
+}
+
+export function EmailOutlineIcon(props: OutlineIconProps) {
+  return (
+    <Outline {...props}>
+      <rect x="2" y="4" width="20" height="16" rx="2" />
+      <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+    </Outline>
+  );
+}
+import { useI18n } from '../i18n/I18nContext';
+import { useState, type ComponentType, type ReactNode } from 'react';
+import { ChevronDown, MapPin, Clock, Phone, Info } from 'lucide-react';
+import type { Tenant, Location } from '../types';
+import { getWeekScheduleLines } from '../lib/openingHours';
+import {
+  WhatsAppOutlineIcon,
+  InstagramOutlineIcon,
+  YoutubeOutlineIcon,
+  FacebookOutlineIcon,
+  TikTokOutlineIcon,
+  XOutlineIcon,
+  TelegramOutlineIcon,
+  MessengerOutlineIcon,
+  EmailOutlineIcon,
+} from './SocialOutlineIcons';
+import { ACTION_BUTTON_BASE } from '../lib/uiClasses';
+import {
+  buildWhatsappLink,
+  buildInstagramLink,
+  buildYoutubeLink,
+  buildFacebookLink,
+  buildTiktokLink,
+  buildTwitterLink,
+  buildTelegramLink,
+  buildMessengerLink,
+  buildGmailLink,
+  buildPhoneLink,
+} from '../lib/socialLinks';
+import {
+  MENU_BORDER,
+  MENU_TEXT_BODY,
+  MENU_TEXT_MUTED,
+} from '../lib/menuTheme';
+
+interface RestaurantInfoPanelProps {
+  tenant: Tenant;
+  location: Location | null;
+}
+
+// Pedido do Felipe (19/09): "Rua X, Bairro" numa linha, "Cidade: Y -
+// Estado, CEP" na outra. O endereço geocodificado sempre vem como
+// "rua, bairro, cidade, estado, CEP" (ver GeocodingService no backend)
+// — quando bate esse formato exato, separa bonito; caso venha
+// diferente (endereço digitado manualmente antes de existir
+// geocodificação, por exemplo), mostra inteiro numa linha só em vez de
+// arriscar cortar errado.
+// Nome do estado por extenso (como vem do geocoding) → sigla de 2
+// letras, pro formato compacto que o Felipe pediu ("Araranguá - SC").
+const BR_STATE_ABBREVIATIONS: Record<string, string> = {
+  acre: 'AC',
+  alagoas: 'AL',
+  amapá: 'AP',
+  amazonas: 'AM',
+  bahia: 'BA',
+  ceará: 'CE',
+  'distrito federal': 'DF',
+  'espírito santo': 'ES',
+  goiás: 'GO',
+  maranhão: 'MA',
+  'mato grosso': 'MT',
+  'mato grosso do sul': 'MS',
+  'minas gerais': 'MG',
+  pará: 'PA',
+  paraíba: 'PB',
+  paraná: 'PR',
+  pernambuco: 'PE',
+  piauí: 'PI',
+  'rio de janeiro': 'RJ',
+  'rio grande do norte': 'RN',
+  'rio grande do sul': 'RS',
+  rondônia: 'RO',
+  roraima: 'RR',
+  'santa catarina': 'SC',
+  'são paulo': 'SP',
+  sergipe: 'SE',
+  tocantins: 'TO',
+};
+
+function abbreviateState(state: string): string {
+  return BR_STATE_ABBREVIATIONS[state.trim().toLowerCase()] ?? state;
+}
+
+// Pedido do Felipe (19/09): "Rua X, Bairro" numa linha, "Cidade -
+// Estado, CEP" na outra (estado abreviado, sem o prefixo "Cidade:").
+// O endereço geocodificado sempre vem como "rua, bairro, cidade,
+// estado, CEP" (ver GeocodingService no backend) — quando bate esse
+// formato exato, separa bonito; caso venha diferente (endereço
+// digitado manualmente antes de existir geocodificação, por exemplo),
+// mostra inteiro numa linha só em vez de arriscar cortar errado.
+function formatAddressLines(address: string): string[] {
+  const parts = address.split(',').map((p) => p.trim());
+  if (parts.length === 5) {
+    const [street, neighborhood, city, state, zip] = parts;
+    return [`${street}, ${neighborhood}`, `${city} - ${abbreviateState(state)}, ${zip}`];
+  }
+  return [address];
+}
+
+// Telefone brasileiro legível: "(48) 99999-9999" (celular), "(48) 3333-4444"
+// (fixo), "4003-1234" (sem DDD) e "0800 123 4567". Aceita o número já com
+// máscara, com +55/55 na frente ou só dígitos; qualquer coisa que não bata
+// com esses formatos volta INTACTA (nunca inventa nem corta dígito). Só
+// afeta o que é MOSTRADO — o link `tel:` continua usando o valor cru.
+function formatPhoneBR(raw: string): string {
+  const digits = raw.replace(/\D/g, '');
+  if (digits.length === 11 && /^0[38]00/.test(digits)) {
+    return `${digits.slice(0, 4)} ${digits.slice(4, 7)} ${digits.slice(7)}`;
+  }
+  const national = digits.length >= 12 && digits.startsWith('55') ? digits.slice(2) : digits;
+  if (national.startsWith('0')) return raw;
+  if (national.length === 11) return `(${national.slice(0, 2)}) ${national.slice(2, 7)}-${national.slice(7)}`;
+  if (national.length === 10) return `(${national.slice(0, 2)}) ${national.slice(2, 6)}-${national.slice(6)}`;
+  if (national.length === 9) return `${national.slice(0, 5)}-${national.slice(5)}`;
+  if (national.length === 8) return `${national.slice(0, 4)}-${national.slice(4)}`;
+  return raw;
+}
+
+interface SocialLinkItem {
+  key: string;
+  href: string;
+  label: string;
+  Icon: ComponentType<{ size: number }>;
+  // Gmail abre o app de e-mail na mesma aba; as demais abrem em nova aba.
+  external: boolean;
+}
+
+// Painel "Informações" do cabeçalho. Recolhido por padrão; ao abrir mostra
+// endereço, horário de funcionamento (7 dias), redes sociais e telefone de
+// contato — só o que o restaurante preencheu (campo vazio nem aparece).
+// WhatsApp, Telegram, telefone de contato e endereço/horário vêm da LOJA
+// escolhida (cada filial tem os seus); as outras redes sociais são da MARCA
+// inteira.
+//
+// Celular: coluna centralizada (desenho original). Desktop (md+): colunas de
+// mesma largura, com título e conteúdo centralizados e um divisor vertical
+// fino entre elas — endereço | horário | contato (redes + telefone). O número
+// de colunas acompanha os blocos preenchidos.
+//
+// Vive dentro do cabeçalho (MenuHeader / TableMenuHeader); cores vêm de
+// lib/menuTheme, com par claro/escuro explícito.
+export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelProps) {
+  const [expanded, setExpanded] = useState(false);
+  const { t } = useI18n();
+  const weekSchedule = getWeekScheduleLines(location?.openingHours ?? null, t);
+
+  // Títulos das colunas. `t` só aceita as chaves tipadas do dicionário, então a
+  // chave entra com o tipo que o próprio `t` declara (nenhuma chave nova é
+  // inventada aqui). Se ela ainda não existir no dicionário (t devolve vazio ou
+  // a própria chave), cai no texto em português.
+  type TranslationKey = Parameters<typeof t>[0];
+  const label = (key: string, fallback: string) => {
+    const value: unknown = t(key as TranslationKey);
+    return typeof value === 'string' && value && value !== key ? value : fallback;
+  };
+
+  // Só os ícones (sem número/usuário escrito do lado). Desde a z6-09 todos são
+  // OUTLINED, do mesmo tamanho e na cor do texto do tema (SocialOutlineIcons),
+  // sem cores de marca. Admin escolhe quais usar preenchendo (ou não) cada
+  // campo nas configurações — o que não foi preenchido nem aparece.
+  // Os links abrem no app nativo de cada plataforma quando ele está instalado
+  // (o domínio oficial de cada uma já é reconhecido pelo celular como link do
+  // app) e caem no site normal quando não está.
+  const socialLinks: SocialLinkItem[] = [];
+  if (location?.whatsappNumber) {
+    socialLinks.push({ key: 'whatsapp', href: buildWhatsappLink(location.whatsappNumber), label: 'WhatsApp', Icon: WhatsAppOutlineIcon, external: true });
+  }
+  if (location?.telegramUsername) {
+    socialLinks.push({ key: 'telegram', href: buildTelegramLink(location.telegramUsername), label: 'Telegram', Icon: TelegramOutlineIcon, external: true });
+  }
+  if (tenant.instagramHandle) {
+    socialLinks.push({ key: 'instagram', href: buildInstagramLink(tenant.instagramHandle), label: 'Instagram', Icon: InstagramOutlineIcon, external: true });
+  }
+  if (tenant.facebookUrl) {
+    socialLinks.push({ key: 'facebook', href: buildFacebookLink(tenant.facebookUrl), label: 'Facebook', Icon: FacebookOutlineIcon, external: true });
+  }
+  if (tenant.youtubeUrl) {
+    socialLinks.push({ key: 'youtube', href: buildYoutubeLink(tenant.youtubeUrl), label: 'YouTube', Icon: YoutubeOutlineIcon, external: true });
+  }
+  if (tenant.tiktokHandle) {
+    socialLinks.push({ key: 'tiktok', href: buildTiktokLink(tenant.tiktokHandle), label: 'TikTok', Icon: TikTokOutlineIcon, external: true });
+  }
+  if (tenant.twitterHandle) {
+    socialLinks.push({ key: 'twitter', href: buildTwitterLink(tenant.twitterHandle), label: 'X (Twitter)', Icon: XOutlineIcon, external: true });
+  }
+  if (tenant.messengerUsername) {
+    socialLinks.push({ key: 'messenger', href: buildMessengerLink(tenant.messengerUsername), label: 'Messenger', Icon: MessengerOutlineIcon, external: true });
+  }
+  if (tenant.gmailAddress) {
+    socialLinks.push({ key: 'gmail', href: buildGmailLink(tenant.gmailAddress), label: t('info.email'), Icon: EmailOutlineIcon, external: false });
+  }
+
+  const hasSocialLinks = socialLinks.length > 0;
+  const hasContactPhone = Boolean(location?.contactPhoneNumber);
+  const hasContactBlock = hasSocialLinks || hasContactPhone;
+
+  // Redes sociais moram DENTRO de "Informações" (junto do telefone).
+  const hasCollapsibleInfo = Boolean(location?.address) || Boolean(weekSchedule) || hasContactBlock;
+
+  if (!hasCollapsibleInfo) return null;
+
+  // Colunas presentes (só as preenchidas). Cada coluna, exceto a primeira,
+  // desenha o divisor vertical à sua esquerda.
+  const showAddress = Boolean(location?.address);
+  const showHours = Boolean(weekSchedule);
+  const columnCount = [showAddress, showHours, hasContactBlock].filter(Boolean).length;
+
+  return (
+    <div className={`mt-3 md:mt-4 pt-4 border-t flex flex-col gap-4 ${MENU_BORDER}`}>
+      <div>
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          aria-expanded={expanded}
+          className={`flex items-center justify-center gap-1.5 w-full text-xs font-semibold py-1 ${MENU_TEXT_BODY}`}
+        >
+          <Info size={15} strokeWidth={1.5} className="shrink-0" />
+          <span>{t('info.title')}</span>
+          <ChevronDown size={14} strokeWidth={1.5} className={`transition-transform ${expanded ? 'rotate-180' : ''}`} />
+        </button>
+
+        {expanded && (
+          <div
+            className={`mt-3 px-2 pb-1 flex flex-col items-center gap-4 text-xs text-center md:grid ${INFO_GRID_COLS[columnCount]} md:items-stretch md:gap-x-8 md:gap-y-6 md:px-1 ${MENU_TEXT_BODY}`}
+          >
+            {location?.address && (
+              <InfoColumn title={label('info.address', 'Endereço')}>
+                <div className="flex flex-col items-center gap-1 md:flex-row md:justify-center md:gap-2.5">
+                  <MapPin size={13} strokeWidth={1.5} className={`shrink-0 ${MENU_TEXT_MUTED}`} />
+                  {/* Endereço em duas linhas (rua e bairro / cidade - UF, CEP);
+                      formato diferente do geocodificado cai numa linha só. */}
+                  <div className="flex flex-col items-center text-center">
+                    {formatAddressLines(location.address).map((line, idx) => (
+                      <span key={idx}>{line}</span>
+                    ))}
+                  </div>
+                </div>
+              </InfoColumn>
+            )}
+
+            {weekSchedule && (
+              <InfoColumn title={label('info.hours', 'Horários')} divider={showAddress}>
+                <div className="flex flex-col gap-1 text-left">
+                  {/* Relógio em TODAS as linhas; dia fechado em vermelho. */}
+                  {weekSchedule.map((line) => (
+                    <span key={line.day} className="flex items-center gap-1.5">
+                      <Clock size={13} strokeWidth={1.5} className={`shrink-0 ${MENU_TEXT_MUTED}`} />
+                      <span className={line.hours === 'Fechado' ? 'text-red-500 dark:text-red-400 font-medium' : ''}>
+                        {line.day}: {line.hours}
+                      </span>
+                    </span>
+                  ))}
+                </div>
+              </InfoColumn>
+            )}
+
+            {hasContactBlock && (
+              <InfoColumn
+                title={hasSocialLinks ? label('info.social', 'Redes sociais') : label('info.contact', 'Contato')}
+                divider={showAddress || showHours}
+              >
+                {hasSocialLinks && (
+                  <div className="flex flex-row flex-wrap items-center justify-center gap-x-1.5 gap-y-2 md:gap-x-2">
+                    {socialLinks.map(({ key, href, label: linkLabel, Icon, external }) => (
+                      <a
+                        key={key}
+                        href={href}
+                        {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                        className={`w-9 h-9 md:w-10 md:h-10 shrink-0 rounded-full flex items-center justify-center transition-colors active:opacity-70 md:hover:bg-[#F3F4F6] dark:md:hover:bg-white/10 ${MENU_TEXT_BODY} md:hover:text-[#111827] dark:md:hover:text-[#E3E2E6]`}
+                        aria-label={linkLabel}
+                      >
+                        <Icon size={24} />
+                      </a>
+                    ))}
+                  </div>
+                )}
+
+                {/* Telefone de contato "puro" (não WhatsApp), formatado; abre o
+                    discador com o número original. */}
+                {location?.contactPhoneNumber && (
+                  <a
+                    href={buildPhoneLink(location.contactPhoneNumber)}
+                    className={`w-full text-white ${ACTION_BUTTON_BASE}`}
+                    style={{ backgroundColor: tenant.primaryColor }}
+                  >
+                    <Phone size={14} strokeWidth={1.5} className="shrink-0" />
+                    <span>{formatPhoneBR(location.contactPhoneNumber)}</span>
+                  </a>
+                )}
+              </InfoColumn>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Número de colunas do desktop por quantidade de blocos preenchidos (classes
+// literais pro Tailwind enxergar).
+const INFO_GRID_COLS: Record<number, string> = {
+  1: 'md:grid-cols-1',
+  2: 'md:grid-cols-2',
+  3: 'md:grid-cols-3',
+};
+
+// Coluna do painel de informações. No desktop: título centralizado no topo e o
+// conteúdo centralizado (horizontal e vertical) na área abaixo dele. O divisor
+// vertical (só desktop) mora nessa área, no meio do espaço entre colunas, e
+// usa só ~76% da altura — nunca encosta no título nem na base do painel. No
+// celular o título fica oculto e o desenho centralizado original é mantido.
+function InfoColumn({
+  title,
+  divider = false,
+  children,
+}: {
+  title: string;
+  divider?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex flex-col items-center gap-2 w-full md:h-full">
+      <h3
+        className={`hidden md:block w-full text-center text-[11px] font-semibold uppercase tracking-wider ${MENU_TEXT_MUTED}`}
+      >
+        {title}
+      </h3>
+      <div className="relative flex flex-col items-center justify-center gap-4 w-full text-center md:flex-1">
+        {divider && (
+          <span
+            aria-hidden="true"
+            className="hidden md:block absolute -left-4 top-[12%] bottom-[12%] w-px bg-[#E5E7EB] dark:bg-white/10"
+          />
+        )}
+        {children}
+      </div>
+    </div>
+  );
+}
+import { localizedField } from '../i18n/contentText';
+import { useI18n } from '../i18n/I18nContext';
+import { useEffect, useRef, useState } from 'react';
+import { Clock } from 'lucide-react';
+import type { Promotion } from '../types';
+import { CLOSED_MUTED_CLASS } from '../lib/storeStatus';
+import { ShareButton } from './ShareButton';
+import { useWheelHorizontalScroll } from '../hooks/useWheelHorizontalScroll';
+
+interface PromoCardsProps {
+  promotions: Promotion[];
+  primaryColor: string;
+  onSelect: (promotionId: string) => void;
+  // Loja fechada: visual atenuado, mas o carrossel rola e os cards abrem normalmente.
+  muted?: boolean;
+  // Monta o link público de cada promoção; sem ele não há botão de compartilhar.
+  buildShareUrl?: (promotionId: string) => string;
+}
+
+// "1h 20min" / "45min" / "2 dias" — countdown de verdade. Acima de 48h
+// vira dias (evita mostrar algo tipo "600h restantes", que ninguém lê
+// como tempo de verdade). Atualiza a cada minuto.
+function useCountdownLabel(endsAt: string | null): string | null {
+  const { t } = useI18n();
+  const [label, setLabel] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!endsAt) {
+      setLabel(null);
+      return;
+    }
+    function tick() {
+      const diffMs = new Date(endsAt!).getTime() - Date.now();
+      if (diffMs <= 0) {
+        setLabel(t('promoCards.encerrada'));
+        return;
+      }
+      const totalHours = diffMs / 3600000;
+      if (totalHours >= 48) {
+        const days = Math.floor(totalHours / 24);
+        setLabel(`${days} dias`);
+        return;
+      }
+      const hours = Math.floor(diffMs / 3600000);
+      const minutes = Math.floor((diffMs % 3600000) / 60000);
+      setLabel(hours > 0 ? t('promoCards.hours_h_minutes_min', { hours: hours, minutes: minutes }) : `${minutes}min`);
+    }
+    tick();
+    const interval = setInterval(tick, 60000);
+    return () => clearInterval(interval);
+  }, [endsAt]);
+
+  return label;
+}
+
+// Cards grandes e tocáveis — tocar abre a tela de detalhe da promoção
+// (foto grande, regras, botão "Usar promoção"), igual iFood. Foto
+// própria ou herdada do produto vinculado (ver
+// PromotionsService.attachDisplayImage). Só mostra promoções cadastradas
+// de verdade, nunca inventa desconto.
+export function PromoCards({ promotions, primaryColor, onSelect, muted = false, buildShareUrl }: PromoCardsProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  // Roda do mouse sobre o carrossel rola na horizontal (celular/janela estreita;
+  // no desktop o container vira grade e o hook não faz nada).
+  useWheelHorizontalScroll(scrollRef, promotions.length > 0);
+
+  if (promotions.length === 0) return null;
+
+  // pb-4 + -mb-3: o container rola na horizontal, o que corta a sombra no
+  // fundo; o respiro embaixo (compensado pela margem negativa, pra o
+  // layout não mudar) deixa a sombra inteira aparecer.
+  // Desktop (md+): carrossel vira grade (sem rolagem lateral, que não é
+  // natural com mouse) com 2/3/4 colunas.
+  return (
+    <div ref={scrollRef} className="flex gap-3 px-4 pt-1 pb-4 -mb-3 overflow-x-auto no-scrollbar snap-x snap-mandatory md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 md:items-start md:gap-4 md:px-0 md:overflow-visible md:snap-none">
+      {promotions.map((promo) => (
+        <PromoCard key={promo.id} promo={promo} primaryColor={primaryColor} onSelect={onSelect} muted={muted} shareUrl={buildShareUrl?.(promo.id)} />
+      ))}
+    </div>
+  );
+}
+
+function PromoCard({
+  promo,
+  primaryColor,
+  onSelect,
+  muted,
+  shareUrl,
+}: {
+  promo: Promotion;
+  primaryColor: string;
+  onSelect: (id: string) => void;
+  muted: boolean;
+  shareUrl?: string;
+}) {
+  const { t } = useI18n();
+  const countdownLabel = useCountdownLabel(promo.endsAt);
+
+  return (
+    <button
+      onClick={() => onSelect(promo.id)}
+      className={`shrink-0 w-[270px] md:w-auto h-36 md:h-40 snap-start rounded-2xl md:hover:shadow-[0_8px_22px_rgba(0,0,0,0.12)] transition-[transform,box-shadow] overflow-hidden relative shadow-[0_2px_10px_rgba(0,0,0,0.04)] text-left active:scale-[0.98] dark:ring-1 dark:ring-white/10 ${muted ? CLOSED_MUTED_CLASS : ''}`}
+    >
+      <div className="relative h-full w-full">
+        {promo.imageUrl ? (
+          <img
+            src={promo.imageUrl}
+            alt={localizedField(promo, 'title')}
+            className={`w-full h-full object-cover ${promo.alreadyUsedUp ? 'grayscale' : ''}`}
+          />
+        ) : (
+          <div
+            className="w-full h-full"
+            style={{
+              background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}99)`,
+            }}
+          />
+        )}
+
+        {/* Gradiente pra legibilidade do texto sobre a foto */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/15 to-transparent" />
+
+        {shareUrl && (
+          <ShareButton
+            variant="chip"
+            className="absolute top-2.5 left-2.5"
+            url={shareUrl}
+            title={localizedField(promo, 'title')}
+            text={promo.description ?? undefined}
+          />
+        )}
+
+        {countdownLabel && !promo.alreadyUsedUp && (
+          <span className="absolute top-2.5 right-2.5 bg-white text-orange-600 text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-sm">
+            <Clock size={10} />
+            {countdownLabel}
+          </span>
+        )}
+
+        <div className="absolute bottom-0 left-0 right-0 p-3.5">
+          <div className="min-w-0">
+            <p className="font-display font-extrabold text-white text-lg leading-tight drop-shadow-sm">
+              {localizedField(promo, 'title')}
+            </p>
+            {promo.description && (
+              <p className="text-white/90 text-[11px] mt-0.5 line-clamp-1 leading-snug">
+                {localizedField(promo, 'description')}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {promo.alreadyUsedUp && (
+          <div className="absolute inset-0 bg-black/55 flex items-center justify-center">
+            <span className="bg-white text-gray-700 text-xs font-bold px-3 py-1 rounded-full shadow-sm">
+              {t('promoCards.voce_ja_usou_essa')}
+            </span>
+          </div>
+        )}
+      </div>
+
+    </button>
+  );
+}
+import { categoryLabel } from '../i18n/categoryLabel';
+import { useI18n } from '../i18n/I18nContext';
+import { useEffect, useRef, useState } from 'react';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
+import type { Category } from '../types';
+import { getCategoryIcon } from './CategoryIcon';
+import { useAccentColor } from '../hooks/useAccentColor';
+import { useWheelHorizontalScroll } from '../hooks/useWheelHorizontalScroll';
+import { MENU_BORDER, MENU_TEXT_MUTED } from '../lib/menuTheme';
+
+interface CategoryChipsProps {
+  categories: Category[];
+  activeCategoryId: string | null;
+  onSelect: (categoryId: string | null) => void;
+  primaryColor: string;
+}
+
+// Abas com ícone em cima e a palavra embaixo, centralizadas (pedido do
+// Felipe, sessão S/T) — cada aba tem área de toque generosa (px-4/py-2,
+// largura mínima 76px) e o conjunto fica centralizado na tela. Ativa em
+// preto/negrito com friso embaixo na cor do tenant, as outras em cinza —
+// o ícone segue a mesma cor via `currentColor`.
+export function CategoryChips({
+  categories,
+  activeCategoryId,
+  onSelect,
+  primaryColor,
+}: CategoryChipsProps) {
+  const { t } = useI18n();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [hasMoreToLeft, setHasMoreToLeft] = useState(false);
+  const [hasMoreToRight, setHasMoreToRight] = useState(false);
+
+  // Roda do mouse sobre as abas rola a lista na horizontal.
+  useWheelHorizontalScroll(scrollRef);
+
+  // Setas "←" / "→" só quando há MAIS de 4 abas (contando "Todos") E de fato dá
+  // pra rolar naquele sentido: a esquerda some no início da lista, a direita
+  // some no fim. Ambas são clicáveis (ver scrollByStep).
+  const tabCount = categories.length + 1;
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const update = () => {
+      const overflows = el.scrollWidth > el.clientWidth + 4;
+      const atStart = el.scrollLeft <= 4;
+      const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 4;
+      setHasMoreToLeft(tabCount > 4 && overflows && !atStart);
+      setHasMoreToRight(tabCount > 4 && overflows && !atEnd);
+    };
+    update();
+    el.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    return () => {
+      el.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+    };
+  }, [tabCount]);
+
+  // Mantém a aba ativa visível: no desktop a barra rola na horizontal, e ao
+  // escolher uma categoria (ou rolar a lista) a aba selecionada é trazida pro
+  // centro. Rola só o container das abas (nunca a página inteira).
+  useEffect(() => {
+    const el = scrollRef.current;
+    const active = el?.querySelector<HTMLElement>('[data-active="true"]');
+    if (!el || !active) return;
+    const left = Math.max(0, active.offsetLeft - (el.clientWidth - active.offsetWidth) / 2);
+    el.scrollTo({ left, behavior: 'smooth' });
+  }, [activeCategoryId]);
+
+  // Rola a lista de abas um passo (200 px) no sentido pedido; os listeners de
+  // `scroll` acima atualizam a visibilidade das setas ao fim do movimento.
+  const scrollByStep = (direction: -1 | 1) => {
+    scrollRef.current?.scrollBy({ left: direction * 200, behavior: 'smooth' });
+  };
+
+  return (
+    <div className={`relative border-b ${MENU_BORDER}`}>
+    <div ref={scrollRef} className="overflow-x-auto no-scrollbar">
+      {/* `w-max min-w-full justify-center` centraliza quando cabe na tela e, quando não
+          cabe, continua rolando normal pra esquerda (justify-center
+          direto cortaria o começo da lista). */}
+      <div className="flex w-max min-w-full justify-center md:justify-start gap-2 md:gap-1 px-3 md:px-0 pt-1.5 md:pt-0">
+      <Tab
+        label={t('categoryChips.todos')}
+        isActive={activeCategoryId === null}
+        onClick={() => onSelect(null)}
+        primaryColor={primaryColor}
+      />
+      {categories.map((category) => (
+        <Tab
+          key={category.id}
+          label={categoryLabel(category, t)}
+          categoryKey={category.key}
+          isActive={activeCategoryId === category.id}
+          onClick={() => onSelect(category.id)}
+          primaryColor={primaryColor}
+        />
+      ))}
+      </div>
+    </div>
+    {/* Setas redundantes com o teclado (as abas são focáveis e rolam a lista
+        ao receber foco), por isso fora da ordem de tabulação. */}
+    {hasMoreToLeft && (
+      <button
+        type="button"
+        tabIndex={-1}
+        aria-hidden="true"
+        onClick={() => scrollByStep(-1)}
+        className={`absolute left-0 top-0 h-full w-10 flex items-center justify-start pl-1.5 bg-gradient-to-r from-[#FFFFFF] via-[#FFFFFF]/90 to-transparent dark:from-[#131314] dark:via-[#131314]/90 dark:to-transparent md:hover:opacity-70 transition-opacity ${MENU_TEXT_MUTED}`}
+      >
+        <ArrowLeft size={14} strokeWidth={2} />
+      </button>
+    )}
+    {hasMoreToRight && (
+      <button
+        type="button"
+        tabIndex={-1}
+        aria-hidden="true"
+        onClick={() => scrollByStep(1)}
+        className={`absolute right-0 top-0 h-full w-10 flex items-center justify-end pr-1.5 bg-gradient-to-l from-[#FFFFFF] via-[#FFFFFF]/90 to-transparent dark:from-[#131314] dark:via-[#131314]/90 dark:to-transparent md:hover:opacity-70 transition-opacity ${MENU_TEXT_MUTED}`}
+      >
+        <ArrowRight size={14} strokeWidth={2} />
+      </button>
+    )}
+    </div>
+  );
+}
+
+function Tab({
+  label,
+  categoryKey,
+  isActive,
+  onClick,
+  primaryColor,
+}: {
+  label: string;
+  categoryKey?: string | null;
+  isActive: boolean;
+  onClick: () => void;
+  primaryColor: string;
+}) {
+  const Icon = getCategoryIcon(categoryKey ?? (label === 'Todos' ? 'todos' : null), label);
+  // Friso da aba ativa: a cor principal do restaurante pode ser escura demais
+  // sobre o fundo escuro (o padrão é #3d3846) — o hook devolve uma variante
+  // legível, a mesma usada no preço promocional do ProductCard.
+  const accent = useAccentColor(primaryColor);
+  const colorClass = isActive
+    ? 'text-[#111827] dark:text-white'
+    : 'text-[#9CA3AF] dark:text-[#8E918F]';
+
+  return (
+    <button
+      onClick={onClick}
+      data-active={isActive ? 'true' : 'false'}
+      className={`shrink-0 flex flex-col md:flex-row items-center gap-2 px-4 pt-2 pb-2 md:py-3 min-w-[76px] md:min-w-0 transition-colors active:bg-[#F9FAFB] md:hover:bg-[#F9FAFB] dark:active:bg-[#282A2C] dark:md:hover:bg-[#282A2C] rounded-t-xl ${colorClass}`}
+      style={{
+        borderBottom: isActive ? `2.5px solid ${accent}` : '2.5px solid transparent',
+      }}
+    >
+      {Icon && (
+        <span className="h-6 md:h-5 flex items-center justify-center">
+          <Icon size={22} />
+        </span>
+      )}
+      <span className="text-sm whitespace-nowrap" style={{ fontWeight: isActive ? 700 : 500 }}>
+        {label}
+      </span>
+    </button>
+  );
+}
