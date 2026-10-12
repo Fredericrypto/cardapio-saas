@@ -141,9 +141,9 @@ export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelPro
           </button>
 
           {expanded && (
-            <div className="mt-3 px-2 pb-1 flex flex-col items-center gap-3 text-xs text-gray-500 text-center">
+            <div className="mt-3 px-2 pb-1 flex flex-col items-center gap-3 text-xs text-gray-500 text-center md:flex-row md:flex-wrap md:items-start md:justify-center md:gap-x-12 md:gap-y-4 md:text-left">
               {location?.address && (
-                <div className="flex flex-col items-center gap-1">
+                <div className="flex flex-col items-center md:items-start gap-1">
                   <MapPin size={13} strokeWidth={1.5} className="shrink-0 text-gray-400" />
                   {/* Pedido do Felipe (19/09): endereço em duas linhas
                       — rua/bairro numa, cidade/estado/CEP na outra —
@@ -155,7 +155,7 @@ export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelPro
                       (menos partes que o esperado), cai de volta pra
                       mostrar o endereço inteiro numa linha só, sem
                       quebrar o layout. */}
-                  <div className="flex flex-col items-center">
+                  <div className="flex flex-col items-center md:items-start">
                     {formatAddressLines(location.address).map((line, idx) => (
                       <span key={idx}>{line}</span>
                     ))}
@@ -296,7 +296,7 @@ export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelPro
               {location?.contactPhoneNumber && (
                 <a
                   href={buildPhoneLink(location.contactPhoneNumber)}
-                  className={`w-full text-white ${ACTION_BUTTON_BASE}`}
+                  className={`w-full md:w-auto md:px-6 text-white ${ACTION_BUTTON_BASE}`}
                   style={{ backgroundColor: tenant.primaryColor }}
                 >
                   <Phone size={14} strokeWidth={1.5} className="shrink-0" />

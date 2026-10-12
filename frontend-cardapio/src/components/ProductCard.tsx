@@ -17,7 +17,8 @@ interface ProductCardProps {
   shareUrl?: string;
 }
 
-// Card de grid 2 colunas — foto quadrada, botão "+" circular flutuando
+// Card de grid (2 colunas no celular até 5 no desktop) — foto quadrada
+// (4:3 no desktop, pra o card não ficar alto), botão "+" circular flutuando
 // meio dentro/meio fora da foto (sobrepondo o canto inferior direito),
 // nome e preço abaixo. Estrutura calcada no print de referência
 // (McDonald's/FoodyPro): grid denso, cartão compacto, preço riscado
@@ -34,9 +35,9 @@ export function ProductCard({ product, primaryColor, onClick, storeClosed = fals
   return (
     <button
       onClick={onClick}
-      className={`text-left rounded-2xl overflow-hidden bg-white border border-gray-100 shadow-[0_2px_10px_rgba(0,0,0,0.04)] active:scale-[0.985] transition-transform ${isUnavailable ? 'opacity-90' : ''}`}
+      className={`flex flex-col h-full text-left rounded-2xl overflow-hidden bg-white border border-gray-100 shadow-[0_2px_10px_rgba(0,0,0,0.04)] md:hover:shadow-[0_8px_22px_rgba(0,0,0,0.09)] active:scale-[0.985] transition-[transform,box-shadow] ${isUnavailable ? 'opacity-90' : ''}`}
     >
-      <div className="relative aspect-square bg-gray-100">
+      <div className="relative aspect-square md:aspect-[4/3] bg-gray-100">
         {product.imageUrl ? (
           <img
             src={product.imageUrl}
@@ -75,14 +76,14 @@ export function ProductCard({ product, primaryColor, onClick, storeClosed = fals
           <span
             aria-label={`${localizedText(product.name)}: ${t('store.closedEstablishment')}`}
             title={t('store.closedEstablishment')}
-            className="absolute -bottom-3 right-2.5 w-8 h-8 rounded-full flex items-center justify-center text-white shadow-md border-2 border-white dark:border-[#1E1E20] bg-gray-400 cursor-not-allowed"
+            className="absolute -bottom-3 right-2.5 md:-bottom-4 md:right-3 w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center text-white shadow-md border-2 border-white dark:border-[#1E1E20] bg-gray-400 cursor-not-allowed"
           >
             <Ban size={15} strokeWidth={1.5} />
           </span>
         ) : isUnavailable ? (
           <span
             aria-label={t('product.unavailable', { name: product.name })}
-            className="absolute -bottom-3 right-2.5 w-8 h-8 rounded-full flex items-center justify-center text-white shadow-md border-2 border-white dark:border-[#1E1E20] bg-gray-400 cursor-not-allowed"
+            className="absolute -bottom-3 right-2.5 md:-bottom-4 md:right-3 w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center text-white shadow-md border-2 border-white dark:border-[#1E1E20] bg-gray-400 cursor-not-allowed"
           >
             <Ban size={15} strokeWidth={1.5} />
           </span>
@@ -98,7 +99,7 @@ export function ProductCard({ product, primaryColor, onClick, storeClosed = fals
                 addItem(product);
               }
             }}
-            className="absolute -bottom-3 right-2.5 w-8 h-8 rounded-full flex items-center justify-center text-white shadow-md active:scale-90 transition-transform border-2 border-white dark:border-[#1E1E20]"
+            className="absolute -bottom-3 right-2.5 md:-bottom-4 md:right-3 w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center text-white shadow-md active:scale-90 transition-transform border-2 border-white dark:border-[#1E1E20]"
             style={{ backgroundColor: primaryColor }}
           >
             <Plus size={16} strokeWidth={2.75} />
@@ -106,23 +107,23 @@ export function ProductCard({ product, primaryColor, onClick, storeClosed = fals
         )}
       </div>
 
-      <div className="px-2.5 pt-2.5 pb-3">
-        <p className={`font-display font-bold text-[13px] leading-tight line-clamp-1 ${isUnavailable ? 'text-gray-400' : 'text-gray-900'}`}>
+      <div className="flex flex-col flex-1 px-2.5 pt-2.5 pb-3 md:px-3.5 md:pt-4 md:pb-4">
+        <p className={`font-display font-bold text-[13px] md:text-sm leading-tight line-clamp-1 ${isUnavailable ? 'text-gray-400' : 'text-gray-900'}`}>
           {localizedText(product.name)}
         </p>
         {product.description && (
-          <p className="text-[11px] text-gray-400 mt-0.5 line-clamp-1 leading-snug">
+          <p className="text-[11px] md:text-xs text-gray-400 mt-0.5 line-clamp-1 leading-snug">
             {localizedText(product.description)}
           </p>
         )}
-        <div className="flex items-baseline gap-1.5 mt-1.5">
+        <div className="flex items-baseline gap-1.5 mt-auto pt-1.5">
           {hasPromo && (
             <span className="text-[11px] text-gray-300 line-through">
               R$ {Number(product.price).toFixed(2).replace('.', ',')}
             </span>
           )}
           <span
-            className={`font-bold text-sm ${!isUnavailable && !hasPromo ? 'text-[#111827] dark:text-gray-100' : ''}`}
+            className={`font-bold text-sm md:text-base ${!isUnavailable && !hasPromo ? 'text-[#111827] dark:text-gray-100' : ''}`}
             style={isUnavailable ? { color: '#9ca3af' } : hasPromo ? { color: accent } : undefined}
           >
             R$ {Number(displayPrice).toFixed(2).replace('.', ',')}

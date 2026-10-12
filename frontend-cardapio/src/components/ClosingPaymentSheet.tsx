@@ -106,8 +106,8 @@ export function ClosingPaymentSheet({
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 flex items-end justify-center">
-      <div className="bg-white w-full max-w-md rounded-t-2xl p-5 flex flex-col gap-4 max-h-[85vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-black/40 md:backdrop-blur-sm flex items-end md:items-center justify-center md:px-4">
+      <div className="bg-white w-full max-w-md md:max-w-lg rounded-t-2xl md:rounded-2xl p-5 md:p-6 md:shadow-xl flex flex-col gap-4 max-h-[85vh] md:max-h-[90vh] overflow-y-auto">
         <p className="font-display font-bold text-gray-900 text-center">{t('closingPaymentSheet.fechar_minha_conta')}</p>
 
         <div className="flex flex-col gap-1 text-sm">

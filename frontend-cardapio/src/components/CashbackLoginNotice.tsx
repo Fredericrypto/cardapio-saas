@@ -32,7 +32,7 @@ export function CashbackLoginNotice({
           navigate(`/${slug}/conta-cliente/entrar?redirect=${encodeURIComponent(returnTo)}`)
         }
         style={{ backgroundColor: primaryColor }}
-        className="py-2.5 rounded-xl text-white text-sm font-semibold"
+        className="py-2.5 rounded-xl text-white text-sm font-semibold md:self-start md:px-6 md:hover:brightness-110 md:transition"
       >
         {t('cashbackLoginNotice.entrar_ou_criar_conta')}
       </button>

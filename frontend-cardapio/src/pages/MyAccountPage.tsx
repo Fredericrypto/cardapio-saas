@@ -268,24 +268,28 @@ export function MyAccountPage() {
     summary.session.status === 'aberta';
 
   return (
-    <div className="min-h-screen bg-white max-w-md mx-auto pb-32">
-      <div className="flex items-center gap-3 px-4 py-4 border-b border-gray-100">
-        <button onClick={() => navigate(-1)}>
+    <div className="min-h-screen bg-white md:bg-gray-50 pb-32 md:pb-12">
+     <div className="max-w-md mx-auto md:max-w-5xl md:px-6">
+      <div className="flex items-center gap-3 px-4 py-4 border-b border-gray-100 md:px-0 md:pt-8 md:pb-5 md:border-b-0">
+        <button onClick={() => navigate(-1)} aria-label={t('common.back')} className="md:w-10 md:h-10 md:rounded-full md:bg-white md:border md:border-gray-100 md:flex md:items-center md:justify-center md:hover:bg-gray-50">
           <ArrowLeft size={20} />
         </button>
-        <h1 className="font-display font-bold text-lg flex-1">{t('tableMenuHeader.minha_conta')}</h1>
+        <h1 className="font-display font-bold text-lg md:text-2xl flex-1">{t('tableMenuHeader.minha_conta')}</h1>
       </div>
       {/* Fora da barra do cabeçalho de propósito — o relógio de prazo
           (TableSessionTimer, variant="fixed") flutua no canto superior
           direito da tela nessa mesma página, e ficava por cima desse
           botão quando os dois moravam na mesma linha. */}
+      {/* Desktop: pedidos à esquerda, painel de fechamento fixo à direita. */}
+      <div className="md:grid md:grid-cols-[minmax(0,1fr)_360px] md:gap-6 md:items-start">
+      <div className="min-w-0 md:bg-white md:rounded-2xl md:border md:border-gray-100 md:shadow-sm md:overflow-hidden">
       {canLeaveTable && (
-        <div className="px-4 pt-3 flex">
+        <div className="px-4 pt-3 flex md:px-6 md:pt-5 md:justify-start">
           {/* Mesmo visual do botão "Minha conta" do header da mesa. */}
           <button
             onClick={() => setConfirmingLeave(true)}
             disabled={isLeaving}
-            className="flex-1 rounded-xl py-2.5 flex items-center justify-center gap-1.5 text-xs font-semibold text-gray-700 bg-gray-50 border border-gray-100 disabled:opacity-50"
+            className="flex-1 md:flex-none md:px-5 rounded-xl py-2.5 flex items-center justify-center gap-1.5 text-xs font-semibold text-gray-700 bg-gray-50 border border-gray-100 disabled:opacity-50 md:hover:bg-gray-100"
           >
             <LogOut size={14} />
             {isLeaving ? 'Saindo...' : t('myAccountPage.sair_da_mesa')}
@@ -301,12 +305,12 @@ export function MyAccountPage() {
         />
       )}
       {leaveError && (
-        <p className="px-4 pt-3 text-xs text-red-500 text-center">{leaveError}</p>
+        <p className="px-4 pt-3 md:px-6 text-xs text-red-500 text-center md:text-left">{leaveError}</p>
       )}
 
       {statusNotification && (
         <div
-          className="mx-4 mt-3 rounded-lg px-4 py-2.5 text-sm font-medium text-white flex items-center gap-2"
+          className="mx-4 md:mx-6 mt-3 rounded-lg px-4 py-2.5 text-sm font-medium text-white flex items-center gap-2"
           style={{ backgroundColor: tenant.secondaryColor }}
         >
           <Bell size={15} />
@@ -317,7 +321,7 @@ export function MyAccountPage() {
       {/* Pessoas na mesa (decisão de 01/10): todo mundo que está presente,
           com nome e avatar, e cada pedido logo abaixo de quem fez. */}
       {summary.people && summary.people.length > 0 ? (
-        <div className="p-4">
+        <div className="p-4 md:p-6">
           <PeopleOrders
             people={summary.people}
             orders={summary.orders}
@@ -362,7 +366,7 @@ export function MyAccountPage() {
           {t('myAccountPage.voce_ainda_nao_fez')}
         </p>
       ) : (
-        <div className="p-4 flex flex-col gap-4">
+        <div className="p-4 md:p-6 flex flex-col gap-4 md:grid md:grid-cols-2">
           {summary.orders.map((order) => (
             <div key={order.id}>
             <div className="border border-gray-100 rounded-xl p-3">
@@ -400,7 +404,9 @@ export function MyAccountPage() {
         </div>
       )}
 
-      <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto p-4 bg-white border-t border-gray-100 flex flex-col gap-3">
+      </div>
+
+      <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto p-4 bg-white border-t border-gray-100 flex flex-col gap-3 md:sticky md:top-6 md:bottom-auto md:left-auto md:right-auto md:max-w-none md:mx-0 md:rounded-2xl md:border md:shadow-sm md:p-5">
         {!closingRequested && summary.orders.length > 0 && (
           <div>
             <p className="text-xs font-semibold text-gray-500 mb-1.5">
@@ -533,6 +539,8 @@ export function MyAccountPage() {
           </button>
         )}
       </div>
+      </div>
+     </div>
 
       {showPaymentSheet && (
         <ClosingPaymentSheet

@@ -160,16 +160,18 @@ export function CustomerCashbackPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-10 max-w-md mx-auto">
-      <div className="flex items-center gap-3 px-4 py-4 bg-white border-b border-gray-100">
-        <button onClick={() => navigate(`/${slug}/conta-cliente/perfil`)} aria-label={t('common.back')}>
+    <div className="min-h-screen bg-gray-50 pb-10">
+     <div className="max-w-md mx-auto md:max-w-5xl md:px-6">
+      <div className="flex items-center gap-3 px-4 py-4 bg-white border-b border-gray-100 md:px-0 md:pt-8 md:pb-5 md:bg-transparent md:border-b-0">
+        <button onClick={() => navigate(`/${slug}/conta-cliente/perfil`)} aria-label={t('common.back')} className="md:w-10 md:h-10 md:rounded-full md:bg-white md:border md:border-gray-100 md:flex md:items-center md:justify-center md:hover:bg-gray-50">
           <ArrowLeft size={20} strokeWidth={1.5} />
         </button>
-        <h1 className="font-display font-bold text-lg">{t('profile.cashback')}</h1>
+        <h1 className="font-display font-bold text-lg md:text-2xl">{t('profile.cashback')}</h1>
       </div>
 
-      <div className="px-4 mt-4 flex flex-col gap-3">
-        <div className="rounded-2xl p-5 text-white flex flex-col gap-1" style={{ backgroundColor: tenant.primaryColor }}>
+      {/* Desktop: saldo fixo à esquerda; abas e extrato à direita. */}
+      <div className="px-4 mt-4 flex flex-col gap-3 md:px-0 md:mt-0 md:grid md:grid-cols-[320px_minmax(0,1fr)] md:gap-x-6 md:gap-y-4 md:items-start">
+        <div className="rounded-2xl p-5 text-white flex flex-col gap-1 md:col-start-1 md:row-span-3 md:sticky md:top-6 md:shadow-sm" style={{ backgroundColor: tenant.primaryColor }}>
           <p className="text-xs opacity-80 flex items-center gap-1.5">
             <CircleDollarSign size={14} strokeWidth={1.5} />
             {t('customerCashbackPage.saldo_disponivel')}
@@ -185,7 +187,7 @@ export function CustomerCashbackPage() {
           </p>
         </div>
 
-        <div role="tablist" aria-label={t('customerCashbackPage.categorias_de_cashback')} className="grid grid-cols-3 gap-1 bg-white rounded-xl p-1 border border-gray-100">
+        <div role="tablist" aria-label={t('customerCashbackPage.categorias_de_cashback')} className="grid grid-cols-3 gap-1 bg-white rounded-xl p-1 border border-gray-100 md:col-start-2">
           {TABS.map((tabItem) => {
             const count = categorized ? categorized[tabItem.key].length : null;
             const active = tab === tabItem.key;
@@ -205,23 +207,24 @@ export function CustomerCashbackPage() {
           })}
         </div>
 
-        {history == null && <p className="text-sm text-gray-400 text-center py-8">{t('common.loading')}</p>}
+        {history == null && <p className="text-sm text-gray-400 text-center py-8 md:col-start-2">{t('common.loading')}</p>}
 
         {categorized && categorized[tab].length === 0 && (
-          <div className="bg-white rounded-2xl border border-gray-100 py-10 px-4 flex flex-col items-center gap-2 text-center">
+          <div className="bg-white rounded-2xl border border-gray-100 py-10 px-4 flex flex-col items-center gap-2 text-center md:col-start-2">
             <Wallet size={22} strokeWidth={1.5} className="text-gray-300" />
             <p className="text-sm text-gray-400">{emptyText[tab]}</p>
           </div>
         )}
 
         {categorized && (
-          <div className="flex flex-col gap-2.5" role="tabpanel">
+          <div className="flex flex-col gap-2.5 md:grid md:grid-cols-2 md:gap-3 md:items-start md:col-start-2" role="tabpanel">
             {tab === 'disponiveis' && categorized.disponiveis.map((e) => <AvailableCard key={e.id} entry={e} now={now} />)}
             {tab === 'expirados' && categorized.expirados.map((e) => <ExpiredCard key={e.id} entry={e} />)}
             {tab === 'utilizados' && categorized.utilizados.map((e) => <UsedCard key={e.id} entry={e} />)}
           </div>
         )}
       </div>
+     </div>
     </div>
   );
 }

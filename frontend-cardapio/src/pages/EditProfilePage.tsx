@@ -134,15 +134,18 @@ export function EditProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-10 max-w-md mx-auto">
-      <div className="flex items-center gap-3 px-4 py-4 bg-white border-b border-gray-100">
-        <button onClick={() => navigate(`/${slug}/conta-cliente/perfil`)}>
+    <div className="min-h-screen bg-gray-50 pb-10">
+     <div className="max-w-md mx-auto md:max-w-4xl md:px-6">
+      <div className="flex items-center gap-3 px-4 py-4 bg-white border-b border-gray-100 md:px-0 md:pt-8 md:pb-5 md:bg-transparent md:border-b-0">
+        <button onClick={() => navigate(`/${slug}/conta-cliente/perfil`)} aria-label={t('common.back')} className="md:w-10 md:h-10 md:rounded-full md:bg-white md:border md:border-gray-100 md:flex md:items-center md:justify-center md:hover:bg-gray-50">
           <ArrowLeft size={20} />
         </button>
-        <h1 className="font-display font-bold text-lg">{t('profile.myData')}</h1>
+        <h1 className="font-display font-bold text-lg md:text-2xl">{t('profile.myData')}</h1>
       </div>
 
-      <div className="flex flex-col items-center py-6 bg-white">
+      {/* Desktop: foto/identidade à esquerda, formulário em grid à direita. */}
+      <div className="md:grid md:grid-cols-[260px_minmax(0,1fr)] md:gap-6 md:items-start">
+      <div className="flex flex-col items-center py-6 bg-white md:rounded-2xl md:border md:border-gray-100 md:shadow-sm md:px-4 md:sticky md:top-6">
         <button
           onClick={() => setShowAvatarPicker(true)}
           disabled={isUpdatingAvatar}
@@ -189,8 +192,8 @@ export function EditProfilePage() {
         />
       )}
 
-      <div className="px-4 mt-3 flex flex-col gap-3">
-        <div className="bg-white rounded-2xl p-4 flex flex-col gap-3">
+      <div className="px-4 mt-3 md:px-0 md:mt-0 flex flex-col gap-3">
+        <div className="bg-white rounded-2xl p-4 md:p-6 md:border md:border-gray-100 md:shadow-sm flex flex-col gap-3 md:grid md:grid-cols-2 md:gap-x-5 md:gap-y-5">
           <div>
             <label className="text-xs font-semibold text-gray-500 block mb-1.5">{t('editProfilePage.nome')}</label>
             <input
@@ -212,7 +215,7 @@ export function EditProfilePage() {
             />
           </div>
 
-          <div>
+          <div className="md:col-span-2 md:max-w-sm">
             <label className="text-xs font-semibold text-gray-500 block mb-1.5">{t('editProfilePage.whatsapp')}</label>
             <PhoneInput
               value={phone}
@@ -221,7 +224,7 @@ export function EditProfilePage() {
             />
           </div>
 
-          <div>
+          <div className="md:col-span-2">
             <label className="text-xs font-semibold text-gray-500 block mb-0.5">{t('editProfilePage.pronomes_pessoais')}</label>
             <p className="text-[11px] text-gray-400 mb-2">
               {t('editProfilePage.escolha_ate_2_aparecem')}
@@ -261,9 +264,9 @@ export function EditProfilePage() {
             </div>
           </div>
 
-          <div>
+          <div className="md:col-span-2">
             <label className="text-xs font-semibold text-gray-500 block mb-1.5">{t('editProfilePage.genero')}</label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
               {GENDER_OPTIONS.map((option) => (
                 <button
                   key={option.value}
@@ -292,12 +295,14 @@ export function EditProfilePage() {
         <button
           onClick={handleSave}
           disabled={isSaving}
-          className="py-3.5 rounded-xl text-white font-semibold disabled:opacity-60"
+          className="py-3.5 rounded-xl text-white font-semibold disabled:opacity-60 md:self-end md:px-10 md:hover:brightness-110 md:transition"
           style={{ backgroundColor: tenant.primaryColor }}
         >
           {isSaving ? 'Salvando...' : t('editProfilePage.salvar')}
         </button>
       </div>
+      </div>
+     </div>
     </div>
   );
 }

@@ -19,7 +19,7 @@ export function ReceiptContentStandalone({
   const label = order.orderType === 'entrega' ? t('receiptContentStandalone.entrega') : t('receiptContentStandalone.balcao');
 
   return (
-    <div className="font-mono text-xs text-gray-800 flex flex-col gap-2 w-full max-w-[280px] mx-auto">
+    <div className="font-mono text-xs md:text-[13px] text-gray-800 flex flex-col gap-2 w-full max-w-[280px] md:max-w-[340px] mx-auto">
       <div className="text-center flex flex-col gap-0.5">
         <p className="font-bold text-sm">{tenant.name}</p>
       </div>

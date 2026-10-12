@@ -675,7 +675,7 @@ export function CartPage() {
           : t('receiptContentStandalone.balcao');
 
     return (
-      <div className="min-h-screen flex flex-col items-center px-6 py-8 max-w-md mx-auto">
+      <div className="min-h-screen flex flex-col items-center px-6 py-8 max-w-md md:max-w-xl mx-auto">
         <div
           className="w-16 h-16 rounded-full flex items-center justify-center text-white text-2xl mb-4"
           style={{ backgroundColor: tenant.primaryColor }}
@@ -1013,6 +1013,47 @@ export function CartPage() {
   const showPaymentStep = orderType !== 'mesa' && checkoutStep === 'payment';
   const showReviewStep = orderType !== 'mesa' && checkoutStep === 'review';
 
+  const orderSummary = (
+    <div className="flex flex-col gap-1.5 text-sm">
+      <div className="flex justify-between text-gray-500">
+        <span>{t('closingPaymentSheet.subtotal')}</span>
+        <span>R$ {totalPrice.toFixed(2).replace('.', ',')}</span>
+      </div>
+      {selectedPromotions.map((promo) => {
+        const result = multiEligibility.perPromo.get(promo.id);
+        if (!result?.isEligible) return null;
+        return (
+          <div key={promo.id} className="flex justify-between text-red-600">
+            <span>{t('cartPage.cupom')}{promo.title})</span>
+            <span>- R$ {result.discountAmount.toFixed(2).replace('.', ',')}</span>
+          </div>
+        );
+      })}
+      {orderType === 'entrega' && quote && (
+        <div className="flex justify-between text-gray-500">
+          <span>{t('cartPage.taxa_de_entrega')}</span>
+          <span>R$ {quote.fee.toFixed(2).replace('.', ',')}</span>
+        </div>
+      )}
+      {cashbackToUseEstimate > 0 && (
+        <div className="flex justify-between text-red-600">
+          <span>{t('receiptContent.cashback_usado')}</span>
+          <span>- R$ {cashbackToUseEstimate.toFixed(2).replace('.', ',')}</span>
+        </div>
+      )}
+      {resolvedTip > 0 && (
+        <div className="flex justify-between text-gray-500">
+          <span>{t('closingPaymentSheet.gorjeta')}</span>
+          <span>R$ {resolvedTip.toFixed(2).replace('.', ',')}</span>
+        </div>
+      )}
+      <div className="flex justify-between font-bold text-gray-900 text-base pt-1">
+        <span>{t('closingPaymentSheet.total')}</span>
+        <span>R$ {displayTotal.toFixed(2).replace('.', ',')}</span>
+      </div>
+    </div>
+  );
+
   // Rótulo do botão grande de baixo. Enquanto a loja ainda carrega
   // (`activeLocation` nulo) NÃO mostra "fechado" — é neutro.
   const primaryButtonLabel = isSubmitting
@@ -1031,20 +1072,46 @@ export function CartPage() {
               ? t('cartPage.revisar_pedido')
               : t('cartPage.confirmar_pedido');
 
+  const primaryButton = (
+  <button
+    onClick={handlePrimaryAction}
+    disabled={
+      isSubmitting ||
+      !activeLocation || !storeIsOpen ||
+      (checkoutStep === 'form' && orderType !== 'mesa' && !canProceedFromForm) ||
+      (checkoutStep === 'review' && !canSubmit)
+    }
+    className="w-full py-3.5 rounded-xl text-white font-semibold flex justify-between items-center px-5 disabled:opacity-60 md:hover:brightness-110 md:transition"
+    style={{ backgroundColor: tenant.primaryColor }}
+  >
+    {/* `key` = o texto/total viram nós NOVOS do DOM quando mudam (a
+        loja carrega depois de montar e o rótulo troca): pintura
+        garantida, em vez de depender de o navegador repintar um
+        nó antigo (ver o bug do texto que só aparecia ao tocar). */}
+    <span key={primaryButtonLabel}>{primaryButtonLabel}</span>
+    <span key={displayTotal.toFixed(2)}>R$ {displayTotal.toFixed(2).replace('.', ',')}</span>
+  </button>
+  );
+
   return (
-    <div className="min-h-screen bg-white max-w-md mx-auto pb-40">
-      <div className="flex items-center gap-3 px-4 py-4 border-b border-gray-100">
-        <button onClick={handleBack}>
+    <div className="min-h-screen bg-white md:bg-gray-50 pb-40 md:pb-12">
+     <div className="max-w-md mx-auto md:max-w-6xl md:px-6">
+      <div className="flex items-center gap-3 px-4 py-4 border-b border-gray-100 md:px-0 md:pt-8 md:pb-5 md:border-b-0">
+        <button onClick={handleBack} aria-label={t('common.back')} className="md:w-10 md:h-10 md:rounded-full md:bg-white md:border md:border-gray-100 md:flex md:items-center md:justify-center md:hover:bg-gray-50">
           <ArrowLeft size={20} />
         </button>
-        <h1 className="font-display font-bold text-lg">
+        <h1 className="font-display font-bold text-lg md:text-2xl">
           {showPaymentStep ? t('receiptContent.pagamento') : showReviewStep ? t('cartPage.revisar_pedido') : t('cartPage.seu_pedido')}
         </h1>
       </div>
 
+      {/* Desktop: 2 colunas (conteúdo à esquerda, resumo fixo à direita).
+          Mobile: coluna única, exatamente como antes. */}
+      <div className="md:grid md:grid-cols-[minmax(0,1fr)_360px] lg:grid-cols-[minmax(0,1fr)_400px] md:gap-6 md:items-start">
+      <div className="md:bg-white md:rounded-2xl md:border md:border-gray-100 md:shadow-sm md:overflow-hidden">
       {showFormStep && (
         <>
-          <div className="p-4 flex flex-col gap-3">
+          <div className="p-4 md:p-6 flex flex-col gap-3 md:gap-4">
             {items.map((item) => {
               const unitPrice =
                 Number(item.product.promoPrice ?? item.product.price) +
@@ -1061,8 +1128,8 @@ export function CartPage() {
                   ? item.selectedOptions.map((o) => o.label).join(', ')
                   : null;
               return (
-                <div key={item.lineKey} className="flex items-center gap-3">
-                  <div className="w-14 h-14 rounded-lg bg-gray-100 overflow-hidden shrink-0">
+                <div key={item.lineKey} className="flex items-center gap-3 md:gap-4">
+                  <div className="w-14 h-14 md:w-20 md:h-20 rounded-lg bg-gray-100 overflow-hidden shrink-0">
                     {item.product.imageUrl && (
                       <img
                         src={item.product.imageUrl}
@@ -1149,7 +1216,7 @@ export function CartPage() {
             })}
           </div>
 
-          <div className="px-4 py-3 border-t border-gray-100">
+          <div className="px-4 py-3 md:px-6 md:py-4 border-t border-gray-100">
             {selectedPromotions.length > 0 && (
               <div className="flex flex-col gap-1.5 mb-2">
                 {selectedPromotions.map((promo) => {
@@ -1276,7 +1343,7 @@ export function CartPage() {
             )}
           </div>
 
-          <div className="px-4 pt-2 pb-4 border-t border-gray-100 flex flex-col gap-3">
+          <div className="px-4 pt-2 pb-4 md:px-6 md:pt-5 md:pb-6 border-t border-gray-100 flex flex-col gap-3">
             <div>
               <label className="text-xs font-semibold text-gray-500">
                 {t('cartPage.como_voce_quer_receber')}
@@ -1511,14 +1578,14 @@ export function CartPage() {
             )}
 
             {errorMessage && (
-              <p className="text-xs text-red-500">{errorMessage}</p>
+              <p className="text-xs text-red-500 md:hidden">{errorMessage}</p>
             )}
           </div>
         </>
       )}
 
       {showPaymentStep && (
-        <div className="p-4 flex flex-col gap-3">
+        <div className="p-4 md:p-6 flex flex-col gap-3">
           <p className="text-xs text-gray-500">
             {t('cartPage.como_voce_prefere_pagar')} {orderType === 'entrega' ? t('cartPage.na_entrega') : t('cartPage.na_retirada')}{t('cartPage.ainda_nao_processamos_pagamento')}
           </p>
@@ -1557,7 +1624,7 @@ export function CartPage() {
       )}
 
       {showReviewStep && (
-        <div className="p-4 flex flex-col gap-4">
+        <div className="p-4 md:p-6 flex flex-col gap-4">
           <div className="flex items-center gap-2.5 bg-gray-50 rounded-xl p-3">
             {tenant.logoUrl ? (
               <img
@@ -1737,48 +1804,26 @@ export function CartPage() {
             </div>
           )}
 
-          <div className="flex flex-col gap-1.5 border-t border-gray-100 pt-3 text-sm">
-            <div className="flex justify-between text-gray-500">
-              <span>{t('closingPaymentSheet.subtotal')}</span>
-              <span>R$ {totalPrice.toFixed(2).replace('.', ',')}</span>
-            </div>
-            {selectedPromotions.map((promo) => {
-              const result = multiEligibility.perPromo.get(promo.id);
-              if (!result?.isEligible) return null;
-              return (
-                <div key={promo.id} className="flex justify-between text-red-600">
-                  <span>{t('cartPage.cupom')}{promo.title})</span>
-                  <span>- R$ {result.discountAmount.toFixed(2).replace('.', ',')}</span>
-                </div>
-              );
-            })}
-            {orderType === 'entrega' && quote && (
-              <div className="flex justify-between text-gray-500">
-                <span>{t('cartPage.taxa_de_entrega')}</span>
-                <span>R$ {quote.fee.toFixed(2).replace('.', ',')}</span>
-              </div>
-            )}
-            {cashbackToUseEstimate > 0 && (
-              <div className="flex justify-between text-red-600">
-                <span>{t('receiptContent.cashback_usado')}</span>
-                <span>- R$ {cashbackToUseEstimate.toFixed(2).replace('.', ',')}</span>
-              </div>
-            )}
-            {resolvedTip > 0 && (
-              <div className="flex justify-between text-gray-500">
-                <span>{t('closingPaymentSheet.gorjeta')}</span>
-                <span>R$ {resolvedTip.toFixed(2).replace('.', ',')}</span>
-              </div>
-            )}
-            <div className="flex justify-between font-bold text-gray-900 text-base pt-1">
-              <span>{t('closingPaymentSheet.total')}</span>
-              <span>R$ {displayTotal.toFixed(2).replace('.', ',')}</span>
-            </div>
+          {/* Mobile: o resumo fica no fim da revisão. Desktop: ele vive no painel lateral. */}
+          <div className="border-t border-gray-100 pt-3 md:hidden">
+            {orderSummary}
           </div>
 
-          {errorMessage && <p className="text-xs text-red-500">{errorMessage}</p>}
+          {errorMessage && <p className="text-xs text-red-500 md:hidden">{errorMessage}</p>}
         </div>
       )}
+
+      </div>
+
+      {/* Desktop: painel fixo com resumo, erro e botão principal. */}
+      <aside className="hidden md:flex md:flex-col md:gap-4 md:sticky md:top-6 bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <h2 className="font-display font-bold text-base text-gray-900">{t('cartPage.seu_pedido')}</h2>
+        {orderSummary}
+        {errorMessage && <p className="text-xs text-red-500">{errorMessage}</p>}
+        {primaryButton}
+      </aside>
+      </div>
+     </div>
 
       {/* BUG CORRIGIDO (30/09): o texto do botão grande só aparecia depois
           de um toque na tela. Causa: o rótulo troca DEPOIS de montar (a
@@ -1788,34 +1833,17 @@ export function CartPage() {
           Agora a barra é uma barra fixa comum (sem forçar camada), o
           rótulo não diz mais "fechado" enquanto a loja ainda carrega, e o
           texto troca por nós novos (`key`). */}
-      <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto p-4 bg-white border-t border-gray-100">
-        <button
-          onClick={handlePrimaryAction}
-          disabled={
-            isSubmitting ||
-            !activeLocation || !storeIsOpen ||
-            (checkoutStep === 'form' && orderType !== 'mesa' && !canProceedFromForm) ||
-            (checkoutStep === 'review' && !canSubmit)
-          }
-          className="w-full py-3.5 rounded-xl text-white font-semibold flex justify-between items-center px-5 disabled:opacity-60"
-          style={{ backgroundColor: tenant.primaryColor }}
-        >
-          {/* `key` = o texto/total viram nós NOVOS do DOM quando mudam (a
-              loja carrega depois de montar e o rótulo troca): pintura
-              garantida, em vez de depender de o navegador repintar um
-              nó antigo (ver o bug do texto que só aparecia ao tocar). */}
-          <span key={primaryButtonLabel}>{primaryButtonLabel}</span>
-          <span key={displayTotal.toFixed(2)}>R$ {displayTotal.toFixed(2).replace('.', ',')}</span>
-        </button>
+      <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto p-4 bg-white border-t border-gray-100 md:hidden">
+        {primaryButton}
       </div>
 
       {itemPendingRemoval && (
-        <div className="fixed inset-0 bg-black/40 flex items-end justify-center z-30 max-w-md mx-auto">
-          <div className="bg-white rounded-t-2xl w-full p-5 flex flex-col gap-4">
+        <div className="fixed inset-0 bg-black/40 flex items-end justify-center z-30 max-w-md mx-auto md:max-w-none md:items-center md:px-4">
+          <div className="bg-white rounded-t-2xl w-full p-5 flex flex-col gap-4 md:rounded-2xl md:max-w-sm md:shadow-xl">
             <div>
               <p className="font-semibold text-gray-900">{t('cartPage.remover_item')}</p>
               <p className="text-sm text-gray-500 mt-1">
-                {items.find((i) => i.product.id === itemPendingRemoval)?.product.name}{' '}
+                {items.find((i) => i.lineKey === itemPendingRemoval)?.product.name}{' '}
                 {t('cartPage.sera_removido_do_seu')}
               </p>
             </div>

@@ -107,8 +107,10 @@ export function CustomerProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24 max-w-md mx-auto">
-      <div className="bg-white px-6 pt-8 pb-6 flex items-center gap-3">
+    <div className="min-h-screen bg-gray-50 pb-24 md:pb-12">
+     {/* Desktop: identidade à esquerda (fixa), opções à direita. */}
+     <div className="max-w-md mx-auto md:max-w-5xl md:px-6 md:pt-8 md:grid md:grid-cols-[320px_minmax(0,1fr)] md:gap-6 md:items-start">
+      <div className="bg-white px-6 pt-8 pb-6 flex items-center gap-3 md:rounded-2xl md:border md:border-gray-100 md:shadow-sm md:pt-6 md:sticky md:top-6">
         <div className="relative shrink-0">
           <div
             className="w-14 h-14 rounded-full flex items-center justify-center text-white text-xl font-bold overflow-hidden"
@@ -143,8 +145,8 @@ export function CustomerProfilePage() {
         </div>
       </div>
 
-      <div className="px-4 mt-3">
-        <div className="bg-white rounded-2xl overflow-hidden">
+      <div className="px-4 mt-3 md:px-0 md:mt-0 min-w-0">
+        <div className="bg-white rounded-2xl overflow-hidden md:border md:border-gray-100 md:shadow-sm">
           <MenuRow
             icon={User}
             iconBg="#EDE9FE"
@@ -231,7 +233,7 @@ export function CustomerProfilePage() {
         )}
 
         {push.isSupported && (
-          <div className="bg-white rounded-2xl overflow-hidden mt-3">
+          <div className="bg-white rounded-2xl overflow-hidden mt-3 md:border md:border-gray-100 md:shadow-sm">
             <div className="w-full flex items-center gap-3 px-4 py-3.5">
               <button
                 onClick={() => navigate(`/${slug}/conta-cliente/notificacoes`)}
@@ -271,7 +273,7 @@ export function CustomerProfilePage() {
           </div>
         )}
 
-        <div className="bg-white rounded-2xl overflow-hidden mt-3">
+        <div className="bg-white rounded-2xl overflow-hidden mt-3 md:border md:border-gray-100 md:shadow-sm">
           <MenuRow
             icon={LogOut}
             iconBg="#FEE2E2"
@@ -282,6 +284,7 @@ export function CustomerProfilePage() {
           />
         </div>
       </div>
+     </div>
 
       {/* O modal precisa estar no retorno PRINCIPAL (cliente logado). Estava
           dentro do ramo "não logado", então o botão mudava o estado mas o
@@ -360,7 +363,7 @@ function MenuRow({
     <button
       onClick={onClick}
       disabled={disabled}
-      className="w-full flex items-center gap-3 px-4 py-3.5 border-b border-gray-50 last:border-b-0 disabled:opacity-40"
+      className="w-full flex items-center gap-3 px-4 py-3.5 md:px-5 border-b border-gray-50 last:border-b-0 disabled:opacity-40 md:hover:bg-gray-50 md:transition-colors"
     >
       <IconBadge icon={icon} backgroundColor={iconBg} iconColor={iconColor} size={40} />
       <span

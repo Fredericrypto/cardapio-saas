@@ -92,13 +92,13 @@ export function PeopleOrders<T extends { id: string }>({
   const byId = new Map(orders.map((o) => [o.id, o]));
   const leftover = unassignedOrderIds.map((id) => byId.get(id)).filter((o): o is T => Boolean(o));
   const body = (
-    <div className="flex flex-col gap-4">
+    <div className={`flex flex-col gap-4 ${compact ? '' : 'md:grid md:grid-cols-2 md:gap-6 md:items-start'}`}>
       {people.map((person, idx) => {
         const personOrders = person.orderIds.map((id) => byId.get(id)).filter((o): o is T => Boolean(o));
         return (
           <section
             key={person.id}
-            className={`flex flex-col gap-2 ${dark && idx > 0 ? 'pt-4 border-t border-white/10' : ''}`}
+            className={`flex flex-col gap-2 ${dark && idx > 0 ? `pt-4 border-t border-white/10 ${compact ? '' : 'md:pt-0 md:border-t-0'}` : ''}`}
           >
             <PersonHeader person={person} compact={compact} dark={dark} />
             <div
@@ -116,7 +116,7 @@ export function PeopleOrders<T extends { id: string }>({
         );
       })}
       {leftover.length > 0 && (
-        <section className="flex flex-col gap-2">
+        <section className={`flex flex-col gap-2 ${compact ? '' : 'md:col-span-2'}`}>
           <p className="text-xs font-semibold text-gray-400">{t('peopleOrders.outros_pedidos')}</p>
           {leftover.map((o) => (
             <div key={o.id}>{renderOrder(o)}</div>
@@ -128,7 +128,7 @@ export function PeopleOrders<T extends { id: string }>({
   if (!dark) return body;
   return (
     <div
-      className="rounded-2xl p-4 text-white"
+      className="rounded-2xl p-4 md:p-6 text-white"
       style={{ background: 'linear-gradient(160deg, #27272A 0%, #18181B 55%, #0A0A0B 100%)' }}
     >
       {body}

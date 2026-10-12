@@ -63,8 +63,10 @@ export function PromoCards({ promotions, primaryColor, onSelect, muted = false, 
   // pb-4 + -mb-3: o container rola na horizontal, o que corta a sombra no
   // fundo; o respiro embaixo (compensado pela margem negativa, pra o
   // layout não mudar) deixa a sombra inteira aparecer.
+  // Desktop (md+): carrossel vira grade (sem rolagem lateral, que não é
+  // natural com mouse) com 2/3/4 colunas.
   return (
-    <div className="flex gap-3 px-4 pt-1 pb-4 -mb-3 overflow-x-auto no-scrollbar snap-x snap-mandatory">
+    <div className="flex gap-3 px-4 pt-1 pb-4 -mb-3 overflow-x-auto no-scrollbar snap-x snap-mandatory md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 md:items-start md:gap-4 md:overflow-visible md:snap-none">
       {promotions.map((promo) => (
         <PromoCard key={promo.id} promo={promo} primaryColor={primaryColor} onSelect={onSelect} muted={muted} shareUrl={buildShareUrl?.(promo.id)} />
       ))}
@@ -91,9 +93,9 @@ function PromoCard({
   return (
     <button
       onClick={() => onSelect(promo.id)}
-      className={`shrink-0 w-[270px] snap-start rounded-2xl overflow-hidden relative shadow-[0_2px_10px_rgba(0,0,0,0.04)] text-left active:scale-[0.98] transition-transform dark:ring-1 dark:ring-white/10 ${muted ? CLOSED_MUTED_CLASS : ''}`}
+      className={`shrink-0 w-[270px] md:w-auto snap-start rounded-2xl md:hover:shadow-[0_8px_22px_rgba(0,0,0,0.12)] transition-[transform,box-shadow] overflow-hidden relative shadow-[0_2px_10px_rgba(0,0,0,0.04)] text-left active:scale-[0.98] dark:ring-1 dark:ring-white/10 ${muted ? CLOSED_MUTED_CLASS : ''}`}
     >
-      <div className="relative h-36 w-full">
+      <div className="relative h-36 md:h-40 w-full">
         {promo.imageUrl ? (
           <img
             src={promo.imageUrl}

@@ -26,8 +26,13 @@ import { CategoryChips } from '../components/CategoryChips';
 import { getCategoryIcon, PromocoesIcon } from '../components/CategoryIcon';
 import { ProductCard } from '../components/ProductCard';
 import { CartBar } from '../components/CartBar';
-import { BottomNav } from '../components/BottomNav';
+import { BottomNav, DesktopNav } from '../components/BottomNav';
 import { buildShareUrl } from '../lib/shareLinks';
+
+// Grade de produtos adaptativa: 2 colunas no celular (desenho atual do
+// ProductCard), 3 no tablet (sm), 4 no desktop (lg) e 5 em monitores largos (xl).
+const PRODUCT_GRID_CLASS =
+  'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4 px-4';
 
 // Cardápio único pro cliente — atende tanto quem escaneou o QR de uma
 // mesa (`/:slug/mesa/:qrCodeToken`) quanto quem chegou por um link geral
@@ -283,168 +288,186 @@ export function MenuPage() {
   const isOpenNow = activeLocation?.isOpenNow ?? true;
 
   return (
-    <div className="min-h-screen bg-white pb-24 max-w-md mx-auto relative">
-      {isTableFlow ? (
-        <TableMenuHeader
-          tenant={tenant}
-          location={activeLocation}
-          tableNumber={session?.table?.number}
-          tableKind={session?.table?.kind}
-          onCallWaiter={handleCallWaiter}
-          onOpenAccount={() => navigate(`/${slug}/mesa/${qrCodeToken}/conta`)}
-          isCallingWaiter={isCallingWaiter}
-          session={session}
-          onExpiryTick={tableSessionCtx?.recheckExpiry}
-        />
-      ) : (
-        <MenuHeader
-          tenant={tenant}
-          location={activeLocation}
-          onBack={
-            locations && locations.length > 1
-              ? () => navigate(`/${slug}/escolher-loja`)
-              : undefined
-          }
-        />
-      )}
+    <div className="min-h-screen bg-white pb-24 md:pb-10 relative">
+      <DesktopNav
+        slug={slug!}
+        qrCodeToken={qrCodeToken}
+        tenantId={tenant.id}
+        primaryColor={tenant.primaryColor}
+        tenant={tenant}
+        searchValue={searchTerm}
+        onSearchChange={setSearchTerm}
+        contextLabel={activeLocation?.name}
+      />
 
-      {/* Avisos do garçom: FloatingNotice (portal no body, fixo no topo) em
-          vez de um bloco inline com margem negativa — esse era cortado pela
-          aba "Informações" e se mexia quando ela abria. */}
-      {/* "Garçom chamado": mesmo visual do aviso do QR, mas FIXO — só some
-          quando o admin dispensa o chamado no painel (o polling abaixo
-          zera isWaiterCallPending). */}
-      {isTableFlow && isWaiterCallPending && (
-        <FloatingNotice
-          persistent
-          message={t('menuPage.garcom_chamado_alguem_vai')}
-        />
-      )}
-      {isTableFlow && callWaiterError && (
-        <FloatingNotice message={callWaiterError} onDone={() => setCallWaiterError(null)} />
-      )}
-
-      {!isOpenNow && (
-        <div className="bg-red-50 border-b border-red-100 px-4 py-2.5 text-center">
-          <p className="text-xs font-bold text-red-600">{t('store.closedEstablishment')}</p>
-          <p className="text-[11px] text-red-500 mt-0.5">{t('store.closedHint')}</p>
-        </div>
-      )}
-
-      {/* Loja fechada: tudo continua navegável (setas, carrossel, busca, abrir
-          item/promoção para ler). Só o VISUAL dos cards fica atenuado e os
-          botões de adicionar/pedir ficam travados (ver ProductCard e telas de
-          detalhe). */}
-      <div>
-        <div className="pt-1 pb-5">
-          {/* Mesmo cabeçalho das categorias da aba "Todos": ícone à
-              esquerda + nome + seta de recolher (decisão do Felipe, 30/09). */}
-          <button
-            onClick={() => setShowPromotions((v) => !v)}
-            aria-label={showPromotions ? t('menuPage.ocultar_promocoes') : t('menuPage.mostrar_promocoes')}
-            aria-expanded={showPromotions}
-            className="w-full flex items-center gap-2 px-4 pt-4 pb-1.5 text-gray-700"
-          >
-            <PromocoesIcon size={16} />
-            <span className="text-sm font-semibold flex-1 text-left">{t('notifications.type.promotion.label')}</span>
-            <ChevronDown
-              size={16}
-              strokeWidth={1.5}
-              className={`text-gray-400 transition-transform ${showPromotions ? '' : '-rotate-90'}`}
-            />
-          </button>
-
-          {showPromotions &&
-            (promotions.length > 0 ? (
-              <PromoCards
-                promotions={promotions}
-                primaryColor={tenant.primaryColor}
-                muted={!isOpenNow}
-                buildShareUrl={(id) => buildShareUrl('promocao', slug!, id)}
-                onSelect={(id) => navigate(promotionHref(id))}
-              />
-            ) : (
-              <p className="text-xs text-gray-400 px-4 pt-1 pb-1">{t('menuPage.nenhuma_promocao_no_momento')}</p>
-            ))}
-        </div>
-
-        <SearchBar value={searchTerm} onChange={setSearchTerm} />
-        <CategoryChips
-          categories={categories}
-          activeCategoryId={activeCategoryId}
-          onSelect={setActiveCategoryId}
-          primaryColor={tenant.primaryColor}
-        />
-
-        {filteredProducts.length === 0 ? (
-          <p className="text-center text-gray-400 text-sm py-12">
-            {t('menuPage.nenhum_produto_encontrado')}
-          </p>
-        ) : activeCategoryId !== null ? (
-          <div className="grid grid-cols-2 gap-3 px-4 pt-3 pb-4">
-            {filteredProducts.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                primaryColor={tenant.primaryColor}
-                storeClosed={!isOpenNow}
-                shareUrl={buildShareUrl('produto', slug!, product.id)}
-                onClick={() => navigate(productHref(product.id))}
-              />
-            ))}
-          </div>
+      <div className="w-full max-w-7xl mx-auto md:px-8 md:pt-4">
+        {isTableFlow ? (
+          <TableMenuHeader
+            tenant={tenant}
+            location={activeLocation}
+            tableNumber={session?.table?.number}
+            tableKind={session?.table?.kind}
+            onCallWaiter={handleCallWaiter}
+            onOpenAccount={() => navigate(`/${slug}/mesa/${qrCodeToken}/conta`)}
+            isCallingWaiter={isCallingWaiter}
+            session={session}
+            onExpiryTick={tableSessionCtx?.recheckExpiry}
+          />
         ) : (
-          // Aba "Todos": itens separados por categoria (só as que o admin
-          // ativou), cada seção com ícone + nome e seta pra recolher.
-          // Durante uma busca as seções ficam sempre abertas.
-          <div className="pt-1 pb-4">
-            {categories.map((category) => {
-              const items = filteredProducts.filter((p) => p.categoryId === category.id);
-              if (items.length === 0) return null;
-              const Icon = getCategoryIcon(category.key, category.name);
-              const isCollapsed =
-                searchTerm.trim() === '' && collapsedCategoryIds.has(category.id);
-              return (
-                <section key={category.id}>
-                  <button
-                    onClick={() =>
-                      setCollapsedCategoryIds((prev) => {
-                        const next = new Set(prev);
-                        if (next.has(category.id)) next.delete(category.id);
-                        else next.add(category.id);
-                        return next;
-                      })
-                    }
-                    className="w-full flex items-center gap-2 px-4 pt-4 pb-1.5 text-gray-700"
-                    aria-expanded={!isCollapsed}
-                  >
-                    {Icon && <Icon size={16} />}
-                    <span className="text-sm font-semibold flex-1 text-left">{categoryLabel(category, t)}</span>
-                    <ChevronDown
-                      size={16}
-                      strokeWidth={1.5}
-                      className={`text-gray-400 transition-transform ${isCollapsed ? '-rotate-90' : ''}`}
-                    />
-                  </button>
-                  {!isCollapsed && (
-                    <div className="grid grid-cols-2 gap-3 px-4 pt-1.5">
-                      {items.map((product) => (
-                        <ProductCard
-                          key={product.id}
-                          product={product}
-                          primaryColor={tenant.primaryColor}
-                          storeClosed={!isOpenNow}
-                          shareUrl={buildShareUrl('produto', slug!, product.id)}
-                          onClick={() => navigate(productHref(product.id))}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </section>
-              );
-            })}
+          <MenuHeader
+            tenant={tenant}
+            location={activeLocation}
+            onBack={
+              locations && locations.length > 1
+                ? () => navigate(`/${slug}/escolher-loja`)
+                : undefined
+            }
+          />
+        )}
+
+        {/* Avisos do garçom: FloatingNotice (portal no body, fixo no topo) em
+            vez de um bloco inline com margem negativa — esse era cortado pela
+            aba "Informações" e se mexia quando ela abria. */}
+        {/* "Garçom chamado": mesmo visual do aviso do QR, mas FIXO — só some
+            quando o admin dispensa o chamado no painel (o polling abaixo
+            zera isWaiterCallPending). */}
+        {isTableFlow && isWaiterCallPending && (
+          <FloatingNotice
+            persistent
+            message={t('menuPage.garcom_chamado_alguem_vai')}
+          />
+        )}
+        {isTableFlow && callWaiterError && (
+          <FloatingNotice message={callWaiterError} onDone={() => setCallWaiterError(null)} />
+        )}
+
+        {!isOpenNow && (
+          <div className="bg-red-50 border-b border-red-100 px-4 py-2.5 text-center">
+            <p className="text-xs font-bold text-red-600">{t('store.closedEstablishment')}</p>
+            <p className="text-[11px] text-red-500 mt-0.5">{t('store.closedHint')}</p>
           </div>
         )}
+
+        {/* Loja fechada: tudo continua navegável (setas, carrossel, busca, abrir
+            item/promoção para ler). Só o VISUAL dos cards fica atenuado e os
+            botões de adicionar/pedir ficam travados (ver ProductCard e telas de
+            detalhe). */}
+        <div>
+          <div className="pt-1 pb-5">
+            {/* Mesmo cabeçalho das categorias da aba "Todos": ícone à
+                esquerda + nome + seta de recolher (decisão do Felipe, 30/09). */}
+            <button
+              onClick={() => setShowPromotions((v) => !v)}
+              aria-label={showPromotions ? t('menuPage.ocultar_promocoes') : t('menuPage.mostrar_promocoes')}
+              aria-expanded={showPromotions}
+              className="w-full flex items-center gap-2 px-4 pt-4 pb-1.5 text-gray-700"
+            >
+              <PromocoesIcon size={16} />
+              <span className="text-sm font-semibold flex-1 text-left">{t('notifications.type.promotion.label')}</span>
+              <ChevronDown
+                size={16}
+                strokeWidth={1.5}
+                className={`text-gray-400 transition-transform ${showPromotions ? '' : '-rotate-90'}`}
+              />
+            </button>
+
+            {showPromotions &&
+              (promotions.length > 0 ? (
+                <PromoCards
+                  promotions={promotions}
+                  primaryColor={tenant.primaryColor}
+                  muted={!isOpenNow}
+                  buildShareUrl={(id) => buildShareUrl('promocao', slug!, id)}
+                  onSelect={(id) => navigate(promotionHref(id))}
+                />
+              ) : (
+                <p className="text-xs text-gray-400 px-4 pt-1 pb-1">{t('menuPage.nenhuma_promocao_no_momento')}</p>
+              ))}
+          </div>
+
+          <div className="md:hidden">
+            <SearchBar value={searchTerm} onChange={setSearchTerm} />
+          </div>
+          {/* Desktop: categorias fixas logo abaixo da barra superior (h-16). */}
+          <div className="md:sticky md:top-16 md:z-30 md:bg-white">
+            <CategoryChips
+              categories={categories}
+              activeCategoryId={activeCategoryId}
+              onSelect={setActiveCategoryId}
+              primaryColor={tenant.primaryColor}
+            />
+          </div>
+
+          {filteredProducts.length === 0 ? (
+            <p className="text-center text-gray-400 text-sm py-12">
+              {t('menuPage.nenhum_produto_encontrado')}
+            </p>
+          ) : activeCategoryId !== null ? (
+            <div className={`${PRODUCT_GRID_CLASS} pt-3 pb-4`}>
+              {filteredProducts.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  primaryColor={tenant.primaryColor}
+                  storeClosed={!isOpenNow}
+                  shareUrl={buildShareUrl('produto', slug!, product.id)}
+                  onClick={() => navigate(productHref(product.id))}
+                />
+              ))}
+            </div>
+          ) : (
+            // Aba "Todos": itens separados por categoria (só as que o admin
+            // ativou), cada seção com ícone + nome e seta pra recolher.
+            // Durante uma busca as seções ficam sempre abertas.
+            <div className="pt-1 pb-4">
+              {categories.map((category) => {
+                const items = filteredProducts.filter((p) => p.categoryId === category.id);
+                if (items.length === 0) return null;
+                const Icon = getCategoryIcon(category.key, category.name);
+                const isCollapsed =
+                  searchTerm.trim() === '' && collapsedCategoryIds.has(category.id);
+                return (
+                  <section key={category.id}>
+                    <button
+                      onClick={() =>
+                        setCollapsedCategoryIds((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(category.id)) next.delete(category.id);
+                          else next.add(category.id);
+                          return next;
+                        })
+                      }
+                      className="w-full flex items-center gap-2 px-4 pt-4 pb-1.5 text-gray-700"
+                      aria-expanded={!isCollapsed}
+                    >
+                      {Icon && <Icon size={16} />}
+                      <span className="text-sm font-semibold flex-1 text-left">{categoryLabel(category, t)}</span>
+                      <ChevronDown
+                        size={16}
+                        strokeWidth={1.5}
+                        className={`text-gray-400 transition-transform ${isCollapsed ? '-rotate-90' : ''}`}
+                      />
+                    </button>
+                    {!isCollapsed && (
+                      <div className={`${PRODUCT_GRID_CLASS} pt-1.5`}>
+                        {items.map((product) => (
+                          <ProductCard
+                            key={product.id}
+                            product={product}
+                            primaryColor={tenant.primaryColor}
+                            storeClosed={!isOpenNow}
+                            shareUrl={buildShareUrl('produto', slug!, product.id)}
+                            onClick={() => navigate(productHref(product.id))}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </section>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
 
       {isOpenNow && (

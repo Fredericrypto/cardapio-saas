@@ -61,8 +61,8 @@ export function OpenStatusRow({ location }: { location: Location | null }) {
   const todayHoursLabel = status.isOpen ? getTodayHoursLabel(location?.openingHours ?? null, t, now) : null;
   const nextOpeningLabel = status.isOpen ? null : formatNextOpening(status.nextOpening, t);
   return (
-    <div className="flex flex-col items-center gap-0.5 mt-2.5">
-      <div className="flex items-center justify-center gap-1.5 flex-wrap">
+    <div className="flex flex-col items-center md:items-start gap-0.5 mt-2.5 md:mt-2">
+      <div className="flex items-center justify-center md:justify-start gap-1.5 flex-wrap">
         <span
           data-testid="store-status-badge"
           className={`text-[11px] font-bold px-2 py-0.5 rounded-full text-white ${

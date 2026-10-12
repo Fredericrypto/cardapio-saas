@@ -47,13 +47,24 @@ export function CategoryChips({
     };
   }, [tabCount]);
 
+  // Mantém a aba ativa visível: no desktop a barra rola na horizontal, e ao
+  // escolher uma categoria (ou rolar a lista) a aba selecionada é trazida pro
+  // centro. Rola só o container das abas (nunca a página inteira).
+  useEffect(() => {
+    const el = scrollRef.current;
+    const active = el?.querySelector<HTMLElement>('[data-active="true"]');
+    if (!el || !active) return;
+    const left = Math.max(0, active.offsetLeft - (el.clientWidth - active.offsetWidth) / 2);
+    el.scrollTo({ left, behavior: 'smooth' });
+  }, [activeCategoryId]);
+
   return (
     <div className="relative border-b border-gray-100">
     <div ref={scrollRef} className="overflow-x-auto no-scrollbar">
       {/* `w-max min-w-full justify-center` centraliza quando cabe na tela e, quando não
           cabe, continua rolando normal pra esquerda (justify-center
           direto cortaria o começo da lista). */}
-      <div className="flex w-max min-w-full justify-center gap-2 px-3 pt-1.5">
+      <div className="flex w-max min-w-full justify-center md:justify-start gap-2 md:gap-1 px-3 md:px-4 pt-1.5 md:pt-0">
       <Tab
         label={t('categoryChips.todos')}
         isActive={activeCategoryId === null}
@@ -102,13 +113,14 @@ function Tab({
   return (
     <button
       onClick={onClick}
-      className={`shrink-0 flex flex-col items-center gap-2 px-4 pt-2 pb-2 min-w-[76px] transition-colors active:bg-gray-50 dark:active:bg-[#282A2C] rounded-t-xl ${colorClass}`}
+      data-active={isActive ? 'true' : 'false'}
+      className={`shrink-0 flex flex-col md:flex-row items-center gap-2 px-4 pt-2 pb-2 md:py-3 min-w-[76px] md:min-w-0 transition-colors active:bg-gray-50 md:hover:bg-gray-50 dark:active:bg-[#282A2C] rounded-t-xl ${colorClass}`}
       style={{
         borderBottom: isActive ? `2.5px solid ${primaryColor}` : '2.5px solid transparent',
       }}
     >
       {Icon && (
-        <span className="h-6 flex items-center justify-center">
+        <span className="h-6 md:h-5 flex items-center justify-center">
           <Icon size={22} />
         </span>
       )}

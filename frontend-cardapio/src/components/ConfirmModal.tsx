@@ -24,11 +24,11 @@ export function ConfirmModal({
   const { t } = useI18n();
   return createPortal(
     <div
-      className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-6"
+      className="fixed inset-0 z-50 bg-black/40 md:backdrop-blur-sm flex items-center justify-center px-6"
       onClick={onCancel}
     >
       <div
-        className="bg-white rounded-2xl p-5 max-w-xs w-full flex flex-col gap-4 text-center"
+        className="bg-white rounded-2xl p-5 md:p-6 max-w-xs md:max-w-sm w-full flex flex-col gap-4 text-center md:shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <p className="text-sm text-gray-700">{message}</p>
