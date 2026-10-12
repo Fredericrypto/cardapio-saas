@@ -6,6 +6,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import jsQR from 'jsqr';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
+import { Tooltip } from './Tooltip';
 
 interface QrScannerModalProps {
   onClose: () => void;
@@ -135,32 +136,40 @@ export function QrScannerModal({ onClose, onCameraError }: QrScannerModalProps) 
   // header (que usa `transform`/`filter`), e dentro de um ancestral assim
   // `position: fixed` deixa de cobrir a tela — o scanner virava um
   // quadrado preto do tamanho do botão e a câmera nunca aparecia.
+  // A câmera é sempre escura, independente do tema: barras e painel de erro
+  // seguem a superfície escura do app (#1E1E20, borda white/10).
   return createPortal(
     <div className="fixed inset-0 z-50 bg-black flex flex-col">
-      <div className="flex items-center justify-between p-4">
+      <div className="flex items-center justify-between p-4 bg-[#1E1E20] border-b border-white/10">
         <p className="text-white text-sm font-semibold">{t('qrScanButton.escanear_qr_code_da')}</p>
-        <button onClick={onClose} className="text-white p-1">
-          <X size={22} />
-        </button>
+        <Tooltip label={t('common.cancel')} className="inline-flex shrink-0">
+          <button
+            onClick={onClose}
+            aria-label={t('common.cancel')}
+            className="text-[#E3E2E6] p-1.5 rounded-full hover:bg-white/10 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+          >
+            <X size={22} strokeWidth={1.5} />
+          </button>
+        </Tooltip>
       </div>
 
       <div className="flex-1 relative flex items-center justify-center overflow-hidden">
         <video ref={videoRef} className="absolute inset-0 w-full h-full object-cover" playsInline muted />
         <canvas ref={canvasRef} className="hidden" />
         {!hasResult && !error && (
-          <div className="relative w-64 h-64 border-2 border-white/70 rounded-2xl" />
+          <div className="relative w-64 h-64 border border-white/60 rounded-2xl" />
         )}
       </div>
 
       {error && (
-        <div className="p-4 bg-black">
-          <p className="text-red-300 text-sm text-center mb-3">{error}</p>
+        <div className="p-4 bg-[#1E1E20] border-t border-white/10">
+          <p className="text-red-400 text-sm text-center mb-3">{error}</p>
           <button
             onClick={() => {
               setError(null);
               setHasResult(false);
             }}
-            className="w-full py-3 rounded-xl bg-white text-gray-900 text-sm font-semibold"
+            className="w-full py-3 rounded-xl bg-[#E3E2E6] hover:bg-white text-[#131314] text-sm font-semibold transition-colors outline-none focus-visible:ring-2 focus-visible:ring-white/30"
           >
             {t('optionalCustomerAuth.tentar_de_novo')}
           </button>

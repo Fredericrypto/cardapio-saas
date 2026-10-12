@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { QrCode } from 'lucide-react';
 import { QrScannerModal } from './QrScannerModal';
 import { FloatingNotice } from './FloatingNotice';
+import { Tooltip } from './Tooltip';
 
 interface QrScanButtonProps {
   // 'fixed': badge flutuante de canto, posição absoluta (comportamento
@@ -22,16 +23,19 @@ export function QrScanButton({ variant = 'inline' }: QrScanButtonProps) {
     variant === 'fixed'
       ? 'fixed top-3 left-3 z-40 w-9 h-9 shadow-sm'
       : 'w-8 h-8';
+  const label = t('qrScanButton.escanear_qr_code_da');
 
   return (
     <>
-      <button
-        onClick={() => setShowScanner(true)}
-        aria-label={t('qrScanButton.escanear_qr_code_da')}
-        className={`rounded-full bg-gray-50 flex items-center justify-center text-gray-500 shrink-0 ${positionClass}`}
-      >
-        <QrCode size={15} />
-      </button>
+      <Tooltip label={label} className="inline-flex shrink-0">
+        <button
+          onClick={() => setShowScanner(true)}
+          aria-label={label}
+          className={`rounded-full border border-[#F3F4F6] dark:border-white/10 bg-[#F9FAFB] dark:bg-[#1E1E20] hover:bg-[#F3F4F6] dark:hover:bg-white/10 flex items-center justify-center text-[#6B7280] dark:text-[#C4C7C5] shrink-0 transition-colors ${positionClass}`}
+        >
+          <QrCode size={15} strokeWidth={1.5} />
+        </button>
+      </Tooltip>
       {showScanner && (
         <QrScannerModal onClose={() => setShowScanner(false)} onCameraError={setNotice} />
       )}

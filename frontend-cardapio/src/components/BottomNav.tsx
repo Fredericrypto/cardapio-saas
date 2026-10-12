@@ -47,6 +47,10 @@ function useNavModel(slug: string, qrCodeToken: string | undefined, primaryColor
     ? `/${slug}/conta-cliente/perfil`
     : `/${slug}/conta-cliente/entrar?redirect=${encodeURIComponent(menuHref)}`;
   const accountActive = location.pathname.startsWith(`/${slug}/conta-cliente`);
+  // A busca global só existe na PÁGINA PRINCIPAL do cardápio (a rota do
+  // próprio `menuHref`, com ou sem barra final). Qualquer subpágina —
+  // `/conta-cliente/*`, carrinho, avaliações, produto — fica sem a busca.
+  const isMenuRoute = location.pathname.replace(/\/+$/, '') === menuHref;
 
   return {
     t,
@@ -58,6 +62,7 @@ function useNavModel(slug: string, qrCodeToken: string | undefined, primaryColor
     cartHref,
     accountHref,
     accountActive,
+    isMenuRoute,
     menuActive: location.pathname === menuHref,
     cartActive: location.pathname === cartHref,
   };
@@ -184,15 +189,20 @@ function NavItem({ to, icon: Icon, label, tooltip, active, color, inactiveColor,
 
 // Equivalente desktop da BottomNav: barra de topo fixa (sticky) no padrão de
 // web app — marca à esquerda, busca global no centro, loja/mesa e os mesmos
-// três destinos (Cardápio, Carrinho com contador, Conta) à direita. Sem ela,
+// três destinos (Cardápio, Carrinho com contador, Conta) à direita. A busca
+// só é desenhada na página principal do cardápio (ver `showSearch`). Sem ela,
 // o acesso a Carrinho/Conta sumiria quando a barra inferior é ocultada. Só
 // aparece a partir de `md`; a altura fixa (h-16) é a referência do `top-16` das
 // categorias fixas da MenuPage.
 interface DesktopNavProps extends BottomNavProps {
   tenant: Tenant;
-  searchValue: string;
-  onSearchChange: (value: string) => void;
+  // Opcionais: só a MenuPage precisa passar. Subpáginas podem omitir.
+  searchValue?: string;
+  onSearchChange?: (value: string) => void;
   contextLabel?: string;
+  // Força mostrar/ocultar a busca. Sem isso vale a regra por rota: aparece
+  // só na página principal do cardápio e só se `onSearchChange` existir.
+  showSearch?: boolean;
 }
 
 export function DesktopNav({
@@ -200,11 +210,13 @@ export function DesktopNav({
   qrCodeToken,
   primaryColor = '#111827',
   tenant,
-  searchValue,
+  searchValue = '',
   onSearchChange,
   contextLabel,
+  showSearch,
 }: DesktopNavProps) {
   const nav = useNavModel(slug, qrCodeToken, primaryColor);
+  const searchVisible = (showSearch ?? nav.isMenuRoute) && Boolean(onSearchChange);
 
   return (
     <nav className="hidden md:block sticky top-0 z-40 bg-white border-b border-gray-100">
@@ -218,9 +230,11 @@ export function DesktopNav({
           <span className="font-display text-sm font-bold text-gray-900 truncate">{tenant.name}</span>
         </div>
 
-        <div className="flex-1 min-w-0 max-w-xl">
-          <SearchBar value={searchValue} onChange={onSearchChange} />
-        </div>
+        {searchVisible && onSearchChange && (
+          <div className="flex-1 min-w-0 max-w-xl">
+            <SearchBar value={searchValue} onChange={onSearchChange} />
+          </div>
+        )}
 
         <div className="ml-auto flex items-center gap-1 shrink-0">
           {contextLabel && (

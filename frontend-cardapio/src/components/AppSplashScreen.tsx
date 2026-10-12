@@ -17,9 +17,9 @@ interface AppSplashScreenProps {
 // - Não escreve nenhum nome do app na tela — só o ícone. Assim que o
 //   nome for decidido, adicionar um <h1> aqui embaixo do ícone é a única
 //   mudança necessária.
-// - Fundo CLARO (bg-gray-50), igual todo o resto do app e a própria
-//   tela de login — nunca um preto genérico. Só o glow atrás do raio
-//   usa as cores do favicon (roxo/azul).
+// - Fundo segue o tema do app: claro #F9FAFB,
+//   escuro #131314 (fundo oficial, docs/TEMA.md) — nunca um preto
+//   genérico. Só o glow atrás do raio usa as cores do favicon (roxo/azul).
 const MIN_VISIBLE_MS = 1600;
 const FADE_DURATION_MS = 400;
 
@@ -38,7 +38,8 @@ export function AppSplashScreen({ onFinish }: AppSplashScreenProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-gray-50 transition-opacity"
+      role="status"
+      className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#F9FAFB] dark:bg-[#131314] transition-opacity"
       style={{
         opacity: isFadingOut ? 0 : 1,
         transitionDuration: `${FADE_DURATION_MS}ms`,
