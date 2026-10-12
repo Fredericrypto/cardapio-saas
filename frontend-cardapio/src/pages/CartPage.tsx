@@ -916,11 +916,11 @@ export function CartPage() {
 
   if (items.length === 0) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-8 text-center max-w-md mx-auto">
-        <div className="w-16 h-16 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center">
-          <ShoppingBag size={26} strokeWidth={1.5} className="text-gray-300" />
+      <div className="min-h-screen bg-[#131314] flex flex-col items-center justify-center px-8 text-center">
+        <div className="w-16 h-16 rounded-full bg-[#1E1E20] border border-white/10 flex items-center justify-center">
+          <ShoppingBag size={26} strokeWidth={1.5} className="text-gray-400" />
         </div>
-        <p className="mt-5 text-base font-semibold text-gray-800">{t('cartPage.seu_carrinho_esta_vazio')}</p>
+        <p className="mt-5 text-base font-semibold text-gray-100">{t('cartPage.seu_carrinho_esta_vazio')}</p>
         <p className="mt-1 text-sm text-gray-400">{t('cartPage.adicione_itens_do_cardapio')}</p>
         {/* Mesmo visual do botão "Chamar garçom". */}
         <button
@@ -1096,13 +1096,19 @@ export function CartPage() {
   );
 
   return (
-    <div className="min-h-screen bg-white md:bg-gray-50 pb-40 md:pb-12">
+    <div className="min-h-screen bg-[#131314] text-gray-100 pb-40 md:pb-12">
      <div className="max-w-md mx-auto md:max-w-6xl md:px-6">
-      <div className="flex items-center gap-3 px-4 py-4 border-b border-gray-100 md:px-0 md:pt-8 md:pb-5 md:border-b-0">
-        <button onClick={handleBack} aria-label={t('common.back')} className="md:w-10 md:h-10 md:rounded-full md:bg-white md:border md:border-gray-100 md:flex md:items-center md:justify-center md:hover:bg-gray-50">
-          <ArrowLeft size={20} />
-        </button>
-        <h1 className="font-display font-bold text-lg md:text-2xl">
+      <div className="flex items-center gap-3 px-4 py-4 border-b border-white/10 md:px-0 md:pt-8 md:pb-5 md:border-b-0">
+        <Tooltip label={t('cartPage.voltar_ao_cardapio')}>
+          <button
+            onClick={handleBack}
+            aria-label={t('common.back')}
+            className="w-10 h-10 rounded-full bg-[#1E1E20] hover:bg-[#282A2C] border border-white/10 flex items-center justify-center text-white transition-colors"
+          >
+            <ArrowLeft size={20} strokeWidth={1.5} />
+          </button>
+        </Tooltip>
+        <h1 className="font-display font-bold text-lg md:text-2xl text-white">
           {showPaymentStep ? t('receiptContent.pagamento') : showReviewStep ? t('cartPage.revisar_pedido') : t('cartPage.seu_pedido')}
         </h1>
       </div>
@@ -1110,10 +1116,10 @@ export function CartPage() {
       {/* Desktop: 2 colunas (conteúdo à esquerda, resumo fixo à direita).
           Mobile: coluna única, exatamente como antes. */}
       <div className="md:grid md:grid-cols-[minmax(0,1fr)_360px] lg:grid-cols-[minmax(0,1fr)_400px] md:gap-6 md:items-start">
-      <div className="md:bg-white md:rounded-2xl md:border md:border-gray-100 md:shadow-sm md:overflow-hidden">
+      <div>
       {showFormStep && (
         <>
-          <div className="p-4 md:p-6 flex flex-col gap-3 md:gap-4">
+          <div className="p-4 md:p-0 md:pb-4 flex flex-col gap-3">
             {items.map((item) => {
               const unitPrice =
                 Number(item.product.promoPrice ?? item.product.price) +
@@ -1130,8 +1136,11 @@ export function CartPage() {
                   ? item.selectedOptions.map((o) => o.label).join(', ')
                   : null;
               return (
-                <div key={item.lineKey} className="flex items-center gap-3 md:gap-4">
-                  <div className="w-14 h-14 md:w-20 md:h-20 rounded-lg bg-gray-100 overflow-hidden shrink-0">
+                <div
+                  key={item.lineKey}
+                  className="flex items-start gap-3 md:gap-4 bg-[#1E1E20] border border-white/10 rounded-2xl p-4"
+                >
+                  <div className="w-16 h-16 md:w-20 md:h-20 aspect-square rounded-xl bg-white/5 overflow-hidden shrink-0">
                     {item.product.imageUrl && (
                       <img
                         src={item.product.imageUrl}
@@ -1140,7 +1149,7 @@ export function CartPage() {
                       />
                     )}
                   </div>
-                  <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+                  <div className="flex-1 min-w-0 flex flex-col gap-3">
                     {isSplit ? (
                       <>
                         <div
@@ -1150,7 +1159,7 @@ export function CartPage() {
                             backgroundColor: `${tenant.primaryColor}0D`,
                           }}
                         >
-                          <p className="text-sm font-semibold truncate">
+                          <p className="text-sm font-medium text-gray-100 truncate">
                             {discountedQty}x {localizedField(item.product, 'name')}
                           </p>
                           {optionsLabel && (
@@ -1161,7 +1170,7 @@ export function CartPage() {
                           </p>
                         </div>
                         <div className="px-0.5">
-                          <p className="text-sm font-semibold truncate">
+                          <p className="text-sm font-medium text-gray-100 truncate">
                             {regularQty}x {localizedField(item.product, 'name')}
                           </p>
                           {optionsLabel && (
@@ -1174,7 +1183,7 @@ export function CartPage() {
                       </>
                     ) : (
                       <div>
-                        <p className="text-sm font-semibold truncate">{localizedField(item.product, 'name')}</p>
+                        <p className="text-sm font-medium text-gray-100 truncate">{localizedField(item.product, 'name')}</p>
                         {optionsLabel && (
                           <p className="text-xs text-gray-400 truncate">{optionsLabel}</p>
                         )}
@@ -1188,40 +1197,45 @@ export function CartPage() {
                         )}
                       </div>
                     )}
-                  </div>
-                  <div className="flex items-center gap-2 bg-gray-100 rounded-full px-1 py-1">
-                    <Tooltip label={t('tooltip.decrease')}>
-                      <button
-                        onClick={() => decreaseItem(item.lineKey)}
-                        aria-label={t('tooltip.decrease')}
-                        className="w-7 h-7 rounded-full bg-white flex items-center justify-center shadow-sm"
-                      >
-                        <Minus size={13} />
-                      </button>
-                    </Tooltip>
-                    <span className="w-4 text-center text-sm font-semibold">
-                      {item.quantity}
-                    </span>
-                    <Tooltip label={t('tooltip.increase')}>
-                      <button
-                        onClick={() => increaseItem(item.lineKey)}
-                        aria-label={t('tooltip.increase')}
-                        className="w-7 h-7 rounded-full bg-white flex items-center justify-center shadow-sm"
-                      >
-                        <Plus size={13} />
-                      </button>
-                    </Tooltip>
+
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-full px-3 py-1">
+                        <Tooltip label={t('tooltip.decrease')}>
+                          <button
+                            onClick={() => decreaseItem(item.lineKey)}
+                            aria-label={t('tooltip.decrease')}
+                            className="w-8 h-8 -ml-2 rounded-full flex items-center justify-center text-gray-300 hover:text-white hover:bg-white/10 transition-colors"
+                          >
+                            <Minus size={14} strokeWidth={1.5} />
+                          </button>
+                        </Tooltip>
+                        <span className="min-w-6 text-center text-sm font-medium text-gray-100">
+                          {item.quantity}
+                        </span>
+                        <Tooltip label={t('tooltip.increase')}>
+                          <button
+                            onClick={() => increaseItem(item.lineKey)}
+                            aria-label={t('tooltip.increase')}
+                            className="w-8 h-8 -mr-2 rounded-full flex items-center justify-center text-gray-300 hover:text-white hover:bg-white/10 transition-colors"
+                          >
+                            <Plus size={14} strokeWidth={1.5} />
+                          </button>
+                        </Tooltip>
+                      </div>
+                      <span className="text-sm text-gray-400 shrink-0">
+                        R$ {(unitPrice * item.quantity).toFixed(2).replace('.', ',')}
+                      </span>
+                    </div>
                   </div>
                   <Tooltip label={t('tooltip.remove')}>
                     <button
                       onClick={() => setItemPendingRemoval(item.lineKey)}
                       aria-label={t('tooltip.remove')}
-                      className="text-gray-300"
+                      className="text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-colors rounded-lg p-2"
                     >
-                      <Trash2 size={16} />
+                      <Trash2 size={18} strokeWidth={1.5} />
                     </button>
                   </Tooltip>
-
                 </div>
               );
             })}
