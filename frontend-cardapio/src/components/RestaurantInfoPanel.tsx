@@ -1,5 +1,5 @@
 import { useI18n } from '../i18n/I18nContext';
-import { useState, type ComponentType } from 'react';
+import { useState, type ComponentType, type ReactNode } from 'react';
 import { ChevronDown, MapPin, Clock, Phone, Info } from 'lucide-react';
 import type { Tenant, Location } from '../types';
 import { getWeekScheduleLines } from '../lib/openingHours';
@@ -143,6 +143,16 @@ export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelPro
   const { t } = useI18n();
   const weekSchedule = getWeekScheduleLines(location?.openingHours ?? null, t);
 
+  // Títulos das colunas. `t` só aceita as chaves tipadas do dicionário, então a
+  // chave entra com o tipo que o próprio `t` declara (nenhuma chave nova é
+  // inventada aqui). Se ela ainda não existir no dicionário (t devolve vazio ou
+  // a própria chave), cai no texto em português.
+  type TranslationKey = Parameters<typeof t>[0];
+  const label = (key: string, fallback: string) => {
+    const value: unknown = t(key as TranslationKey);
+    return typeof value === 'string' && value && value !== key ? value : fallback;
+  };
+
   // Só os ícones (sem número/usuário escrito do lado). Desde a z6-09 todos são
   // OUTLINED, do mesmo tamanho e na cor do texto do tema (SocialOutlineIcons),
   // sem cores de marca. Admin escolhe quais usar preenchendo (ou não) cada
@@ -206,61 +216,58 @@ export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelPro
             className={`mt-3 px-2 pb-1 flex flex-col items-center gap-4 text-xs text-center md:grid md:grid-cols-[repeat(auto-fit,minmax(15rem,1fr))] md:items-start md:gap-x-10 md:gap-y-6 md:px-1 md:text-left ${MENU_TEXT_BODY}`}
           >
             {location?.address && (
-              <div className="flex flex-col items-center gap-1 md:flex-row md:items-start md:gap-2.5">
-                <MapPin size={13} strokeWidth={1.5} className={`shrink-0 md:mt-0.5 ${MENU_TEXT_MUTED}`} />
-                {/* Pedido do Felipe (19/09): endereço em duas linhas — rua e
-                    bairro numa, cidade/estado/CEP na outra. O endereço
-                    geocodificado sempre vem nesse formato exato (ver
-                    GeocodingService.buildFormattedAddress no backend); se por
-                    algum motivo vier diferente, cai de volta pra mostrar o
-                    endereço inteiro numa linha só, sem quebrar o layout. */}
-                <div className="flex flex-col items-center md:items-start">
-                  {formatAddressLines(location.address).map((line, idx) => (
-                    <span key={idx}>{line}</span>
-                  ))}
+              <InfoColumn title={label('info.address', 'Endereço')}>
+                <div className="flex flex-col items-center gap-1 md:flex-row md:items-start md:gap-2.5">
+                  <MapPin size={13} strokeWidth={1.5} className={`shrink-0 md:mt-0.5 ${MENU_TEXT_MUTED}`} />
+                  {/* Endereço em duas linhas (rua e bairro / cidade - UF, CEP);
+                      formato diferente do geocodificado cai numa linha só. */}
+                  <div className="flex flex-col items-center md:items-start">
+                    {formatAddressLines(location.address).map((line, idx) => (
+                      <span key={idx}>{line}</span>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              </InfoColumn>
             )}
 
             {weekSchedule && (
-              <div className="flex flex-col gap-1 text-left">
-                {/* Pedido do Felipe (19/09): ícone de relógio em TODAS as
-                    linhas dos dias, não só uma vez pro bloco inteiro — e dia
-                    marcado como fechado (pelo admin, na aba "Lojas") aparece
-                    em vermelho. */}
-                {weekSchedule.map((line) => (
-                  <span key={line.day} className="flex items-center gap-1.5">
-                    <Clock size={13} strokeWidth={1.5} className={`shrink-0 ${MENU_TEXT_MUTED}`} />
-                    <span className={line.hours === 'Fechado' ? 'text-red-500 dark:text-red-400 font-medium' : ''}>
-                      {line.day}: {line.hours}
+              <InfoColumn title={label('info.hours', 'Horários')}>
+                <div className="flex flex-col gap-1 text-left">
+                  {/* Relógio em TODAS as linhas; dia fechado em vermelho. */}
+                  {weekSchedule.map((line) => (
+                    <span key={line.day} className="flex items-center gap-1.5">
+                      <Clock size={13} strokeWidth={1.5} className={`shrink-0 ${MENU_TEXT_MUTED}`} />
+                      <span className={line.hours === 'Fechado' ? 'text-red-500 dark:text-red-400 font-medium' : ''}>
+                        {line.day}: {line.hours}
+                      </span>
                     </span>
-                  </span>
-                ))}
-              </div>
+                  ))}
+                </div>
+              </InfoColumn>
             )}
 
             {hasContactBlock && (
-              <div className="flex flex-col items-center gap-4 w-full md:items-start">
+              <InfoColumn
+                title={hasSocialLinks ? label('info.social', 'Redes sociais') : label('info.contact', 'Contato')}
+              >
                 {hasSocialLinks && (
-                  <div className="flex flex-row flex-wrap items-center justify-center gap-x-1.5 gap-y-2 md:gap-x-3 md:justify-start">
-                    {socialLinks.map(({ key, href, label, Icon, external }) => (
+                  <div className="flex flex-row flex-wrap items-center justify-center gap-x-1.5 gap-y-2 md:gap-x-2 md:justify-start">
+                    {socialLinks.map(({ key, href, label: linkLabel, Icon, external }) => (
                       <a
                         key={key}
                         href={href}
                         {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-                        className={`w-7 h-7 md:w-9 md:h-9 shrink-0 rounded-full flex items-center justify-center transition-colors active:opacity-70 md:hover:bg-[#F3F4F6] dark:md:hover:bg-white/10 ${MENU_TEXT_BODY} md:hover:text-[#111827] dark:md:hover:text-[#E3E2E6]`}
-                        aria-label={label}
+                        className={`w-9 h-9 md:w-10 md:h-10 shrink-0 rounded-full flex items-center justify-center transition-colors active:opacity-70 md:hover:bg-[#F3F4F6] dark:md:hover:bg-white/10 ${MENU_TEXT_BODY} md:hover:text-[#111827] dark:md:hover:text-[#E3E2E6]`}
+                        aria-label={linkLabel}
                       >
-                        <Icon size={20} />
+                        <Icon size={24} />
                       </a>
                     ))}
                   </div>
                 )}
 
-                {/* Pedido do Felipe (19/09): telefone de contato "puro" (sem
-                    ser WhatsApp), numa área separada dos ícones de rede
-                    social. Mostrado formatado; abre o discador nativo do
-                    aparelho com o número original. */}
+                {/* Telefone de contato "puro" (não WhatsApp), formatado; abre o
+                    discador com o número original. */}
                 {location?.contactPhoneNumber && (
                   <a
                     href={buildPhoneLink(location.contactPhoneNumber)}
@@ -271,11 +278,25 @@ export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelPro
                     <span>{formatPhoneBR(location.contactPhoneNumber)}</span>
                   </a>
                 )}
-              </div>
+              </InfoColumn>
             )}
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// Coluna do painel de informações. No desktop leva um título pequeno em cima
+// (Endereço / Horários / Redes sociais); no celular o título fica oculto e o
+// desenho centralizado original é mantido.
+function InfoColumn({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-col items-center gap-2 w-full md:items-start">
+      <h3 className={`hidden md:block text-[11px] font-semibold uppercase tracking-wider ${MENU_TEXT_MUTED}`}>
+        {title}
+      </h3>
+      {children}
     </div>
   );
 }

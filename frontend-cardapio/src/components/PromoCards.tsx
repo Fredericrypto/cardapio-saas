@@ -1,11 +1,10 @@
 import { localizedText } from '../i18n/categoryLabel';
 import { useI18n } from '../i18n/I18nContext';
 import { useEffect, useState } from 'react';
-import { Clock, ChevronRight } from 'lucide-react';
+import { Clock } from 'lucide-react';
 import type { Promotion } from '../types';
 import { CLOSED_MUTED_CLASS } from '../lib/storeStatus';
 import { ShareButton } from './ShareButton';
-import { MENU_SURFACE, MENU_TEXT_MUTED } from '../lib/menuTheme';
 
 interface PromoCardsProps {
   promotions: Promotion[];
@@ -94,9 +93,9 @@ function PromoCard({
   return (
     <button
       onClick={() => onSelect(promo.id)}
-      className={`shrink-0 w-[270px] md:w-auto snap-start rounded-2xl md:hover:shadow-[0_8px_22px_rgba(0,0,0,0.12)] transition-[transform,box-shadow] overflow-hidden relative shadow-[0_2px_10px_rgba(0,0,0,0.04)] text-left active:scale-[0.98] dark:ring-1 dark:ring-white/10 ${muted ? CLOSED_MUTED_CLASS : ''}`}
+      className={`shrink-0 w-[270px] md:w-auto h-36 md:h-40 snap-start rounded-2xl md:hover:shadow-[0_8px_22px_rgba(0,0,0,0.12)] transition-[transform,box-shadow] overflow-hidden relative shadow-[0_2px_10px_rgba(0,0,0,0.04)] text-left active:scale-[0.98] dark:ring-1 dark:ring-white/10 ${muted ? CLOSED_MUTED_CLASS : ''}`}
     >
-      <div className="relative h-36 md:h-40 w-full">
+      <div className="relative h-full w-full">
         {promo.imageUrl ? (
           <img
             src={promo.imageUrl}
@@ -132,7 +131,7 @@ function PromoCard({
           </span>
         )}
 
-        <div className="absolute bottom-0 left-0 right-0 p-3.5 flex items-end justify-between gap-2">
+        <div className="absolute bottom-0 left-0 right-0 p-3.5">
           <div className="min-w-0">
             <p className="font-display font-extrabold text-white text-lg leading-tight drop-shadow-sm">
               {localizedText(promo.title)}
@@ -143,11 +142,6 @@ function PromoCard({
               </p>
             )}
           </div>
-          {!promo.alreadyUsedUp && (
-            <span className="shrink-0 w-7 h-7 rounded-full bg-white/95 flex items-center justify-center">
-              <ChevronRight size={16} className="text-[#374151]" />
-            </span>
-          )}
         </div>
 
         {promo.alreadyUsedUp && (
@@ -159,11 +153,6 @@ function PromoCard({
         )}
       </div>
 
-      {promo.minOrderValue > 0 && !promo.alreadyUsedUp && (
-        <div className={`px-3.5 py-1.5 text-[11px] ${MENU_SURFACE} ${MENU_TEXT_MUTED}`}>
-          {t('promoCards.pedido_minimo_r')} {Number(promo.minOrderValue).toFixed(2).replace('.', ',')}
-        </div>
-      )}
     </button>
   );
 }

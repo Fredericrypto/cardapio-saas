@@ -200,8 +200,12 @@ export function DesktopNav({
   return (
     <nav className="hidden md:block sticky top-0 z-40 bg-white border-b border-gray-100">
       <div className="mx-auto w-full max-w-7xl md:px-8 h-16 flex items-center gap-4 lg:gap-6">
-        <div className="flex items-center gap-2.5 shrink-0 min-w-0 max-w-[14rem]">
-          <LogoViewer tenant={tenant} size="w-9 h-9" />
+        <div className="flex items-center gap-2.5 shrink-0 min-w-0 max-w-[14rem] self-center">
+          {/* Caixa fixa 36x36 que centraliza a logo na vertical com o nome e
+              zera qualquer margem/deslocamento herdado do LogoViewer. */}
+          <div className="relative w-9 h-9 shrink-0 flex items-center justify-center [&>*]:!m-0 [&>*]:!top-0 [&>*]:!translate-y-0">
+            <LogoViewer tenant={tenant} size="w-9 h-9" />
+          </div>
           <span className="font-display text-sm font-bold text-gray-900 truncate">{tenant.name}</span>
         </div>
 

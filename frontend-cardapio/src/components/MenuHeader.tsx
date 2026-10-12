@@ -61,16 +61,16 @@ export function MenuHeader({ tenant, location, onBack }: MenuHeaderProps) {
         <BannerViewer tenant={tenant} />
 
         {/* Voltar (só existe quando há mais de uma unidade): círculo no
-            celular; no desktop vira pílula com o rótulo. Sobre a foto, então
+            celular; no desktop fica oculto (a troca de unidade é feita pelo
+            seletor ao lado do cartão). Sobre a foto, então
             no escuro usa vidro preto translúcido em vez de círculo branco. */}
         {onBack && (
           <button
             onClick={onBack}
             aria-label={t('common.back')}
-            className="absolute z-10 top-3.5 left-3.5 md:top-4 md:left-4 h-9 w-9 md:w-auto md:px-3.5 md:gap-1.5 rounded-full bg-white/90 text-[#374151] dark:bg-black/55 dark:text-white backdrop-blur-sm flex items-center justify-center shadow-sm active:scale-90 transition-transform md:hover:bg-white dark:md:hover:bg-black/70"
+            className="absolute z-10 top-3.5 left-3.5 md:hidden h-9 w-9 rounded-full bg-white/90 text-[#374151] dark:bg-black/55 dark:text-white backdrop-blur-sm flex items-center justify-center shadow-sm active:scale-90 transition-transform"
           >
             <ChevronLeft size={20} strokeWidth={1.5} className="shrink-0" />
-            <span className="hidden md:inline text-sm font-medium">{t('common.back')}</span>
           </button>
         )}
       </div>
