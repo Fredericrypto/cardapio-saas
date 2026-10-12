@@ -1,0 +1,216 @@
+import { useI18n } from '../i18n/I18nContext';
+import { type ReactNode } from 'react';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useTableSession } from '../hooks/useTableSession';
+import { getActiveMesaToken } from '../lib/seat';
+import { useCustomerAuth } from '../contexts/CustomerAuthContext';
+import { TableSessionProvider } from '../contexts/TableSessionContext';
+import { TableSessionTimer } from './TableSessionTimer';
+import { useTenant } from '../contexts/TenantContext';
+import { fetchTableInfo } from '../lib/menu-api';
+import { presetSelectedLocationId } from '../hooks/useSelectedLocation';
+import { QrCode, Users } from 'lucide-react';
+import { BUILD_VERSION } from '../buildInfo';
+
+// Rodapezinho discreto só nas telas de estado do próprio gate (loading,
+// confirmação, mesa livre, erro) — pedido do Felipe (sessão G) pra bater
+// o olho e confirmar se o navegador está rodando o código novo ou um
+// antigo ainda em memória/cache, sem precisar adivinhar.
+function BuildMark() {
+  return <p className="text-[10px] text-gray-300 mt-6 select-all">build {BUILD_VERSION}</p>;
+}
+
+// Porta de entrada de TODAS as rotas `/mesa/:qrCodeToken/*`. Ver o
+// cabeçalho de `useTableSession.ts` (reescrita da sessão H) pra regra
+// completa — resumo: NADA aqui depende de memória do navegador pra
+// decidir o que mostrar, só do estado atual no backend pra esse token
+// específico:
+//
+// 1. Mesa tem sessão ativa agora → pede confirmação (única pergunta que
+//    sobrou) antes de mostrar qualquer coisa.
+// 2. Mesa sem sessão ativa, mas a última fechou há poucos minutos → tela
+//    final "sessão encerrada", só com botão de voltar pro cardápio
+//    geral — nenhum jeito de recomeçar ali mesmo.
+// 3. Mesa sem sessão ativa e genuinamente livre (nunca usada, ou última
+//    sessão encerrada há mais tempo) → entra direto, sem fricção.
+export function TableSessionGate({ children }: { children: ReactNode }) {
+  const { t } = useI18n();
+  const { slug, qrCodeToken } = useParams<{ slug: string; qrCodeToken: string }>();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { token: customerToken } = useCustomerAuth();
+  const { tenant } = useTenant();
+  const primaryColor = tenant?.primaryColor || '#111827';
+  const {
+    session,
+    isLoading,
+    error,
+    sessionEnded,
+    leftTable,
+    pendingJoinToken,
+    confirmJoinExisting,
+    declineJoinExisting,
+    recheckExpiry,
+  } = useTableSession(slug, qrCodeToken);
+
+  // Pedido do Felipe (18/09): antes de mandar pro cardápio genérico,
+  // corrige qual loja está selecionada pra ser a da MESA que o cliente
+  // acabou de tentar abrir — sem isso, cai na última loja escolhida
+  // manualmente antes (localStorage), que pode ser uma filial
+  // diferente da que o cliente está fisicamente na frente agora. Se
+  // essa consulta falhar por qualquer motivo, ainda assim navega — não
+  // trava o cliente numa tela de erro por causa dessa correção.
+  async function goToGeneralMenu() {
+    try {
+      if (tenant && qrCodeToken) {
+        const { locationId } = await fetchTableInfo(qrCodeToken);
+        presetSelectedLocationId(tenant.id, locationId);
+      }
+    } catch {
+      // segue o baile — pior caso, cai na loja que já estava selecionada.
+    }
+    navigate(`/${slug}`);
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-50">
+        <div className="w-8 h-8 border-2 border-gray-200 border-t-gray-500 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (error) {
+    // Pedido do Felipe (17/09): quando o motivo do erro é "você já tem
+    // mesa aberta em outro lugar", o botão deve levar DIRETO pra essa
+    // mesa, não pro cardápio genérico — `mesa_ativa_{slug}` é seguro
+    // pra isso aqui porque só é gravado numa entrada confirmada de
+    // verdade (nunca de passagem).
+    const knownActiveToken = slug ? getActiveMesaToken(customerToken, slug) : null;
+    const hasKnownActiveMesa = knownActiveToken && knownActiveToken !== qrCodeToken;
+    return (
+      <div className="flex flex-col items-center justify-center h-screen gap-4 px-6 text-center bg-gray-50">
+        <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center">
+          <QrCode size={26} className="text-gray-500" />
+        </div>
+        <p className="text-sm text-gray-500 max-w-xs">{error}</p>
+        <button
+          onClick={() =>
+            hasKnownActiveMesa ? navigate(`/${slug}/mesa/${knownActiveToken}`) : goToGeneralMenu()
+          }
+          style={{ backgroundColor: primaryColor }}
+          className="py-3 px-6 rounded-xl text-white text-sm font-semibold shadow-sm"
+        >
+          {hasKnownActiveMesa ? t('table.backToMine') : t('table.goGeneral')}
+        </button>
+        <BuildMark />
+      </div>
+    );
+  }
+
+  if (pendingJoinToken) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen gap-4 px-6 text-center bg-gray-50">
+        <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center">
+          <Users size={26} className="text-gray-500" />
+        </div>
+        <div>
+          {/* Texto exato definido pelo Felipe (01/10). O cliente só entra
+              na mesa — e só aparece pro admin e pros outros — depois do
+              "Sim": o servidor também exige essa confirmação. */}
+          <p className="text-base font-bold text-gray-900">
+            {t('tableSessionGate.ja_existe_uma_secao')}
+          </p>
+        </div>
+        <div className="flex flex-col gap-2 w-full max-w-xs">
+          <button
+            onClick={confirmJoinExisting}
+            style={{ backgroundColor: primaryColor }}
+            className="py-3 rounded-xl text-white text-sm font-semibold shadow-sm"
+          >
+            {t('tableSessionGate.sim')}
+          </button>
+          <button
+            onClick={declineJoinExisting}
+            className="py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600"
+          >
+            {t('common.cancel')}
+          </button>
+        </div>
+        <BuildMark />
+      </div>
+    );
+  }
+
+  // Decisão final do Felipe (30/09): quem saiu da mesa não volta por
+  // refresh/voltar/limpar cache — só escaneando o QR Code de novo. A mesa
+  // pode continuar ativa pros outros; pra ESTE cliente acabou.
+  if (leftTable) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen gap-4 px-6 text-center bg-gray-50">
+        <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center">
+          <QrCode size={26} className="text-gray-500" />
+        </div>
+        <div>
+          <p className="text-base font-bold text-gray-900">{t('table.leftTitle')}</p>
+          <p className="text-sm text-gray-500 mt-1">
+            {t('table.leftHint')}
+          </p>
+        </div>
+        <button
+          onClick={goToGeneralMenu}
+          style={{ backgroundColor: primaryColor }}
+          className="py-3 px-6 rounded-xl text-white text-sm font-semibold shadow-sm"
+        >
+          {t('table.backGeneral')}
+        </button>
+        <BuildMark />
+      </div>
+    );
+  }
+
+  if (sessionEnded) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen gap-4 px-6 text-center bg-gray-50">
+        <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center">
+          <QrCode size={26} className="text-gray-500" />
+        </div>
+        <div>
+          <p className="text-base font-bold text-gray-900">{t('table.endedTitle')}</p>
+          <p className="text-sm text-gray-500 mt-1">
+            {t('table.endedHint')}
+          </p>
+        </div>
+        <button
+          onClick={goToGeneralMenu}
+          style={{ backgroundColor: primaryColor }}
+          className="py-3 px-6 rounded-xl text-white text-sm font-semibold shadow-sm"
+        >
+          {t('table.backGeneral')}
+        </button>
+        <BuildMark />
+      </div>
+    );
+  }
+
+  if (!session) return null;
+
+  // O timer só fica embutido no header (ao lado do nome) na tela
+  // principal do cardápio — nas outras páginas do fluxo de mesa
+  // (carrinho, produto, "minha conta") não tem esse header, então sem
+  // isso aqui o relógio simplesmente sumia ao navegar pra qualquer uma
+  // delas, mesmo o pedido ainda não tendo sido feito. Continua sumindo
+  // de verdade só quando `expiresAt` vem null (ou seja, quando já tem
+  // pedido — ver TablesService.withTimerInfo) ou quando não há prazo
+  // configurado.
+  const isMainMenuPage = location.pathname === `/${slug}/mesa/${qrCodeToken}`;
+
+  return (
+    <TableSessionProvider value={{ session, recheckExpiry }}>
+      {!isMainMenuPage && session.expiresAt && (
+        <TableSessionTimer session={session} onExpiryTick={recheckExpiry} variant="fixed" />
+      )}
+      {children}
+    </TableSessionProvider>
+  );
+}

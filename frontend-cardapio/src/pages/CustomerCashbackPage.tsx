@@ -2,8 +2,8 @@ import type { TranslationKey } from '../i18n/dictionaries/pt-BR';
 import { cashbackDescriptionLabel } from '../i18n/cashbackDescription';
 import { useI18n } from '../i18n/I18nContext';
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, CalendarClock, CircleDollarSign, Receipt, Store, Wallet } from 'lucide-react';
+import { useParams } from 'react-router-dom';
+import { CalendarClock, CircleDollarSign, Receipt, Store, Wallet } from 'lucide-react';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { useTenant } from '../contexts/TenantContext';
 import { fetchMyCashbackHistory, fetchMyCashbackWallet, type CashbackWallet } from '../lib/customer-api';
@@ -17,6 +17,10 @@ import {
   isExpiringWithin24h,
   type CashbackTab,
 } from '../lib/cashbackFormat';
+import { ProfileSubpageShell } from '../components/ProfileSubpageShell';
+import { Tooltip } from '../components/Tooltip';
+import { MENU_PAGE_BG, MENU_TEXT, MENU_TEXT_BODY, MENU_TEXT_MUTED } from '../lib/menuTheme';
+import { PROFILE_CARD } from '../lib/profileTheme';
 
 const TABS: { key: CashbackTab; labelKey: TranslationKey }[] = [
   { key: 'disponiveis', labelKey: 'cashback.tab.available' },
@@ -26,10 +30,10 @@ const TABS: { key: CashbackTab; labelKey: TranslationKey }[] = [
 
 function Badge({ tone, children }: { tone: 'green' | 'amber' | 'red' | 'gray'; children: React.ReactNode }) {
   const tones = {
-    green: 'bg-green-50 text-green-700 border-green-100',
-    amber: 'bg-amber-50 text-amber-700 border-amber-100',
-    red: 'bg-red-50 text-red-600 border-red-100',
-    gray: 'bg-gray-100 text-gray-600 border-gray-200',
+    green: 'bg-green-50 text-green-700 border-green-100 dark:bg-green-500/10 dark:text-green-300 dark:border-green-500/20',
+    amber: 'bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/20',
+    red: 'bg-red-50 text-red-600 border-red-100 dark:bg-red-500/10 dark:text-red-300 dark:border-red-500/20',
+    gray: 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-white/10 dark:text-[#C4C7C5] dark:border-white/10',
   } as const;
   return (
     <span className={`inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full border ${tones[tone]}`}>
@@ -42,22 +46,22 @@ function AvailableCard({ entry, now }: { entry: CashbackHistoryEntry; now: numbe
   const { t } = useI18n();
   const urgent = entry.expiresAt ? isExpiringWithin24h(entry.expiresAt, now) : false;
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-4 flex flex-col gap-2">
+    <div className={`${PROFILE_CARD} p-4 flex flex-col gap-2`}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-lg font-bold text-gray-900">{formatBRL(entry.remainingAmount)}</p>
-          <p className="text-xs text-gray-400 truncate">
+          <p className={`text-lg font-bold ${MENU_TEXT}`}>{formatBRL(entry.remainingAmount)}</p>
+          <p className={`text-xs ${MENU_TEXT_MUTED} truncate`}>
             {cashbackDescriptionLabel(entry.description, t)} · {t('cashback.earnedOn')} {formatDateBR(entry.createdAt)}
           </p>
         </div>
         <Badge tone={urgent ? 'amber' : 'green'}>{urgent ? t('customerCashbackPage.vence_em_breve') : t('customerCashbackPage.valido')}</Badge>
       </div>
-      <p className={`text-xs font-semibold flex items-center gap-1.5 ${urgent ? 'text-amber-600' : 'text-gray-500'}`}>
+      <p className={`text-xs font-semibold flex items-center gap-1.5 ${urgent ? 'text-amber-600 dark:text-amber-300' : MENU_TEXT_BODY}`}>
         <CalendarClock size={13} strokeWidth={1.5} className="shrink-0" />
         {entry.expiresAt ? formatCashbackExpiry(entry.expiresAt, now, undefined, t) : t('customerCashbackPage.sem_data_de_validade')}
       </p>
       {Number(entry.remainingAmount) < Number(entry.amount) && (
-        <p className="text-[11px] text-gray-400">{t('customerCashbackPage.credito_original_de')} {formatBRL(entry.amount)}</p>
+        <p className={`text-[11px] ${MENU_TEXT_MUTED}`}>{t('customerCashbackPage.credito_original_de')} {formatBRL(entry.amount)}</p>
       )}
     </div>
   );
@@ -66,18 +70,18 @@ function AvailableCard({ entry, now }: { entry: CashbackHistoryEntry; now: numbe
 function ExpiredCard({ entry }: { entry: CashbackHistoryEntry }) {
   const { t } = useI18n();
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-4 flex flex-col gap-2">
+    <div className={`${PROFILE_CARD} p-4 flex flex-col gap-2`}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-lg font-bold text-gray-400 line-through">{formatBRL(entry.remainingAmount)}</p>
-          <p className="text-xs text-gray-400 truncate">{cashbackDescriptionLabel(entry.description, t)}</p>
+          <p className={`text-lg font-bold ${MENU_TEXT_MUTED} line-through`}>{formatBRL(entry.remainingAmount)}</p>
+          <p className={`text-xs ${MENU_TEXT_MUTED} truncate`}>{cashbackDescriptionLabel(entry.description, t)}</p>
         </div>
         <Badge tone="red">{t('customerCashbackPage.expirado')}</Badge>
       </div>
-      <div className="flex flex-col gap-0.5 text-xs text-gray-500">
+      <div className={`flex flex-col gap-0.5 text-xs ${MENU_TEXT_BODY}`}>
         <p>{t('customerCashbackPage.ganho_em')} {formatDateTimeBR(entry.createdAt, undefined, t)}</p>
-        {entry.expiresAt && <p className="font-semibold text-red-500">{t('customerCashbackPage.expirou_dia')} {formatDateTimeBR(entry.expiresAt, undefined, t)}</p>}
-        <p className="text-gray-400">{t('customerCashbackPage.nao_utilizado_credito_original')} {formatBRL(entry.amount)})</p>
+        {entry.expiresAt && <p className="font-semibold text-red-500 dark:text-red-400">{t('customerCashbackPage.expirou_dia')} {formatDateTimeBR(entry.expiresAt, undefined, t)}</p>}
+        <p className={MENU_TEXT_MUTED}>{t('customerCashbackPage.nao_utilizado_credito_original')} {formatBRL(entry.amount)})</p>
       </div>
     </div>
   );
@@ -89,26 +93,26 @@ function UsedCard({ entry }: { entry: CashbackHistoryEntry }) {
     .filter((v, i, a): v is string => Boolean(v) && a.indexOf(v) === i)
     .join(' · ');
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-4 flex flex-col gap-2">
+    <div className={`${PROFILE_CARD} p-4 flex flex-col gap-2`}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-xs text-gray-400">{t('customerCashbackPage.cashback_utilizado')}</p>
-          <p className="text-lg font-bold text-gray-900">{formatBRL(entry.amount)}</p>
+          <p className={`text-xs ${MENU_TEXT_MUTED}`}>{t('customerCashbackPage.cashback_utilizado')}</p>
+          <p className={`text-lg font-bold ${MENU_TEXT}`}>{formatBRL(entry.amount)}</p>
         </div>
         <Badge tone="gray">{t('customerCashbackPage.utilizado')}</Badge>
       </div>
-      <div className="flex flex-col gap-1 text-xs text-gray-500">
+      <div className={`flex flex-col gap-1 text-xs ${MENU_TEXT_BODY}`}>
         <p className="flex items-center gap-1.5">
-          <Receipt size={13} strokeWidth={1.5} className="shrink-0 text-gray-400" />
-          {t('customerCashbackPage.total_do_pedido')} <span className="font-semibold text-gray-700">{entry.orderTotal != null ? formatBRL(entry.orderTotal) : t('customerCashbackPage.indisponivel')}</span>
+          <Receipt size={13} strokeWidth={1.5} className={`shrink-0 ${MENU_TEXT_MUTED}`} />
+          {t('customerCashbackPage.total_do_pedido')} <span className={`font-semibold ${MENU_TEXT}`}>{entry.orderTotal != null ? formatBRL(entry.orderTotal) : t('customerCashbackPage.indisponivel')}</span>
         </p>
         <p className="flex items-center gap-1.5">
-          <CalendarClock size={13} strokeWidth={1.5} className="shrink-0 text-gray-400" />
+          <CalendarClock size={13} strokeWidth={1.5} className={`shrink-0 ${MENU_TEXT_MUTED}`} />
           {formatDateTimeBR(entry.createdAt, undefined, t)}
         </p>
         {place && (
           <p className="flex items-center gap-1.5">
-            <Store size={13} strokeWidth={1.5} className="shrink-0 text-gray-400" />
+            <Store size={13} strokeWidth={1.5} className={`shrink-0 ${MENU_TEXT_MUTED}`} />
             {place}
           </p>
         )}
@@ -122,7 +126,6 @@ function UsedCard({ entry }: { entry: CashbackHistoryEntry }) {
 export function CustomerCashbackPage() {
   const { t } = useI18n();
   const { slug } = useParams<{ slug: string }>();
-  const navigate = useNavigate();
   const { tenant } = useTenant();
   const [wallet, setWallet] = useState<CashbackWallet | null>(null);
   const balance = wallet ? wallet.balance : null;
@@ -147,8 +150,8 @@ export function CustomerCashbackPage() {
 
   if (!tenant || isLoading || !customer) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="w-8 h-8 border-2 border-gray-200 border-t-gray-500 rounded-full animate-spin" />
+      <div className={`flex items-center justify-center h-screen ${MENU_PAGE_BG}`}>
+        <div className="w-8 h-8 border-2 border-gray-200 dark:border-white/10 border-t-gray-500 dark:border-t-gray-300 rounded-full animate-spin" />
       </div>
     );
   }
@@ -160,18 +163,10 @@ export function CustomerCashbackPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-10">
-     <div className="max-w-md mx-auto md:max-w-5xl md:px-6">
-      <div className="flex items-center gap-3 px-4 py-4 bg-white border-b border-gray-100 md:px-0 md:pt-8 md:pb-5 md:bg-transparent md:border-b-0">
-        <button onClick={() => navigate(`/${slug}/conta-cliente/perfil`)} aria-label={t('common.back')} className="md:w-10 md:h-10 md:rounded-full md:bg-white md:border md:border-gray-100 md:flex md:items-center md:justify-center md:hover:bg-gray-50">
-          <ArrowLeft size={20} strokeWidth={1.5} />
-        </button>
-        <h1 className="font-display font-bold text-lg md:text-2xl">{t('profile.cashback')}</h1>
-      </div>
-
+    <ProfileSubpageShell tenant={tenant} title={t('profile.cashback')} backTo={`/${slug}/conta-cliente/perfil`}>
       {/* Desktop: saldo fixo à esquerda; abas e extrato à direita. */}
-      <div className="px-4 mt-4 flex flex-col gap-3 md:px-0 md:mt-0 md:grid md:grid-cols-[320px_minmax(0,1fr)] md:gap-x-6 md:gap-y-4 md:items-start">
-        <div className="rounded-2xl p-5 text-white flex flex-col gap-1 md:col-start-1 md:row-span-3 md:sticky md:top-6 md:shadow-sm" style={{ backgroundColor: tenant.primaryColor }}>
+      <div className="flex flex-col gap-3 md:grid md:grid-cols-[320px_minmax(0,1fr)] lg:grid-cols-[360px_minmax(0,1fr)] md:gap-x-8 md:gap-y-4 md:items-start">
+        <div className="rounded-2xl p-5 text-white flex flex-col gap-1 md:col-start-1 md:row-span-3 md:sticky md:top-24 md:shadow-sm" style={{ backgroundColor: tenant.primaryColor }}>
           <p className="text-xs opacity-80 flex items-center gap-1.5">
             <CircleDollarSign size={14} strokeWidth={1.5} />
             {t('customerCashbackPage.saldo_disponivel')}
@@ -187,32 +182,33 @@ export function CustomerCashbackPage() {
           </p>
         </div>
 
-        <div role="tablist" aria-label={t('customerCashbackPage.categorias_de_cashback')} className="grid grid-cols-3 gap-1 bg-white rounded-xl p-1 border border-gray-100 md:col-start-2">
+        <div role="tablist" aria-label={t('customerCashbackPage.categorias_de_cashback')} className={`grid grid-cols-3 gap-1 ${PROFILE_CARD} rounded-xl p-1 md:col-start-2`}>
           {TABS.map((tabItem) => {
             const count = categorized ? categorized[tabItem.key].length : null;
             const active = tab === tabItem.key;
             return (
-              <button
-                key={tabItem.key}
-                role="tab"
-                aria-selected={active}
-                onClick={() => setTab(tabItem.key)}
-                className={`py-2 rounded-lg text-xs font-semibold transition-colors ${active ? 'text-white' : 'text-gray-500'}`}
-                style={active ? { backgroundColor: tenant.primaryColor } : undefined}
-              >
-                {t(tabItem.labelKey)}
-                {count != null && <span className={`ml-1 text-[10px] ${active ? 'opacity-80' : 'text-gray-400'}`}>{count}</span>}
-              </button>
+              <Tooltip key={tabItem.key} label={t(tabItem.labelKey)} className="flex w-full">
+                <button
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setTab(tabItem.key)}
+                  className={`w-full py-2 rounded-lg text-xs font-semibold transition-colors ${active ? 'text-white' : `${MENU_TEXT_BODY} hover:bg-black/[0.03] dark:hover:bg-white/5`}`}
+                  style={active ? { backgroundColor: tenant.primaryColor } : undefined}
+                >
+                  {t(tabItem.labelKey)}
+                  {count != null && <span className={`ml-1 text-[10px] ${active ? 'opacity-80' : MENU_TEXT_MUTED}`}>{count}</span>}
+                </button>
+              </Tooltip>
             );
           })}
         </div>
 
-        {history == null && <p className="text-sm text-gray-400 text-center py-8 md:col-start-2">{t('common.loading')}</p>}
+        {history == null && <p className={`text-sm ${MENU_TEXT_MUTED} text-center py-8 md:col-start-2`}>{t('common.loading')}</p>}
 
         {categorized && categorized[tab].length === 0 && (
-          <div className="bg-white rounded-2xl border border-gray-100 py-10 px-4 flex flex-col items-center gap-2 text-center md:col-start-2">
-            <Wallet size={22} strokeWidth={1.5} className="text-gray-300" />
-            <p className="text-sm text-gray-400">{emptyText[tab]}</p>
+          <div className={`${PROFILE_CARD} py-10 px-4 flex flex-col items-center gap-2 text-center md:col-start-2`}>
+            <Wallet size={22} strokeWidth={1.5} className="text-gray-300 dark:text-[#5F6368]" />
+            <p className={`text-sm ${MENU_TEXT_MUTED}`}>{emptyText[tab]}</p>
           </div>
         )}
 
@@ -224,7 +220,6 @@ export function CustomerCashbackPage() {
           </div>
         )}
       </div>
-     </div>
-    </div>
+    </ProfileSubpageShell>
   );
 }

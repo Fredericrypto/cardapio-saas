@@ -2,11 +2,10 @@ import { orderStatusLabel, sessionStatusLabel } from '../i18n/labels';
 import { useI18n } from '../i18n/I18nContext';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Table2, ShoppingBag, Bike, FolderClosed, Star, ChevronDown } from 'lucide-react';
+import { Table2, ShoppingBag, Bike, FolderClosed, Star, ChevronDown } from 'lucide-react';
 import { identityOf } from '../lib/identity';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { useTenant } from '../contexts/TenantContext';
-import { getActiveMesaToken } from '../lib/seat';
 import { fetchMyOrderHistory, fetchMyReviewsByOrderIds } from '../lib/customer-api';
 import type { MyReview } from '../lib/customer-api';
 import {
@@ -18,7 +17,10 @@ import {
   type MesaHistoryEntry,
   type AvulsoHistoryEntry,
 } from '../lib/ordersHistory';
-import { BottomNav } from '../components/BottomNav';
+import { ProfileSubpageShell } from '../components/ProfileSubpageShell';
+import { Tooltip } from '../components/Tooltip';
+import { MENU_PAGE_BG, MENU_TEXT, MENU_TEXT_SOFT, MENU_TEXT_BODY, MENU_TEXT_MUTED } from '../lib/menuTheme';
+import { PROFILE_CARD } from '../lib/profileTheme';
 
 const STATUS_STYLES: Record<string, { bg: string; color: string }> = {
   aguardando_pagamento: { bg: '#FFEDD5', color: '#C2410C' },
@@ -45,7 +47,6 @@ export function OrderHistoryPage() {
 
 
   const { token, isLoading: isLoadingAuth } = useCustomerAuth();
-  const activeMesaToken = slug ? getActiveMesaToken(token, slug) ?? undefined : undefined;
   const [dayGroups, setDayGroups] = useState<DayGroup[] | null>(null);
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
   const [reviewsByOrderId, setReviewsByOrderId] = useState<Record<string, MyReview>>({});
@@ -99,25 +100,24 @@ export function OrderHistoryPage() {
 
   if (!tenant || isLoadingAuth) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="w-8 h-8 border-2 border-gray-200 border-t-gray-500 rounded-full animate-spin" />
+      <div className={`flex items-center justify-center h-screen ${MENU_PAGE_BG}`}>
+        <div className="w-8 h-8 border-2 border-gray-200 dark:border-white/10 border-t-gray-500 dark:border-t-gray-300 rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24 max-w-md mx-auto">
-      <div className="flex items-center gap-3 px-4 py-4 bg-white border-b border-gray-100">
-        <button onClick={() => navigate(`/${slug}/conta-cliente/pedidos`)}>
-          <ArrowLeft size={20} />
-        </button>
-        <h1 className="font-display font-bold text-lg">{t('orderHistoryPage.historico_de_pedidos')}</h1>
-      </div>
-
-      <div className="px-4 mt-3 flex flex-col gap-5">
-        {isLoadingOrders && <p className="text-xs text-gray-400 px-1">{t('common.loading')}</p>}
+    <ProfileSubpageShell
+      tenant={tenant}
+      title={t('orderHistoryPage.historico_de_pedidos')}
+      backTo={`/${slug}/conta-cliente/pedidos`}
+      bottomNav
+    >
+      {/* Lista longa e linear: limita a largura para os cards não esticarem. */}
+      <div className="max-w-3xl flex flex-col gap-5">
+        {isLoadingOrders && <p className={`text-xs ${MENU_TEXT_MUTED} px-1`}>{t('common.loading')}</p>}
         {isEmpty && (
-          <p className="text-xs text-gray-400 px-1">{t('orderHistoryPage.voce_ainda_nao_fez')}</p>
+          <p className={`text-xs ${MENU_TEXT_MUTED} px-1`}>{t('orderHistoryPage.voce_ainda_nao_fez')}</p>
         )}
 
         {dayGroups?.map((group) => (
@@ -132,9 +132,7 @@ export function OrderHistoryPage() {
           />
         ))}
       </div>
-
-      <BottomNav slug={slug!} qrCodeToken={activeMesaToken} tenantId={tenant.id} primaryColor={tenant.primaryColor} />
-    </div>
+    </ProfileSubpageShell>
   );
 }
 
@@ -155,28 +153,33 @@ function DayFolder({
 }) {
   const { t } = useI18n();
   const total = group.mesaItems.length + group.avulsoItems.length;
+  const toggleLabel = collapsed
+    ? t('orderHistoryPage.mostrar_pedidos_de_label', { label: group.label })
+    : t('orderHistoryPage.esconder_pedidos_de_label', { label: group.label });
 
   return (
     <div className="flex flex-col gap-2.5">
       {/* Mesmo cabeçalho das categorias do cardápio: ícone, nome e seta de
           recolher/expandir. */}
-      <button
-        onClick={onToggle}
-        aria-expanded={!collapsed}
-        aria-label={collapsed ? t('orderHistoryPage.mostrar_pedidos_de_label', { label: group.label }) : t('orderHistoryPage.esconder_pedidos_de_label', { label: group.label })}
-        className="w-full flex items-center gap-2 px-1 text-gray-700"
-      >
-        <FolderClosed size={16} />
-        <h2 className="text-sm font-semibold">{group.label}</h2>
-        <span className="text-[11px] text-gray-400 flex-1 text-left">
-          {total} {total === 1 ? 'pedido' : 'pedidos'}
-        </span>
-        <ChevronDown
-          size={16}
-          strokeWidth={1.8}
-          className={`text-gray-400 transition-transform ${collapsed ? '-rotate-90' : ''}`}
-        />
-      </button>
+      <Tooltip label={toggleLabel} className="flex w-full">
+        <button
+          onClick={onToggle}
+          aria-expanded={!collapsed}
+          aria-label={toggleLabel}
+          className={`w-full flex items-center gap-2 px-1 ${MENU_TEXT_SOFT}`}
+        >
+          <FolderClosed size={16} strokeWidth={1.5} />
+          <h2 className="text-sm font-semibold">{group.label}</h2>
+          <span className={`text-[11px] ${MENU_TEXT_MUTED} flex-1 text-left`}>
+            {total} {total === 1 ? 'pedido' : 'pedidos'}
+          </span>
+          <ChevronDown
+            size={16}
+            strokeWidth={1.5}
+            className={`${MENU_TEXT_MUTED} transition-transform ${collapsed ? '-rotate-90' : ''}`}
+          />
+        </button>
+      </Tooltip>
 
       <div className={`flex flex-col gap-2.5 ${collapsed ? 'hidden' : ''}`}>
         {group.mesaItems.map((item) => (
@@ -203,11 +206,12 @@ function MesaCard({ item, onClick }: { item: MesaHistoryEntry; onClick: () => vo
   };
 
   return (
-    <button onClick={onClick} className="w-full bg-white rounded-2xl p-4 text-left">
+    <Tooltip label={String(item.tableNumber ?? t('receiptContent.mesa'))} className="flex w-full">
+    <button onClick={onClick} className={`w-full ${PROFILE_CARD} p-4 text-left md:hover:bg-black/[0.02] dark:md:hover:bg-white/[0.03] md:transition-colors`}>
       <div className="flex justify-between items-start">
         <div className="flex items-center gap-1.5">
-          <Table2 size={14} className="text-gray-400" />
-          <p className="text-sm font-semibold text-gray-900">{item.tableNumber ?? t('receiptContent.mesa')}</p>
+          <Table2 size={14} strokeWidth={1.5} className={MENU_TEXT_MUTED} />
+          <p className={`text-sm font-semibold ${MENU_TEXT}`}>{item.tableNumber ?? t('receiptContent.mesa')}</p>
         </div>
         <span
           className="text-[11px] font-semibold px-2 py-1 rounded-full"
@@ -216,14 +220,15 @@ function MesaCard({ item, onClick }: { item: MesaHistoryEntry; onClick: () => vo
           {sessionStatusLabel(item.sessionStatus, t)}
         </span>
       </div>
-      <p className="text-xs text-gray-400 mt-1.5">
+      <p className={`text-xs ${MENU_TEXT_MUTED} mt-1.5`}>
         {formatDateTime(item.dateForGrouping)} · {item.orderCount}{' '}
         {item.orderCount === 1 ? t('orderHistoryPage.pedido_feito') : t('orderHistoryPage.pedidos_feitos')}
       </p>
-      <p className="text-sm font-semibold text-gray-700 mt-2">
+      <p className={`text-sm font-semibold ${MENU_TEXT_BODY} mt-2`}>
         {formatMoney(item.total + item.tipAmount)}
       </p>
     </button>
+    </Tooltip>
   );
 }
 
@@ -242,14 +247,16 @@ function AvulsoCard({
     color: '#374151',
   };
   const Icon = item.orderType === 'entrega' ? Bike : ShoppingBag;
+  const typeLabel = item.orderType === 'entrega' ? t('receiptContentStandalone.entrega') : t('receiptContentStandalone.balcao');
 
   return (
-    <button onClick={onClick} className="w-full bg-white rounded-2xl p-4 text-left">
+    <Tooltip label={typeLabel} className="flex w-full">
+    <button onClick={onClick} className={`w-full ${PROFILE_CARD} p-4 text-left md:hover:bg-black/[0.02] dark:md:hover:bg-white/[0.03] md:transition-colors`}>
       <div className="flex justify-between items-start">
         <div className="flex items-center gap-1.5">
-          <Icon size={14} className="text-gray-400" />
-          <p className="text-sm font-semibold text-gray-900 capitalize">
-            {item.orderType === 'entrega' ? t('receiptContentStandalone.entrega') : t('receiptContentStandalone.balcao')}
+          <Icon size={14} strokeWidth={1.5} className={MENU_TEXT_MUTED} />
+          <p className={`text-sm font-semibold ${MENU_TEXT} capitalize`}>
+            {typeLabel}
           </p>
         </div>
         <span
@@ -259,19 +266,20 @@ function AvulsoCard({
           {orderStatusLabel(item.status, t)}
         </span>
       </div>
-      <p className="text-xs text-gray-400 mt-1.5">
+      <p className={`text-xs ${MENU_TEXT_MUTED} mt-1.5`}>
         {formatDateTime(item.createdAt)} ·{' '}
         {item.items.map((i) => `${i.quantity}x ${i.productName}`).join(', ')}
       </p>
       <div className="flex items-center justify-between mt-2">
-        <p className="text-sm font-semibold text-gray-700">{formatMoney(item.total + item.tipAmount)}</p>
+        <p className={`text-sm font-semibold ${MENU_TEXT_BODY}`}>{formatMoney(item.total + item.tipAmount)}</p>
         {review && (
-          <span className="flex items-center gap-1 text-xs font-semibold text-amber-600">
-            <Star size={13} fill="#F59E0B" className="text-amber-500" />
+          <span className="flex items-center gap-1 text-xs font-semibold text-amber-600 dark:text-amber-300">
+            <Star size={13} strokeWidth={1.5} fill="#F59E0B" className="text-amber-500" />
             {review.rating}
           </span>
         )}
       </div>
     </button>
+    </Tooltip>
   );
 }

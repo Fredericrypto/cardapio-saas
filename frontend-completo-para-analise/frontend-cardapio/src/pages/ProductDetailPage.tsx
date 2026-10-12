@@ -1,0 +1,372 @@
+import { localizedField } from '../i18n/contentText';
+import { addonGroupHint } from '../i18n/labels';
+import { useI18n } from '../i18n/I18nContext';
+import { useStoreStatus } from '../hooks/useStoreStatus';
+import { useEffect, useState } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { ArrowLeft, Ban, Check, ChevronRight, Star } from 'lucide-react';
+import { fetchProducts } from '../lib/menu-api';
+import { fetchItemReviewsSummary } from '../lib/customer-api';
+import type { ReviewSummary } from '../lib/customer-api';
+import type { Product, SelectedCartOption } from '../types';
+import { useCart } from '../contexts/CartContext';
+import { useAccentColor } from '../hooks/useAccentColor';
+import { useTenant } from '../contexts/TenantContext';
+import { CartIcon } from '../components/MenuIcons';
+import { useActiveLocation } from '../hooks/useActiveLocation';
+import { ShareButton } from '../components/ShareButton';
+import { buildShareUrl } from '../lib/shareLinks';
+
+// Texto mínimo necessário pro grupo, no estilo iFood: nada quando é
+// realmente livre (0 a 1), "Escolha até N" quando é opcional com teto,
+// "Escolha N" quando é obrigatório com N fixo, ou a faixa quando o
+// mínimo e o máximo são diferentes.
+// Mesma forma que a nota do restaurante aparece no header do cardápio
+// (ver MenuHeader.useReviewSummary) — pedido explícito do Felipe. A nota
+// abre a página completa de avaliações do item (ItemReviewsPage); não há
+// mais lista solta de avaliações no pé desta tela.
+function useItemReviewSummary(tenantId: string, productId: string | undefined) {
+  const [summary, setSummary] = useState<ReviewSummary | null>(null);
+  useEffect(() => {
+    if (!productId) return;
+    fetchItemReviewsSummary(tenantId, productId)
+      .then(setSummary)
+      .catch(() => setSummary(null));
+  }, [tenantId, productId]);
+  return summary;
+}
+
+export function ProductDetailPage() {
+  const { t } = useI18n();
+  const { slug, productId, qrCodeToken } = useParams<{
+    slug: string;
+    productId: string;
+    qrCodeToken?: string;
+  }>();
+  const navigate = useNavigate();
+  const routerLocation = useLocation();
+  const { addItem } = useCart();
+
+  const { tenant } = useTenant();
+  const accent = useAccentColor(tenant?.primaryColor ?? '#111827');
+  // Loja fechada: a tela abre normalmente para ler o item, mas não deixa adicionar.
+  const activeLocation = useActiveLocation(tenant?.id, Boolean(qrCodeToken));
+  const storeStatus = useStoreStatus(activeLocation);
+  const isStoreClosed = !storeStatus.isOpen && Boolean(activeLocation);
+  const [product, setProduct] = useState<Product | null>(null);
+  const [quantity, setQuantity] = useState(1);
+  const [isLoading, setIsLoading] = useState(true);
+  // groupId -> array de valueIds escolhidos nesse grupo
+  const [selections, setSelections] = useState<Record<string, string[]>>({});
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const itemReviewSummary = useItemReviewSummary(tenant?.id ?? '', productId);
+
+  useEffect(() => {
+    if (!tenant || !productId) return;
+
+    async function load() {
+      const products = await fetchProducts(tenant!.id);
+      const found = products.find((p) => p.id === productId) ?? null;
+      setProduct(found);
+      setIsLoading(false);
+    }
+
+    load();
+  }, [tenant, productId]);
+
+  // Mesma lógica do cardápio: atualiza sozinho a cada 15s, silenciosamente
+  // — se o admin desmarcar um adicional como indisponível enquanto o
+  // cliente está decidindo aqui, some da lista sem precisar de F5.
+  useEffect(() => {
+    if (!tenant?.id || !productId) return;
+    const interval = setInterval(() => {
+      fetchProducts(tenant.id)
+        .then((products) => {
+          const found = products.find((p) => p.id === productId);
+          if (found) setProduct(found);
+        })
+        .catch(() => {
+          // Falha pontual — tenta de novo no próximo ciclo.
+        });
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [tenant?.id, productId]);
+
+  if (isLoading || !tenant) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="w-8 h-8 border-2 border-gray-200 border-t-gray-500 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!product) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen px-6 text-center">
+        <p className="text-gray-500">{t('productDetailPage.produto_nao_encontrado')}</p>
+      </div>
+    );
+  }
+
+  // Grupo sem nenhuma opção cadastrada não aparece pro cliente — ficaria
+  // um título "morto" sem nada clicável embaixo (bug visto em produção:
+  // grupo criado no admin sem nenhuma opção preenchida).
+  const optionGroups = (product.options ?? []).filter((g) => g.values.length > 0);
+
+  function toggleValue(groupId: string, groupName: string, valueId: string, maxSelect: number) {
+    setValidationError(null);
+    setSelections((prev) => {
+      const current = prev[groupId] ?? [];
+
+      if (maxSelect === 1) {
+        // Rádio: escolher de novo o mesmo desmarca (permitido mesmo em
+        // grupo obrigatório — a validação de mínimo só barra no "Adicionar").
+        const next = current[0] === valueId ? [] : [valueId];
+        return { ...prev, [groupId]: next };
+      }
+
+      if (current.includes(valueId)) {
+        return { ...prev, [groupId]: current.filter((id) => id !== valueId) };
+      }
+      if (current.length >= maxSelect) {
+        setValidationError(t('productDetailPage.maximo_de_maxselect_opcoes', { maxSelect: maxSelect, groupName: groupName }));
+        return prev;
+      }
+      return { ...prev, [groupId]: [...current, valueId] };
+    });
+  }
+
+  // Preço = base + soma dos adicionais escolhidos, em todos os grupos.
+  const selectedOptionsList: SelectedCartOption[] = optionGroups.flatMap((group) =>
+    (selections[group.id] ?? []).flatMap((valueId) => {
+      const value = group.values.find((v) => v.id === valueId);
+      if (!value) return [];
+      return [{ valueId: value.id, groupName: group.name, label: value.label, priceDelta: Number(value.priceDelta) }];
+    }),
+  );
+  const optionsDelta = selectedOptionsList.reduce((sum, o) => sum + o.priceDelta, 0);
+  const displayPrice = Number(product.promoPrice ?? product.price) + optionsDelta;
+  const subtotal = displayPrice * quantity;
+
+  function handleAddToCart() {
+    if (!product || product.isAvailable === false || isStoreClosed) return;
+
+    // Confere grupos obrigatórios antes de deixar adicionar — mesma
+    // regra que o backend também confere (defesa em profundidade: aqui
+    // é só pra dar feedback rápido, quem garante de verdade é o server).
+    for (const group of optionGroups) {
+      const chosenCount = (selections[group.id] ?? []).length;
+      if (chosenCount < group.minSelect) {
+        setValidationError(
+          group.minSelect === 1
+            ? t('productDetailPage.escolha_uma_opcao_em', { name: group.name })
+            : t('productDetailPage.escolha_pelo_menos_minselect', { minSelect: group.minSelect, name: group.name }),
+        );
+        return;
+      }
+    }
+
+    addItem(product, selectedOptionsList, quantity);
+    navigate(qrCodeToken ? `/${slug}/mesa/${qrCodeToken}` : `/${slug}`);
+  }
+
+  return (
+    <div className="min-h-screen bg-white max-w-md mx-auto pb-28">
+      <div className="relative h-72 bg-gray-100">
+        {product.imageUrl ? (
+          <img
+            src={product.imageUrl}
+            alt={localizedField(product, 'name')}
+            className={`w-full h-full object-cover ${product.isAvailable === false ? 'grayscale opacity-60' : ''}`}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-gray-300">
+            {t('productCard.sem_foto')}
+          </div>
+        )}
+        <button
+          // Link compartilhado abre direto aqui (sem histórico para voltar):
+          // nesse caso "voltar" leva ao cardápio em vez de sair do app.
+          onClick={() =>
+            routerLocation.key === 'default'
+              ? navigate(qrCodeToken ? `/${slug}/mesa/${qrCodeToken}` : `/${slug}`, { replace: true })
+              : navigate(-1)
+          }
+          aria-label={t('common.back')}
+          className="absolute top-4 left-4 w-9 h-9 rounded-full bg-white/90 dark:bg-[#1E1E20]/90 flex items-center justify-center shadow-md"
+        >
+          <ArrowLeft size={18} strokeWidth={1.5} />
+        </button>
+        {slug && (
+          <ShareButton
+            className="absolute top-4 right-4"
+            url={buildShareUrl('produto', slug, product.id)}
+            title={localizedField(product, 'name')}
+            text={product.description ?? t('productDetailPage.olha_esse_item_de', { name: tenant.name })}
+          />
+        )}
+      </div>
+
+      <div className="p-4">
+        <h1 className="font-display text-xl font-bold text-gray-900">
+          {localizedField(product, 'name')}
+        </h1>
+        {product.description && (
+          <p className="text-sm text-gray-500 mt-2 leading-relaxed">
+            {localizedField(product, 'description')}
+          </p>
+        )}
+
+        {itemReviewSummary && (
+          <button
+            type="button"
+            onClick={() => navigate(`/${slug}/produto/${productId}/avaliacoes`)}
+            aria-label={t('productDetailPage.ver_avaliacoes_desse_item')}
+            className="flex items-center gap-1 mt-2"
+          >
+            <Star
+              size={13}
+              fill={itemReviewSummary.count > 0 ? '#F59E0B' : 'transparent'}
+              className={itemReviewSummary.count > 0 ? 'text-amber-500' : 'text-gray-300'}
+            />
+            {itemReviewSummary.count > 0 && (
+              <span className="text-xs font-semibold text-gray-700">
+                {itemReviewSummary.average.toFixed(1)}
+              </span>
+            )}
+            <span className="text-xs text-gray-400">
+              ({itemReviewSummary.count} {itemReviewSummary.count === 1 ? t('reviewsShared.avaliacao') : t('reviewsShared.avaliacoes_2')})
+            </span>
+            {itemReviewSummary.count > 0 && <ChevronRight size={13} className="text-gray-400" />}
+          </button>
+        )}
+
+        <div className="flex items-center justify-between mt-6">
+          <span className="text-2xl font-bold" style={{ color: accent }}>
+            R$ {Number(product.promoPrice ?? product.price).toFixed(2).replace('.', ',')}
+          </span>
+
+          <div className="flex items-center gap-3 bg-gray-100 rounded-full px-1 py-1">
+            <button
+              onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+              className="w-8 h-8 rounded-full bg-white dark:bg-[#3A3C3E] flex items-center justify-center font-bold text-gray-600 dark:text-gray-100 shadow-sm"
+            >
+              −
+            </button>
+            <span className="w-6 text-center font-semibold">{quantity}</span>
+            <button
+              onClick={() => setQuantity((q) => q + 1)}
+              className="w-8 h-8 rounded-full bg-white dark:bg-[#3A3C3E] flex items-center justify-center font-bold text-gray-600 dark:text-gray-100 shadow-sm"
+            >
+              +
+            </button>
+          </div>
+        </div>
+
+        {optionGroups.length > 0 && (
+          <div className="mt-6 flex flex-col gap-6">
+            {optionGroups.map((group) => (
+              <div key={group.id}>
+                <div className="flex items-baseline gap-1.5 mb-1">
+                  <p className="text-sm font-bold text-gray-900">{group.name}</p>
+                  {addonGroupHint(group.minSelect, group.maxSelect, t) && (
+                    <span className="text-xs text-gray-400">
+                      · {addonGroupHint(group.minSelect, group.maxSelect, t)}
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex flex-col divide-y divide-gray-100 border-t border-b border-gray-100">
+                  {group.values.map((value) => {
+                    const isSelected = (selections[group.id] ?? []).includes(value.id);
+                    return (
+                      <button
+                        key={value.id}
+                        onClick={() => toggleValue(group.id, group.name, value.id, group.maxSelect)}
+                        className="w-full flex items-center justify-between py-3"
+                      >
+                        <span className="text-sm text-gray-700">{value.label}</span>
+                        <div className="flex items-center gap-2.5">
+                          {value.priceDelta > 0 && (
+                            <span className="text-xs text-gray-400">
+                              + R$ {Number(value.priceDelta).toFixed(2).replace('.', ',')}
+                            </span>
+                          )}
+                          <div
+                            className={`w-[18px] h-[18px] flex items-center justify-center border-2 shrink-0 ${
+                              group.maxSelect > 1 ? 'rounded-[5px]' : 'rounded-full'
+                            }`}
+                            style={{
+                              borderColor: isSelected ? tenant.primaryColor : '#d1d5db',
+                              backgroundColor: isSelected ? tenant.primaryColor : 'transparent',
+                            }}
+                          >
+                            {isSelected && <Check size={11} className="text-white" strokeWidth={3} />}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {validationError && (
+          <p className="text-sm text-red-500 mt-4">{validationError}</p>
+        )}
+      </div>
+
+      <div
+        className="fixed bottom-0 left-0 right-0 max-w-md mx-auto p-4 bg-white border-t border-gray-100"
+        // BUG CORRIGIDO: em alguns navegadores/WebViews Android, uma
+        // barra fixa cujo conteúdo muda de cor via `style` dinâmico (não
+        // uma classe CSS estática) às vezes só é pintada de verdade
+        // depois de QUALQUER interação na tela (um toque, um scroll) —
+        // até lá, o botão existe e funciona (o clique passava normal),
+        // só não aparece visualmente. `translateZ(0)` força esse bloco
+        // pra sua própria camada de composição, contornando o bug —
+        // truque padrão e bem documentado pra esse exato sintoma.
+        style={{ transform: 'translateZ(0)' }}
+      >
+        {isStoreClosed && product.isAvailable !== false ? (
+          <div className="flex flex-col gap-1.5">
+            <p className="text-[11px] text-red-500 text-center">{t('store.closedHint')}</p>
+            <button
+              type="button"
+              disabled
+              aria-disabled="true"
+              className="w-full py-3.5 rounded-xl bg-red-50 text-red-600 border border-red-100 font-semibold flex justify-center items-center gap-2 px-5 cursor-not-allowed"
+            >
+              <Ban size={16} strokeWidth={1.5} />
+              {t('store.closedEstablishment')}
+            </button>
+          </div>
+        ) : product.isAvailable === false ? (
+          <button
+            type="button"
+            disabled
+            aria-disabled="true"
+            className="w-full py-3.5 rounded-xl bg-gray-200 text-gray-500 font-semibold flex justify-center items-center gap-2 px-5 cursor-not-allowed"
+          >
+            <Ban size={16} />
+            {t('productCard.indisponivel')}
+          </button>
+        ) : (
+        <button
+            onClick={handleAddToCart}
+            className="w-full py-3.5 rounded-xl text-white font-semibold flex justify-between items-center px-5"
+            style={{ backgroundColor: tenant.primaryColor }}
+          >
+            <span className="flex items-center gap-2">
+              <CartIcon size={16} />
+              {t('productDetailPage.adicionar')}
+            </span>
+            <span>R$ {subtotal.toFixed(2).replace('.', ',')}</span>
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
