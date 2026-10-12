@@ -1,3 +1,4 @@
+import { localizedField } from '../i18n/contentText';
 import { categoryLabel } from '../i18n/categoryLabel';
 import { useI18n } from '../i18n/I18nContext';
 import { FloatingNotice } from '../components/FloatingNotice';
@@ -188,9 +189,10 @@ export function MenuPage() {
       .filter((product) => {
       const matchesCategory =
         activeCategoryId === null || product.categoryId === activeCategoryId;
-      const matchesSearch = product.name
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase());
+      const needle = searchTerm.toLowerCase();
+      const matchesSearch =
+        product.name.toLowerCase().includes(needle) ||
+        localizedField(product, 'name').toLowerCase().includes(needle);
       return matchesCategory && matchesSearch;
     });
   }, [products, categories, activeCategoryId, searchTerm]);

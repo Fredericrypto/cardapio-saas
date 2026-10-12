@@ -1,3 +1,4 @@
+import { localizedField } from '../i18n/contentText';
 import { promotionReasonLabel } from '../i18n/labels';
 import { activeDateLocale } from '../i18n/languages';
 import { categoryLabel } from '../i18n/categoryLabel';
@@ -126,7 +127,7 @@ export function PromotionDetailPage() {
     promotion.scope === 'category'
       ? categories.filter((c) => promotion.categoryIds.includes(c.id)).map((c) => categoryLabel(c, t))
       : promotion.scope === 'product'
-        ? products.filter((p) => promotion.productIds.includes(p.id)).map((p) => p.name)
+        ? products.filter((p) => promotion.productIds.includes(p.id)).map((p) => localizedField(p, 'name'))
         : [];
 
   // Loja fechada: dá para ler a promoção, mas não resgatar/aplicar.
@@ -148,7 +149,7 @@ export function PromotionDetailPage() {
     <div className="min-h-screen bg-white max-w-md mx-auto pb-32">
       <div className="relative h-56 bg-gray-100">
         {promotion.imageUrl ? (
-          <img src={promotion.imageUrl} alt={promotion.title} className="w-full h-full object-cover" />
+          <img src={promotion.imageUrl} alt={localizedField(promotion, 'title')} className="w-full h-full object-cover" />
         ) : (
           <div
             className="w-full h-full"
@@ -170,20 +171,20 @@ export function PromotionDetailPage() {
           <ShareButton
             className="absolute top-4 right-4"
             url={buildShareUrl('promocao', slug, promotion.id)}
-            title={promotion.title}
-            text={promotion.description ?? t('promotionDetailPage.promocao_de_name', { name: tenant.name })}
+            title={localizedField(promotion, 'title')}
+            text={localizedField(promotion, 'description') || t('promotionDetailPage.promocao_de_name', { name: tenant.name })}
           />
         )}
         <div className="absolute bottom-4 left-4 right-4">
           <h1 className="font-display text-2xl font-extrabold text-white drop-shadow-sm">
-            {promotion.title}
+            {localizedField(promotion, 'title')}
           </h1>
         </div>
       </div>
 
       <div className="p-4 flex flex-col gap-5">
         {promotion.description && (
-          <p className="text-sm text-gray-600 leading-relaxed">{promotion.description}</p>
+          <p className="text-sm text-gray-600 leading-relaxed">{localizedField(promotion, 'description')}</p>
         )}
 
         <div>

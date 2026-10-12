@@ -1,4 +1,4 @@
-import { localizedText } from '../i18n/categoryLabel';
+import { localizedField } from '../i18n/contentText';
 import { useI18n } from '../i18n/I18nContext';
 import { Ban, Plus } from 'lucide-react';
 import type { Product } from '../types';
@@ -49,7 +49,7 @@ export function ProductCard({ product, primaryColor, onClick, storeClosed = fals
         {product.imageUrl ? (
           <img
             src={product.imageUrl}
-            alt={localizedText(product.name)}
+            alt={localizedField(product, 'name')}
             className={`w-full h-full object-cover ${isUnavailable ? 'grayscale opacity-60' : storeClosed ? CLOSED_MUTED_CLASS : ''}`}
           />
         ) : (
@@ -63,7 +63,7 @@ export function ProductCard({ product, primaryColor, onClick, storeClosed = fals
             variant="chip"
             className="absolute top-2 right-2"
             url={shareUrl}
-            title={localizedText(product.name)}
+            title={localizedField(product, 'name')}
             text={product.description ?? undefined}
           />
         )}
@@ -82,7 +82,7 @@ export function ProductCard({ product, primaryColor, onClick, storeClosed = fals
 
         {storeClosed && !isUnavailable ? (
           <span
-            aria-label={`${localizedText(product.name)}: ${t('store.closedEstablishment')}`}
+            aria-label={`${localizedField(product, 'name')}: ${t('store.closedEstablishment')}`}
             title={t('store.closedEstablishment')}
             className="absolute -bottom-3 right-2.5 md:-bottom-4 md:right-3 w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center text-white shadow-md border-2 border-white dark:border-[#1E1E20] bg-gray-400 cursor-not-allowed"
           >
@@ -90,7 +90,7 @@ export function ProductCard({ product, primaryColor, onClick, storeClosed = fals
           </span>
         ) : isUnavailable ? (
           <span
-            aria-label={t('product.unavailable', { name: product.name })}
+            aria-label={t('product.unavailable', { name: localizedField(product, 'name') })}
             className="absolute -bottom-3 right-2.5 md:-bottom-4 md:right-3 w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center text-white shadow-md border-2 border-white dark:border-[#1E1E20] bg-gray-400 cursor-not-allowed"
           >
             <Ban size={15} strokeWidth={1.5} />
@@ -117,11 +117,11 @@ export function ProductCard({ product, primaryColor, onClick, storeClosed = fals
 
       <div className="flex flex-col flex-1 px-2.5 pt-2.5 pb-3 md:px-3.5 md:pt-4 md:pb-4">
         <p className={`font-display font-bold text-[13px] md:text-sm leading-tight line-clamp-1 ${isUnavailable ? MENU_TEXT_MUTED : MENU_TEXT}`}>
-          {localizedText(product.name)}
+          {localizedField(product, 'name')}
         </p>
         {product.description && (
           <p className={`text-[11px] md:text-xs mt-0.5 line-clamp-1 leading-snug ${MENU_TEXT_MUTED}`}>
-            {localizedText(product.description)}
+            {localizedField(product, 'description')}
           </p>
         )}
         <div className="flex items-baseline gap-1.5 mt-auto pt-1.5">

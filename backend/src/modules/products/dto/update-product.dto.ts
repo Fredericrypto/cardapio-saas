@@ -6,6 +6,7 @@ import {
   IsBoolean,
   IsInt,
   Min,
+  IsObject,
 } from 'class-validator';
 
 export class UpdateProductDto {
@@ -20,6 +21,10 @@ export class UpdateProductDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsObject()
+  translations?: Record<string, Record<string, string>> | null;
 
   @IsOptional()
   @IsNumber()

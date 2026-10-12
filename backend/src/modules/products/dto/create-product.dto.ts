@@ -5,6 +5,7 @@ import {
   IsNumber,
   IsUUID,
   Min,
+  IsObject,
 } from 'class-validator';
 
 export class CreateProductDto {
@@ -18,6 +19,10 @@ export class CreateProductDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsObject()
+  translations?: Record<string, Record<string, string>> | null;
 
   @IsNumber()
   @Min(0)

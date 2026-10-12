@@ -1,3 +1,4 @@
+import type { ContentTranslations, TranslatableField } from '../types/translations';
 import { api } from './api';
 import type { Analytics, AnalyticsPeriod } from '../types/analytics';
 import type {
@@ -155,6 +156,7 @@ export async function createProduct(payload: {
   categoryId: string;
   name: string;
   description?: string;
+  translations?: ContentTranslations | null;
   price: number;
   promoPrice?: number;
   costPrice?: number | null;
@@ -359,6 +361,7 @@ export async function fetchPromotions(): Promise<Promotion[]> {
 export interface PromotionPayload {
   title: string;
   description?: string;
+  translations?: ContentTranslations | null;
   discountType: 'percentage' | 'fixed';
   discountValue: number;
   maxDiscountAmount?: number;
@@ -858,4 +861,21 @@ export async function downloadBackupFile(id: string, fileName: string): Promise<
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+
+export interface TranslationSuggestion {
+  translations: ContentTranslations;
+  source: 'glossary' | 'ai' | 'mixed' | 'none';
+  warnings: string[];
+}
+
+// Sugere traduções (glossário de cardápio + IA opcional no backend). Só sugere:
+// quem grava é o formulário do prato/promoção.
+export async function suggestTranslations(
+  kind: 'product' | 'promotion',
+  texts: Partial<Record<TranslatableField, string>>,
+): Promise<TranslationSuggestion> {
+  const url = kind === 'promotion' ? '/translations/suggest/promotion' : '/translations/suggest';
+  const { data } = await api.post<TranslationSuggestion>(url, { texts });
+  return data;
 }

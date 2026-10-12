@@ -1,3 +1,5 @@
+import type { ContentTranslations } from '../types/translations';
+import { TranslationFields } from '../components/TranslationFields';
 import { useEffect, useState } from 'react';
 import { CurrencyField } from '../components/MaskedNumberField';
 import { Plus, Trash2, Image as ImageIcon, Info, SlidersHorizontal } from 'lucide-react';
@@ -23,6 +25,8 @@ export function MenuManagementPage() {
   const [isManagerOpen, setIsManagerOpen] = useState(false);
   const [isAddingProduct, setIsAddingProduct] = useState(false);
   const [newProduct, setNewProduct] = useState({ name: '', description: '', price: '', costPrice: '' });
+  const [newTranslations, setNewTranslations] = useState<ContentTranslations>({});
+  const [editTranslations, setEditTranslations] = useState<ContentTranslations>({});
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editForm, setEditForm] = useState({ name: '', description: '', price: '', costPrice: '' });
 
@@ -55,14 +59,17 @@ export function MenuManagementPage() {
       description: newProduct.description.trim() || undefined,
       price: Number(newProduct.price),
       costPrice: newProduct.costPrice ? Number(newProduct.costPrice) : undefined,
+      translations: newTranslations,
     });
     setNewProduct({ name: '', description: '', price: '', costPrice: '' });
+    setNewTranslations({});
     setIsAddingProduct(false);
     loadAll();
   }
 
   function openEditProduct(product: Product) {
     setEditingProduct(product);
+    setEditTranslations(product.translations ?? {});
     setEditForm({
       name: product.name,
       description: product.description ?? '',
@@ -78,6 +85,7 @@ export function MenuManagementPage() {
       description: editForm.description.trim() || undefined,
       price: Number(editForm.price),
       costPrice: editForm.costPrice ? Number(editForm.costPrice) : null,
+      translations: editTranslations,
     } as Partial<Product>);
     setEditingProduct(null);
     loadAll();
@@ -248,6 +256,13 @@ export function MenuManagementPage() {
                     placeholder="Descrição (opcional)"
                     className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none"
                   />
+                  <TranslationFields
+                    kind="product"
+                    fields={['name', 'description']}
+                    source={{ name: newProduct.name, description: newProduct.description }}
+                    value={newTranslations}
+                    onChange={setNewTranslations}
+                  />
                   <CurrencyField
                     value={newProduct.price}
                     onChange={(raw) => setNewProduct((p) => ({ ...p, price: raw }))}
@@ -305,6 +320,13 @@ export function MenuManagementPage() {
               onChange={(e) => setEditForm((p) => ({ ...p, description: e.target.value }))}
               placeholder="Descrição (opcional)"
               className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none"
+            />
+            <TranslationFields
+              kind="product"
+              fields={['name', 'description']}
+              source={{ name: editForm.name, description: editForm.description }}
+              value={editTranslations}
+              onChange={setEditTranslations}
             />
             <CurrencyField
               value={editForm.price}

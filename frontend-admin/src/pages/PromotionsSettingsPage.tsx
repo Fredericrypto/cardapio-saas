@@ -1,3 +1,5 @@
+import type { ContentTranslations } from '../types/translations';
+import { TranslationFields } from '../components/TranslationFields';
 import { useEffect, useRef, useState } from 'react';
 import { Percent, Trash2, Pencil, ImagePlus, Clock, Users } from 'lucide-react';
 import { PromotionBagIcon } from '../components/PromotionBagIcon';
@@ -580,6 +582,7 @@ function PromotionForm({
 }) {
   const [title, setTitle] = useState(initial?.title ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
+  const [translations, setTranslations] = useState<ContentTranslations>(initial?.translations ?? {});
   const [discountType, setDiscountType] = useState<'percentage' | 'fixed'>(
     initial?.discountType ?? 'percentage',
   );
@@ -684,6 +687,7 @@ function PromotionForm({
       const saved = await onSave({
         title: title.trim(),
         description: description.trim() || undefined,
+        translations,
         discountType,
         discountValue: value,
         maxDiscountAmount: discountType === 'percentage' ? maxDiscount : undefined,
@@ -776,6 +780,14 @@ function PromotionForm({
           className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none w-full"
         />
       </Field>
+
+      <TranslationFields
+        kind="promotion"
+        fields={['title', 'description']}
+        source={{ title, description }}
+        value={translations}
+        onChange={setTranslations}
+      />
 
       <div className="flex gap-3">
         <Field label="Tipo de desconto">

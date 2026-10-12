@@ -1,3 +1,4 @@
+import { sanitizeTranslations, type ContentTranslations } from '../../common/i18n/content-translations';
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In, EntityManager } from 'typeorm';
@@ -43,6 +44,7 @@ export interface PublicPromotion {
   id: string;
   title: string;
   description: string | null;
+  translations: ContentTranslations | null;
   imageUrl: string | null;
   discountType: 'percentage' | 'fixed';
   discountValue: number;
@@ -222,6 +224,7 @@ export class PromotionsService {
           id: promo.id,
           title: promo.title,
           description: promo.description,
+          translations: promo.translations ?? null,
           imageUrl: withImage.imageUrl,
           discountType: promo.discountType,
           discountValue: promo.discountValue,
@@ -524,6 +527,7 @@ export class PromotionsService {
       tenantId,
       title: dto.title,
       description: dto.description ?? null,
+      translations: sanitizeTranslations(dto.translations, ['title', 'description']),
       discountType: dto.discountType,
       discountValue: dto.discountValue,
       maxDiscountAmount: dto.discountType === 'percentage' ? (dto.maxDiscountAmount ?? null) : null,
@@ -593,6 +597,9 @@ export class PromotionsService {
 
     if (dto.title !== undefined) promotion.title = dto.title;
     if (dto.description !== undefined) promotion.description = dto.description || null;
+    if (dto.translations !== undefined) {
+      promotion.translations = sanitizeTranslations(dto.translations, ['title', 'description']);
+    }
     if (dto.imageUrl !== undefined) promotion.imageUrl = dto.imageUrl || null;
     if (dto.discountType !== undefined) promotion.discountType = dto.discountType;
     if (dto.discountValue !== undefined) promotion.discountValue = dto.discountValue;

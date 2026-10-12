@@ -12,6 +12,7 @@ import {
   Min,
   MaxLength,
   ValidateIf,
+  IsObject,
 } from 'class-validator';
 
 export class CreatePromotionDto {
@@ -23,6 +24,10 @@ export class CreatePromotionDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsObject()
+  translations?: Record<string, Record<string, string>> | null;
 
   @IsIn(['percentage', 'fixed'])
   discountType: 'percentage' | 'fixed';

@@ -1,3 +1,4 @@
+import { localizedField } from '../i18n/contentText';
 import { paymentMethodLabel, promotionReasonLabel } from '../i18n/labels';
 import { activeDateLocale } from '../i18n/languages';
 import { useI18n } from '../i18n/I18nContext';
@@ -1024,7 +1025,7 @@ export function CartPage() {
         if (!result?.isEligible) return null;
         return (
           <div key={promo.id} className="flex justify-between text-red-600">
-            <span>{t('cartPage.cupom')}{promo.title})</span>
+            <span>{t('cartPage.cupom')}{localizedField(promo, 'title')})</span>
             <span>- R$ {result.discountAmount.toFixed(2).replace('.', ',')}</span>
           </div>
         );
@@ -1133,7 +1134,7 @@ export function CartPage() {
                     {item.product.imageUrl && (
                       <img
                         src={item.product.imageUrl}
-                        alt={item.product.name}
+                        alt={localizedField(item.product, 'name')}
                         className="w-full h-full object-cover"
                       />
                     )}
@@ -1149,7 +1150,7 @@ export function CartPage() {
                           }}
                         >
                           <p className="text-sm font-semibold truncate">
-                            {discountedQty}x {item.product.name}
+                            {discountedQty}x {localizedField(item.product, 'name')}
                           </p>
                           {optionsLabel && (
                             <p className="text-xs text-gray-400 truncate">{optionsLabel}</p>
@@ -1160,7 +1161,7 @@ export function CartPage() {
                         </div>
                         <div className="px-0.5">
                           <p className="text-sm font-semibold truncate">
-                            {regularQty}x {item.product.name}
+                            {regularQty}x {localizedField(item.product, 'name')}
                           </p>
                           {optionsLabel && (
                             <p className="text-xs text-gray-400 truncate">{optionsLabel}</p>
@@ -1172,7 +1173,7 @@ export function CartPage() {
                       </>
                     ) : (
                       <div>
-                        <p className="text-sm font-semibold truncate">{item.product.name}</p>
+                        <p className="text-sm font-semibold truncate">{localizedField(item.product, 'name')}</p>
                         {optionsLabel && (
                           <p className="text-xs text-gray-400 truncate">{optionsLabel}</p>
                         )}
@@ -1229,7 +1230,7 @@ export function CartPage() {
                       <div className="flex items-center gap-2 min-w-0">
                         <Tag size={15} style={{ color: tenant.primaryColor }} className="shrink-0" />
                         <div className="min-w-0">
-                          <p className="text-sm font-semibold text-gray-800 truncate">{promo.title}</p>
+                          <p className="text-sm font-semibold text-gray-800 truncate">{localizedField(promo, 'title')}</p>
                           <p className="text-xs text-gray-400">
                             {result?.isEligible
                               ? `- R$ ${result.discountAmount.toFixed(2).replace('.', ',')}`
@@ -1320,7 +1321,7 @@ export function CartPage() {
                       }
                     >
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-gray-800 truncate">{promo.title}</p>
+                        <p className="text-sm font-semibold text-gray-800 truncate">{localizedField(promo, 'title')}</p>
                         <p className="text-xs text-gray-400">
                           {result?.isEligible
                             ? t('cartPage.economize_r_v0', { v0: result.discountAmount.toFixed(2).replace('.', ',') })
@@ -1687,7 +1688,7 @@ export function CartPage() {
                   <div key={item.lineKey} className="flex flex-col gap-1">
                     <div className="flex justify-between text-sm">
                       <span>
-                        {discountedQty}x {item.product.name}
+                        {discountedQty}x {localizedField(item.product, 'name')}
                         {optionsLabel && <span className="block text-xs text-gray-400">{optionsLabel}</span>}
                         <span className="block text-[11px] font-semibold" style={{ color: tenant.primaryColor }}>
                           <Tag size={11} strokeWidth={1.5} className="inline-block mr-1 -mt-0.5" />{t('cartPage.cupom_aplicado')}
@@ -1699,7 +1700,7 @@ export function CartPage() {
                     </div>
                     <div className="flex justify-between text-sm">
                       <span>
-                        {regularQty}x {item.product.name}
+                        {regularQty}x {localizedField(item.product, 'name')}
                         {optionsLabel && <span className="block text-xs text-gray-400">{optionsLabel}</span>}
                       </span>
                       <span className="text-gray-500 shrink-0 ml-2">
@@ -1712,7 +1713,7 @@ export function CartPage() {
               return (
                 <div key={item.lineKey} className="flex justify-between text-sm">
                   <span>
-                    {item.quantity}x {item.product.name}
+                    {item.quantity}x {localizedField(item.product, 'name')}
                     {optionsLabel && (
                       <span className="block text-xs text-gray-400">{optionsLabel}</span>
                     )}

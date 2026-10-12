@@ -28,6 +28,7 @@ import { ReviewsModule } from './modules/reviews/reviews.module';
 import { PushModule } from './modules/push/push.module';
 import { CashModule } from './modules/cash/cash.module';
 import { NotesModule } from './modules/notes/notes.module';
+import { TranslationsModule } from './modules/translations/translations.module';
 import { InternalNotificationsModule } from './modules/internal-notifications/internal-notifications.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 
@@ -169,6 +170,7 @@ import { BackupAuditLog } from './modules/backups/backup-audit-log.entity';
     AnalyticsModule,
     InternalNotificationsModule,
     NotesModule,
+    TranslationsModule,
   ],
   controllers: [AppController],
   providers: [

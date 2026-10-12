@@ -1,3 +1,4 @@
+import type { ContentTranslations } from '../i18n/contentText';
 export interface Tenant {
   id: string;
   slug: string;
@@ -60,6 +61,8 @@ export interface Location {
 // logado. O desconto de verdade é sempre calculado e aplicado no
 // BACKEND na hora do pedido — o que vem aqui é só o texto/exibição.
 export interface Promotion {
+  // Traduções opcionais (en/es) cadastradas no painel.
+  translations?: ContentTranslations | null;
   id: string;
   title: string;
   description: string | null;
@@ -109,6 +112,8 @@ export interface ProductOptionGroup {
 }
 
 export interface Product {
+  // Traduções opcionais (en/es) cadastradas no painel.
+  translations?: ContentTranslations | null;
   id: string;
   tenantId: string;
   categoryId: string;

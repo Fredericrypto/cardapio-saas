@@ -1,3 +1,4 @@
+import type { ContentTranslations } from '../../common/i18n/content-translations';
 import {
   Entity,
   Column,
@@ -41,6 +42,11 @@ export class Product {
 
   @Column({ type: 'text', nullable: true })
   description: string | null;
+
+  // Traduções opcionais { en: { name, description }, es: {...} }. NULL = sem tradução
+  // cadastrada (o cardápio usa o glossário ou o texto original).
+  @Column({ type: 'jsonb', nullable: true })
+  translations: ContentTranslations | null;
 
   @Column({ type: 'numeric', precision: 10, scale: 2, transformer: numericTransformer })
   price: number;

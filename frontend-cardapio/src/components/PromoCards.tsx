@@ -1,4 +1,4 @@
-import { localizedText } from '../i18n/categoryLabel';
+import { localizedField } from '../i18n/contentText';
 import { useI18n } from '../i18n/I18nContext';
 import { useEffect, useRef, useState } from 'react';
 import { Clock } from 'lucide-react';
@@ -105,7 +105,7 @@ function PromoCard({
         {promo.imageUrl ? (
           <img
             src={promo.imageUrl}
-            alt={localizedText(promo.title)}
+            alt={localizedField(promo, 'title')}
             className={`w-full h-full object-cover ${promo.alreadyUsedUp ? 'grayscale' : ''}`}
           />
         ) : (
@@ -125,7 +125,7 @@ function PromoCard({
             variant="chip"
             className="absolute top-2.5 left-2.5"
             url={shareUrl}
-            title={localizedText(promo.title)}
+            title={localizedField(promo, 'title')}
             text={promo.description ?? undefined}
           />
         )}
@@ -140,11 +140,11 @@ function PromoCard({
         <div className="absolute bottom-0 left-0 right-0 p-3.5">
           <div className="min-w-0">
             <p className="font-display font-extrabold text-white text-lg leading-tight drop-shadow-sm">
-              {localizedText(promo.title)}
+              {localizedField(promo, 'title')}
             </p>
             {promo.description && (
               <p className="text-white/90 text-[11px] mt-0.5 line-clamp-1 leading-snug">
-                {localizedText(promo.description)}
+                {localizedField(promo, 'description')}
               </p>
             )}
           </div>

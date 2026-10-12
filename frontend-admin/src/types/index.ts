@@ -1,3 +1,4 @@
+import type { ContentTranslations } from './translations';
 export interface Admin {
   id: string;
   email: string;
@@ -95,6 +96,8 @@ export interface ProductOptionGroup {
 }
 
 export interface Product {
+  // Traduções opcionais (en/es) de nome e descrição.
+  translations?: ContentTranslations | null;
   id: string;
   tenantId: string;
   categoryId: string;
@@ -125,6 +128,8 @@ export interface OrderItem {
 // próprio ou herdado do produto vinculado. O backend recalcula e aplica
 // o desconto sozinho na hora do pedido (nunca confia em nada do cliente).
 export interface Promotion {
+  // Traduções opcionais (en/es) de título e descrição.
+  translations?: ContentTranslations | null;
   id: string;
   tenantId: string;
   title: string;

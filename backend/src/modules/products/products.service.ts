@@ -1,3 +1,4 @@
+import { sanitizeTranslations } from '../../common/i18n/content-translations';
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { Repository, DataSource, In } from 'typeorm';
@@ -60,7 +61,11 @@ export class ProductsService {
   }
 
   async create(tenantId: string, dto: CreateProductDto): Promise<Product> {
-    const product = this.productRepo.create({ ...dto, tenantId });
+    const product = this.productRepo.create({
+      ...dto,
+      translations: sanitizeTranslations(dto.translations, ['name', 'description']),
+      tenantId,
+    });
     return this.productRepo.save(product);
   }
 
@@ -70,7 +75,10 @@ export class ProductsService {
     dto: UpdateProductDto,
   ): Promise<Product> {
     const product = await this.findOne(tenantId, id);
-    Object.assign(product, dto);
+    const { translations, ...rest } = dto;
+    Object.assign(product, rest);
+    // `undefined` = não mexer; objeto vazio/inválido = limpar (vira null).
+    if (translations !== undefined) product.translations = sanitizeTranslations(translations, ['name', 'description']);
     return this.productRepo.save(product);
   }
 

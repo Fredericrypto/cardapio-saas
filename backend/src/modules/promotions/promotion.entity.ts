@@ -1,3 +1,4 @@
+import type { ContentTranslations } from '../../common/i18n/content-translations';
 import {
   Entity,
   Column,
@@ -52,6 +53,11 @@ export class Promotion {
 
   @Column({ type: 'text', nullable: true })
   description: string | null;
+
+  // Traduções opcionais { en: { name, description }, es: {...} }. NULL = sem tradução
+  // cadastrada (o cardápio usa o glossário ou o texto original).
+  @Column({ type: 'jsonb', nullable: true })
+  translations: ContentTranslations | null;
 
   // Banner do card. Se ficar em branco e scope = 'product' com só UM
   // produto vinculado, o cardápio usa a foto desse produto como

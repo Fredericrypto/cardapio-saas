@@ -11,6 +11,7 @@ import {
   Min,
   MaxLength,
   ValidateIf,
+  IsObject,
 } from 'class-validator';
 
 export class UpdatePromotionDto {
@@ -22,6 +23,10 @@ export class UpdatePromotionDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsObject()
+  translations?: Record<string, Record<string, string>> | null;
 
   @IsOptional()
   @IsString()
