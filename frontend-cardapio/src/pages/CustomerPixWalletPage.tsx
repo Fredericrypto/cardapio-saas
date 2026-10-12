@@ -3,13 +3,23 @@ import { useI18n } from '../i18n/I18nContext';
 import { Tooltip } from '../components/Tooltip';
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Wallet, Trash2, ShieldCheck } from 'lucide-react';
+import { Wallet, Trash2, ShieldCheck, Lock, Mail, Smartphone, Fingerprint, KeyRound, Pencil, type LucideIcon } from 'lucide-react';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { useTenant } from '../contexts/TenantContext';
 import { setMyCustomerPixKey, removeMyCustomerPixKey } from '../lib/customer-api';
 import { ProfileSubpageShell } from '../components/ProfileSubpageShell';
+import { ProfileField, ProfileSectionHeader } from '../components/ProfileField';
 import { MENU_PAGE_BG, MENU_TEXT, MENU_TEXT_BODY } from '../lib/menuTheme';
-import { PROFILE_CARD, PROFILE_INPUT, PROFILE_BTN_OUTLINE, PROFILE_BTN_DANGER } from '../lib/profileTheme';
+import {
+  PROFILE_CARD,
+  PROFILE_INPUT,
+  PROFILE_BTN_OUTLINE,
+  PROFILE_BTN_DANGER,
+  PROFILE_BTN_PRIMARY,
+  PROFILE_LABEL,
+  PROFILE_OPTION_CARD,
+  PROFILE_SELECTED_RING,
+} from '../lib/profileTheme';
 
 // Carteira Pix do CLIENTE — guarda só a chave de destino, pra quando o
 // estabelecimento precisar devolver dinheiro (reembolso de um pedido
@@ -83,86 +93,129 @@ export function CustomerPixWalletPage() {
   }
 
   const showForm = isEditing || !customer.pixKey;
+  const accent = tenant.primaryColor;
+
+  // Mesmos valores e rótulos do antigo <select>; só mudou a apresentação.
+  const keyTypes: { value: string; label: string; icon: LucideIcon }[] = [
+    { value: 'email', label: t('info.email'), icon: Mail },
+    { value: 'telefone', label: t('customerPixWalletPage.celular'), icon: Smartphone },
+    { value: 'cpf', label: t('customerPixWalletPage.cpf'), icon: Fingerprint },
+    { value: 'aleatoria', label: t('customerPixWalletPage.chave_aleatoria'), icon: KeyRound },
+  ];
+  const savedTypeIcon = keyTypes.find((k) => k.value === customer.pixKeyType)?.icon ?? Wallet;
+  const SavedTypeIcon = savedTypeIcon;
 
   return (
     <ProfileSubpageShell tenant={tenant} title={t('profile.pixWallet')} backTo={`/${slug}/conta-cliente/perfil`}>
-      {/* Formulário curto: limita a largura para os campos não esticarem. */}
-      <div className="max-w-2xl flex flex-col gap-3">
-        <div className={`${PROFILE_CARD} p-4 md:p-5 flex gap-2.5`}>
-          <ShieldCheck size={16} strokeWidth={1.5} className="text-green-600 dark:text-green-400 shrink-0 mt-0.5" />
-          <p className={`text-xs ${MENU_TEXT_BODY}`}>
+      <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_400px] lg:gap-8 lg:items-start">
+        {/* Aviso de segurança: bloco translúcido com ícones dedicados. No
+            desktop vai para a coluna da direita e acompanha a rolagem. */}
+        <div className="relative overflow-hidden rounded-2xl p-5 md:p-6 border border-emerald-500/25 bg-emerald-500/[0.07] dark:bg-emerald-400/[0.06] backdrop-blur-xl shadow-sm flex gap-4 lg:order-2 lg:sticky lg:top-24">
+          <div className="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-emerald-500/10" aria-hidden="true" />
+          <div className="relative w-11 h-11 rounded-xl flex items-center justify-center shrink-0 bg-emerald-500/15 border border-emerald-500/25">
+            <ShieldCheck size={22} strokeWidth={1.5} className="text-emerald-600 dark:text-emerald-400" />
+            <span className="absolute -bottom-1.5 -right-1.5 w-5 h-5 rounded-full bg-white dark:bg-[#1E1E20] border border-emerald-500/25 flex items-center justify-center">
+              <Lock size={10} strokeWidth={1.5} className="text-emerald-600 dark:text-emerald-400" />
+            </span>
+          </div>
+          <p className={`relative text-sm leading-relaxed ${MENU_TEXT_BODY}`}>
             {t('customerPixWalletPage.guardamos_so_a_sua')}{' '}
             {tenant.name} {t('customerPixWalletPage.devolver_dinheiro_direto_pra')}
           </p>
         </div>
 
-        {!showForm && customer.pixKey && (
-          <div className={`${PROFILE_CARD} p-4 md:p-6`}>
-            <p className={`text-xs font-semibold ${MENU_TEXT_BODY} flex items-center gap-1.5 mb-1.5`}>
-              <Wallet size={13} strokeWidth={1.5} />
-              {t('customerPixWalletPage.chave_salva')}
-            </p>
-            <p className={`text-sm font-medium ${MENU_TEXT}`}>
-              {pixKeyTypeLabel(customer.pixKeyType, t)}
-            </p>
-            <p className={`text-sm ${MENU_TEXT_BODY} mt-0.5`}>{customer.pixKey}</p>
-            <div className="flex gap-2 mt-3">
-              <Tooltip label={t('customerPixWalletPage.editar')} className="flex flex-1">
+        <div className="flex flex-col gap-4 min-w-0 lg:order-1">
+          {!showForm && customer.pixKey && (
+            <div className={`${PROFILE_CARD} p-4 md:p-6`}>
+              <ProfileSectionHeader icon={Wallet} title={t('customerPixWalletPage.chave_salva')} accent={accent} />
+              <div className="flex items-center gap-4 rounded-xl bg-black/[0.03] dark:bg-white/[0.05] border border-[#E5E7EB] dark:border-white/10 p-4">
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 bg-black/5 dark:bg-white/10">
+                  <SavedTypeIcon size={20} strokeWidth={1.5} className={MENU_TEXT} />
+                </div>
+                <div className="min-w-0">
+                  <p className={PROFILE_LABEL}>{pixKeyTypeLabel(customer.pixKeyType, t)}</p>
+                  <p className={`text-sm md:text-base font-medium font-mono ${MENU_TEXT} mt-0.5 break-all`}>{customer.pixKey}</p>
+                </div>
+              </div>
+              <div className="flex gap-2 mt-5">
+                <Tooltip label={t('customerPixWalletPage.editar')} className="flex flex-1">
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className={`w-full py-2.5 rounded-xl text-sm font-semibold inline-flex items-center justify-center gap-2 ${PROFILE_BTN_OUTLINE}`}
+                  >
+                    <Pencil size={15} strokeWidth={1.5} />
+                    {t('customerPixWalletPage.editar')}
+                  </button>
+                </Tooltip>
+                <Tooltip label={t('tooltip.delete')}>
+                  <button
+                    onClick={handleRemove}
+                    disabled={isRemoving}
+                    aria-label={t('tooltip.delete')}
+                    className={`h-full py-2.5 px-4 rounded-xl ${PROFILE_BTN_DANGER}`}
+                  >
+                    <Trash2 size={16} strokeWidth={1.5} />
+                  </button>
+                </Tooltip>
+              </div>
+            </div>
+          )}
+
+          {showForm && (
+            <div className={`${PROFILE_CARD} p-4 md:p-6`}>
+              <ProfileSectionHeader icon={Wallet} title={t('profile.pixWallet')} accent={accent} />
+
+              <p className={`${PROFILE_LABEL} mb-2`}>{t('customerPixWalletPage.tipo_de_chave')}</p>
+              <div role="radiogroup" aria-label={t('customerPixWalletPage.tipo_de_chave')} className="grid grid-cols-2 gap-3">
+                {keyTypes.map((kt) => {
+                  const selected = pixKeyType === kt.value;
+                  return (
+                    <Tooltip key={kt.value} label={kt.label} className="flex w-full">
+                      <button
+                        type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        onClick={() => setPixKeyType(kt.value)}
+                        className={`w-full flex items-center gap-3 rounded-xl border px-3.5 py-3 ${PROFILE_OPTION_CARD} ${
+                          selected ? PROFILE_SELECTED_RING : 'border-[#E5E7EB] dark:border-white/10'
+                        }`}
+                        style={selected ? { borderColor: accent } : undefined}
+                      >
+                        <kt.icon size={18} strokeWidth={1.5} className={selected ? MENU_TEXT : MENU_TEXT_BODY} />
+                        <span className={`text-sm font-medium truncate ${selected ? MENU_TEXT : MENU_TEXT_BODY}`}>{kt.label}</span>
+                      </button>
+                    </Tooltip>
+                  );
+                })}
+              </div>
+
+              <ProfileField label={t('customerPixWalletPage.sua_chave_pix')} icon={KeyRound} className="mt-5">
+                <input
+                  value={pixKey}
+                  onChange={(e) => setPixKey(e.target.value)}
+                  className={`${PROFILE_INPUT} w-full pl-10`}
+                />
+              </ProfileField>
+
+              {error && (
+                <p className="text-xs text-red-500 dark:text-red-400 mt-4 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2.5">
+                  {error}
+                </p>
+              )}
+
+              <Tooltip label={t('customerPixWalletPage.salvar_chave_pix')} className="flex w-full md:w-auto md:justify-end mt-5 md:mt-6">
                 <button
-                  onClick={() => setIsEditing(true)}
-                  className={`w-full py-2 rounded-lg text-xs font-semibold ${PROFILE_BTN_OUTLINE}`}
+                  onClick={handleSave}
+                  disabled={!canSubmit || isSaving}
+                  className={`w-full md:w-auto md:px-10 py-3 rounded-xl text-sm ${PROFILE_BTN_PRIMARY}`}
+                  style={{ backgroundColor: accent }}
                 >
-                  {t('customerPixWalletPage.editar')}
-                </button>
-              </Tooltip>
-              <Tooltip label={t('tooltip.delete')}>
-                <button
-                  onClick={handleRemove}
-                  disabled={isRemoving}
-                  aria-label={t('tooltip.delete')}
-                  className={`py-2 px-3 rounded-lg ${PROFILE_BTN_DANGER}`}
-                >
-                  <Trash2 size={14} strokeWidth={1.5} />
+                  {isSaving ? 'Salvando...' : t('customerPixWalletPage.salvar_chave_pix')}
                 </button>
               </Tooltip>
             </div>
-          </div>
-        )}
-
-        {showForm && (
-          <div className={`${PROFILE_CARD} p-4 md:p-6 flex flex-col gap-2.5`}>
-            <select
-              value={pixKeyType}
-              onChange={(e) => setPixKeyType(e.target.value)}
-              className={PROFILE_INPUT}
-            >
-              <option value="">{t('customerPixWalletPage.tipo_de_chave')}</option>
-              <option value="email">{t('info.email')}</option>
-              <option value="telefone">{t('customerPixWalletPage.celular')}</option>
-              <option value="cpf">{t('customerPixWalletPage.cpf')}</option>
-              <option value="aleatoria">{t('customerPixWalletPage.chave_aleatoria')}</option>
-            </select>
-            <input
-              value={pixKey}
-              onChange={(e) => setPixKey(e.target.value)}
-              placeholder={t('customerPixWalletPage.sua_chave_pix')}
-              className={PROFILE_INPUT}
-            />
-
-            {error && <p className="text-xs text-red-500 dark:text-red-400">{error}</p>}
-
-            <Tooltip label={t('customerPixWalletPage.salvar_chave_pix')} className="flex w-full">
-              <button
-                onClick={handleSave}
-                disabled={!canSubmit || isSaving}
-                className="w-full py-3 rounded-xl text-white font-semibold text-sm disabled:opacity-60 mt-1"
-                style={{ backgroundColor: tenant.primaryColor }}
-              >
-                {isSaving ? 'Salvando...' : t('customerPixWalletPage.salvar_chave_pix')}
-              </button>
-            </Tooltip>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </ProfileSubpageShell>
   );

@@ -2,7 +2,7 @@ import { genderLabel } from '../i18n/labels';
 import { formatPronouns, pronounGroupLabel, pronounLabel } from '../i18n/pronouns';
 import { useI18n } from '../i18n/I18nContext';
 import { useEffect, useState } from 'react';
-import { Camera } from 'lucide-react';
+import { Camera, User, Mail, Phone, Check, Sparkles, Users } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { useTenant } from '../contexts/TenantContext';
@@ -15,9 +15,10 @@ import { PhoneInput } from '../components/PhoneInput';
 import { isValidBrazilPhone } from '../lib/phone';
 import { AvatarPickerModal } from '../components/AvatarPickerModal';
 import { ProfileSubpageShell } from '../components/ProfileSubpageShell';
+import { ProfileField, ProfileSectionHeader } from '../components/ProfileField';
 import { Tooltip } from '../components/Tooltip';
 import { MENU_PAGE_BG, MENU_TEXT_BODY, MENU_TEXT_MUTED } from '../lib/menuTheme';
-import { PROFILE_CARD, PROFILE_INPUT } from '../lib/profileTheme';
+import { PROFILE_CARD, PROFILE_INPUT, PROFILE_BTN_PRIMARY, PROFILE_LABEL } from '../lib/profileTheme';
 
 const GENDER_OPTIONS: { value: string }[] = [
   { value: 'masculino' },
@@ -142,7 +143,7 @@ export function EditProfilePage() {
     );
   }
 
-  const labelClass = `text-xs font-semibold ${MENU_TEXT_BODY} block mb-1.5`;
+  const accent = tenant.primaryColor;
 
   return (
     <ProfileSubpageShell tenant={tenant} title={t('profile.myData')} backTo={`/${slug}/conta-cliente/perfil`}>
@@ -182,7 +183,7 @@ export function EditProfilePage() {
           <Tooltip label={t('editProfilePage.alterar_foto')}>
             <button
               onClick={() => setShowAvatarPicker(true)}
-              className="mt-3 rounded-xl py-2.5 px-5 inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-white"
+              className={`mt-3 rounded-xl py-2.5 px-5 inline-flex items-center justify-center gap-1.5 text-xs ${PROFILE_BTN_PRIMARY}`}
               style={{ backgroundColor: tenant.primaryColor }}
             >
               {t('editProfilePage.alterar_foto')}
@@ -200,47 +201,55 @@ export function EditProfilePage() {
           />
         )}
 
-        <div className="mt-4 md:mt-0 flex flex-col gap-3">
-          <div className={`${PROFILE_CARD} p-4 md:p-6 flex flex-col gap-3 md:grid md:grid-cols-2 md:gap-x-5 md:gap-y-5`}>
-            <div>
-              <label className={labelClass}>{t('editProfilePage.nome')}</label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                maxLength={150}
-                className={`${PROFILE_INPUT} w-full`}
-              />
-            </div>
+        <div className="mt-4 md:mt-0 flex flex-col gap-4">
+          {/* Identidade: nome, e-mail e WhatsApp em grade. */}
+          <div className={`${PROFILE_CARD} p-4 md:p-6`}>
+            <ProfileSectionHeader icon={User} title={t('profile.myData')} accent={accent} />
+            <div className="flex flex-col gap-4 md:grid md:grid-cols-2 md:gap-x-5 md:gap-y-5">
+              <ProfileField label={t('editProfilePage.nome')} icon={User}>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  maxLength={150}
+                  className={`${PROFILE_INPUT} w-full pl-10`}
+                />
+              </ProfileField>
 
-            <div>
-              <label className={labelClass}>{t('info.email')}</label>
-              <input
-                type="text"
-                value={customer.email}
-                disabled
-                className={`${PROFILE_INPUT} w-full opacity-60`}
-              />
-            </div>
+              <ProfileField label={t('info.email')} icon={Mail}>
+                <input
+                  type="text"
+                  value={customer.email}
+                  disabled
+                  className={`${PROFILE_INPUT} w-full pl-10 opacity-60`}
+                />
+              </ProfileField>
 
-            <div className="md:col-span-2 md:max-w-sm">
-              <label className={labelClass}>{t('editProfilePage.whatsapp')}</label>
-              <PhoneInput
-                value={phone}
-                onChange={setPhone}
-                className={`${PROFILE_INPUT} w-full`}
-              />
+              <div className="md:col-span-2 md:max-w-sm">
+                <label className={`${PROFILE_LABEL} block mb-1.5`}>{t('editProfilePage.whatsapp')}</label>
+                <div className="relative">
+                  <Phone
+                    size={16}
+                    strokeWidth={1.5}
+                    className="absolute left-3.5 top-[23px] -translate-y-1/2 pointer-events-none text-[#9CA3AF] dark:text-[#8E918F]"
+                  />
+                  <PhoneInput value={phone} onChange={setPhone} className={`${PROFILE_INPUT} w-full pl-10`} />
+                </div>
+              </div>
             </div>
+          </div>
 
-            <div className="md:col-span-2">
-              <label className={`text-xs font-semibold ${MENU_TEXT_BODY} block mb-0.5`}>{t('editProfilePage.pronomes_pessoais')}</label>
-              <p className={`text-[11px] ${MENU_TEXT_MUTED} mb-2`}>
+          {/* Pronomes e gênero lado a lado no desktop. */}
+          <div className="flex flex-col gap-4 xl:grid xl:grid-cols-2 xl:items-start">
+            <div className={`${PROFILE_CARD} p-4 md:p-6`}>
+              <ProfileSectionHeader icon={Sparkles} title={t('editProfilePage.pronomes_pessoais')} accent={accent} />
+              <p className={`text-[11px] md:text-xs ${MENU_TEXT_MUTED} mb-3`}>
                 {t('editProfilePage.escolha_ate_2_aparecem')}
               </p>
-              <div className="flex flex-col gap-2.5">
+              <div className="flex flex-col gap-3">
                 {PRONOUN_GROUPS.map((group) => (
                   <div key={group.label}>
-                    <p className={`text-[11px] font-semibold ${MENU_TEXT_MUTED} mb-1`}>{pronounGroupLabel(group.label, t)}</p>
+                    <p className={`text-[11px] font-semibold ${MENU_TEXT_MUTED} mb-1.5`}>{pronounGroupLabel(group.label, t)}</p>
                     <div className="grid grid-cols-4 gap-2">
                       {group.options.map((option) => {
                         const on = pronouns.includes(option);
@@ -255,10 +264,10 @@ export function EditProfilePage() {
                                   prev.includes(option) ? prev.filter((p) => p !== option) : [...prev, option],
                                 )
                               }
-                              className={`${OPTION_BASE} ${on ? '' : OPTION_OFF}`}
+                              className={`${OPTION_BASE} ${on ? 'ring-1 ring-black/5 dark:ring-white/20' : OPTION_OFF}`}
                               style={
                                 on
-                                  ? { backgroundColor: tenant.primaryColor, color: 'white', borderColor: tenant.primaryColor }
+                                  ? { backgroundColor: accent, color: 'white', borderColor: accent }
                                   : undefined
                               }
                             >
@@ -273,21 +282,17 @@ export function EditProfilePage() {
               </div>
             </div>
 
-            <div className="md:col-span-2">
-              <label className={labelClass}>{t('editProfilePage.genero')}</label>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            <div className={`${PROFILE_CARD} p-4 md:p-6`}>
+              <ProfileSectionHeader icon={Users} title={t('editProfilePage.genero')} accent={accent} />
+              <div className="grid grid-cols-2 gap-2">
                 {GENDER_OPTIONS.map((option) => (
                   <Tooltip key={option.value} label={genderLabel(option.value, t)} className="flex w-full">
                     <button
                       onClick={() => setGender(option.value)}
-                      className={`${OPTION_BASE} ${gender === option.value ? '' : OPTION_OFF}`}
+                      className={`${OPTION_BASE} ${gender === option.value ? 'ring-1 ring-black/5 dark:ring-white/20' : OPTION_OFF}`}
                       style={
                         gender === option.value
-                          ? {
-                              backgroundColor: tenant.primaryColor,
-                              color: 'white',
-                              borderColor: tenant.primaryColor,
-                            }
+                          ? { backgroundColor: accent, color: 'white', borderColor: accent }
                           : undefined
                       }
                     >
@@ -299,19 +304,30 @@ export function EditProfilePage() {
             </div>
           </div>
 
-          {error && <p className="text-xs text-red-500 dark:text-red-400 px-1">{error}</p>}
-          {saved && <p className="text-xs text-green-600 dark:text-green-400 px-1">{t('editProfilePage.salvo')}</p>}
+          {error && (
+            <p className="text-xs text-red-500 dark:text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2.5">
+              {error}
+            </p>
+          )}
 
-          <Tooltip label={t('editProfilePage.salvar')} className="flex md:self-end">
-            <button
-              onClick={handleSave}
-              disabled={isSaving}
-              className="w-full py-3.5 rounded-xl text-white font-semibold disabled:opacity-60 md:px-10 md:hover:brightness-110 md:transition"
-              style={{ backgroundColor: tenant.primaryColor }}
-            >
-              {isSaving ? 'Salvando...' : t('editProfilePage.salvar')}
-            </button>
-          </Tooltip>
+          <div className="flex items-center gap-3 md:justify-end">
+            {saved && (
+              <p className="text-xs text-green-600 dark:text-green-400 inline-flex items-center gap-1.5">
+                <Check size={14} strokeWidth={1.5} />
+                {t('editProfilePage.salvo')}
+              </p>
+            )}
+            <Tooltip label={t('editProfilePage.salvar')} className="flex flex-1 md:flex-none">
+              <button
+                onClick={handleSave}
+                disabled={isSaving}
+                className={`w-full py-3.5 rounded-xl md:px-12 ${PROFILE_BTN_PRIMARY}`}
+                style={{ backgroundColor: accent }}
+              >
+                {isSaving ? 'Salvando...' : t('editProfilePage.salvar')}
+              </button>
+            </Tooltip>
+          </div>
         </div>
       </div>
     </ProfileSubpageShell>

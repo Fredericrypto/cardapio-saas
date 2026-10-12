@@ -7,9 +7,12 @@ import { useTenant } from '../contexts/TenantContext';
 import { fetchMyOrderHistory } from '../lib/customer-api';
 import { groupCustomerOrders } from '../lib/ordersHistory';
 import { ProfileSubpageShell } from '../components/ProfileSubpageShell';
+import { OrderHistoryWorkspace } from './OrderHistoryPage';
+import { useDesktopLayout } from '../lib/useDesktopLayout';
 import { Tooltip } from '../components/Tooltip';
 import { MENU_PAGE_BG, MENU_TEXT, MENU_TEXT_BODY, MENU_TEXT_MUTED } from '../lib/menuTheme';
 import { PROFILE_CARD } from '../lib/profileTheme';
+import type { Tenant } from '../types';
 
 // Porta de entrada de "Meus pedidos": um cartão por restaurante (aqui só
 // existe um, já que a conta do cliente é por restaurante — ver decisão de
@@ -18,8 +21,12 @@ import { PROFILE_CARD } from '../lib/profileTheme';
 // vez de já cair direto na lista) pra deixar o caminho aberto: se um dia
 // a conta do cliente deixar de ser isolada por restaurante, esta mesma
 // tela vira naturalmente uma lista de vários cartões.
+//
+// No DESKTOP (lg+) esse degrau não existe: a própria tela de pedidos já é o
+// histórico em Master-Detail (lista + detalhe lado a lado), sem sub-telas
+// empilhadas. O cartão do restaurante continua só no celular/tablet.
 export function OrdersHubPage() {
-  const { t, formatDate } = useI18n();
+  const { t } = useI18n();
   const { slug } = useParams<{ slug: string }>();
   // Mesmo bug/correção do CustomerProfilePage — ver comentário lá (a mesa
   // ativa é resolvida dentro do ProfileSubpageShell).
@@ -28,18 +35,7 @@ export function OrdersHubPage() {
 
 
   const { token, isLoading: isLoadingAuth } = useCustomerAuth();
-  const [orderCount, setOrderCount] = useState<number | null>(null);
-  const [lastOrderAt, setLastOrderAt] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!tenant || !token) return;
-    fetchMyOrderHistory(tenant.id, token).then((orders) => {
-      const entries = groupCustomerOrders(orders);
-      setOrderCount(entries.length);
-      const latest = orders[0]?.createdAt ?? null;
-      setLastOrderAt(latest);
-    });
-  }, [tenant, token]);
+  const isDesktop = useDesktopLayout();
 
   if (!tenant || isLoadingAuth) {
     return (
@@ -80,6 +76,35 @@ export function OrdersHubPage() {
       backTo={`/${slug}/conta-cliente/perfil`}
       bottomNav
     >
+      {isDesktop ? (
+        <OrderHistoryWorkspace tenant={tenant} token={token} slug={slug!} />
+      ) : (
+        <RestaurantOrdersCard tenant={tenant} token={token} slug={slug!} />
+      )}
+    </ProfileSubpageShell>
+  );
+}
+
+// Cartão do restaurante (celular/tablet): contagem de pedidos + atalho para o
+// histórico. Estado e busca idênticos aos de antes, agora isolados aqui para
+// só rodarem quando o cartão é exibido.
+function RestaurantOrdersCard({ tenant, token, slug }: { tenant: Tenant; token: string; slug: string }) {
+  const { t, formatDate } = useI18n();
+  const navigate = useNavigate();
+  const [orderCount, setOrderCount] = useState<number | null>(null);
+  const [lastOrderAt, setLastOrderAt] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!tenant || !token) return;
+    fetchMyOrderHistory(tenant.id, token).then((orders) => {
+      const entries = groupCustomerOrders(orders);
+      setOrderCount(entries.length);
+      const latest = orders[0]?.createdAt ?? null;
+      setLastOrderAt(latest);
+    });
+  }, [tenant, token]);
+
+  return (
       <div className="max-w-2xl">
         <Tooltip label={tenant.name} className="flex w-full">
           <button
@@ -112,6 +137,5 @@ export function OrdersHubPage() {
           </button>
         </Tooltip>
       </div>
-    </ProfileSubpageShell>
   );
 }

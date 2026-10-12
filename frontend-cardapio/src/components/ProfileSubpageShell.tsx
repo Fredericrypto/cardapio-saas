@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { useI18n } from '../i18n/I18nContext';
@@ -20,7 +20,8 @@ interface ProfileSubpageShellProps {
   children: ReactNode;
 }
 
-// Casca comum das subpáginas da conta: barra de topo (DesktopNav, só md+),
+// Casca comum das subpáginas da conta: barra de topo (DesktopNav, só md+, SEM
+// a busca global — ela existe apenas na página principal do cardápio),
 // container largo (max-w-7xl) e cabeçalho com botão voltar + título. Só
 // apresentação — nenhuma regra de autenticação ou de dados mora aqui.
 export function ProfileSubpageShell({ tenant, title, backTo, bottomNav = false, children }: ProfileSubpageShellProps) {
@@ -28,8 +29,6 @@ export function ProfileSubpageShell({ tenant, title, backTo, bottomNav = false, 
   const navigate = useNavigate();
   const { t } = useI18n();
   const { token } = useCustomerAuth();
-  // A DesktopNav exige os props da busca global; aqui não há lista a filtrar.
-  const [navSearch, setNavSearch] = useState('');
   // Mesma correção do CustomerProfilePage: preserva a mesa ativa nos links.
   const activeMesaToken = slug ? getActiveMesaToken(token, slug) ?? undefined : undefined;
 
@@ -44,8 +43,7 @@ export function ProfileSubpageShell({ tenant, title, backTo, bottomNav = false, 
           tenantId={tenant.id}
           primaryColor={tenant.primaryColor}
           tenant={tenant}
-          searchValue={navSearch}
-          onSearchChange={setNavSearch}
+          showSearch={false}
         />
       </div>
 

@@ -10,6 +10,7 @@ import {
   Tag,
   Gift,
   MessageSquareWarning,
+  BellOff,
   type LucideIcon,
 } from 'lucide-react';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
@@ -23,7 +24,7 @@ import {
 } from '../lib/notificationPrefs';
 import { ProfileSubpageShell } from '../components/ProfileSubpageShell';
 import { Tooltip } from '../components/Tooltip';
-import { MENU_PAGE_BG, MENU_BORDER, MENU_TEXT, MENU_TEXT_MUTED } from '../lib/menuTheme';
+import { MENU_PAGE_BG, MENU_TEXT, MENU_TEXT_MUTED } from '../lib/menuTheme';
 import { PROFILE_CARD } from '../lib/profileTheme';
 
 const TYPE_KEYS: Record<NotificationTag, { label: TranslationKey; description: TranslationKey }> = {
@@ -85,59 +86,68 @@ export function NotificationsPage() {
 
   return (
     <ProfileSubpageShell tenant={tenant} title={t('notifications.title')} backTo={`/${slug}/conta-cliente/perfil`}>
-      <div className="max-w-2xl flex flex-col gap-3">
+      <div className="flex flex-col gap-4">
         {!push.isSubscribed && (
-          <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20 rounded-xl px-4 py-3">
-            <p className="text-xs text-amber-800 dark:text-amber-300">
+          <div className="flex items-start gap-3 rounded-2xl border border-amber-500/25 bg-amber-500/[0.08] backdrop-blur-xl p-4 md:p-5">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-amber-500/15 border border-amber-500/25">
+              <BellOff size={17} strokeWidth={1.5} className="text-amber-700 dark:text-amber-300" />
+            </div>
+            <p className="text-xs md:text-sm leading-relaxed text-amber-800 dark:text-amber-300 pt-1">
               {t('notifications.globalOff')}
             </p>
           </div>
         )}
 
-        <div className={`${PROFILE_CARD} overflow-hidden`}>
+        {/* Grade de cartões: cada tipo com ícone, descrição e seu toggle. */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-4">
           {prefsLoaded &&
-            NOTIFICATION_TYPES.map((type, index) => {
+            NOTIFICATION_TYPES.map((type) => {
               const Icon = ICONS[type.tag];
               const enabled = prefs[type.tag] ?? true;
+              const label = t(TYPE_KEYS[type.tag].label);
               return (
                 <div
                   key={type.tag}
-                  className={`flex items-center gap-3 px-4 py-3.5 md:px-5 ${
-                    index > 0 ? `border-t ${MENU_BORDER}` : ''
-                  }`}
+                  className={`${PROFILE_CARD} p-4 md:p-5 flex flex-col gap-4 transition-colors`}
+                  style={enabled ? { borderColor: `${tenant.primaryColor}99` } : undefined}
                 >
-                  <div
-                    className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
-                    style={{ backgroundColor: `${tenant.primaryColor}1A` }}
-                  >
-                    <Icon size={17} strokeWidth={1.5} style={{ color: tenant.primaryColor }} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-medium ${MENU_TEXT}`}>{t(TYPE_KEYS[type.tag].label)}</p>
-                    <p className={`text-xs ${MENU_TEXT_MUTED}`}>{t(TYPE_KEYS[type.tag].description)}</p>
-                  </div>
-                  <Tooltip label={t(TYPE_KEYS[type.tag].label)}>
-                    <button
-                      onClick={() => toggle(type.tag)}
-                      disabled={!push.isSubscribed}
-                      className={`w-10 h-6 rounded-full flex items-center px-0.5 transition-colors shrink-0 disabled:opacity-40 ${
-                        enabled ? '' : 'bg-gray-200 dark:bg-white/20'
-                      }`}
-                      style={enabled ? { backgroundColor: tenant.primaryColor } : undefined}
+                  <div className="flex items-start justify-between gap-3">
+                    <div
+                      className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 border border-black/5 dark:border-white/10"
+                      style={{ backgroundColor: `${tenant.primaryColor}1A` }}
                     >
-                      <div
-                        className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${
-                          enabled ? 'translate-x-4' : 'translate-x-0'
+                      <Icon size={20} strokeWidth={1.5} className="text-[#374151] dark:text-[#E3E2E6]" />
+                    </div>
+                    <Tooltip label={label}>
+                      <button
+                        role="switch"
+                        aria-checked={enabled}
+                        aria-label={label}
+                        onClick={() => toggle(type.tag)}
+                        disabled={!push.isSubscribed}
+                        className={`w-11 h-6 rounded-full flex items-center px-0.5 transition-colors shrink-0 disabled:opacity-40 ${
+                          enabled ? '' : 'bg-gray-200 dark:bg-white/20'
                         }`}
-                      />
-                    </button>
-                  </Tooltip>
+                        style={enabled ? { backgroundColor: tenant.primaryColor } : undefined}
+                      >
+                        <div
+                          className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                            enabled ? 'translate-x-5' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                    </Tooltip>
+                  </div>
+                  <div className="min-w-0">
+                    <p className={`text-sm md:text-base font-semibold ${MENU_TEXT}`}>{label}</p>
+                    <p className={`text-xs md:text-[13px] leading-relaxed ${MENU_TEXT_MUTED} mt-1`}>{t(TYPE_KEYS[type.tag].description)}</p>
+                  </div>
                 </div>
               );
             })}
         </div>
 
-        <p className={`text-[11px] ${MENU_TEXT_MUTED} px-1`}>
+        <p className={`text-[11px] md:text-xs ${MENU_TEXT_MUTED} px-1`}>
           {t('notifications.footer')}
         </p>
       </div>
