@@ -1,9 +1,8 @@
 import { useI18n } from '../i18n/I18nContext';
 import type { TranslationKey } from '../i18n/dictionaries/pt-BR';
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import {
-  ArrowLeft,
   Star,
   Truck,
   CreditCard,
@@ -22,6 +21,10 @@ import {
   setNotificationPref,
   type NotificationTag,
 } from '../lib/notificationPrefs';
+import { ProfileSubpageShell } from '../components/ProfileSubpageShell';
+import { Tooltip } from '../components/Tooltip';
+import { MENU_PAGE_BG, MENU_BORDER, MENU_TEXT, MENU_TEXT_MUTED } from '../lib/menuTheme';
+import { PROFILE_CARD } from '../lib/profileTheme';
 
 const TYPE_KEYS: Record<NotificationTag, { label: TranslationKey; description: TranslationKey }> = {
   review_prompt: { label: 'notifications.type.review_prompt.label', description: 'notifications.type.review_prompt.description' },
@@ -51,7 +54,6 @@ const ICONS: Record<NotificationTag, LucideIcon> = {
 // antes de exibir qualquer notificação que chegar.
 export function NotificationsPage() {
   const { slug } = useParams<{ slug: string }>();
-  const navigate = useNavigate();
   const { tenant } = useTenant();
   const { t } = useI18n();
 
@@ -75,31 +77,24 @@ export function NotificationsPage() {
 
   if (!tenant || isLoading || !customer) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="w-8 h-8 border-2 border-gray-200 border-t-gray-500 rounded-full animate-spin" />
+      <div className={`flex items-center justify-center h-screen ${MENU_PAGE_BG}`}>
+        <div className="w-8 h-8 border-2 border-gray-200 dark:border-white/10 border-t-gray-500 dark:border-t-gray-300 rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-10 max-w-md mx-auto">
-      <div className="flex items-center gap-3 px-4 py-4 bg-white border-b border-gray-100">
-        <button onClick={() => navigate(`/${slug}/conta-cliente/perfil`)}>
-          <ArrowLeft size={20} />
-        </button>
-        <h1 className="font-display font-bold text-lg">{t('notifications.title')}</h1>
-      </div>
-
-      <div className="px-4 mt-4 flex flex-col gap-3">
+    <ProfileSubpageShell tenant={tenant} title={t('notifications.title')} backTo={`/${slug}/conta-cliente/perfil`}>
+      <div className="max-w-2xl flex flex-col gap-3">
         {!push.isSubscribed && (
-          <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
-            <p className="text-xs text-amber-800">
+          <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20 rounded-xl px-4 py-3">
+            <p className="text-xs text-amber-800 dark:text-amber-300">
               {t('notifications.globalOff')}
             </p>
           </div>
         )}
 
-        <div className="bg-white rounded-2xl overflow-hidden">
+        <div className={`${PROFILE_CARD} overflow-hidden`}>
           {prefsLoaded &&
             NOTIFICATION_TYPES.map((type, index) => {
               const Icon = ICONS[type.tag];
@@ -107,41 +102,45 @@ export function NotificationsPage() {
               return (
                 <div
                   key={type.tag}
-                  className={`flex items-center gap-3 px-4 py-3.5 ${
-                    index > 0 ? 'border-t border-gray-50' : ''
+                  className={`flex items-center gap-3 px-4 py-3.5 md:px-5 ${
+                    index > 0 ? `border-t ${MENU_BORDER}` : ''
                   }`}
                 >
                   <div
                     className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
                     style={{ backgroundColor: `${tenant.primaryColor}1A` }}
                   >
-                    <Icon size={17} style={{ color: tenant.primaryColor }} />
+                    <Icon size={17} strokeWidth={1.5} style={{ color: tenant.primaryColor }} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-800">{t(TYPE_KEYS[type.tag].label)}</p>
-                    <p className="text-xs text-gray-400">{t(TYPE_KEYS[type.tag].description)}</p>
+                    <p className={`text-sm font-medium ${MENU_TEXT}`}>{t(TYPE_KEYS[type.tag].label)}</p>
+                    <p className={`text-xs ${MENU_TEXT_MUTED}`}>{t(TYPE_KEYS[type.tag].description)}</p>
                   </div>
-                  <button
-                    onClick={() => toggle(type.tag)}
-                    disabled={!push.isSubscribed}
-                    className="w-10 h-6 rounded-full flex items-center px-0.5 transition-colors shrink-0 disabled:opacity-40"
-                    style={{ backgroundColor: enabled ? tenant.primaryColor : '#E5E7EB' }}
-                  >
-                    <div
-                      className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${
-                        enabled ? 'translate-x-4' : 'translate-x-0'
+                  <Tooltip label={t(TYPE_KEYS[type.tag].label)}>
+                    <button
+                      onClick={() => toggle(type.tag)}
+                      disabled={!push.isSubscribed}
+                      className={`w-10 h-6 rounded-full flex items-center px-0.5 transition-colors shrink-0 disabled:opacity-40 ${
+                        enabled ? '' : 'bg-gray-200 dark:bg-white/20'
                       }`}
-                    />
-                  </button>
+                      style={enabled ? { backgroundColor: tenant.primaryColor } : undefined}
+                    >
+                      <div
+                        className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                          enabled ? 'translate-x-4' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </Tooltip>
                 </div>
               );
             })}
         </div>
 
-        <p className="text-[11px] text-gray-400 px-1">
+        <p className={`text-[11px] ${MENU_TEXT_MUTED} px-1`}>
           {t('notifications.footer')}
         </p>
       </div>
-    </div>
+    </ProfileSubpageShell>
   );
 }

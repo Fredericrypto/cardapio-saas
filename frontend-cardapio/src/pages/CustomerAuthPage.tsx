@@ -6,6 +6,9 @@ import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { PhoneInput } from '../components/PhoneInput';
 import { AppSplashScreen } from '../components/AppSplashScreen';
 import { isValidBrazilPhone } from '../lib/phone';
+import { Tooltip } from '../components/Tooltip';
+import { MENU_SURFACE, MENU_BORDER, MENU_TEXT, MENU_TEXT_BODY, MENU_TEXT_MUTED } from '../lib/menuTheme';
+import { PROFILE_INPUT } from '../lib/profileTheme';
 
 // Cadastro/login do CLIENTE FINAL — única porta de entrada do app
 // (cardápio inteiro atrás de login, ver RequireCustomerAuth). Conta é
@@ -76,19 +79,21 @@ export function CustomerAuthPage() {
 
   if (tenantError) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen gap-3 px-6 text-center bg-gray-50">
-        <p className="text-sm text-gray-500">{tenantError}</p>
-        <button onClick={retryTenant} className="text-sm font-semibold text-gray-900 underline">
-          {t('optionalCustomerAuth.tentar_de_novo')}
-        </button>
+      <div className="flex flex-col items-center justify-center h-screen gap-3 px-6 text-center bg-[#F9FAFB] dark:bg-[#131314]">
+        <p className={`text-sm ${MENU_TEXT_BODY}`}>{tenantError}</p>
+        <Tooltip label={t('optionalCustomerAuth.tentar_de_novo')}>
+          <button onClick={retryTenant} className={`text-sm font-semibold ${MENU_TEXT} underline`}>
+            {t('optionalCustomerAuth.tentar_de_novo')}
+          </button>
+        </Tooltip>
       </div>
     );
   }
 
   if (!tenant) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-50">
-        <div className="w-8 h-8 border-2 border-gray-200 border-t-gray-400 rounded-full animate-spin" />
+      <div className="flex items-center justify-center h-screen bg-[#F9FAFB] dark:bg-[#131314]">
+        <div className="w-8 h-8 border-2 border-gray-200 dark:border-white/10 border-t-gray-400 dark:border-t-gray-300 rounded-full animate-spin" />
       </div>
     );
   }
@@ -97,7 +102,7 @@ export function CustomerAuthPage() {
   const secondary = tenant.secondaryColor;
 
   return (
-    <div className="relative min-h-screen overflow-hidden flex items-center justify-center px-5 py-10 bg-gray-50">
+    <div className="relative min-h-screen overflow-hidden flex items-center justify-center px-5 py-10 bg-[#F9FAFB] dark:bg-[#131314]">
       {/* Fundo: foto de capa do restaurante desfocada (se existir),
           senão um gradiente claro nas cores da marca — nunca um preto
           genérico. */}
@@ -107,7 +112,7 @@ export function CustomerAuthPage() {
             className="absolute inset-0 bg-cover bg-center scale-110 blur-2xl opacity-40"
             style={{ backgroundImage: `url(${tenant.coverImageUrl})` }}
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-white/60 via-white/70 to-white/90" />
+          <div className="absolute inset-0 bg-gradient-to-b from-white/60 via-white/70 to-white/90 dark:from-[#131314]/60 dark:via-[#131314]/70 dark:to-[#131314]/90" />
         </>
       ) : (
         <div
@@ -119,7 +124,7 @@ export function CustomerAuthPage() {
       <div className="relative w-full max-w-sm">
         <div className="flex justify-center mb-6">
           <div
-            className="w-20 h-20 rounded-2xl flex items-center justify-center overflow-hidden bg-white border border-gray-100"
+            className={`w-20 h-20 rounded-2xl flex items-center justify-center overflow-hidden ${MENU_SURFACE} border ${MENU_BORDER}`}
             style={{ boxShadow: `0 12px 32px -8px ${primary}66` }}
           >
             {tenant.logoUrl ? (
@@ -135,19 +140,16 @@ export function CustomerAuthPage() {
         {/* Cartão de vidro CLARO — fundo branco translúcido com blur,
             não um cartão preto opaco. */}
         <div
-          className="rounded-3xl border border-white/60 p-7 backdrop-blur-xl"
-          style={{
-            background: 'rgba(255,255,255,0.75)',
-            boxShadow: '0 8px 40px rgba(0,0,0,0.08)',
-          }}
+          className="rounded-3xl border border-white/60 dark:border-white/10 bg-white/75 dark:bg-[#1E1E20]/90 p-7 backdrop-blur-xl"
+          style={{ boxShadow: '0 8px 40px rgba(0,0,0,0.08)' }}
         >
-          <p className="text-center text-[11px] font-semibold tracking-widest text-gray-400 uppercase">
+          <p className={`text-center text-[11px] font-semibold tracking-widest ${MENU_TEXT_MUTED} uppercase`}>
             {tenant.name}
           </p>
-          <h1 className="font-display text-2xl font-bold text-gray-900 text-center mt-1">
+          <h1 className={`font-display text-2xl font-bold ${MENU_TEXT} text-center mt-1`}>
             {mode === 'login' ? t('auth.welcomeBack') : t('auth.createTitle')}
           </h1>
-          <p className="text-sm text-gray-500 text-center mt-1.5">
+          <p className={`text-sm ${MENU_TEXT_BODY} text-center mt-1.5`}>
             {mode === 'login' ? t('auth.loginSubtitle') : t('auth.registerSubtitle')}
           </p>
 
@@ -160,7 +162,7 @@ export function CustomerAuthPage() {
               <PhoneInput
                 value={phone}
                 onChange={setPhone}
-                className="bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 outline-none w-full transition-colors"
+                className={`${PROFILE_INPUT} w-full transition-colors`}
               />
             )}
             <GlassInput
@@ -171,54 +173,60 @@ export function CustomerAuthPage() {
               accent={primary}
             />
 
-            {error && <p className="text-xs text-red-500 text-center">{error}</p>}
+            {error && <p className="text-xs text-red-500 dark:text-red-400 text-center">{error}</p>}
 
-            <button
-              onClick={handleSubmit}
-              disabled={
-                isSubmitting ||
-                !email ||
-                !password ||
-                (mode === 'register' && (!name || !isValidBrazilPhone(phone)))
-              }
-              className="relative mt-1 py-3.5 rounded-xl text-sm font-bold text-white overflow-hidden disabled:opacity-40 disabled:grayscale transition-all active:scale-[0.98]"
-              style={{
-                background: `linear-gradient(135deg, ${primary}, ${secondary})`,
-                boxShadow: `0 8px 28px -6px ${primary}99`,
-              }}
-            >
-              {isSubmitting ? t('auth.wait') : mode === 'login' ? t('common.enter') : t('auth.createAccount')}
-            </button>
+            <Tooltip label={mode === 'login' ? t('common.enter') : t('auth.createAccount')} className="flex w-full mt-1">
+              <button
+                onClick={handleSubmit}
+                disabled={
+                  isSubmitting ||
+                  !email ||
+                  !password ||
+                  (mode === 'register' && (!name || !isValidBrazilPhone(phone)))
+                }
+                className="relative w-full py-3.5 rounded-xl text-sm font-bold text-white overflow-hidden disabled:opacity-40 disabled:grayscale transition-all active:scale-[0.98]"
+                style={{
+                  background: `linear-gradient(135deg, ${primary}, ${secondary})`,
+                  boxShadow: `0 8px 28px -6px ${primary}99`,
+                }}
+              >
+                {isSubmitting ? t('auth.wait') : mode === 'login' ? t('common.enter') : t('auth.createAccount')}
+              </button>
+            </Tooltip>
 
             <div className="flex items-center gap-3 my-1">
-              <div className="flex-1 h-px bg-gray-200" />
-              <span className="text-[11px] text-gray-400 font-medium">{t('auth.or')}</span>
-              <div className="flex-1 h-px bg-gray-200" />
+              <div className="flex-1 h-px bg-gray-200 dark:bg-white/10" />
+              <span className={`text-[11px] ${MENU_TEXT_MUTED} font-medium`}>{t('auth.or')}</span>
+              <div className="flex-1 h-px bg-gray-200 dark:bg-white/10" />
             </div>
 
-            <button
-              onClick={() => setShowGoogleSoon(true)}
-              className="py-3 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 flex items-center justify-center gap-2.5 transition-colors hover:bg-gray-50"
-            >
-              <GoogleIcon />
-              {t('auth.google')}
-            </button>
+            <Tooltip label={t('auth.google')} className="flex w-full">
+              <button
+                onClick={() => setShowGoogleSoon(true)}
+                className="w-full py-3 rounded-xl border border-[#E5E7EB] dark:border-white/10 bg-white dark:bg-white/[0.05] text-sm font-semibold text-[#374151] dark:text-gray-100 flex items-center justify-center gap-2.5 transition-colors hover:bg-gray-50 dark:hover:bg-white/10"
+              >
+                <GoogleIcon />
+                {t('auth.google')}
+              </button>
+            </Tooltip>
             {showGoogleSoon && (
-              <p className="text-[11px] text-gray-400 text-center -mt-1">
+              <p className={`text-[11px] ${MENU_TEXT_MUTED} text-center -mt-1`}>
                 {t('auth.googleSoon')}
               </p>
             )}
 
-            <button
-              onClick={() => {
-                setError(null);
-                setShowGoogleSoon(false);
-                setMode((m) => (m === 'login' ? 'register' : 'login'));
-              }}
-              className="text-xs font-semibold text-gray-500 mt-1 py-1"
-            >
-              {mode === 'login' ? t('auth.noAccount') : t('auth.haveAccount')}
-            </button>
+            <Tooltip label={mode === 'login' ? t('auth.noAccount') : t('auth.haveAccount')} className="flex w-full justify-center mt-1">
+              <button
+                onClick={() => {
+                  setError(null);
+                  setShowGoogleSoon(false);
+                  setMode((m) => (m === 'login' ? 'register' : 'login'));
+                }}
+                className={`text-xs font-semibold ${MENU_TEXT_BODY} py-1`}
+              >
+                {mode === 'login' ? t('auth.noAccount') : t('auth.haveAccount')}
+              </button>
+            </Tooltip>
           </div>
         </div>
       </div>
@@ -245,9 +253,9 @@ function GlassInput({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 outline-none w-full transition-colors"
+      className={`${PROFILE_INPUT} w-full transition-colors`}
       onFocus={(e) => (e.currentTarget.style.borderColor = accent)}
-      onBlur={(e) => (e.currentTarget.style.borderColor = '#E5E7EB')}
+      onBlur={(e) => (e.currentTarget.style.borderColor = '')}
     />
   );
 }

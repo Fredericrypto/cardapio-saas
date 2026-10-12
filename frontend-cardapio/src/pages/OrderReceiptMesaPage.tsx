@@ -1,7 +1,7 @@
 import { useI18n } from '../i18n/I18nContext';
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Download } from 'lucide-react';
+import { useParams } from 'react-router-dom';
+import { Download } from 'lucide-react';
 import { fetchSessionSummary } from '../lib/menu-api';
 import type { SessionSummary } from '../types';
 import { ReceiptContent } from '../components/ReceiptContent';
@@ -11,6 +11,9 @@ import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { useTenant } from '../contexts/TenantContext';
 import { fetchMyReviewsByOrderIds } from '../lib/customer-api';
 import type { MyReview } from '../lib/customer-api';
+import { ProfileSubpageShell } from '../components/ProfileSubpageShell';
+import { Tooltip } from '../components/Tooltip';
+import { MENU_PAGE_BG, MENU_TEXT_MUTED } from '../lib/menuTheme';
 
 // Cupom de uma visita à mesa (sessão) — mesmo endpoint público de resumo
 // de sessão já usado em "Minha Conta" no fluxo de QR code, e o mesmo
@@ -20,7 +23,6 @@ import type { MyReview } from '../lib/customer-api';
 export function OrderReceiptMesaPage() {
   const { t } = useI18n();
   const { slug, sessionId } = useParams<{ slug: string; sessionId: string }>();
-  const navigate = useNavigate();
   const { tenant } = useTenant();
   const [summary, setSummary] = useState<SessionSummary | null>(null);
   const [notFound, setNotFound] = useState(false);
@@ -56,8 +58,8 @@ export function OrderReceiptMesaPage() {
 
   if (!tenant) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="w-8 h-8 border-2 border-gray-200 border-t-gray-500 rounded-full animate-spin" />
+      <div className={`flex items-center justify-center h-screen ${MENU_PAGE_BG}`}>
+        <div className="w-8 h-8 border-2 border-gray-200 dark:border-white/10 border-t-gray-500 dark:border-t-gray-300 rounded-full animate-spin" />
       </div>
     );
   }
@@ -74,30 +76,26 @@ export function OrderReceiptMesaPage() {
     }
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50 max-w-md mx-auto">
-      <div className="flex items-center gap-3 px-4 py-4 bg-white border-b border-gray-100 print:hidden">
-        <button onClick={() => navigate(`/${slug}/conta-cliente/pedidos/historico`)}>
-          <ArrowLeft size={20} />
-        </button>
-        <h1 className="font-display font-bold text-lg">
-          {t('orderReceiptAvulsoPage.cupom')} {summary?.session.table?.number ?? 'mesa'}
-        </h1>
-      </div>
+  const title = `${t('orderReceiptAvulsoPage.cupom')} ${summary?.session.table?.number ?? 'mesa'}`;
 
-      <div className="px-4 py-6">
+  return (
+    <ProfileSubpageShell tenant={tenant} title={title} backTo={`/${slug}/conta-cliente/pedidos/historico`}>
+      <div className="max-w-md mx-auto">
         {notFound && (
-          <p className="text-sm text-gray-400 text-center py-12">
+          <p className={`text-sm ${MENU_TEXT_MUTED} text-center py-12`}>
             {t('orderReceiptAvulsoPage.nao_foi_possivel_carregar')}
           </p>
         )}
 
         {!notFound && !summary && (
-          <p className="text-sm text-gray-400 text-center py-12">{t('common.loading')}</p>
+          <p className={`text-sm ${MENU_TEXT_MUTED} text-center py-12`}>{t('common.loading')}</p>
         )}
 
         {summary && (
-          <div id="receipt-print-area" className="bg-white rounded-2xl p-5 border border-gray-100">
+          // O cupom é um "papel": fica branco nos dois temas de propósito
+          // (é o que vira PNG/impressão). Texto escuro explícito para não
+          // herdar a cor clara do tema escuro.
+          <div id="receipt-print-area" className="bg-white text-gray-900 rounded-2xl p-5 border border-gray-100 dark:border-white/10">
             <ReceiptContent tenant={tenant} summary={summary} />
           </div>
         )}
@@ -127,18 +125,20 @@ export function OrderReceiptMesaPage() {
         )}
 
         {summary && (
-          <button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="w-full mt-4 py-3 rounded-xl bg-gray-900 text-white text-sm font-semibold flex items-center justify-center gap-1.5 print:hidden disabled:opacity-60"
-          >
-            <Download size={15} />
-            {isSaving ? 'Salvando...' : t('editProfilePage.salvar')}
-          </button>
+          <Tooltip label={t('editProfilePage.salvar')} className="flex w-full">
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="w-full mt-4 py-3 rounded-xl bg-gray-900 dark:bg-white/10 dark:border dark:border-white/10 text-white text-sm font-semibold flex items-center justify-center gap-1.5 print:hidden disabled:opacity-60"
+            >
+              <Download size={15} strokeWidth={1.5} />
+              {isSaving ? 'Salvando...' : t('editProfilePage.salvar')}
+            </button>
+          </Tooltip>
         )}
 
-        {saveError && <p className="text-xs text-red-500 text-center mt-2">{saveError}</p>}
+        {saveError && <p className="text-xs text-red-500 dark:text-red-400 text-center mt-2">{saveError}</p>}
       </div>
-    </div>
+    </ProfileSubpageShell>
   );
 }

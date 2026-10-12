@@ -4,6 +4,8 @@ import { useRef, useState } from 'react';
 import { X, Camera } from 'lucide-react';
 import { AvatarCropModal } from './AvatarCropModal';
 import { PRESET_AVATAR_IDS, presetAvatarPath } from '../lib/presetAvatars';
+import { Tooltip } from './Tooltip';
+import { MENU_SURFACE, MENU_BORDER, MENU_TEXT, MENU_TEXT_BODY, MENU_TEXT_MUTED } from '../lib/menuTheme';
 
 interface AvatarPickerModalProps {
   onClose: () => void;
@@ -68,24 +70,28 @@ export function AvatarPickerModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-end justify-center z-50">
-      <div className="bg-white rounded-t-3xl w-full max-w-md p-5 max-h-[85vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/60 flex items-end md:items-center justify-center z-50 md:p-4">
+      <div className={`${MENU_SURFACE} border ${MENU_BORDER} rounded-t-3xl md:rounded-3xl w-full max-w-md p-5 max-h-[85vh] overflow-y-auto shadow-xl`}>
         <div className="flex items-center justify-between mb-4">
-          <p className="font-display font-bold text-gray-900">{t('avatarPickerModal.escolher_foto_de_perfil')}</p>
-          <button onClick={onClose}>
-            <X size={20} className="text-gray-400" />
-          </button>
+          <p className={`font-display font-bold ${MENU_TEXT}`}>{t('avatarPickerModal.escolher_foto_de_perfil')}</p>
+          <Tooltip label={t('common.cancel')}>
+            <button onClick={onClose} aria-label={t('common.cancel')}>
+              <X size={20} strokeWidth={1.5} className={MENU_TEXT_MUTED} />
+            </button>
+          </Tooltip>
         </div>
 
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          disabled={isSaving}
-          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-white font-semibold text-sm disabled:opacity-60"
-          style={{ backgroundColor: accentColor }}
-        >
-          <Camera size={16} />
-          {t('avatarPickerModal.tirar_ou_escolher_foto')}
-        </button>
+        <Tooltip label={t('avatarPickerModal.tirar_ou_escolher_foto')} className="flex w-full">
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isSaving}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-white font-semibold text-sm disabled:opacity-60"
+            style={{ backgroundColor: accentColor }}
+          >
+            <Camera size={16} strokeWidth={1.5} />
+            {t('avatarPickerModal.tirar_ou_escolher_foto')}
+          </button>
+        </Tooltip>
         <input
           ref={fileInputRef}
           type="file"
@@ -94,16 +100,16 @@ export function AvatarPickerModal({
           onChange={handleFileChange}
         />
 
-        {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
+        {error && <p className="text-xs text-red-500 dark:text-red-400 mt-2">{error}</p>}
 
-        <p className="text-xs font-semibold text-gray-500 mt-5 mb-2">{t('avatarPickerModal.ou_escolha_um_avatar')}</p>
+        <p className={`text-xs font-semibold ${MENU_TEXT_BODY} mt-5 mb-2`}>{t('avatarPickerModal.ou_escolha_um_avatar')}</p>
         <div className="grid grid-cols-5 gap-3">
           {PRESET_AVATAR_IDS.map((presetId) => (
             <button
               key={presetId}
               onClick={() => onSelectPreset(presetId)}
               disabled={isSaving}
-              className="aspect-square rounded-full overflow-hidden border border-gray-100 disabled:opacity-60"
+              className="aspect-square rounded-full overflow-hidden border border-[#E5E7EB] dark:border-white/10 disabled:opacity-60 hover:opacity-90 transition-opacity"
             >
               <img src={presetAvatarPath(presetId)} alt="" className="w-full h-full object-cover" />
             </button>

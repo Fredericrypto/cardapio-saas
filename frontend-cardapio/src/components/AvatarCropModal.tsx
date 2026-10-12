@@ -3,6 +3,7 @@ import { useScrollLock } from '../hooks/useScrollLock';
 import { useState } from 'react';
 import Cropper, { type Area } from 'react-easy-crop';
 import { cropImageToFile } from '../lib/cropImage';
+import { Tooltip } from './Tooltip';
 
 interface AvatarCropModalProps {
   imageSrc: string;
@@ -49,7 +50,7 @@ export function AvatarCropModal({ imageSrc, onCancel, onConfirm, accentColor }: 
         />
       </div>
 
-      <div className="bg-black px-6 py-5 flex flex-col gap-4">
+      <div className="bg-[#1E1E20] border-t border-white/10 px-6 py-5 flex flex-col gap-4">
         <input
           type="range"
           min={1}
@@ -58,22 +59,27 @@ export function AvatarCropModal({ imageSrc, onCancel, onConfirm, accentColor }: 
           value={zoom}
           onChange={(e) => setZoom(Number(e.target.value))}
           className="w-full"
+          style={{ accentColor }}
         />
         <div className="flex gap-3">
-          <button
-            onClick={onCancel}
-            className="flex-1 py-3 rounded-xl text-sm font-semibold text-white border border-white/20"
-          >
-            {t('common.cancel')}
-          </button>
-          <button
-            onClick={handleConfirm}
-            disabled={isProcessing}
-            className="flex-1 py-3 rounded-xl text-sm font-semibold text-white disabled:opacity-60"
-            style={{ backgroundColor: accentColor }}
-          >
-            {isProcessing ? 'Processando...' : t('avatarCropModal.usar_foto')}
-          </button>
+          <Tooltip label={t('common.cancel')} className="flex flex-1">
+            <button
+              onClick={onCancel}
+              className="w-full py-3 rounded-xl text-sm font-semibold text-gray-100 border border-white/10 hover:bg-white/5 transition-colors"
+            >
+              {t('common.cancel')}
+            </button>
+          </Tooltip>
+          <Tooltip label={t('avatarCropModal.usar_foto')} className="flex flex-1">
+            <button
+              onClick={handleConfirm}
+              disabled={isProcessing}
+              className="w-full py-3 rounded-xl text-sm font-semibold text-white disabled:opacity-60"
+              style={{ backgroundColor: accentColor }}
+            >
+              {isProcessing ? 'Processando...' : t('avatarCropModal.usar_foto')}
+            </button>
+          </Tooltip>
         </div>
       </div>
     </div>

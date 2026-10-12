@@ -2,6 +2,7 @@ import { useI18n } from '../i18n/I18nContext';
 import { useScrollLock } from '../hooks/useScrollLock';
 import { useEffect, useRef, useState } from 'react';
 import { X, RotateCcw, Check, Timer } from 'lucide-react';
+import { Tooltip } from './Tooltip';
 
 interface VerificationCameraCaptureProps {
   primaryColor: string;
@@ -169,12 +170,15 @@ export function VerificationCameraCapture({
   return (
     <div className="fixed inset-0 bg-black z-50 flex flex-col">
       <div className="flex justify-end p-4">
-        <button
-          onClick={onCancel}
-          className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white"
-        >
-          <X size={18} />
-        </button>
+        <Tooltip label={t('common.cancel')}>
+          <button
+            onClick={onCancel}
+            aria-label={t('common.cancel')}
+            className="w-9 h-9 rounded-full bg-white/10 border border-white/10 flex items-center justify-center text-white"
+          >
+            <X size={18} strokeWidth={1.5} />
+          </button>
+        </Tooltip>
       </div>
 
       <div className="flex-1 flex flex-col items-center justify-center px-6">
@@ -189,13 +193,15 @@ export function VerificationCameraCapture({
               className="hidden"
               onChange={handleFileFallback}
             />
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="px-5 py-3 rounded-xl text-white text-sm font-semibold"
-              style={{ backgroundColor: primaryColor }}
-            >
-              {t('verificationCameraCapture.abrir_camera_do_celular')}
-            </button>
+            <Tooltip label={t('verificationCameraCapture.abrir_camera_do_celular')}>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="px-5 py-3 rounded-xl text-white text-sm font-semibold"
+                style={{ backgroundColor: primaryColor }}
+              >
+                {t('verificationCameraCapture.abrir_camera_do_celular')}
+              </button>
+            </Tooltip>
           </div>
         ) : phase === 'preview' && capturedUrl ? (
           <div className="flex flex-col items-center gap-5">
@@ -208,21 +214,25 @@ export function VerificationCameraCapture({
               {t('verificationCameraCapture.ficou_boa_seu_rosto')}
             </p>
             <div className="flex gap-3">
-              <button
-                onClick={handleRetry}
-                className="px-5 py-3 rounded-xl bg-white/10 text-white text-sm font-semibold flex items-center gap-2"
-              >
-                <RotateCcw size={15} />
-                {t('verificationCameraCapture.tirar_de_novo')}
-              </button>
-              <button
-                onClick={handleConfirm}
-                className="px-5 py-3 rounded-xl text-white text-sm font-semibold flex items-center gap-2"
-                style={{ backgroundColor: primaryColor }}
-              >
-                <Check size={15} />
-                {t('verificationCameraCapture.usar_essa_foto')}
-              </button>
+              <Tooltip label={t('verificationCameraCapture.tirar_de_novo')}>
+                <button
+                  onClick={handleRetry}
+                  className="px-5 py-3 rounded-xl bg-white/10 border border-white/10 text-white text-sm font-semibold flex items-center gap-2"
+                >
+                  <RotateCcw size={15} strokeWidth={1.5} />
+                  {t('verificationCameraCapture.tirar_de_novo')}
+                </button>
+              </Tooltip>
+              <Tooltip label={t('verificationCameraCapture.usar_essa_foto')}>
+                <button
+                  onClick={handleConfirm}
+                  className="px-5 py-3 rounded-xl text-white text-sm font-semibold flex items-center gap-2"
+                  style={{ backgroundColor: primaryColor }}
+                >
+                  <Check size={15} strokeWidth={1.5} />
+                  {t('verificationCameraCapture.usar_essa_foto')}
+                </button>
+              </Tooltip>
             </div>
           </div>
         ) : (
@@ -268,14 +278,16 @@ export function VerificationCameraCapture({
 
       {phase === 'live' && (
         <div className="flex justify-center pb-10">
-          <button
-            onClick={handleStartCountdown}
-            aria-label={t('verificationCameraCapture.iniciar_contagem_pra_tirar')}
-            className="w-16 h-16 rounded-full flex items-center justify-center"
-            style={{ backgroundColor: primaryColor }}
-          >
-            <Timer size={24} className="text-white" />
-          </button>
+          <Tooltip label={t('verificationCameraCapture.iniciar_contagem_pra_tirar')}>
+            <button
+              onClick={handleStartCountdown}
+              aria-label={t('verificationCameraCapture.iniciar_contagem_pra_tirar')}
+              className="w-16 h-16 rounded-full flex items-center justify-center"
+              style={{ backgroundColor: primaryColor }}
+            >
+              <Timer size={24} strokeWidth={1.5} className="text-white" />
+            </button>
+          </Tooltip>
         </div>
       )}
     </div>

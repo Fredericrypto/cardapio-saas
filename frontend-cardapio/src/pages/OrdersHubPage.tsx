@@ -1,13 +1,15 @@
 import { useI18n } from '../i18n/I18nContext';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ChevronRight, Store } from 'lucide-react';
+import { ChevronRight, Store } from 'lucide-react';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { useTenant } from '../contexts/TenantContext';
-import { getActiveMesaToken } from '../lib/seat';
 import { fetchMyOrderHistory } from '../lib/customer-api';
 import { groupCustomerOrders } from '../lib/ordersHistory';
-import { BottomNav } from '../components/BottomNav';
+import { ProfileSubpageShell } from '../components/ProfileSubpageShell';
+import { Tooltip } from '../components/Tooltip';
+import { MENU_PAGE_BG, MENU_TEXT, MENU_TEXT_BODY, MENU_TEXT_MUTED } from '../lib/menuTheme';
+import { PROFILE_CARD } from '../lib/profileTheme';
 
 // Porta de entrada de "Meus pedidos": um cartão por restaurante (aqui só
 // existe um, já que a conta do cliente é por restaurante — ver decisão de
@@ -19,13 +21,13 @@ import { BottomNav } from '../components/BottomNav';
 export function OrdersHubPage() {
   const { t, formatDate } = useI18n();
   const { slug } = useParams<{ slug: string }>();
-  // Mesmo bug/correção do CustomerProfilePage — ver comentário lá.
+  // Mesmo bug/correção do CustomerProfilePage — ver comentário lá (a mesa
+  // ativa é resolvida dentro do ProfileSubpageShell).
   const navigate = useNavigate();
   const { tenant } = useTenant();
 
 
   const { token, isLoading: isLoadingAuth } = useCustomerAuth();
-  const activeMesaToken = slug ? getActiveMesaToken(token, slug) ?? undefined : undefined;
   const [orderCount, setOrderCount] = useState<number | null>(null);
   const [lastOrderAt, setLastOrderAt] = useState<string | null>(null);
 
@@ -41,69 +43,75 @@ export function OrdersHubPage() {
 
   if (!tenant || isLoadingAuth) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="w-8 h-8 border-2 border-gray-200 border-t-gray-500 rounded-full animate-spin" />
+      <div className={`flex items-center justify-center h-screen ${MENU_PAGE_BG}`}>
+        <div className="w-8 h-8 border-2 border-gray-200 dark:border-white/10 border-t-gray-500 dark:border-t-gray-300 rounded-full animate-spin" />
       </div>
     );
   }
 
   if (!token) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center max-w-md mx-auto pb-20">
-        <p className="text-gray-500 text-sm">{t('ordersHub.needLogin')}</p>
-        <button
-          onClick={() => navigate(`/${slug}/conta-cliente/entrar`)}
-          className="mt-4 text-white px-5 py-2.5 rounded-xl text-sm font-semibold"
-          style={{ backgroundColor: tenant.primaryColor }}
-        >
-          {t('common.enter')}
-        </button>
-        <BottomNav slug={slug!} qrCodeToken={activeMesaToken} tenantId={tenant.id} primaryColor={tenant.primaryColor} />
-      </div>
+      <ProfileSubpageShell
+        tenant={tenant}
+        title={t('profile.myOrders')}
+        backTo={`/${slug}/conta-cliente/perfil`}
+        bottomNav
+      >
+        <div className="flex flex-col items-center justify-center px-6 text-center max-w-md mx-auto py-16">
+          <p className={`${MENU_TEXT_BODY} text-sm`}>{t('ordersHub.needLogin')}</p>
+          <Tooltip label={t('common.enter')}>
+            <button
+              onClick={() => navigate(`/${slug}/conta-cliente/entrar`)}
+              className="mt-4 text-white px-5 py-2.5 rounded-xl text-sm font-semibold"
+              style={{ backgroundColor: tenant.primaryColor }}
+            >
+              {t('common.enter')}
+            </button>
+          </Tooltip>
+        </div>
+      </ProfileSubpageShell>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24 max-w-md mx-auto">
-      <div className="flex items-center gap-3 px-4 py-4 bg-white border-b border-gray-100">
-        <button onClick={() => navigate(`/${slug}/conta-cliente/perfil`)}>
-          <ArrowLeft size={20} />
-        </button>
-        <h1 className="font-display font-bold text-lg">{t('profile.myOrders')}</h1>
-      </div>
-
-      <div className="px-4 mt-3">
-        <button
-          onClick={() => navigate(`/${slug}/conta-cliente/pedidos/historico`)}
-          className="w-full bg-white rounded-2xl p-4 flex items-center gap-3 text-left"
-        >
-          <div
-            className="w-14 h-14 rounded-2xl flex items-center justify-center text-white overflow-hidden shrink-0"
-            style={{ backgroundColor: tenant.primaryColor }}
+    <ProfileSubpageShell
+      tenant={tenant}
+      title={t('profile.myOrders')}
+      backTo={`/${slug}/conta-cliente/perfil`}
+      bottomNav
+    >
+      <div className="max-w-2xl">
+        <Tooltip label={tenant.name} className="flex w-full">
+          <button
+            onClick={() => navigate(`/${slug}/conta-cliente/pedidos/historico`)}
+            className={`w-full ${PROFILE_CARD} p-4 md:p-5 flex items-center gap-3 text-left md:hover:bg-black/[0.02] dark:md:hover:bg-white/[0.03] md:transition-colors`}
           >
-            {tenant.logoUrl ? (
-              <img src={tenant.logoUrl} alt={tenant.name} className="w-full h-full object-cover" />
-            ) : (
-              <Store size={22} />
-            )}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="font-display font-bold text-gray-900 truncate">{tenant.name}</p>
-            <p className="text-xs text-gray-400 mt-0.5">
-              {orderCount === null
-                ? t('ordersHub.loading')
-                : orderCount === 0
-                  ? t('ordersHub.none')
-                  : `${orderCount === 1 ? t('ordersHub.countOne', { count: orderCount }) : t('ordersHub.count', { count: orderCount })}${
-                      lastOrderAt ? t('ordersHub.last', { date: formatDate(lastOrderAt) }) : ''
-                    }`}
-            </p>
-          </div>
-          <ChevronRight size={18} className="text-gray-300 shrink-0" />
-        </button>
+            <div
+              className="w-14 h-14 rounded-2xl flex items-center justify-center text-white overflow-hidden shrink-0"
+              style={{ backgroundColor: tenant.primaryColor }}
+            >
+              {tenant.logoUrl ? (
+                <img src={tenant.logoUrl} alt={tenant.name} className="w-full h-full object-cover" />
+              ) : (
+                <Store size={22} strokeWidth={1.5} />
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className={`font-display font-bold ${MENU_TEXT} truncate`}>{tenant.name}</p>
+              <p className={`text-xs ${MENU_TEXT_MUTED} mt-0.5`}>
+                {orderCount === null
+                  ? t('ordersHub.loading')
+                  : orderCount === 0
+                    ? t('ordersHub.none')
+                    : `${orderCount === 1 ? t('ordersHub.countOne', { count: orderCount }) : t('ordersHub.count', { count: orderCount })}${
+                        lastOrderAt ? t('ordersHub.last', { date: formatDate(lastOrderAt) }) : ''
+                      }`}
+              </p>
+            </div>
+            <ChevronRight size={18} strokeWidth={1.5} className="text-gray-300 dark:text-[#5F6368] shrink-0" />
+          </button>
+        </Tooltip>
       </div>
-
-      <BottomNav slug={slug!} qrCodeToken={activeMesaToken} tenantId={tenant.id} primaryColor={tenant.primaryColor} />
-    </div>
+    </ProfileSubpageShell>
   );
 }

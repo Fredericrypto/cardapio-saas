@@ -34,19 +34,23 @@ export function ProfileSubpageShell({ tenant, title, backTo, bottomNav = false, 
   const activeMesaToken = slug ? getActiveMesaToken(token, slug) ?? undefined : undefined;
 
   return (
-    <div className={`min-h-screen ${MENU_PAGE_BG} ${bottomNav ? 'pb-24 md:pb-0' : 'pb-10 md:pb-0'}`}>
-      <DesktopNav
-        slug={slug!}
-        qrCodeToken={activeMesaToken}
-        tenantId={tenant.id}
-        primaryColor={tenant.primaryColor}
-        tenant={tenant}
-        searchValue={navSearch}
-        onSearchChange={setNavSearch}
-      />
+    <div className={`min-h-screen ${MENU_PAGE_BG} ${bottomNav ? 'pb-24 md:pb-0' : 'pb-10 md:pb-0'} print:bg-white`}>
+      {/* `contents` não gera caixa (o sticky da barra continua valendo);
+          na impressão (cupons) o wrapper some e leva a barra junto. */}
+      <div className="contents print:hidden">
+        <DesktopNav
+          slug={slug!}
+          qrCodeToken={activeMesaToken}
+          tenantId={tenant.id}
+          primaryColor={tenant.primaryColor}
+          tenant={tenant}
+          searchValue={navSearch}
+          onSearchChange={setNavSearch}
+        />
+      </div>
 
       <div className={PAGE_CONTAINER}>
-        <div className="flex items-center gap-3 mb-5 md:mb-6">
+        <div className="flex items-center gap-3 mb-5 md:mb-6 print:hidden">
           <Tooltip label={t('common.back')}>
             <button
               onClick={() => navigate(backTo)}
@@ -63,7 +67,9 @@ export function ProfileSubpageShell({ tenant, title, backTo, bottomNav = false, 
       </div>
 
       {bottomNav && (
-        <BottomNav slug={slug!} qrCodeToken={activeMesaToken} tenantId={tenant.id} primaryColor={tenant.primaryColor} />
+        <div className="contents print:hidden">
+          <BottomNav slug={slug!} qrCodeToken={activeMesaToken} tenantId={tenant.id} primaryColor={tenant.primaryColor} />
+        </div>
       )}
     </div>
   );
