@@ -10,15 +10,14 @@ import type { Tenant } from '../types';
 import { LogoViewer } from './LogoViewer';
 import { SearchBar } from './SearchBar';
 import { Tooltip } from './Tooltip';
+import { ThemeToggle } from './ThemeToggle';
 
 interface BottomNavProps {
   slug: string;
   qrCodeToken?: string;
   tenantId: string;
   primaryColor?: string;
-  // Conteúdo fixo EMPILHADO ACIMA das abas, dentro da mesma barra (o carrinho
-  // põe aqui o botão principal: assim ele nunca sobrepõe a navegação, em
-  // qualquer altura de tela). Sem isso a barra é idêntica à do Menu.
+  // Conteúdo fixo EMPILHADO ACIMA das abas, na mesma barra (o carrinho põe aqui o botão principal).
   topSlot?: ReactNode;
 }
 
@@ -51,6 +50,10 @@ function useNavModel(slug: string, qrCodeToken: string | undefined, primaryColor
     ? `/${slug}/conta-cliente/perfil`
     : `/${slug}/conta-cliente/entrar?redirect=${encodeURIComponent(menuHref)}`;
   const accountActive = location.pathname.startsWith(`/${slug}/conta-cliente`);
+  // A busca global só existe na PÁGINA PRINCIPAL do cardápio (a rota do
+  // próprio `menuHref`, com ou sem barra final). Qualquer subpágina —
+  // `/conta-cliente/*`, carrinho, avaliações, produto — fica sem a busca.
+  const isMenuRoute = location.pathname.replace(/\/+$/, '') === menuHref;
 
   return {
     t,
@@ -62,6 +65,7 @@ function useNavModel(slug: string, qrCodeToken: string | undefined, primaryColor
     cartHref,
     accountHref,
     accountActive,
+    isMenuRoute,
     menuActive: location.pathname === menuHref,
     cartActive: location.pathname === cartHref,
   };
@@ -105,44 +109,44 @@ export function BottomNav({ slug, qrCodeToken, primaryColor = '#111827', topSlot
     <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t border-gray-100 z-40 md:hidden">
       {topSlot}
       <div className="flex">
-        <NavItem
-          to={nav.menuHref}
-          icon={UtensilsCrossed}
-          label={nav.t('nav.menu')}
-          tooltip={nav.t('nav.menu')}
-          active={nav.menuActive}
-          color={nav.accent}
-          inactiveColor={nav.inactive}
-        />
-        <NavItem
-          to={nav.cartHref}
-          icon={ShoppingCart}
-          label={nav.t('nav.cart')}
-          tooltip={nav.t('tooltip.cart')}
-          active={nav.cartActive}
-          color={nav.accent}
-          inactiveColor={nav.inactive}
-          badgeColor={primaryColor}
-          badge={nav.totalItems > 0 ? nav.totalItems : undefined}
-        />
-        <Tooltip label={nav.t('tooltip.profile')} className="flex flex-1">
-          <Link to={nav.accountHref} className="flex-1 flex">
-            <div className="flex flex-col items-center gap-1 py-2.5 flex-1 relative">
-              <div
-                className="relative w-9 h-9 rounded-2xl flex items-center justify-center transition-colors"
-                style={{ backgroundColor: nav.accountActive ? `${nav.accent}1a` : 'transparent' }}
-              >
-                <AccountAvatar customer={nav.customer} active={nav.accountActive} accent={nav.accent} />
-              </div>
-              <span
-                className="text-[10px] font-semibold"
-                style={{ color: nav.accountActive ? nav.accent : nav.inactive }}
-              >
-                {nav.t('nav.account')}
-              </span>
+      <NavItem
+        to={nav.menuHref}
+        icon={UtensilsCrossed}
+        label={nav.t('nav.menu')}
+        tooltip={nav.t('nav.menu')}
+        active={nav.menuActive}
+        color={nav.accent}
+        inactiveColor={nav.inactive}
+      />
+      <NavItem
+        to={nav.cartHref}
+        icon={ShoppingCart}
+        label={nav.t('nav.cart')}
+        tooltip={nav.t('tooltip.cart')}
+        active={nav.cartActive}
+        color={nav.accent}
+        inactiveColor={nav.inactive}
+        badgeColor={primaryColor}
+        badge={nav.totalItems > 0 ? nav.totalItems : undefined}
+      />
+      <Tooltip label={nav.t('tooltip.profile')} className="flex flex-1">
+        <Link to={nav.accountHref} className="flex-1 flex">
+          <div className="flex flex-col items-center gap-1 py-2.5 flex-1 relative">
+            <div
+              className="relative w-9 h-9 rounded-2xl flex items-center justify-center transition-colors"
+              style={{ backgroundColor: nav.accountActive ? `${nav.accent}1a` : 'transparent' }}
+            >
+              <AccountAvatar customer={nav.customer} active={nav.accountActive} accent={nav.accent} />
             </div>
-          </Link>
-        </Tooltip>
+            <span
+              className="text-[10px] font-semibold"
+              style={{ color: nav.accountActive ? nav.accent : nav.inactive }}
+            >
+              {nav.t('nav.account')}
+            </span>
+          </div>
+        </Link>
+      </Tooltip>
       </div>
     </div>
   );
@@ -191,21 +195,20 @@ function NavItem({ to, icon: Icon, label, tooltip, active, color, inactiveColor,
 
 // Equivalente desktop da BottomNav: barra de topo fixa (sticky) no padrão de
 // web app — marca à esquerda, busca global no centro, loja/mesa e os mesmos
-// três destinos (Cardápio, Carrinho com contador, Conta) à direita. Sem ela,
+// três destinos (Cardápio, Carrinho com contador, Conta) à direita. A busca
+// só é desenhada na página principal do cardápio (ver `showSearch`). Sem ela,
 // o acesso a Carrinho/Conta sumiria quando a barra inferior é ocultada. Só
 // aparece a partir de `md`; a altura fixa (h-16) é a referência do `top-16` das
 // categorias fixas da MenuPage.
-//
-// A busca é opcional: páginas sem cardápio para filtrar (o carrinho) omitem
-// `onSearchChange` e o campo some — o espaço continua reservado, então as
-// abas ficam na mesma posição do Menu.
-interface DesktopNavProps extends Omit<BottomNavProps, 'topSlot'> {
+interface DesktopNavProps extends BottomNavProps {
   tenant: Tenant;
+  // Opcionais: só a MenuPage precisa passar. Subpáginas podem omitir.
   searchValue?: string;
   onSearchChange?: (value: string) => void;
-  // Compatibilidade com ProfileSubpageShell: false esconde a busca.
-  showSearch?: boolean;
   contextLabel?: string;
+  // Força mostrar/ocultar a busca. Sem isso vale a regra por rota: aparece
+  // só na página principal do cardápio e só se `onSearchChange` existir.
+  showSearch?: boolean;
 }
 
 export function DesktopNav({
@@ -213,12 +216,13 @@ export function DesktopNav({
   qrCodeToken,
   primaryColor = '#111827',
   tenant,
-  searchValue,
+  searchValue = '',
   onSearchChange,
-  showSearch = true,
   contextLabel,
+  showSearch,
 }: DesktopNavProps) {
   const nav = useNavModel(slug, qrCodeToken, primaryColor);
+  const searchVisible = (showSearch ?? nav.isMenuRoute) && Boolean(onSearchChange);
 
   return (
     <nav className="hidden md:block sticky top-0 z-40 bg-white border-b border-gray-100">
@@ -232,12 +236,10 @@ export function DesktopNav({
           <span className="font-display text-sm font-bold text-gray-900 truncate">{tenant.name}</span>
         </div>
 
-        {showSearch && onSearchChange ? (
+        {searchVisible && onSearchChange && (
           <div className="flex-1 min-w-0 max-w-xl">
-            <SearchBar value={searchValue ?? ''} onChange={onSearchChange} />
+            <SearchBar value={searchValue} onChange={onSearchChange} />
           </div>
-        ) : (
-          <div className="flex-1" aria-hidden="true" />
         )}
 
         <div className="ml-auto flex items-center gap-1 shrink-0">
@@ -246,6 +248,13 @@ export function DesktopNav({
               <MapPin size={15} strokeWidth={1.5} className="shrink-0 text-gray-400" />
               <span className="truncate">{contextLabel}</span>
             </span>
+          )}
+          {/* Alternar tema em toda subpágina; na página principal do cardápio
+              o botão fica no banner (MenuHeader), então aqui não repete. */}
+          {!nav.isMenuRoute && (
+            <div className="flex items-center mr-1">
+              <ThemeToggle />
+            </div>
           )}
           <DesktopNavItem
             to={nav.menuHref}
