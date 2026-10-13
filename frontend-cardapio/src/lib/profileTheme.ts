@@ -50,3 +50,10 @@ export const PROFILE_OPTION_CARD =
 
 /** Anel neutro de seleção (a borda colorida do restaurante vai inline). */
 export const PROFILE_SELECTED_RING = 'ring-2 ring-black/10 dark:ring-white/25';
+
+/** Botão sólido de alto contraste (ex.: Salvar cupom): escuro no claro; no
+ *  escuro vira claro (#E3E2E6) com texto escuro (#131314). Hex fixo, imune ao
+ *  remapeamento de `bg-gray-*` do tema global. */
+export const PROFILE_BTN_SOLID =
+  'bg-[#111827] text-[#FFFFFF] dark:bg-[#E3E2E6] dark:text-[#131314] font-semibold shadow-sm ' +
+  'hover:brightness-110 dark:hover:brightness-95 active:brightness-95 transition disabled:opacity-60';

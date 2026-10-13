@@ -48,6 +48,7 @@ export function SavedAddressPage() {
   const [isRemoving, setIsRemoving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [bannerFailed, setBannerFailed] = useState(false);
 
   useEffect(() => {
     if (!customer?.address) return;
@@ -123,6 +124,14 @@ export function SavedAddressPage() {
   const previewLine3 = [city.trim(), state.trim()].filter(Boolean).join(' - ');
   const hasPreview = Boolean(previewLine1 || neighborhood.trim() || previewLine3 || postcode.trim());
   const accent = tenant.primaryColor;
+  // O tipo Tenant não é conhecido aqui: lê `bannerUrl` e, se não existir, a
+  // primeira propriedade textual cujo nome contenha banner/cover/capa.
+  const tenantRecord = tenant as unknown as Record<string, unknown>;
+  const bannerCandidate =
+    tenantRecord.bannerUrl ??
+    Object.entries(tenantRecord).find(([k, v]) => /banner|cover|capa/i.test(k) && typeof v === 'string' && v)?.[1];
+  const bannerUrl = typeof bannerCandidate === 'string' && bannerCandidate ? bannerCandidate : null;
+  const showBanner = Boolean(bannerUrl) && !bannerFailed;
   const address = customer.address;
 
   const details: { label: string; value: string | undefined | null }[] = address
@@ -288,21 +297,38 @@ export function SavedAddressPage() {
 
         {/* Painel de apoio: pré-visualização do endereço (preenche o desktop). */}
         <aside className={`${PROFILE_CARD_GLASS} overflow-hidden lg:sticky lg:top-24`}>
+          {/* Topo: banner do restaurante; sem banner (ou se falhar), gradiente
+              institucional da cor principal. */}
           <div
             className="relative h-28 md:h-32 flex items-end p-4 overflow-hidden"
-            style={{ backgroundColor: accent }}
+            style={showBanner ? undefined : { background: `linear-gradient(135deg, ${accent} 0%, ${accent}B3 100%)` }}
           >
-            <div className="absolute -right-6 -top-8 w-32 h-32 rounded-full bg-white/10" />
-            <div className="absolute right-10 top-10 w-16 h-16 rounded-full bg-white/10" />
+            {showBanner ? (
+              <>
+                <img
+                  src={bannerUrl ?? undefined}
+                  alt=""
+                  draggable={false}
+                  onError={() => setBannerFailed(true)}
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/15 to-transparent" aria-hidden="true" />
+              </>
+            ) : (
+              <>
+                <div className="absolute -right-6 -top-8 w-32 h-32 rounded-full bg-white/10" aria-hidden="true" />
+                <div className="absolute right-10 top-10 w-16 h-16 rounded-full bg-white/10" aria-hidden="true" />
+              </>
+            )}
             <div className="relative flex items-center gap-3 min-w-0">
-              <div className="w-11 h-11 rounded-xl bg-white/15 border border-white/20 flex items-center justify-center overflow-hidden shrink-0">
+              <div className="w-11 h-11 rounded-xl bg-white/15 border border-white/20 backdrop-blur-sm flex items-center justify-center overflow-hidden shrink-0">
                 {tenant.logoUrl ? (
                   <img src={tenant.logoUrl} alt={tenant.name} className="w-full h-full object-cover" />
                 ) : (
                   <Store size={20} strokeWidth={1.5} className="text-white" />
                 )}
               </div>
-              <p className="text-white font-display font-bold truncate">{tenant.name}</p>
+              <p className="text-white font-display font-bold truncate drop-shadow-sm">{tenant.name}</p>
             </div>
           </div>
           <div className="p-4 md:p-5 flex gap-3">

@@ -11,6 +11,7 @@ import { saveElementAsPng } from '../lib/saveAsPng';
 import { ProfileSubpageShell } from '../components/ProfileSubpageShell';
 import { Tooltip } from '../components/Tooltip';
 import { MENU_PAGE_BG, MENU_TEXT_MUTED } from '../lib/menuTheme';
+import { PROFILE_BTN_SOLID } from '../lib/profileTheme';
 
 // Cupom de um pedido avulso (balcão/entrega) — sem sessão, é só o pedido
 // em si. Usa o mesmo componente visual (ReceiptContentStandalone) usado
@@ -108,7 +109,7 @@ export function OrderReceiptAvulsoPage() {
             <button
               onClick={handleSave}
               disabled={isSaving}
-              className="w-full mt-4 py-3 rounded-xl bg-gray-900 dark:bg-white/10 dark:border dark:border-white/10 text-white text-sm font-semibold flex items-center justify-center gap-1.5 print:hidden disabled:opacity-60"
+              className={`w-full mt-4 py-3 rounded-xl text-sm flex items-center justify-center gap-1.5 print:hidden ${PROFILE_BTN_SOLID}`}
             >
               <Download size={15} strokeWidth={1.5} />
               {isSaving ? 'Salvando...' : t('editProfilePage.salvar')}

@@ -10,6 +10,7 @@ import type { Tenant } from '../types';
 import { LogoViewer } from './LogoViewer';
 import { SearchBar } from './SearchBar';
 import { Tooltip } from './Tooltip';
+import { ThemeToggle } from './ThemeToggle';
 
 interface BottomNavProps {
   slug: string;
@@ -242,6 +243,13 @@ export function DesktopNav({
               <MapPin size={15} strokeWidth={1.5} className="shrink-0 text-gray-400" />
               <span className="truncate">{contextLabel}</span>
             </span>
+          )}
+          {/* Alternar tema em toda subpágina; na página principal do cardápio
+              o botão fica no banner (MenuHeader), então aqui não repete. */}
+          {!nav.isMenuRoute && (
+            <div className="flex items-center mr-1">
+              <ThemeToggle />
+            </div>
           )}
           <DesktopNavItem
             to={nav.menuHref}
