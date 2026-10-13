@@ -3,8 +3,9 @@ import { addonGroupHint } from '../i18n/labels';
 import { useI18n } from '../i18n/I18nContext';
 import { useStoreStatus } from '../hooks/useStoreStatus';
 import { useEffect, useState } from 'react';
+import type { CSSProperties } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Ban, Check, ChevronRight, Star } from 'lucide-react';
+import { ArrowLeft, Ban, Check, ChevronRight, Minus, Plus, Star } from 'lucide-react';
 import { fetchProducts } from '../lib/menu-api';
 import { fetchItemReviewsSummary } from '../lib/customer-api';
 import type { ReviewSummary } from '../lib/customer-api';
@@ -17,11 +18,21 @@ import { useActiveLocation } from '../hooks/useActiveLocation';
 import { ShareButton } from '../components/ShareButton';
 import { Tooltip } from '../components/Tooltip';
 import { buildShareUrl } from '../lib/shareLinks';
+import { PROFILE_CARD } from '../lib/profileTheme';
+import {
+  MENU_PAGE_BG,
+  MENU_SURFACE,
+  MENU_BORDER,
+  MENU_TEXT,
+  MENU_TEXT_SOFT,
+  MENU_TEXT_BODY,
+  MENU_TEXT_MUTED,
+} from '../lib/menuTheme';
 
-// Texto mínimo necessário pro grupo, no estilo iFood: nada quando é
-// realmente livre (0 a 1), "Escolha até N" quando é opcional com teto,
-// "Escolha N" quando é obrigatório com N fixo, ou a faixa quando o
-// mínimo e o máximo são diferentes.
+function formatMoney(value: number): string {
+  return `R$ ${value.toFixed(2).replace('.', ',')}`;
+}
+
 // Mesma forma que a nota do restaurante aparece no header do cardápio
 // (ver MenuHeader.useReviewSummary) — pedido explícito do Felipe. A nota
 // abre a página completa de avaliações do item (ItemReviewsPage); não há
@@ -95,19 +106,22 @@ export function ProductDetailPage() {
 
   if (isLoading || !tenant) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="w-8 h-8 border-2 border-gray-200 border-t-gray-500 rounded-full animate-spin" />
+      <div className={`flex items-center justify-center h-screen ${MENU_PAGE_BG}`}>
+        <div className="w-8 h-8 border-2 border-[#E5E7EB] dark:border-white/10 border-t-[#6B7280] dark:border-t-[#C4C7C5] rounded-full animate-spin" />
       </div>
     );
   }
 
   if (!product) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen px-6 text-center">
-        <p className="text-gray-500">{t('productDetailPage.produto_nao_encontrado')}</p>
+      <div className={`flex flex-col items-center justify-center h-screen px-6 text-center ${MENU_PAGE_BG}`}>
+        <p className={MENU_TEXT_BODY}>{t('productDetailPage.produto_nao_encontrado')}</p>
       </div>
     );
   }
+
+  const brand = tenant.primaryColor;
+  const backHref = qrCodeToken ? `/${slug}/mesa/${qrCodeToken}` : `/${slug}`;
 
   // Grupo sem nenhuma opção cadastrada não aparece pro cliente — ficaria
   // um título "morto" sem nada clicável embaixo (bug visto em produção:
@@ -168,213 +182,292 @@ export function ProductDetailPage() {
     }
 
     addItem(product, selectedOptionsList, quantity);
-    navigate(qrCodeToken ? `/${slug}/mesa/${qrCodeToken}` : `/${slug}`);
+    navigate(backHref);
   }
 
-  return (
-    <div className="min-h-screen bg-white max-w-md mx-auto pb-28">
-      <div className="relative h-72 bg-gray-100">
-        {product.imageUrl ? (
-          <img
-            src={product.imageUrl}
-            alt={localizedField(product, 'name')}
-            className={`w-full h-full object-cover ${product.isAvailable === false ? 'grayscale opacity-60' : ''}`}
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-gray-300">
-            {t('productCard.sem_foto')}
-          </div>
-        )}
-        <Tooltip label={t('tooltip.back')} className="contents">
-          <button
-            // Link compartilhado abre direto aqui (sem histórico para voltar):
-            // nesse caso "voltar" leva ao cardápio em vez de sair do app.
-            onClick={() =>
-              routerLocation.key === 'default'
-                ? navigate(qrCodeToken ? `/${slug}/mesa/${qrCodeToken}` : `/${slug}`, { replace: true })
-                : navigate(-1)
-            }
-            aria-label={t('common.back')}
-            className="absolute top-4 left-4 w-9 h-9 rounded-full bg-white/90 dark:bg-[#1E1E20]/90 flex items-center justify-center shadow-md"
-          >
-            <ArrowLeft size={18} strokeWidth={1.5} />
-          </button>
-        </Tooltip>
-        {slug && (
-          <ShareButton
-            className="absolute top-4 right-4"
-            url={buildShareUrl('produto', slug, product.id)}
-            title={localizedField(product, 'name')}
-            text={product.description ?? t('productDetailPage.olha_esse_item_de', { name: tenant.name })}
-          />
-        )}
+  const hasPromoPrice = product.promoPrice != null;
+  const ratingStars =
+    itemReviewSummary && itemReviewSummary.count > 0 ? Math.round(itemReviewSummary.average) : 0;
+
+  const qtyBtn =
+    'w-9 h-9 rounded-full bg-[#FFFFFF] dark:bg-[#3A3C3E] text-[#374151] dark:text-[#E3E2E6] ' +
+    'flex items-center justify-center shadow-sm border border-[#E5E7EB] dark:border-white/10 ' +
+    'hover:bg-[#F9FAFB] dark:hover:bg-[#46484A] disabled:opacity-40 disabled:cursor-not-allowed transition';
+
+  const quantityControl = (
+    <div className="inline-flex items-center gap-2 rounded-full bg-[#F3F4F6] dark:bg-[#1E1E20] border border-[#E5E7EB] dark:border-white/10 p-1">
+      <Tooltip label={t('tooltip.decrease')}>
+        <button
+          type="button"
+          onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+          disabled={quantity <= 1}
+          aria-label={t('tooltip.decrease')}
+          className={qtyBtn}
+        >
+          <Minus size={16} strokeWidth={1.5} />
+        </button>
+      </Tooltip>
+      <span className={`w-8 text-center font-semibold tabular-nums ${MENU_TEXT}`} aria-live="polite">
+        {quantity}
+      </span>
+      <Tooltip label={t('tooltip.increase')}>
+        <button
+          type="button"
+          onClick={() => setQuantity((q) => q + 1)}
+          aria-label={t('tooltip.increase')}
+          className={qtyBtn}
+        >
+          <Plus size={16} strokeWidth={1.5} />
+        </button>
+      </Tooltip>
+    </div>
+  );
+
+  // Botão principal: cor da marca no claro; no escuro vira sólido claro com
+  // texto escuro (nunca a cor da marca apagada sobre o fundo escuro).
+  const primaryBtn =
+    'w-full py-3.5 rounded-xl text-sm font-semibold text-[#FFFFFF] bg-[var(--brand)] ring-1 ring-black/5 ' +
+    'dark:bg-[#E3E2E6] dark:text-[#131314] dark:ring-white/20 shadow-sm hover:brightness-110 dark:hover:brightness-95 ' +
+    'active:brightness-95 transition flex justify-between items-center px-5';
+
+  const cta =
+    isStoreClosed && product.isAvailable !== false ? (
+      <div className="flex flex-col gap-1.5">
+        <p className="text-[11px] text-red-500 dark:text-red-400 text-center">{t('store.closedHint')}</p>
+        <button
+          type="button"
+          disabled
+          aria-disabled="true"
+          className="w-full py-3.5 rounded-xl text-sm bg-red-50 text-red-600 border border-red-100 dark:bg-red-500/10 dark:text-red-300 dark:border-red-400/20 font-semibold flex justify-center items-center gap-2 px-5 cursor-not-allowed"
+        >
+          <Ban size={16} strokeWidth={1.5} />
+          {t('store.closedEstablishment')}
+        </button>
       </div>
+    ) : product.isAvailable === false ? (
+      <button
+        type="button"
+        disabled
+        aria-disabled="true"
+        className="w-full py-3.5 rounded-xl text-sm bg-[#E5E7EB] text-[#6B7280] dark:bg-white/10 dark:text-[#C4C7C5] font-semibold flex justify-center items-center gap-2 px-5 cursor-not-allowed"
+      >
+        <Ban size={16} strokeWidth={1.5} />
+        {t('productCard.indisponivel')}
+      </button>
+    ) : (
+      <button
+        type="button"
+        onClick={handleAddToCart}
+        className={primaryBtn}
+        style={{ '--brand': brand } as CSSProperties}
+      >
+        <span className="flex items-center gap-2">
+          <CartIcon size={16} />
+          {t('productDetailPage.adicionar')}
+        </span>
+        <span className="tabular-nums">{formatMoney(subtotal)}</span>
+      </button>
+    );
 
-      <div className="p-4">
-        <h1 className="font-display text-xl font-bold text-gray-900">
-          {localizedField(product, 'name')}
-        </h1>
-        {product.description && (
-          <p className="text-sm text-gray-500 mt-2 leading-relaxed">
-            {localizedField(product, 'description')}
-          </p>
-        )}
-
-        {itemReviewSummary && (
-          <button
-            type="button"
-            onClick={() => navigate(`/${slug}/produto/${productId}/avaliacoes`)}
-            aria-label={t('productDetailPage.ver_avaliacoes_desse_item')}
-            className="flex items-center gap-1 mt-2"
-          >
-            <Star
-              size={13}
-              fill={itemReviewSummary.count > 0 ? '#F59E0B' : 'transparent'}
-              className={itemReviewSummary.count > 0 ? 'text-amber-500' : 'text-gray-300'}
-            />
-            {itemReviewSummary.count > 0 && (
-              <span className="text-xs font-semibold text-gray-700">
-                {itemReviewSummary.average.toFixed(1)}
-              </span>
+  return (
+    <div className={`min-h-screen ${MENU_PAGE_BG} pb-28 lg:pb-12`}>
+      <div className="w-full max-w-6xl mx-auto md:px-8 md:py-8 lg:py-10">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-10 items-start">
+          {/* Coluna esquerda: imagem em destaque */}
+          <div className="relative aspect-[4/3] md:aspect-[16/9] lg:aspect-square md:rounded-2xl overflow-hidden bg-[#F3F4F6] dark:bg-[#282A2C] lg:sticky lg:top-8 md:shadow-sm">
+            {product.imageUrl ? (
+              <img
+                src={product.imageUrl}
+                alt={localizedField(product, 'name')}
+                draggable={false}
+                className={`w-full h-full object-cover ${product.isAvailable === false ? 'grayscale opacity-60' : ''}`}
+              />
+            ) : (
+              <div className={`w-full h-full flex items-center justify-center ${MENU_TEXT_MUTED}`}>
+                {t('productCard.sem_foto')}
+              </div>
             )}
-            <span className="text-xs text-gray-400">
-              ({itemReviewSummary.count} {itemReviewSummary.count === 1 ? t('reviewsShared.avaliacao') : t('reviewsShared.avaliacoes_2')})
-            </span>
-            {itemReviewSummary.count > 0 && <ChevronRight size={13} className="text-gray-400" />}
-          </button>
-        )}
-
-        <div className="flex items-center justify-between mt-6">
-          <span className="text-2xl font-bold" style={{ color: accent }}>
-            R$ {Number(product.promoPrice ?? product.price).toFixed(2).replace('.', ',')}
-          </span>
-
-          <div className="flex items-center gap-3 bg-gray-100 rounded-full px-1 py-1">
-            <Tooltip label={t('tooltip.decrease')}>
+            <Tooltip label={t('tooltip.back')} className="contents">
               <button
-                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                aria-label={t('tooltip.decrease')}
-                className="w-8 h-8 rounded-full bg-white dark:bg-[#3A3C3E] flex items-center justify-center font-bold text-gray-600 dark:text-gray-100 shadow-sm"
+                type="button"
+                // Link compartilhado abre direto aqui (sem histórico para voltar):
+                // nesse caso "voltar" leva ao cardápio em vez de sair do app.
+                onClick={() =>
+                  routerLocation.key === 'default' ? navigate(backHref, { replace: true }) : navigate(-1)
+                }
+                aria-label={t('common.back')}
+                className="absolute top-4 left-4 w-10 h-10 rounded-full bg-white/90 dark:bg-[#1E1E20]/90 text-[#111827] dark:text-[#E3E2E6] flex items-center justify-center shadow-md hover:scale-105 transition"
               >
-                −
+                <ArrowLeft size={18} strokeWidth={1.5} />
               </button>
             </Tooltip>
-            <span className="w-6 text-center font-semibold">{quantity}</span>
-            <Tooltip label={t('tooltip.increase')}>
-              <button
-                onClick={() => setQuantity((q) => q + 1)}
-                aria-label={t('tooltip.increase')}
-                className="w-8 h-8 rounded-full bg-white dark:bg-[#3A3C3E] flex items-center justify-center font-bold text-gray-600 dark:text-gray-100 shadow-sm"
-              >
-                +
-              </button>
-            </Tooltip>
+            {slug && (
+              <ShareButton
+                className="absolute top-4 right-4"
+                url={buildShareUrl('produto', slug, product.id)}
+                title={localizedField(product, 'name')}
+                text={product.description ?? t('productDetailPage.olha_esse_item_de', { name: tenant.name })}
+              />
+            )}
           </div>
-        </div>
 
-        {optionGroups.length > 0 && (
-          <div className="mt-6 flex flex-col gap-6">
-            {optionGroups.map((group) => (
-              <div key={group.id}>
-                <div className="flex items-baseline gap-1.5 mb-1">
-                  <p className="text-sm font-bold text-gray-900">{group.name}</p>
-                  {addonGroupHint(group.minSelect, group.maxSelect, t) && (
-                    <span className="text-xs text-gray-400">
-                      · {addonGroupHint(group.minSelect, group.maxSelect, t)}
+          {/* Coluna direita: título, nota, preço, descrição, opções e ação */}
+          <div className="p-4 md:p-0 pt-5 lg:pt-1 flex flex-col gap-5">
+            <div>
+              <h1 className={`font-display text-2xl md:text-3xl font-extrabold leading-tight ${MENU_TEXT}`}>
+                {localizedField(product, 'name')}
+              </h1>
+
+              {itemReviewSummary && (
+                <button
+                  type="button"
+                  onClick={() => navigate(`/${slug}/produto/${productId}/avaliacoes`)}
+                  aria-label={t('productDetailPage.ver_avaliacoes_desse_item')}
+                  className="flex items-center gap-1.5 mt-2.5 rounded-md hover:opacity-80 transition"
+                >
+                  <span className="flex items-center gap-0.5">
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <Star
+                        key={n}
+                        size={15}
+                        strokeWidth={1.5}
+                        fill={n <= ratingStars ? '#F59E0B' : 'transparent'}
+                        className={n <= ratingStars ? 'text-amber-500' : 'text-[#D1D5DB] dark:text-white/25'}
+                      />
+                    ))}
+                  </span>
+                  {itemReviewSummary.count > 0 && (
+                    <span className={`text-sm font-semibold tabular-nums ${MENU_TEXT_SOFT}`}>
+                      {itemReviewSummary.average.toFixed(1)}
                     </span>
                   )}
-                </div>
+                  <span className={`text-sm ${MENU_TEXT_MUTED}`}>
+                    ({itemReviewSummary.count}{' '}
+                    {itemReviewSummary.count === 1 ? t('reviewsShared.avaliacao') : t('reviewsShared.avaliacoes_2')})
+                  </span>
+                  {itemReviewSummary.count > 0 && (
+                    <ChevronRight size={14} strokeWidth={1.5} className={MENU_TEXT_MUTED} />
+                  )}
+                </button>
+              )}
 
-                <div className="flex flex-col divide-y divide-gray-100 border-t border-b border-gray-100">
-                  {group.values.map((value) => {
-                    const isSelected = (selections[group.id] ?? []).includes(value.id);
-                    return (
-                      <button
-                        key={value.id}
-                        onClick={() => toggleValue(group.id, group.name, value.id, group.maxSelect)}
-                        className="w-full flex items-center justify-between py-3"
-                      >
-                        <span className="text-sm text-gray-700">{value.label}</span>
-                        <div className="flex items-center gap-2.5">
-                          {value.priceDelta > 0 && (
-                            <span className="text-xs text-gray-400">
-                              + R$ {Number(value.priceDelta).toFixed(2).replace('.', ',')}
-                            </span>
-                          )}
-                          <div
-                            className={`w-[18px] h-[18px] flex items-center justify-center border-2 shrink-0 ${
-                              group.maxSelect > 1 ? 'rounded-[5px]' : 'rounded-full'
-                            }`}
-                            style={{
-                              borderColor: isSelected ? tenant.primaryColor : '#d1d5db',
-                              backgroundColor: isSelected ? tenant.primaryColor : 'transparent',
-                            }}
-                          >
-                            {isSelected && <Check size={11} className="text-white" strokeWidth={3} />}
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
+              <div className="flex items-baseline gap-2.5 mt-4">
+                <span className="text-3xl font-extrabold tabular-nums" style={{ color: accent }}>
+                  {formatMoney(Number(product.promoPrice ?? product.price))}
+                </span>
+                {hasPromoPrice && (
+                  <span className={`text-base line-through tabular-nums ${MENU_TEXT_MUTED}`}>
+                    {formatMoney(Number(product.price))}
+                  </span>
+                )}
               </div>
-            ))}
-          </div>
-        )}
 
-        {validationError && (
-          <p className="text-sm text-red-500 mt-4">{validationError}</p>
-        )}
+              {product.description && (
+                <p className={`text-sm md:text-base ${MENU_TEXT_BODY} leading-relaxed mt-4`}>
+                  {localizedField(product, 'description')}
+                </p>
+              )}
+            </div>
+
+            {/* Quantidade (celular/tablet). No desktop fica junto da ação. */}
+            <div className="lg:hidden">{quantityControl}</div>
+
+            {optionGroups.length > 0 && (
+              <div className="flex flex-col gap-4">
+                {optionGroups.map((group) => {
+                  const hint = addonGroupHint(group.minSelect, group.maxSelect, t);
+                  const isMulti = group.maxSelect > 1;
+                  return (
+                    <div key={group.id} className={`${PROFILE_CARD} p-4 md:p-5`}>
+                      <div className="flex items-baseline flex-wrap gap-x-1.5 mb-3">
+                        <p className={`text-sm font-bold ${MENU_TEXT}`}>{group.name}</p>
+                        {hint && <span className={`text-xs ${MENU_TEXT_MUTED}`}>· {hint}</span>}
+                      </div>
+
+                      <div
+                        className="flex flex-col gap-2"
+                        role={isMulti ? 'group' : 'radiogroup'}
+                        aria-label={group.name}
+                      >
+                        {group.values.map((value) => {
+                          const isSelected = (selections[group.id] ?? []).includes(value.id);
+                          return (
+                            <button
+                              key={value.id}
+                              type="button"
+                              role={isMulti ? 'checkbox' : 'radio'}
+                              aria-checked={isSelected}
+                              onClick={() => toggleValue(group.id, group.name, value.id, group.maxSelect)}
+                              style={{ '--brand': brand } as CSSProperties}
+                              className={`w-full flex items-center justify-between gap-3 rounded-xl border px-3.5 py-3 text-left transition ${
+                                isSelected
+                                  ? 'border-[var(--brand)] dark:border-[#E3E2E6] bg-black/[0.03] dark:bg-white/[0.06]'
+                                  : 'border-[#E5E7EB] dark:border-white/10 bg-[#F9FAFB] dark:bg-[#282A2C] hover:bg-black/[0.03] dark:hover:bg-white/[0.06]'
+                              }`}
+                            >
+                              <span className={`text-sm min-w-0 break-words ${MENU_TEXT_SOFT}`}>{value.label}</span>
+                              <span className="flex items-center gap-3 shrink-0">
+                                {Number(value.priceDelta) > 0 && (
+                                  <span
+                                    className={`text-xs font-medium tabular-nums rounded-full px-2 py-0.5 bg-[#F3F4F6] dark:bg-white/10 ${MENU_TEXT_BODY}`}
+                                  >
+                                    + {formatMoney(Number(value.priceDelta))}
+                                  </span>
+                                )}
+                                <span
+                                  aria-hidden="true"
+                                  className={`w-5 h-5 flex items-center justify-center border-2 shrink-0 transition ${
+                                    isMulti ? 'rounded-md' : 'rounded-full'
+                                  } ${
+                                    isSelected
+                                      ? 'border-[var(--brand)] bg-[var(--brand)] dark:border-[#E3E2E6] dark:bg-[#E3E2E6]'
+                                      : 'border-[#D1D5DB] dark:border-white/25 bg-transparent'
+                                  }`}
+                                >
+                                  {isSelected && (
+                                    <Check
+                                      size={12}
+                                      strokeWidth={2}
+                                      className="text-[#FFFFFF] dark:text-[#131314]"
+                                    />
+                                  )}
+                                </span>
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {validationError && (
+              <p role="alert" className="text-sm text-red-500 dark:text-red-400">
+                {validationError}
+              </p>
+            )}
+
+            {/* Ação principal inline no desktop; no celular fica fixa no rodapé. */}
+            <div className={`hidden lg:flex flex-col gap-4 ${PROFILE_CARD} p-5`}>
+              <div>{quantityControl}</div>
+              {cta}
+            </div>
+          </div>
+        </div>
       </div>
 
+      {/* Barra fixa (celular/tablet).
+          BUG CORRIGIDO (mantido): em alguns navegadores/WebViews Android, uma
+          barra fixa cujo conteúdo muda de cor via `style` dinâmico às vezes só
+          é pintada depois de QUALQUER interação na tela. `translateZ(0)` força
+          esse bloco para a própria camada de composição. */}
       <div
-        className="fixed bottom-0 left-0 right-0 max-w-md mx-auto p-4 bg-white border-t border-gray-100"
-        // BUG CORRIGIDO: em alguns navegadores/WebViews Android, uma
-        // barra fixa cujo conteúdo muda de cor via `style` dinâmico (não
-        // uma classe CSS estática) às vezes só é pintada de verdade
-        // depois de QUALQUER interação na tela (um toque, um scroll) —
-        // até lá, o botão existe e funciona (o clique passava normal),
-        // só não aparece visualmente. `translateZ(0)` força esse bloco
-        // pra sua própria camada de composição, contornando o bug —
-        // truque padrão e bem documentado pra esse exato sintoma.
+        className={`lg:hidden fixed bottom-0 left-0 right-0 p-4 ${MENU_SURFACE} border-t ${MENU_BORDER}`}
         style={{ transform: 'translateZ(0)' }}
       >
-        {isStoreClosed && product.isAvailable !== false ? (
-          <div className="flex flex-col gap-1.5">
-            <p className="text-[11px] text-red-500 text-center">{t('store.closedHint')}</p>
-            <button
-              type="button"
-              disabled
-              aria-disabled="true"
-              className="w-full py-3.5 rounded-xl bg-red-50 text-red-600 border border-red-100 font-semibold flex justify-center items-center gap-2 px-5 cursor-not-allowed"
-            >
-              <Ban size={16} strokeWidth={1.5} />
-              {t('store.closedEstablishment')}
-            </button>
-          </div>
-        ) : product.isAvailable === false ? (
-          <button
-            type="button"
-            disabled
-            aria-disabled="true"
-            className="w-full py-3.5 rounded-xl bg-gray-200 text-gray-500 font-semibold flex justify-center items-center gap-2 px-5 cursor-not-allowed"
-          >
-            <Ban size={16} />
-            {t('productCard.indisponivel')}
-          </button>
-        ) : (
-        <button
-            onClick={handleAddToCart}
-            className="w-full py-3.5 rounded-xl text-white font-semibold flex justify-between items-center px-5"
-            style={{ backgroundColor: tenant.primaryColor }}
-          >
-            <span className="flex items-center gap-2">
-              <CartIcon size={16} />
-              {t('productDetailPage.adicionar')}
-            </span>
-            <span>R$ {subtotal.toFixed(2).replace('.', ',')}</span>
-          </button>
-        )}
+        <div className="max-w-xl mx-auto">{cta}</div>
       </div>
     </div>
   );
