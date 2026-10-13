@@ -203,6 +203,8 @@ interface DesktopNavProps extends Omit<BottomNavProps, 'topSlot'> {
   tenant: Tenant;
   searchValue?: string;
   onSearchChange?: (value: string) => void;
+  // Compatibilidade com ProfileSubpageShell: false esconde a busca.
+  showSearch?: boolean;
   contextLabel?: string;
 }
 
@@ -213,6 +215,7 @@ export function DesktopNav({
   tenant,
   searchValue,
   onSearchChange,
+  showSearch = true,
   contextLabel,
 }: DesktopNavProps) {
   const nav = useNavModel(slug, qrCodeToken, primaryColor);
@@ -229,7 +232,7 @@ export function DesktopNav({
           <span className="font-display text-sm font-bold text-gray-900 truncate">{tenant.name}</span>
         </div>
 
-        {onSearchChange ? (
+        {showSearch && onSearchChange ? (
           <div className="flex-1 min-w-0 max-w-xl">
             <SearchBar value={searchValue ?? ''} onChange={onSearchChange} />
           </div>
