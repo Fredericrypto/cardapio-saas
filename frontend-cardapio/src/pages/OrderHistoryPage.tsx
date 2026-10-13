@@ -2,7 +2,7 @@ import { orderStatusLabel, sessionStatusLabel } from '../i18n/labels';
 import { useI18n } from '../i18n/I18nContext';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Table2, ShoppingBag, Bike, FolderClosed, Star, ChevronDown, Maximize2, ReceiptText } from 'lucide-react';
+import { Table2, ShoppingBag, Bike, FolderClosed, Star, ChevronDown, ChevronRight, ReceiptText, CalendarClock, ArrowRight } from 'lucide-react';
 import { useDesktopLayout } from '../lib/useDesktopLayout';
 import type { Tenant } from '../types';
 import { identityOf } from '../lib/identity';
@@ -22,7 +22,7 @@ import {
 import { ProfileSubpageShell } from '../components/ProfileSubpageShell';
 import { Tooltip } from '../components/Tooltip';
 import { MENU_PAGE_BG, MENU_TEXT, MENU_TEXT_SOFT, MENU_TEXT_BODY, MENU_TEXT_MUTED } from '../lib/menuTheme';
-import { PROFILE_CARD, PROFILE_CARD_GLASS, PROFILE_SELECTED_RING } from '../lib/profileTheme';
+import { PROFILE_CARD, PROFILE_CARD_GLASS, PROFILE_BTN_PRIMARY } from '../lib/profileTheme';
 
 const STATUS_STYLES: Record<string, { bg: string; color: string }> = {
   aguardando_pagamento: { bg: '#FFEDD5', color: '#C2410C' },
@@ -206,8 +206,8 @@ type PaneSelection =
   | null;
 
 // Detalhe do pedido selecionado (desktop). Usa só o que o histórico já
-// carregou — nenhuma chamada nova. O botão de expandir abre o recibo
-// completo na sub-tela de sempre.
+// carregou — nenhuma chamada nova. O cupom completo abre pelo botão de largura
+// total no rodapé do painel (a navegação é a mesma de sempre).
 function OrderDetailPane({
   selected,
   reviewsByOrderId,
@@ -222,6 +222,23 @@ function OrderDetailPane({
   onOpenAvulso: (orderId: string) => void;
 }) {
   const { t } = useI18n();
+
+  const paneId = selected ? (selected.kind === 'mesa' ? selected.mesa.sessionId : selected.avulso.orderId) : null;
+
+  // Transição suave a cada troca de pedido: o conteúdo reentra com fade +
+  // deslize curto (dois quadros para o navegador pintar o estado inicial).
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    setShown(false);
+    let inner = 0;
+    const outer = requestAnimationFrame(() => {
+      inner = requestAnimationFrame(() => setShown(true));
+    });
+    return () => {
+      cancelAnimationFrame(outer);
+      cancelAnimationFrame(inner);
+    };
+  }, [paneId]);
 
   if (!selected) {
     return (
@@ -250,79 +267,133 @@ function OrderDetailPane({
   const tip = mesa ? mesa.tipAmount : avulso!.tipAmount;
   const grand = mesa ? mesa.total + mesa.tipAmount : avulso!.total + avulso!.tipAmount;
   const review = avulso ? reviewsByOrderId[avulso.orderId] : undefined;
+  const refCode = String(paneId).replace(/-/g, '').slice(0, 6).toUpperCase();
+  const openFull = () => (mesa ? onOpenMesa(mesa.sessionId) : onOpenAvulso(avulso!.orderId));
 
   return (
-    <div className={`${PROFILE_CARD} sticky top-24 overflow-hidden`}>
-      <div className="p-5 md:p-6 flex items-start justify-between gap-4 border-b border-[#E5E7EB] dark:border-white/10">
-        <div className="flex items-center gap-3 min-w-0">
-          <div
-            className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 border border-black/5 dark:border-white/10"
-            style={{ backgroundColor: `${accent}1A` }}
-          >
-            <Icon size={20} strokeWidth={1.5} className={MENU_TEXT} />
+    <div className={`${PROFILE_CARD} sticky top-24 overflow-hidden shadow-sm`}>
+      <div
+        className={`max-h-[calc(100vh-8rem)] overflow-y-auto transition-[opacity,transform] duration-300 ease-out motion-reduce:transition-none ${
+          shown ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
+        }`}
+      >
+        {/* Cabeçalho + total em destaque, com um véu da cor do restaurante. */}
+        <div
+          className="p-6 xl:p-8"
+          style={{ background: `linear-gradient(135deg, ${accent}26 0%, ${accent}0D 55%, transparent 100%)` }}
+        >
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div
+                className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border border-black/5 dark:border-white/10"
+                style={{ backgroundColor: `${accent}26` }}
+              >
+                <Icon size={22} strokeWidth={1.5} className={MENU_TEXT} />
+              </div>
+              <div className="min-w-0">
+                <p className={`font-display text-xl font-bold ${MENU_TEXT} truncate capitalize`}>{typeLabel}</p>
+                <p className={`flex items-center gap-1.5 text-xs ${MENU_TEXT_MUTED} mt-1`}>
+                  <CalendarClock size={14} strokeWidth={1.5} />
+                  {formatDateTime(when)}
+                </p>
+              </div>
+            </div>
+            <span
+              className="text-[11px] font-semibold px-3 py-1.5 rounded-full shrink-0"
+              style={{ backgroundColor: statusStyle.bg, color: statusStyle.color }}
+            >
+              {statusText}
+            </span>
           </div>
-          <div className="min-w-0">
-            <p className={`font-display text-lg font-bold ${MENU_TEXT} truncate capitalize`}>{typeLabel}</p>
-            <p className={`text-xs ${MENU_TEXT_MUTED} mt-0.5`}>{formatDateTime(when)}</p>
+
+          <div className="mt-7">
+            <p className={`text-[11px] font-semibold uppercase tracking-wider ${MENU_TEXT_MUTED}`}>
+              {t('receiptContent.total')}
+            </p>
+            <p className={`font-display text-4xl xl:text-5xl font-bold tabular-nums ${MENU_TEXT} mt-1.5`}>
+              {formatMoney(grand)}
+            </p>
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <span
-            className="text-[11px] font-semibold px-2.5 py-1 rounded-full"
-            style={{ backgroundColor: statusStyle.bg, color: statusStyle.color }}
-          >
-            {statusText}
-          </span>
-          <Tooltip label={typeLabel}>
+
+        <div className="p-6 xl:p-8 flex flex-col gap-6">
+          {mesa && (
+            <div className="flex items-center gap-4 rounded-2xl border border-[#E5E7EB] dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.04] p-4">
+              <div
+                className={`w-12 h-12 rounded-xl flex items-center justify-center font-display text-xl font-bold tabular-nums shrink-0 ${MENU_TEXT}`}
+                style={{ backgroundColor: `${accent}1F` }}
+              >
+                {mesa.orderCount}
+              </div>
+              <p className={`text-sm font-medium ${MENU_TEXT_SOFT}`}>
+                {mesa.orderCount === 1 ? t('orderHistoryPage.pedido_feito') : t('orderHistoryPage.pedidos_feitos')}
+              </p>
+            </div>
+          )}
+
+          {avulso && avulso.items.length > 0 && (
+            <ul className="flex flex-col divide-y divide-[#F3F4F6] dark:divide-white/10 rounded-2xl border border-[#E5E7EB] dark:border-white/10 overflow-hidden">
+              {avulso.items.map((i, idx) => (
+                <li key={idx} className="flex items-center gap-3.5 px-4 py-3">
+                  <span
+                    className={`min-w-9 h-9 px-2 rounded-lg flex items-center justify-center text-xs font-bold tabular-nums shrink-0 ${MENU_TEXT}`}
+                    style={{ backgroundColor: `${accent}1F` }}
+                  >
+                    {i.quantity}x
+                  </span>
+                  <span className={`text-sm font-medium min-w-0 break-words ${MENU_TEXT}`}>{i.productName}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {/* Totais em formato de cupom. */}
+          <div className="rounded-2xl border border-dashed border-[#D1D5DB] dark:border-white/15 p-5 flex flex-col gap-3">
+            {tip > 0 && (
+              <div className={`flex justify-between text-sm ${MENU_TEXT_BODY}`}>
+                <span>{t('closingPaymentSheet.gorjeta')}</span>
+                <span className="tabular-nums">{formatMoney(tip)}</span>
+              </div>
+            )}
+            <div className={`flex justify-between items-baseline font-display font-bold ${MENU_TEXT}`}>
+              <span>{t('receiptContent.total')}</span>
+              <span className="text-xl tabular-nums">{formatMoney(grand)}</span>
+            </div>
+          </div>
+
+          {review && (
+            <div className="flex items-center gap-2" aria-label={String(review.rating)}>
+              <div className="flex items-center gap-0.5">
+                {Array.from({ length: 5 }).map((_, idx) => (
+                  <Star
+                    key={idx}
+                    size={18}
+                    strokeWidth={1.5}
+                    fill={idx < Math.round(review.rating) ? '#F59E0B' : 'none'}
+                    className={idx < Math.round(review.rating) ? 'text-amber-500' : MENU_TEXT_MUTED}
+                  />
+                ))}
+              </div>
+              <span className="text-sm font-semibold text-amber-600 dark:text-amber-300 tabular-nums">{review.rating}</span>
+            </div>
+          )}
+
+          <Tooltip label={typeLabel} className="flex w-full">
             <button
-              onClick={() => (mesa ? onOpenMesa(mesa.sessionId) : onOpenAvulso(avulso!.orderId))}
-              aria-label={typeLabel}
-              className={`w-9 h-9 rounded-full border border-[#E5E7EB] dark:border-white/10 ${MENU_TEXT} flex items-center justify-center hover:bg-black/[0.03] dark:hover:bg-white/5 transition-colors`}
+              onClick={openFull}
+              className={`w-full flex items-center justify-between gap-3 rounded-xl px-5 py-3.5 text-sm ${PROFILE_BTN_PRIMARY}`}
+              style={{ backgroundColor: accent }}
             >
-              <Maximize2 size={16} strokeWidth={1.5} />
+              <span className="flex items-center gap-2.5 min-w-0">
+                <ReceiptText size={18} strokeWidth={1.5} className="shrink-0" />
+                <span className="truncate">
+                  {t('receiptContentStandalone.ref')} #{refCode}
+                </span>
+              </span>
+              <ArrowRight size={18} strokeWidth={1.5} className="shrink-0" />
             </button>
           </Tooltip>
         </div>
-      </div>
-
-      <div className="p-5 md:p-6 flex flex-col gap-4">
-        {mesa && (
-          <p className={`text-sm ${MENU_TEXT_BODY}`}>
-            {mesa.orderCount}{' '}
-            {mesa.orderCount === 1 ? t('orderHistoryPage.pedido_feito') : t('orderHistoryPage.pedidos_feitos')}
-          </p>
-        )}
-
-        {avulso && (
-          <ul className="flex flex-col gap-2">
-            {avulso.items.map((i, idx) => (
-              <li key={idx} className={`flex items-baseline gap-3 text-sm ${MENU_TEXT}`}>
-                <span className={`font-semibold ${MENU_TEXT_BODY} tabular-nums shrink-0`}>{i.quantity}x</span>
-                <span className="min-w-0 break-words">{i.productName}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        <div className="border-t border-dashed border-[#D1D5DB] dark:border-white/15 pt-4 flex flex-col gap-2">
-          {tip > 0 && (
-            <div className={`flex justify-between text-sm ${MENU_TEXT_BODY}`}>
-              <span>{t('closingPaymentSheet.gorjeta')}</span>
-              <span className="tabular-nums">{formatMoney(tip)}</span>
-            </div>
-          )}
-          <div className={`flex justify-between font-display font-bold ${MENU_TEXT}`}>
-            <span>{t('receiptContent.total')}</span>
-            <span className="tabular-nums">{formatMoney(grand)}</span>
-          </div>
-        </div>
-
-        {review && (
-          <p className="flex items-center gap-1.5 text-sm font-semibold text-amber-600 dark:text-amber-300">
-            <Star size={15} strokeWidth={1.5} fill="#F59E0B" className="text-amber-500" />
-            {review.rating}
-          </p>
-        )}
       </div>
     </div>
   );
@@ -425,9 +496,12 @@ function MesaCard({
     <button
       onClick={onClick}
       aria-pressed={selected}
-      className={`w-full ${PROFILE_CARD} p-4 text-left md:hover:bg-black/[0.02] dark:md:hover:bg-white/[0.03] md:transition-colors ${selected ? PROFILE_SELECTED_RING : ''}`}
-      style={selected ? { borderColor: accent } : undefined}
+      className={`relative w-full ${PROFILE_CARD} p-4 text-left cursor-pointer overflow-hidden md:hover:bg-black/[0.02] dark:md:hover:bg-white/[0.03] md:transition-all md:duration-200`}
+      style={selected ? { borderColor: accent, backgroundColor: `${accent}12` } : undefined}
     >
+      {selected && (
+        <span className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: accent }} aria-hidden="true" />
+      )}
       <div className="flex justify-between items-start">
         <div className="flex items-center gap-1.5">
           <Table2 size={14} strokeWidth={1.5} className={MENU_TEXT_MUTED} />
@@ -444,9 +518,14 @@ function MesaCard({
         {formatDateTime(item.dateForGrouping)} · {item.orderCount}{' '}
         {item.orderCount === 1 ? t('orderHistoryPage.pedido_feito') : t('orderHistoryPage.pedidos_feitos')}
       </p>
-      <p className={`text-sm font-semibold ${MENU_TEXT_BODY} mt-2`}>
-        {formatMoney(item.total + item.tipAmount)}
-      </p>
+      <div className="flex items-center justify-between mt-2">
+        <p className={`text-sm font-semibold ${MENU_TEXT_BODY}`}>{formatMoney(item.total + item.tipAmount)}</p>
+        <ChevronRight
+          size={16}
+          strokeWidth={1.5}
+          className={`${MENU_TEXT_MUTED} transition-transform ${selected ? 'translate-x-0.5' : ''}`}
+        />
+      </div>
     </button>
     </Tooltip>
   );
@@ -478,9 +557,12 @@ function AvulsoCard({
     <button
       onClick={onClick}
       aria-pressed={selected}
-      className={`w-full ${PROFILE_CARD} p-4 text-left md:hover:bg-black/[0.02] dark:md:hover:bg-white/[0.03] md:transition-colors ${selected ? PROFILE_SELECTED_RING : ''}`}
-      style={selected ? { borderColor: accent } : undefined}
+      className={`relative w-full ${PROFILE_CARD} p-4 text-left cursor-pointer overflow-hidden md:hover:bg-black/[0.02] dark:md:hover:bg-white/[0.03] md:transition-all md:duration-200`}
+      style={selected ? { borderColor: accent, backgroundColor: `${accent}12` } : undefined}
     >
+      {selected && (
+        <span className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: accent }} aria-hidden="true" />
+      )}
       <div className="flex justify-between items-start">
         <div className="flex items-center gap-1.5">
           <Icon size={14} strokeWidth={1.5} className={MENU_TEXT_MUTED} />
@@ -501,12 +583,19 @@ function AvulsoCard({
       </p>
       <div className="flex items-center justify-between mt-2">
         <p className={`text-sm font-semibold ${MENU_TEXT_BODY}`}>{formatMoney(item.total + item.tipAmount)}</p>
-        {review && (
-          <span className="flex items-center gap-1 text-xs font-semibold text-amber-600 dark:text-amber-300">
-            <Star size={13} strokeWidth={1.5} fill="#F59E0B" className="text-amber-500" />
-            {review.rating}
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {review && (
+            <span className="flex items-center gap-1 text-xs font-semibold text-amber-600 dark:text-amber-300">
+              <Star size={13} strokeWidth={1.5} fill="#F59E0B" className="text-amber-500" />
+              {review.rating}
+            </span>
+          )}
+          <ChevronRight
+            size={16}
+            strokeWidth={1.5}
+            className={`${MENU_TEXT_MUTED} transition-transform ${selected ? 'translate-x-0.5' : ''}`}
+          />
+        </div>
       </div>
     </button>
     </Tooltip>

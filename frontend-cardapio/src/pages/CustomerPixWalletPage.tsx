@@ -1,14 +1,20 @@
 import { pixKeyTypeLabel } from '../i18n/labels';
 import { useI18n } from '../i18n/I18nContext';
 import { Tooltip } from '../components/Tooltip';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Wallet, Trash2, ShieldCheck, Lock, Mail, Smartphone, Fingerprint, KeyRound, Pencil, type LucideIcon } from 'lucide-react';
+import { Wallet, Trash2, ShieldCheck, Lock, Mail, Smartphone, Fingerprint, KeyRound, Pencil, Check, X, type LucideIcon } from 'lucide-react';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { useTenant } from '../contexts/TenantContext';
 import { setMyCustomerPixKey, removeMyCustomerPixKey } from '../lib/customer-api';
 import { ProfileSubpageShell } from '../components/ProfileSubpageShell';
 import { ProfileField, ProfileSectionHeader } from '../components/ProfileField';
+import {
+  formatPixKeyInput,
+  fromStoredPixKey,
+  isValidPixKey,
+  toCanonicalPixKey,
+} from '../lib/pixKey';
 import { MENU_PAGE_BG, MENU_TEXT, MENU_TEXT_BODY } from '../lib/menuTheme';
 import {
   PROFILE_CARD,
@@ -39,14 +45,27 @@ export function CustomerPixWalletPage() {
   const [isRemoving, setIsRemoving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [touched, setTouched] = useState(false);
+  const keyInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!customer?.pixKey) return;
     setPixKeyType(customer.pixKeyType ?? '');
-    setPixKey(customer.pixKey);
+    setPixKey(fromStoredPixKey(customer.pixKeyType, customer.pixKey));
   }, [customer]);
 
-  const canSubmit = pixKeyType.length > 0 && pixKey.trim().length >= 3;
+  const keyIsValid = isValidPixKey(pixKeyType, pixKey);
+  const canSubmit = pixKeyType.length > 0 && keyIsValid;
+
+  // Trocar o tipo zera o campo: a máscara de um tipo não serve para outro.
+  function selectKeyType(value: string) {
+    if (value === pixKeyType) return;
+    setPixKeyType(value);
+    setPixKey('');
+    setTouched(false);
+    setError(null);
+    window.setTimeout(() => keyInputRef.current?.focus(), 0);
+  }
 
   async function handleSave() {
     if (!tenant || !token || !canSubmit) return;
@@ -55,7 +74,7 @@ export function CustomerPixWalletPage() {
     try {
       const updated = await setMyCustomerPixKey(tenant.id, token, {
         pixKeyType,
-        pixKey: pixKey.trim(),
+        pixKey: toCanonicalPixKey(pixKeyType, pixKey),
       });
       setCustomer(updated);
       setIsEditing(false);
@@ -79,6 +98,7 @@ export function CustomerPixWalletPage() {
       setIsEditing(true);
       setPixKeyType('');
       setPixKey('');
+      setTouched(false);
     } finally {
       setIsRemoving(false);
     }
@@ -104,6 +124,30 @@ export function CustomerPixWalletPage() {
   ];
   const savedTypeIcon = keyTypes.find((k) => k.value === customer.pixKeyType)?.icon ?? Wallet;
   const SavedTypeIcon = savedTypeIcon;
+
+  // Comportamento do campo por tipo (teclado, máscara, exemplo e ícone).
+  const fieldSpec: Record<string, { type: 'email' | 'tel' | 'text'; inputMode: 'email' | 'tel' | 'numeric' | 'text'; placeholder: string; icon: LucideIcon }> = {
+    email: { type: 'email', inputMode: 'email', placeholder: 'nome@email.com', icon: Mail },
+    telefone: { type: 'tel', inputMode: 'tel', placeholder: '(48) 99999-9999', icon: Smartphone },
+    cpf: { type: 'text', inputMode: 'numeric', placeholder: '000.000.000-00', icon: Fingerprint },
+    aleatoria: { type: 'text', inputMode: 'text', placeholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx', icon: KeyRound },
+  };
+  const spec = fieldSpec[pixKeyType] ?? { type: 'text' as const, inputMode: 'text' as const, placeholder: '', icon: KeyRound };
+  const hasValue = pixKey.length > 0;
+  const cpfComplete = pixKeyType === 'cpf' && pixKey.replace(/\D/g, '').length === 11;
+  const fieldState: 'idle' | 'typing' | 'valid' | 'invalid' = !hasValue
+    ? 'idle'
+    : keyIsValid
+      ? 'valid'
+      : touched || cpfComplete
+        ? 'invalid'
+        : 'typing';
+  const stateBorder =
+    fieldState === 'valid'
+      ? '!border-emerald-500/60 dark:!border-emerald-400/60'
+      : fieldState === 'invalid'
+        ? '!border-red-500/60 dark:!border-red-400/60'
+        : '';
 
   return (
     <ProfileSubpageShell tenant={tenant} title={t('profile.pixWallet')} backTo={`/${slug}/conta-cliente/perfil`}>
@@ -134,7 +178,7 @@ export function CustomerPixWalletPage() {
                 </div>
                 <div className="min-w-0">
                   <p className={PROFILE_LABEL}>{pixKeyTypeLabel(customer.pixKeyType, t)}</p>
-                  <p className={`text-sm md:text-base font-medium font-mono ${MENU_TEXT} mt-0.5 break-all`}>{customer.pixKey}</p>
+                  <p className={`text-sm md:text-base font-medium font-mono ${MENU_TEXT} mt-0.5 break-all`}>{fromStoredPixKey(customer.pixKeyType, customer.pixKey)}</p>
                 </div>
               </div>
               <div className="flex gap-2 mt-5">
@@ -175,7 +219,7 @@ export function CustomerPixWalletPage() {
                         type="button"
                         role="radio"
                         aria-checked={selected}
-                        onClick={() => setPixKeyType(kt.value)}
+                        onClick={() => selectKeyType(kt.value)}
                         className={`w-full flex items-center gap-3 rounded-xl border px-3.5 py-3 ${PROFILE_OPTION_CARD} ${
                           selected ? PROFILE_SELECTED_RING : 'border-[#E5E7EB] dark:border-white/10'
                         }`}
@@ -189,12 +233,46 @@ export function CustomerPixWalletPage() {
                 })}
               </div>
 
-              <ProfileField label={t('customerPixWalletPage.sua_chave_pix')} icon={KeyRound} className="mt-5">
-                <input
-                  value={pixKey}
-                  onChange={(e) => setPixKey(e.target.value)}
-                  className={`${PROFILE_INPUT} w-full pl-10`}
-                />
+              <ProfileField label={t('customerPixWalletPage.sua_chave_pix')} icon={spec.icon} className="mt-5">
+                <div className="relative">
+                  <input
+                    ref={keyInputRef}
+                    value={pixKey}
+                    type={spec.type}
+                    inputMode={spec.inputMode}
+                    placeholder={spec.placeholder}
+                    disabled={!pixKeyType}
+                    maxLength={pixKeyType === 'aleatoria' ? 36 : pixKeyType === 'email' ? 77 : undefined}
+                    autoComplete="off"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    aria-invalid={fieldState === 'invalid'}
+                    onChange={(e) => setPixKey(formatPixKeyInput(pixKeyType, e.target.value))}
+                    onBlur={() => setTouched(true)}
+                    className={`${PROFILE_INPUT} w-full pl-10 pr-11 disabled:opacity-50 transition-colors ${
+                      pixKeyType === 'aleatoria' || pixKeyType === 'cpf' ? 'font-mono' : ''
+                    } ${stateBorder}`}
+                  />
+                  {(fieldState === 'valid' || fieldState === 'invalid') && (
+                    <span
+                      className={`absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full flex items-center justify-center ${
+                        fieldState === 'valid'
+                          ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                          : 'bg-red-500/15 text-red-500 dark:text-red-400'
+                      }`}
+                      aria-hidden="true"
+                    >
+                      {fieldState === 'valid' ? <Check size={14} strokeWidth={2} /> : <X size={14} strokeWidth={2} />}
+                    </span>
+                  )}
+                </div>
+                {pixKeyType === 'aleatoria' && hasValue && (
+                  <p className={`text-[11px] tabular-nums text-right mt-1.5 ${MENU_TEXT_BODY}`}>{pixKey.length}/36</p>
+                )}
+                {pixKeyType === 'telefone' && fieldState === 'invalid' && (
+                  <p className="text-xs text-red-500 dark:text-red-400 mt-1.5">{t('phoneInput.telefone_incompleto_confira_o')}</p>
+                )}
               </ProfileField>
 
               {error && (
