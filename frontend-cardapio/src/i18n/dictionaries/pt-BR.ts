@@ -689,6 +689,27 @@ export const ptBR = {
   'tooltip.remove': 'Remover item',
   'tooltip.viewCart': 'Ver carrinho',
   'tooltip.delete': 'Excluir',
+
+  // Carrinho (redesenho): textos novos
+  'cartUi.sending': 'Enviando...',
+  'cartUi.calling': 'Chamando...',
+  'cartUi.cancelling': 'Cancelando...',
+  'cartUi.calculating': 'Calculando...',
+  'cartUi.summary': 'Resumo',
+  'cartUi.optional': '(opcional)',
+  'cartUi.phone': 'Telefone',
+  'tooltip.removeCoupon': 'Remover cupom',
+  'cartPayment.previewTooltip': 'Prévia ilustrativa do cartão',
+  'cartPayment.credit': 'Crédito',
+  'cartPayment.debit': 'Débito',
+  'cartPayment.cardType': 'Tipo do cartão',
+  'cartPayment.cardNumber': 'Número do cartão',
+  'cartPayment.cardName': 'Nome no cartão',
+  'cartPayment.cardExpiry': 'Validade',
+  'cartPayment.expiryPlaceholder': 'MM/AA',
+  'cartPayment.numberValid': 'Número válido',
+  'cartPayment.numberInvalid': 'Confira o número do cartão',
+  'cartPayment.illustrativeNote': 'Estes dados são só ilustrativos: nada é enviado nem salvo.',
 } as const;
 
 export type TranslationKey = keyof typeof ptBR;
