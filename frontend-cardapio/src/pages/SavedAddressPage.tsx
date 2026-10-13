@@ -124,13 +124,8 @@ export function SavedAddressPage() {
   const previewLine3 = [city.trim(), state.trim()].filter(Boolean).join(' - ');
   const hasPreview = Boolean(previewLine1 || neighborhood.trim() || previewLine3 || postcode.trim());
   const accent = tenant.primaryColor;
-  // O tipo Tenant não é conhecido aqui: lê `bannerUrl` e, se não existir, a
-  // primeira propriedade textual cujo nome contenha banner/cover/capa.
-  const tenantRecord = tenant as unknown as Record<string, unknown>;
-  const bannerCandidate =
-    tenantRecord.bannerUrl ??
-    Object.entries(tenantRecord).find(([k, v]) => /banner|cover|capa/i.test(k) && typeof v === 'string' && v)?.[1];
-  const bannerUrl = typeof bannerCandidate === 'string' && bannerCandidate ? bannerCandidate : null;
+  // Imagem de capa do restaurante (Tenant.coverImageUrl); vazia -> gradiente.
+  const bannerUrl = tenant.coverImageUrl || null;
   const showBanner = Boolean(bannerUrl) && !bannerFailed;
   const address = customer.address;
 
