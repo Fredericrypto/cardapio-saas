@@ -81,6 +81,8 @@ export function SettingsPage() {
   const [showWebhookSecretField, setShowWebhookSecretField] = useState(
     !tenant?.mercadoPagoWebhookSecretConfigured,
   );
+  const [mercadoPagoPublicKey, setMercadoPagoPublicKey] = useState(tenant?.mercadoPagoPublicKey ?? '');
+  const [mercadoPagoError, setMercadoPagoError] = useState<string | null>(null);
   const [defaultCmvPercent, setDefaultCmvPercent] = useState(String(tenant?.defaultCmvPercent ?? 30));
   const [cardFeePercent, setCardFeePercent] = useState(String(tenant?.cardFeePercent ?? 0));
   const [pixFeePercent, setPixFeePercent] = useState(String(tenant?.pixFeePercent ?? 0));
@@ -121,6 +123,7 @@ export function SettingsPage() {
     setPixEnabled(tenant.pixEnabled ?? false);
     setShowMercadoPagoField(!tenant.mercadoPagoConfigured);
     setShowWebhookSecretField(!tenant.mercadoPagoWebhookSecretConfigured);
+    setMercadoPagoPublicKey(tenant.mercadoPagoPublicKey ?? '');
     setDefaultCmvPercent(String(tenant.defaultCmvPercent ?? 30));
     setCardFeePercent(String(tenant.cardFeePercent ?? 0));
     setPixFeePercent(String(tenant.pixFeePercent ?? 0));
@@ -176,6 +179,28 @@ export function SettingsPage() {
   }
 
   async function handleSave() {
+    // Pagamento online exige access token E segredo do webhook (sem o segredo
+    // a confirmação automática fica bloqueada por segurança) — o backend
+    // também recusa; aqui só avisa antes, de forma clara.
+    const hasToken = Boolean(tenant?.mercadoPagoConfigured) || mercadoPagoAccessToken.trim() !== '';
+    const hasSecret =
+      Boolean(tenant?.mercadoPagoWebhookSecretConfigured) || mercadoPagoWebhookSecret.trim() !== '';
+    const publicKeyChanged = mercadoPagoPublicKey.trim() !== (tenant?.mercadoPagoPublicKey ?? '');
+    // Só valida quando esta gravação mexe no Mercado Pago — restaurantes antigos
+    // (token sem segredo) continuam conseguindo salvar as demais configurações.
+    const touchedMercadoPago =
+      mercadoPagoAccessToken.trim() !== '' || mercadoPagoWebhookSecret.trim() !== '' || publicKeyChanged;
+    if (touchedMercadoPago && hasToken && !hasSecret) {
+      setMercadoPagoError(
+        'Preencha também o segredo do webhook do Mercado Pago: sem ele os pagamentos online não são ativados.',
+      );
+      return;
+    }
+    if (touchedMercadoPago && mercadoPagoPublicKey.trim() !== '' && !hasToken) {
+      setMercadoPagoError('Preencha também o Access Token do Mercado Pago para usar a chave pública.');
+      return;
+    }
+    setMercadoPagoError(null);
     setIsSaving(true);
     try {
       const updated = await updateMyTenant({
@@ -195,6 +220,7 @@ export function SettingsPage() {
         pixEnabled,
         mercadoPagoAccessToken: mercadoPagoAccessToken.trim() || undefined,
         mercadoPagoWebhookSecret: mercadoPagoWebhookSecret.trim() || undefined,
+        mercadoPagoPublicKey: publicKeyChanged ? mercadoPagoPublicKey.trim() : undefined,
         tableSessionTimeoutMinutes,
         defaultCmvPercent: clampPercent(defaultCmvPercent),
         cardFeePercent: clampPercent(cardFeePercent),
@@ -511,8 +537,8 @@ export function SettingsPage() {
             </Card>
 
             <Card
-              title="Mercado Pago (Pix confirmado automaticamente)"
-              description="Quando configurado, tem prioridade sobre a chave Pix acima: o pagamento é confirmado sozinho (igual iFood), sem você precisar clicar em nada. Vale pra balcão/entrega E pro fechamento de conta de mesa. O dinheiro cai direto na sua conta Mercado Pago — nunca passa pela nossa infra."
+              title="Mercado Pago (Pix e cartão online)"
+              description="Quando configurado (Access Token + segredo do webhook), tem prioridade sobre a chave Pix acima: o Pix é confirmado sozinho (igual iFood) e, com a chave pública, o cliente também pode pagar com cartão de crédito/débito no carrinho. Vale pra balcão/entrega; o Pix também vale no fechamento de conta de mesa. O dinheiro cai direto na sua conta Mercado Pago — nunca passa pela nossa infra. Se você cancelar um pedido já pago online, o estorno é feito automaticamente."
             >
               <div>
                 <p className="text-xs font-semibold text-gray-500 mb-1.5">Access Token</p>
@@ -541,10 +567,10 @@ export function SettingsPage() {
                   sem assinatura, o que deixava a porta aberta pra qualquer POST
                   forjado nessa URL). Só aparece depois que o Access Token já foi
                   configurado — não faz sentido pedir antes. */}
-              {tenant?.mercadoPagoConfigured && (
+              {(tenant?.mercadoPagoConfigured || mercadoPagoAccessToken.trim() !== '') && (
                 <div>
                   <p className="text-xs font-semibold text-gray-500 mb-1.5">
-                    Segredo do webhook (Assinatura secreta)
+                    Segredo do webhook (Assinatura secreta) — obrigatório
                   </p>
                   <p className="text-xs text-gray-400 mb-2">
                     No painel do Mercado Pago: Suas integrações → sua aplicação → Webhooks →
@@ -570,13 +596,49 @@ export function SettingsPage() {
                       />
                       {!tenant?.mercadoPagoWebhookSecretConfigured && (
                         <p className="text-xs text-amber-600 bg-amber-50 rounded-lg p-2.5 mt-2">
-                          Ainda não configurado — pagamentos via Mercado Pago não confirmam sozinhos
+                          Ainda não configurado — os pagamentos online (Pix e cartão) ficam desativados
                           até isso ser preenchido.
                         </p>
                       )}
                     </>
                   )}
                 </div>
+              )}
+
+              <div>
+                <p className="text-xs font-semibold text-gray-500 mb-1.5">
+                  Chave pública (necessária para cartão online)
+                </p>
+                <p className="text-xs text-gray-400 mb-2">
+                  No painel do Mercado Pago: Suas integrações → sua aplicação → Credenciais → Chave
+                  pública (APP_USR-... em produção, TEST-... em teste). Não é um segredo: o cliente
+                  usa no navegador para digitar o cartão em campos seguros do Mercado Pago.
+                </p>
+                <input
+                  type="text"
+                  value={mercadoPagoPublicKey}
+                  onChange={(e) => {
+                    dirtyRef.current = true;
+                    setMercadoPagoPublicKey(e.target.value);
+                  }}
+                  placeholder="APP_USR-... ou TEST-..."
+                  className={INPUT}
+                />
+              </div>
+
+              <div className="text-xs flex flex-col gap-1">
+                <p className={tenant?.pixCheckoutOnline ? 'text-green-700' : 'text-gray-400'}>
+                  Pix online: {tenant?.pixCheckoutOnline ? 'ativo' : 'desativado (precisa de Access Token + segredo do webhook)'}
+                </p>
+                <p className={tenant?.cardCheckoutOnline ? 'text-green-700' : 'text-gray-400'}>
+                  Cartão online: {tenant?.cardCheckoutOnline ? 'ativo' : 'desativado (precisa também da chave pública)'}
+                </p>
+              </div>
+
+              {mercadoPagoError && (
+                <p role="alert" className="text-xs text-red-600 bg-red-50 rounded-lg p-2.5">
+                  {mercadoPagoError}
+                </p>
               )}
             </Card>
 

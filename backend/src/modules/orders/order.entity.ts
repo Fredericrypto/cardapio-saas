@@ -157,7 +157,9 @@ export class Order {
   paymentMethod: string | null; // dinheiro, pix, cartao, indefinido
 
   @Column({ name: 'payment_status', length: 20, default: 'pendente' })
-  paymentStatus: string; // pendente, pago, falhou
+  // pendente, processando (tentativa de cartão em andamento), recusado, pago, falhou,
+  // estornado, estorno_pendente (falhou estornar: o admin precisa agir), chargeback
+  paymentStatus: string;
 
   // Preenchidos só quando paymentMethod === 'pix' e o restaurante tem Pix
   // habilitado em Configurações — o payload fica CONGELADO no momento da
@@ -176,6 +178,12 @@ export class Order {
   // pela consulta direta de status.
   @Column({ name: 'mp_payment_id', type: 'varchar', length: 60, nullable: true })
   mpPaymentId: string | null;
+
+  // Quantas tentativas de pagamento por CARTÃO online este pedido já fez —
+  // trava contra "card testing" (alguém testando vários cartões num pedido).
+  // Ver MAX_CARD_ATTEMPTS em payments/mp-order-state.ts.
+  @Column({ name: 'card_payment_attempts', type: 'smallint', default: 0 })
+  cardPaymentAttempts: number;
 
   // Gorjeta escolhida pelo cliente no carrinho — só usada em pedidos
   // avulsos (balcão/entrega). Fica fora de `total` de propósito (mesmo

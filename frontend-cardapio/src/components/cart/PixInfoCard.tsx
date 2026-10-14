@@ -2,16 +2,28 @@ import { QrCode } from 'lucide-react';
 import { useI18n } from '../../i18n/I18nContext';
 import { formatBRL } from '../../lib/cartFormat';
 
+// online: Mercado Pago (QR logo após confirmar, confirmação automática);
+// qr: QR estático do restaurante (confirmação manual); info: só informativo.
+export type PixInfoVariant = 'online' | 'qr' | 'info';
+
 interface PixInfoCardProps {
   /** `displayTotal` já calculado no carrinho (centavos, cupom, cashback, taxa e gorjeta). */
   total: number;
+  variant: PixInfoVariant;
 }
 
 // Pix: só informa. NÃO existe chave, QR Code nem copia-e-cola aqui — o Pix de
 // verdade é gerado depois pelo PixWaitingPanel e a decisão de ser Pix real é
-// do backend (tenant.pixEnabled). Verde discreto, legível nos dois temas.
-export function PixInfoCard({ total }: PixInfoCardProps) {
+// do backend. O texto muda conforme o restaurante (variant). Verde discreto,
+// legível nos dois temas.
+export function PixInfoCard({ total, variant }: PixInfoCardProps) {
   const { t } = useI18n();
+  const info =
+    variant === 'online'
+      ? t('cartPayment.pixOnlineInfo')
+      : variant === 'qr'
+        ? t('cartPayment.pixQrInfo')
+        : t('cartPage.o_qr_code_do');
   return (
     <div className="rounded-2xl border p-5 bg-[#ECFDF5] border-[#A7F3D0] dark:bg-[#10251f] dark:border-[#1c4a3f]">
       <div className="flex items-center gap-3">
@@ -24,7 +36,7 @@ export function PixInfoCard({ total }: PixInfoCardProps) {
         <p className="text-[11px] font-medium text-[#047857] dark:text-[#6EE7B7]/80">{t('closingPaymentSheet.total')}</p>
         <p className="text-3xl font-light tabular-nums text-[#064E3B] dark:text-[#D1FAE5]">{formatBRL(total)}</p>
       </div>
-      <p className="mt-4 text-xs leading-relaxed text-[#047857] dark:text-[#A7F3D0]/90">{t('cartPage.o_qr_code_do')}</p>
+      <p className="mt-4 text-xs leading-relaxed text-[#047857] dark:text-[#A7F3D0]/90">{info}</p>
     </div>
   );
 }

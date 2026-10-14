@@ -18,6 +18,7 @@ import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { Tenant } from './tenant.entity';
 import { StorageService } from '../../common/services/storage.service';
 import { RequirePermission } from '../auth/decorators/require-permission.decorator';
+import { isCardOnlineActive, isPixOnlineActive } from '../payments/mp-activation';
 
 // mercadoPagoAccessTokenEncrypted/mercadoPagoWebhookSecretEncrypted
 // NUNCA saem daqui — nem criptografados. O frontend só precisa saber SE
@@ -26,10 +27,20 @@ import { RequirePermission } from '../auth/decorators/require-permission.decorat
 function toSafeTenant(tenant: Tenant) {
   const { mercadoPagoAccessTokenEncrypted, mercadoPagoWebhookSecretEncrypted, ...safeTenant } =
     tenant;
+  const presence = {
+    hasAccessToken: Boolean(mercadoPagoAccessTokenEncrypted),
+    hasWebhookSecret: Boolean(mercadoPagoWebhookSecretEncrypted),
+    hasPublicKey: Boolean(tenant.mercadoPagoPublicKey),
+  };
   return {
     ...safeTenant,
     mercadoPagoConfigured: Boolean(mercadoPagoAccessTokenEncrypted),
     mercadoPagoWebhookSecretConfigured: Boolean(mercadoPagoWebhookSecretEncrypted),
+    // Flags de checkout ONLINE (Fase A/B): o cardápio usa para mostrar o texto
+    // certo de Pix/cartão. A chave pública (`mercadoPagoPublicKey`) segue no
+    // objeto porque é pública por natureza.
+    pixCheckoutOnline: isPixOnlineActive(presence),
+    cardCheckoutOnline: isCardOnlineActive(presence),
   };
 }
 

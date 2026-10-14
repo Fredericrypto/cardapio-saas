@@ -1,11 +1,14 @@
 import { Injectable, Logger, BadGatewayException } from '@nestjs/common';
 import { createHmac, timingSafeEqual } from 'crypto';
+import { centsToMpAmount } from './mp-money';
 
 const MERCADOPAGO_API_BASE = 'https://api.mercadopago.com';
 
 export interface CreatePixPaymentParams {
   accessToken: string;
-  amount: number;
+  // CENTAVOS inteiros. A conversão para o decimal que a API do MP exige é
+  // feita aqui dentro, por `centsToMpAmount` (única função que faz isso).
+  amountCents: number;
   description: string;
   payerEmail: string;
   externalReference: string; // id do pedido, OU "mesa:<sessionId>" pro fechamento de mesa (ver TablesService.requestClosing) — usado pra casar o webhook com o destino certo
@@ -30,6 +33,46 @@ export interface MercadoPagoPixPayment {
   id: string; // id do pagamento no Mercado Pago
   status: string; // pending, approved, rejected, cancelled, etc.
   qrCode: string; // "Pix copia e cola"
+}
+
+export interface CreateCardPaymentParams {
+  accessToken: string;
+  amountCents: number; // CENTAVOS inteiros, sempre recalculado pelo backend a partir do pedido
+  cardToken: string; // gerado no navegador pelo SDK do MP — o número do cartão NUNCA chega aqui
+  paymentMethodId: string; // visa, master, elo...
+  issuerId: string | null;
+  installments: number;
+  description: string;
+  payerEmail: string;
+  payerIdentification: { type: string; number: string } | null;
+  externalReference: string; // id do pedido
+  idempotencyKey: string; // ver mp-idempotency.ts
+  notificationUrl?: string;
+  // Device id gerado pelo script de segurança do MP no navegador (antifraude).
+  deviceId?: string;
+}
+
+export interface MercadoPagoCardPayment {
+  id: string;
+  status: string;
+  statusDetail: string | null;
+  // Desafio 3DS pendente (status "pending" / "pending_challenge"): o frontend
+  // abre `externalResourceUrl` num iframe enviando `creq` por POST.
+  threeDs: { externalResourceUrl: string; creq: string } | null;
+}
+
+// Erro de REQUISIÇÃO (4xx do MP): token de cartão inválido/expirado, dado
+// faltando etc. Diferente de "pagamento recusado" (que é HTTP 201 com
+// status "rejected"). Nunca carrega dados de cartão: só códigos do MP.
+export class MercadoPagoRequestError extends Error {
+  constructor(
+    public readonly httpStatus: number,
+    public readonly causeCodes: string[],
+    message: string,
+  ) {
+    super(message);
+    this.name = 'MercadoPagoRequestError';
+  }
 }
 
 // Cliente HTTP direto pra API do Mercado Pago — sem depender do SDK
@@ -71,7 +114,7 @@ export class MercadoPagoService {
         'X-Idempotency-Key': params.idempotencyKey ?? params.externalReference,
       },
       body: JSON.stringify({
-        transaction_amount: Number(params.amount.toFixed(2)),
+        transaction_amount: centsToMpAmount(params.amountCents),
         payment_method_id: 'pix',
         description: params.description,
         external_reference: params.externalReference,
@@ -110,7 +153,7 @@ export class MercadoPagoService {
   async getPaymentStatus(
     accessToken: string,
     paymentId: string,
-  ): Promise<{ status: string; externalReference: string | null }> {
+  ): Promise<{ status: string; statusDetail: string | null; externalReference: string | null }> {
     const response = await fetch(`${MERCADOPAGO_API_BASE}/v1/payments/${paymentId}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
@@ -123,7 +166,92 @@ export class MercadoPagoService {
       throw new BadGatewayException('Não foi possível confirmar o status do pagamento agora.');
     }
 
-    return { status: data.status, externalReference: data.external_reference ?? null };
+    return {
+      status: data.status,
+      statusDetail: data.status_detail ?? null,
+      externalReference: data.external_reference ?? null,
+    };
+  }
+
+  // Cobrança por CARTÃO com card token (Checkout Transparente). Segurança:
+  //  - o valor vem em centavos, calculado pelo backend a partir do pedido;
+  //  - o token é de uso único e nunca é logado;
+  //  - `three_d_secure_mode: optional` pede o desafio 3DS quando o emissor exige.
+  async createCardPayment(params: CreateCardPaymentParams): Promise<MercadoPagoCardPayment> {
+    const issuer = params.issuerId ? Number(params.issuerId) : NaN;
+    const response = await fetch(`${MERCADOPAGO_API_BASE}/v1/payments`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${params.accessToken}`,
+        'Content-Type': 'application/json',
+        'X-Idempotency-Key': params.idempotencyKey,
+        ...(params.deviceId ? { 'X-meli-session-id': params.deviceId } : {}),
+      },
+      body: JSON.stringify({
+        transaction_amount: centsToMpAmount(params.amountCents),
+        token: params.cardToken,
+        description: params.description,
+        installments: params.installments,
+        payment_method_id: params.paymentMethodId,
+        ...(Number.isFinite(issuer) ? { issuer_id: issuer } : {}),
+        external_reference: params.externalReference,
+        three_d_secure_mode: 'optional',
+        ...(params.notificationUrl ? { notification_url: params.notificationUrl } : {}),
+        payer: {
+          email: params.payerEmail,
+          ...(params.payerIdentification ? { identification: params.payerIdentification } : {}),
+        },
+      }),
+    });
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      // Log SEM o corpo enviado (tem o token) — só a resposta do MP.
+      this.logger.error(
+        `Mercado Pago recusou a requisição de pagamento por cartão (HTTP ${response.status}): ${JSON.stringify(data)}`,
+      );
+      if (response.status >= 400 && response.status < 500) {
+        const codes: string[] = Array.isArray(data?.cause)
+          ? data.cause.map((c: { code?: string | number }) => String(c?.code ?? ''))
+          : [];
+        throw new MercadoPagoRequestError(response.status, codes, String(data?.message ?? 'bad_request'));
+      }
+      throw new BadGatewayException('Não foi possível processar o cartão agora. Tente novamente em instantes.');
+    }
+
+    const threeDsInfo = data?.three_ds_info;
+    const threeDs =
+      threeDsInfo?.external_resource_url && threeDsInfo?.creq
+        ? { externalResourceUrl: String(threeDsInfo.external_resource_url), creq: String(threeDsInfo.creq) }
+        : null;
+
+    return {
+      id: String(data.id),
+      status: String(data.status),
+      statusDetail: data.status_detail ?? null,
+      threeDs,
+    };
+  }
+
+  // Estorno TOTAL de um pagamento aprovado (Fase C). Idempotente via
+  // X-Idempotency-Key (ver refundIdempotencyKey). Lança em qualquer falha —
+  // quem chama decide (marca `estorno_pendente` e avisa o admin).
+  async refundPayment(accessToken: string, paymentId: string, idempotencyKey: string): Promise<void> {
+    const response = await fetch(`${MERCADOPAGO_API_BASE}/v1/payments/${paymentId}/refunds`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        'X-Idempotency-Key': idempotencyKey,
+      },
+      body: JSON.stringify({}),
+    });
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      this.logger.error(`Falha ao estornar pagamento ${paymentId} (HTTP ${response.status}): ${JSON.stringify(data)}`);
+      throw new BadGatewayException('Não foi possível estornar o pagamento agora.');
+    }
   }
 
   // Cancela uma cobrança Pix ainda pendente (28/09) — chamado quando o

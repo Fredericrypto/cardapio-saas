@@ -109,6 +109,13 @@ export class Tenant {
   @Column({ name: 'mercado_pago_webhook_secret_encrypted', type: 'text', nullable: true })
   mercadoPagoWebhookSecretEncrypted: string | null;
 
+  // Chave PÚBLICA do Mercado Pago (APP_USR-... / TEST-...). Não é segredo — é
+  // feita para ir ao navegador: o SDK dela a usa para gerar o card token do
+  // cartão sem o número passar pelo nosso servidor. Por isso fica em texto e
+  // sai na rota pública do cardápio. Cada restaurante usa a SUA.
+  @Column({ name: 'mercado_pago_public_key', type: 'varchar', length: 255, nullable: true })
+  mercadoPagoPublicKey: string | null;
+
   // Tempo (em minutos) que o cliente tem, depois de escanear o QR da
   // mesa, pra fazer o PRIMEIRO pedido antes da sessão expirar sozinha.
   // NULL = desativado (sessão nunca expira automaticamente — era o

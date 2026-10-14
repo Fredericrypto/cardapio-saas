@@ -33,6 +33,11 @@ export interface Tenant {
   pixEnabled: boolean;
   mercadoPagoConfigured: boolean;
   mercadoPagoWebhookSecretConfigured: boolean;
+  // Chave PÚBLICA do Mercado Pago (não é segredo; o cardápio a usa no navegador
+  // para tokenizar o cartão) e se o checkout online está ativo (calculado no backend).
+  mercadoPagoPublicKey: string | null;
+  pixCheckoutOnline?: boolean;
+  cardCheckoutOnline?: boolean;
   tableSessionTimeoutMinutes: number | null;
   // Parâmetros financeiros da aba Análise (em %).
   defaultCmvPercent?: number;

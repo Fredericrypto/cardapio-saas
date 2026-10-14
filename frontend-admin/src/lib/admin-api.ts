@@ -47,6 +47,8 @@ export async function updateMyTenant(
   payload: Partial<Tenant> & {
     mercadoPagoAccessToken?: string;
     mercadoPagoWebhookSecret?: string;
+    // Texto vazio remove a chave.
+    mercadoPagoPublicKey?: string;
   },
 ): Promise<Tenant> {
   const { data } = await api.patch<Tenant>('/tenants/me', payload);

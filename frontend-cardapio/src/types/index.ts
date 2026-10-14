@@ -15,6 +15,13 @@ export interface Tenant {
   messengerUsername: string | null;
   gmailAddress: string | null;
   pixEnabled: boolean;
+  // Pagamento ONLINE (Mercado Pago): calculado pelo backend (token + segredo do
+  // webhook [+ chave pública]). A chave pública não é segredo: o SDK dela a usa
+  // no navegador para gerar o card token. Opcionais por compatibilidade.
+  pixCheckoutOnline?: boolean;
+  cardCheckoutOnline?: boolean;
+  mercadoPagoPublicKey?: string | null;
+  pixKey?: string | null;
 }
 
 // Uma loja física (filial) — endereço, horário, entrega. O cliente
@@ -208,6 +215,7 @@ export interface CreatedOrder {
   promotionTitlesSnapshot?: string[] | null;
   pixPayload: string | null;
   pixExpiresAt: string | null;
+  paymentMethod?: string | null;
 }
 
 export interface DeliveryAddressInput {

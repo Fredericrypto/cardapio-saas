@@ -18,6 +18,7 @@ import { PushService } from '../push/push.service';
 import { MercadoPagoService } from '../payments/mercadopago.service';
 import { decryptSecret } from '../../common/utils/encryption';
 import { toCents, fromCents } from '../../common/utils/money';
+import { isPixOnlineActive } from '../payments/mp-activation';
 import { computeIsOpenNow } from '../../common/utils/schedule';
 import { signReceipt, verifyReceiptSignature, formatVerificationCode, parseVerificationCode } from '../../common/utils/receipt-signature';
 
@@ -1154,7 +1155,15 @@ export class TablesService {
       const tenant = await this.orderRepo.manager
         .getRepository(Tenant)
         .findOne({ where: { id: tenantId } });
-      if (remainingCents > 0 && tenant?.mercadoPagoAccessTokenEncrypted) {
+      if (
+        remainingCents > 0 &&
+        tenant?.mercadoPagoAccessTokenEncrypted &&
+        isPixOnlineActive({
+          hasAccessToken: true,
+          hasWebhookSecret: Boolean(tenant.mercadoPagoWebhookSecretEncrypted),
+          hasPublicKey: Boolean(tenant.mercadoPagoPublicKey),
+        })
+      ) {
         const customer = customerId
           ? await this.orderRepo.manager.getRepository(Customer).findOne({ where: { id: customerId } })
           : null;
@@ -1162,7 +1171,7 @@ export class TablesService {
         const publicUrl = process.env.API_PUBLIC_URL;
         const payment = await this.mercadoPagoService.createPixPayment({
           accessToken: decryptSecret(tenant.mercadoPagoAccessTokenEncrypted),
-          amount: fromCents(remainingCents),
+          amountCents: remainingCents,
           description: `Conta - Mesa ${session.tableId} - ${tenant.name}`,
           payerEmail: customer?.email ?? `mesa-${session.id}@guest.cardapiosaas.com`,
           // Prefixo "mesa:" distingue de um externalReference de PEDIDO

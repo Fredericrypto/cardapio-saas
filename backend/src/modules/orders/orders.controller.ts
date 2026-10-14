@@ -11,7 +11,7 @@ import {
   ForbiddenException,
   UseGuards,
 } from '@nestjs/common';
-import { SkipThrottle } from '@nestjs/throttler';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 import { CurrentCustomer } from '../../common/decorators/current-customer.decorator';
 import type { RequestCustomer } from '../../common/decorators/current-customer.decorator';
@@ -22,6 +22,7 @@ import { TablesService } from '../tables/tables.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { ConcludeOrderDto } from './dto/conclude-order.dto';
+import { PayCardDto } from './dto/pay-card.dto';
 import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 
 @Controller('orders')
@@ -111,6 +112,22 @@ export class OrdersController {
   @Get('public/:tenantId/:id/pix-status')
   async checkPixStatus(@Param('tenantId') tenantId: string, @Param('id') id: string) {
     return this.ordersService.checkPixStatus(tenantId, id);
+  }
+
+  // Pagamento por CARTÃO online (Mercado Pago). Sem login (checkout convidado),
+  // o id do pedido é um UUID aleatório. Recebe só o card token gerado no
+  // navegador — o número do cartão nunca passa por aqui — e o valor cobrado é
+  // sempre o do pedido gravado. Limite próprio e BEM mais baixo que o global
+  // (300/min) contra "card testing": 8 requisições por minuto por IP; além
+  // disso cada pedido aceita no máximo MAX_CARD_ATTEMPTS tentativas.
+  @Post('public/:tenantId/:id/pay-card')
+  @Throttle({ default: { limit: 8, ttl: 60000 } })
+  async payWithCard(
+    @Param('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @Body() dto: PayCardDto,
+  ) {
+    return this.ordersService.payWithCard(tenantId, id, dto);
   }
 
   // Webhook do Mercado Pago — URL configurada como notification_url na

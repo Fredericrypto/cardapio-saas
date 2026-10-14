@@ -168,7 +168,11 @@ export function OrderSuccessScreen({
         {pixState === 'confirmed' ? t('cartPage.pagamento_confirmado') : t('cartPage.pedido_enviado')}
       </h1>
       <p className={`text-sm mt-1 text-center ${CART_TEXT_BODY}`}>
-        {pixState === 'confirmed' ? t('cartPage.seu_pix_foi_confirmado') : t('cartPage.o_estabelecimento_ja_recebeu')}
+        {pixState === 'confirmed'
+          ? orderSnapshot.paymentMethod === 'cartao'
+            ? t('cartPayment.cardConfirmed')
+            : t('cartPage.seu_pix_foi_confirmado')
+          : t('cartPage.o_estabelecimento_ja_recebeu')}
       </p>
 
       <div className={`w-full rounded-2xl border mt-5 overflow-hidden ${MENU_SURFACE} ${MENU_DIVIDER}`}>

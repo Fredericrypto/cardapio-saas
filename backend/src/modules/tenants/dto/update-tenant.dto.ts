@@ -9,6 +9,8 @@ import {
   Max,
   Matches,
   IsIn,
+  MaxLength,
+  ValidateIf,
 } from 'class-validator';
 
 export class UpdateTenantDto {
@@ -92,6 +94,16 @@ export class UpdateTenantDto {
   @IsOptional()
   @IsString()
   mercadoPagoWebhookSecret?: string;
+
+  // Chave pública do Mercado Pago (APP_USR-... em produção, TEST-... em
+  // sandbox). String vazia remove. Só valida o formato quando preenchida.
+  @ValidateIf((o: UpdateTenantDto) => typeof o.mercadoPagoPublicKey === 'string' && o.mercadoPagoPublicKey !== '')
+  @IsString()
+  @MaxLength(255)
+  @Matches(/^(APP_USR|TEST)-[A-Za-z0-9-]{8,}$/, {
+    message: 'Chave pública do Mercado Pago inválida (deve começar com APP_USR- ou TEST-).',
+  })
+  mercadoPagoPublicKey?: string;
 
   // Minutos que o cliente tem pra fazer o primeiro pedido depois de
   // escanear o QR da mesa, antes da sessão expirar sozinha. `null`

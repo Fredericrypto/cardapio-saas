@@ -118,8 +118,59 @@ export async function createOrder(
 export async function checkPixStatus(
   tenantId: string,
   orderId: string,
-): Promise<{ status: CreatedOrder['status']; paymentStatus: string; pixExpiresAt: string | null }> {
+): Promise<{
+  status: CreatedOrder['status'];
+  paymentStatus: string;
+  pixExpiresAt: string | null;
+  // Só na consulta que percebeu a recusa do cartão (ver CardRejectionCode).
+  rejectionCode?: CardRejectionCode | null;
+}> {
   const { data } = await api.get(`/orders/public/${tenantId}/${orderId}/pix-status`);
+  return data;
+}
+
+export type CardRejectionCode =
+  | 'insufficient_funds'
+  | 'bad_card_data'
+  | 'call_issuer'
+  | 'card_disabled'
+  | 'max_attempts'
+  | 'duplicated'
+  | 'high_risk'
+  | 'invalid_installments'
+  | 'other';
+
+// Corpo de POST /orders/public/:tenantId/:id/pay-card. Só o card token do SDK
+// do Mercado Pago — o número do cartão NUNCA passa por aqui — e nenhum valor:
+// o backend cobra sempre o total gravado no pedido.
+export interface PayCardPayload {
+  token: string;
+  paymentMethodId: string;
+  issuerId?: string;
+  installments?: number;
+  payerEmail?: string;
+  identificationType?: string;
+  identificationNumber?: string;
+  deviceId?: string;
+}
+
+export interface PayCardResult {
+  status: 'approved' | 'processing' | 'rejected';
+  orderStatus: CreatedOrder['status'];
+  paymentStatus: string;
+  rejectionCode: CardRejectionCode | null;
+  message: string | null;
+  threeDs: { externalResourceUrl: string; creq: string } | null;
+  attemptsLeft: number;
+  orderCancelled: boolean;
+}
+
+export async function payOrderWithCard(
+  tenantId: string,
+  orderId: string,
+  payload: PayCardPayload,
+): Promise<PayCardResult> {
+  const { data } = await api.post<PayCardResult>(`/orders/public/${tenantId}/${orderId}/pay-card`, payload);
   return data;
 }
 

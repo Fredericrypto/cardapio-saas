@@ -53,6 +53,7 @@ import { CartSummaryPanel } from '../components/cart/CartSummaryPanel';
 import { CartField, CartSelectField, CartTextArea, CartTextField } from '../components/cart/CartField';
 import { CartSegmented } from '../components/cart/CartSegmented';
 import { PaymentMethodCard } from '../components/cart/PaymentMethodCard';
+import { CardPaymentPanel } from '../components/cart/CardPaymentPanel';
 import { RemoveItemModal } from '../components/cart/RemoveItemModal';
 import { OrderCancelledScreen, OrderSuccessScreen, PixFailedScreen } from '../components/cart/OrderResultScreens';
 import type { OrderSnapshot } from '../components/cart/orderSnapshot';
@@ -641,6 +642,33 @@ export function CartPage() {
       );
     }
 
+    if (
+      successOrder.status === 'aguardando_pagamento' &&
+      pixState === 'waiting' &&
+      successOrder.paymentMethod === 'cartao'
+    ) {
+      // Cartão online (Mercado Pago): o pagamento acontece agora, nos campos
+      // seguros do SDK. O valor aqui é só para exibir; o backend cobra o total
+      // gravado no pedido (em centavos, sem confiar neste número).
+      const displayAmount =
+        (Math.round(Number(successOrder.total ?? 0) * 100) + Math.round(orderSnapshot.tipAmount * 100)) / 100;
+      return (
+        <CartShell {...shellProps}>
+          <CardPaymentPanel
+            tenant={tenant}
+            order={successOrder}
+            displayAmount={displayAmount}
+            onConfirmed={() => setPixState('confirmed')}
+            onExpired={() => setPixState('expired')}
+            onBackToMenu={() => {
+              setSuccessOrder(null);
+              goToMenu();
+            }}
+          />
+        </CartShell>
+      );
+    }
+
     if (successOrder.status === 'aguardando_pagamento' && pixState === 'waiting') {
       return (
         <CartShell {...shellProps}>
@@ -885,7 +913,10 @@ export function CartPage() {
       method={paymentMethod}
       total={displayTotal}
       orderType={orderType === 'entrega' ? 'entrega' : 'balcao'}
-      primaryColor={tenant.primaryColor}
+      cardOnline={Boolean(tenant.cardCheckoutOnline)}
+      pixVariant={
+        tenant.pixCheckoutOnline ? 'online' : tenant.pixEnabled && tenant.pixKey ? 'qr' : 'info'
+      }
     />
   ) : null;
 
@@ -1287,7 +1318,11 @@ export function CartPage() {
           {showPaymentStep && (
             <div className={`${CART_CARD} flex flex-col gap-4`}>
               <p className={`text-xs ${CART_TEXT_BODY}`}>
-                {t('cartPage.como_voce_prefere_pagar')} {orderType === 'entrega' ? t('cartPage.na_entrega') : t('cartPage.na_retirada')}{t('cartPage.ainda_nao_processamos_pagamento')}
+                {/* Com pagamento online ativo, a frase antiga ("ainda não processamos
+                    pagamento") seria falsa: cada método explica o seu fluxo no card. */}
+                {tenant.cardCheckoutOnline || tenant.pixCheckoutOnline
+                  ? t('cartPayment.chooseMethod')
+                  : `${t('cartPage.como_voce_prefere_pagar')} ${orderType === 'entrega' ? t('cartPage.na_entrega') : t('cartPage.na_retirada')}${t('cartPage.ainda_nao_processamos_pagamento')}`}
               </p>
 
               <div role="radiogroup" aria-label={t('receiptContent.pagamento')} className="grid grid-cols-3 gap-2">

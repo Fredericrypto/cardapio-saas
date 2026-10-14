@@ -623,6 +623,20 @@ function OrderRow({
         </p>
       )}
 
+      {order.paymentStatus === 'estorno_pendente' && (
+        <p className={`mb-1.5 rounded-lg px-2 py-1.5 text-xs font-medium ${dark ? 'bg-red-500/10 border border-red-500/20 text-red-300' : 'bg-red-50 border border-red-100 text-red-700'}`}>
+          Estorno pendente: não foi possível devolver o pagamento automaticamente. Estorne manualmente no painel do Mercado Pago.
+        </p>
+      )}
+      {order.paymentStatus === 'estornado' && (
+        <p className={`mb-1.5 text-xs ${dark ? 'text-gray-400' : 'text-gray-500'}`}>Pagamento estornado ao cliente.</p>
+      )}
+      {order.paymentStatus === 'chargeback' && (
+        <p className={`mb-1.5 rounded-lg px-2 py-1.5 text-xs font-medium ${dark ? 'bg-red-500/10 border border-red-500/20 text-red-300' : 'bg-red-50 border border-red-100 text-red-700'}`}>
+          Chargeback: o cliente contestou este pagamento no banco.
+        </p>
+      )}
+
       {order.status === 'aguardando_pagamento' && order.pixPayload ? (
         <PixWaitingPanel order={order} actions={actions} />
       ) : (
@@ -650,7 +664,9 @@ function OrderRow({
             <span
               className={`whitespace-nowrap text-xs font-semibold px-2.5 py-1.5 rounded-lg ${STATUS_COLORS[order.status]}`}
             >
-              {STATUS_LABELS[order.status]}
+              {order.status === 'aguardando_pagamento' && order.paymentMethod === 'cartao'
+                ? 'Aguardando cartão'
+                : STATUS_LABELS[order.status]}
             </span>
             {/* "Receber pagamento" registra PAGAMENTO — nunca aparece pra
                 pedido de mesa. Mesa paga uma vez só, pela conta

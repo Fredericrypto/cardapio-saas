@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Tenant } from './tenant.entity';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { encryptSecret } from '../../common/utils/encryption';
+import { mpConfigError } from '../payments/mp-activation';
 
 @Injectable()
 export class TenantsService {
@@ -37,7 +38,7 @@ export class TenantsService {
     // Esses dois nunca passam pelo Object.assign genérico — precisam ser
     // criptografados antes de ir pro banco, e nomes de coluna diferentes
     // do nome no DTO (accessToken vs accessTokenEncrypted).
-    const { mercadoPagoAccessToken, mercadoPagoWebhookSecret, ...rest } = dto;
+    const { mercadoPagoAccessToken, mercadoPagoWebhookSecret, mercadoPagoPublicKey, ...rest } = dto;
     Object.assign(tenant, rest);
 
     if (mercadoPagoAccessToken !== undefined) {
@@ -49,6 +50,25 @@ export class TenantsService {
       tenant.mercadoPagoWebhookSecretEncrypted = mercadoPagoWebhookSecret
         ? encryptSecret(mercadoPagoWebhookSecret)
         : null;
+    }
+    if (mercadoPagoPublicKey !== undefined) {
+      tenant.mercadoPagoPublicKey = mercadoPagoPublicKey.trim() || null;
+    }
+
+    // Consistência da configuração do Mercado Pago: só valida quando ESTA
+    // requisição mexeu em algum campo dele (assim restaurantes antigos, com
+    // token e sem segredo, ainda conseguem salvar outras configurações).
+    const touchedMercadoPago =
+      mercadoPagoAccessToken !== undefined ||
+      mercadoPagoWebhookSecret !== undefined ||
+      mercadoPagoPublicKey !== undefined;
+    if (touchedMercadoPago) {
+      const configError = mpConfigError({
+        hasAccessToken: Boolean(tenant.mercadoPagoAccessTokenEncrypted),
+        hasWebhookSecret: Boolean(tenant.mercadoPagoWebhookSecretEncrypted),
+        hasPublicKey: Boolean(tenant.mercadoPagoPublicKey),
+      });
+      if (configError) throw new BadRequestException(configError);
     }
 
     return this.tenantRepo.save(tenant);

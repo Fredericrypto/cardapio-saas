@@ -7,7 +7,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
-import { Repository, DataSource, EntityManager } from 'typeorm';
+import { Repository, DataSource, EntityManager, In } from 'typeorm';
 import { Order } from './order.entity';
 import { validateGuestName } from '../../common/utils/guest-name';
 import { OrderItem } from './order-item.entity';
@@ -25,7 +25,21 @@ import { computeIsOpenNow } from '../../common/utils/schedule';
 import { buildPixTxId, generatePixPayload } from '../../common/utils/pix';
 import { signReceipt, verifyReceiptSignature, formatVerificationCode, parseVerificationCode } from '../../common/utils/receipt-signature';
 import { decryptSecret } from '../../common/utils/encryption';
-import { MercadoPagoService } from '../payments/mercadopago.service';
+import { MercadoPagoService, MercadoPagoRequestError } from '../payments/mercadopago.service';
+import { chargeCents } from '../payments/mp-money';
+import { classifyMpStatus, classifyRejection, rejectionMessage } from '../payments/mp-status';
+import type { CardRejectionCode } from '../payments/mp-status';
+import { cardIdempotencyKey, pixOrderIdempotencyKey, refundIdempotencyKey } from '../payments/mp-idempotency';
+import {
+  CARD_PAYMENT_WINDOW_MS,
+  MAX_CARD_ATTEMPTS,
+  decideAfterExistingPayment,
+  decideCardAttempt,
+  planPaymentEvent,
+} from '../payments/mp-order-state';
+import type { CardAttemptBlock, OrderPaymentSnapshot } from '../payments/mp-order-state';
+import { isCardOnlineActive, isPixOnlineActive } from '../payments/mp-activation';
+import { PayCardDto } from './dto/pay-card.dto';
 import { DeliveryService, DeliveryQuoteResult } from '../delivery/delivery.service';
 import { PromotionsService } from '../promotions/promotions.service';
 import type { CartLine } from '../promotions/promotions.service';
@@ -40,6 +54,30 @@ import { TablesService } from '../tables/tables.service';
 // manual dos dois lados, então o admin precisa estar de olho no painel
 // durante essa janela.
 const PIX_PAYMENT_WINDOW_MS = 6 * 60 * 1000;
+
+// Resposta de POST /orders/public/:tenantId/:id/pay-card.
+export interface PayCardResult {
+  // approved: pago; processing: em análise ou 3DS pendente (o cliente continua
+  // consultando o status); rejected: recusado (pode tentar de novo se sobrar tentativa).
+  status: 'approved' | 'processing' | 'rejected';
+  orderStatus: string;
+  paymentStatus: string;
+  rejectionCode: CardRejectionCode | null;
+  message: string | null;
+  threeDs: { externalResourceUrl: string; creq: string } | null;
+  attemptsLeft: number;
+  // true quando o pedido foi cancelado por esgotar as tentativas.
+  orderCancelled: boolean;
+}
+
+const CARD_BLOCK_MESSAGES: Record<CardAttemptBlock, string> = {
+  not_card: 'Este pedido não é de pagamento por cartão.',
+  already_paid: 'Este pedido já foi pago.',
+  not_awaiting: 'Este pedido não está mais aguardando pagamento.',
+  expired: 'O tempo para pagar este pedido acabou. Faça um novo pedido.',
+  in_flight: 'Já existe um pagamento sendo processado para este pedido. Aguarde alguns instantes.',
+  too_many_attempts: 'Número máximo de tentativas atingido para este pedido.',
+};
 
 @Injectable()
 export class OrdersService {
@@ -158,6 +196,56 @@ export class OrdersService {
       await this.cashbackService.reverseConsumptionForOrder(this.orderRepo.manager, order.tenantId, order.id);
       await this.cashbackService.reverseCreditForOrder(this.orderRepo.manager, order.tenantId, order.id);
     }
+    // Estorno AUTOMÁTICO (Fase C): pedido pago online (Pix/cartão pelo Mercado
+    // Pago) que é cancelado devolve o dinheiro ao cliente. Se o estorno falhar
+    // (token revogado, MP fora do ar), fica `estorno_pendente` para o admin
+    // resolver — nunca some em silêncio. O chamador salva o pedido em seguida.
+    if (order.paymentStatus === 'pago' && order.mpPaymentId) {
+      const refunded = await this.refundPaymentQuietly(
+        order.tenantId,
+        order.mpPaymentId,
+        `pedido ${order.id} cancelado`,
+      );
+      order.paymentStatus = refunded ? 'estornado' : 'estorno_pendente';
+    }
+  }
+
+  // Estorno total no Mercado Pago, sem nunca lançar (devolve true se o
+  // dinheiro foi devolvido). Idempotente: a chave de idempotência é fixa por
+  // pagamento e, se a chamada falhar, confere se o pagamento já consta como
+  // estornado (ex.: estornado antes no painel do MP) antes de desistir.
+  private async refundPaymentQuietly(tenantId: string, mpPaymentId: string, context: string): Promise<boolean> {
+    try {
+      const tenant = await this.tenantRepo.findOne({ where: { id: tenantId } });
+      if (!tenant?.mercadoPagoAccessTokenEncrypted) {
+        this.logger.error(`ESTORNO PENDENTE (${context}): restaurante sem access token do Mercado Pago.`);
+        return false;
+      }
+      const accessToken = decryptSecret(tenant.mercadoPagoAccessTokenEncrypted);
+      try {
+        await this.mercadoPagoService.refundPayment(accessToken, mpPaymentId, refundIdempotencyKey(mpPaymentId));
+        return true;
+      } catch (refundErr) {
+        const current = await this.mercadoPagoService.getPaymentStatus(accessToken, mpPaymentId);
+        if (current.status === 'refunded') return true;
+        throw refundErr;
+      }
+    } catch (err) {
+      this.logger.error(`ESTORNO PENDENTE (${context}) do pagamento ${mpPaymentId}: ${err}`);
+      return false;
+    }
+  }
+
+  // Transição ATÔMICA aguardando_pagamento -> pendente/pago. Devolve true só
+  // para UM concorrente (webhook, polling do cliente, polling do painel e o
+  // botão do admin podem chegar juntos): quem ganha credita cashback e notifica;
+  // quem perde não faz nada. É o mesmo padrão do fechamento de mesa.
+  private async claimPaidTransition(orderId: string, tenantId: string): Promise<boolean> {
+    const result = await this.orderRepo.update(
+      { id: orderId, tenantId, status: 'aguardando_pagamento' },
+      { status: 'pendente', paymentStatus: 'pago' },
+    );
+    return (result.affected ?? 0) === 1;
   }
 
   // Chamado nos 4 pontos onde um pedido vira "pago de verdade": aqui e
@@ -432,7 +520,7 @@ export class OrdersService {
     // webhook ter chegado (essencial em dev local; rede de segurança em
     // produção).
     const pendingMpOrders = orders.filter(
-      (o) => o.status === 'aguardando_pagamento' && o.mpPaymentId,
+      (o) => o.status === 'aguardando_pagamento' && o.mpPaymentId && o.paymentStatus !== 'recusado',
     );
     if (pendingMpOrders.length > 0) {
       const tenant = await this.tenantRepo.findOne({ where: { id: tenantId } });
@@ -445,7 +533,7 @@ export class OrdersService {
               accessToken,
               order.mpPaymentId!,
             );
-            await this.applyMercadoPagoStatus(order, status);
+            await this.applyMercadoPagoStatus(order, status, order.mpPaymentId);
             if (order.status !== 'aguardando_pagamento') {
               changedOrders.push(order);
             }
@@ -471,7 +559,7 @@ export class OrdersService {
     );
     if (expiredOrders.length > 0) {
       for (const order of expiredOrders) {
-        await this.markCancelled(order, 'Pix expirado sem pagamento');
+        await this.markCancelled(order, this.expiryReason(order));
         order.paymentStatus = 'falhou';
         await this.cancelGatewayPaymentQuietly(tenantId, order.mpPaymentId);
       }
@@ -906,9 +994,23 @@ export class OrdersService {
       const tipCentsForPix =
         dto.orderType !== 'mesa' ? toCents(dto.tipAmount ?? 0) : 0;
       const isPixOrder = dto.orderType !== 'mesa' && dto.paymentMethod === 'pix';
-      const usesMercadoPago = isPixOrder && Boolean(tenant.mercadoPagoAccessTokenEncrypted);
-      const usesStaticPixQR = isPixOrder && !usesMercadoPago && tenant.pixEnabled && Boolean(tenant.pixKey);
+      const isCardOrder = dto.orderType !== 'mesa' && dto.paymentMethod === 'cartao';
+      // Valor a cobrar online, em CENTAVOS inteiros: total (já líquido de
+      // promoção, taxa e cashback) + gorjeta. Nada de somar decimais.
+      const onlineChargeCents = chargeCents(totalCents, tipCentsForPix);
+      const mpPresence = {
+        hasAccessToken: Boolean(tenant.mercadoPagoAccessTokenEncrypted),
+        hasWebhookSecret: Boolean(tenant.mercadoPagoWebhookSecretEncrypted),
+        hasPublicKey: Boolean(tenant.mercadoPagoPublicKey),
+      };
+      // Online só liga com token E segredo do webhook (e chave pública no
+      // cartão), e só quando há valor a cobrar (total 0 = pago com cashback).
+      const usesMercadoPago = isPixOrder && isPixOnlineActive(mpPresence) && onlineChargeCents > 0;
+      const usesCardCheckout = isCardOrder && isCardOnlineActive(mpPresence) && onlineChargeCents > 0;
+      const usesStaticPixQR =
+        isPixOrder && !usesMercadoPago && !isPixOnlineActive(mpPresence) && tenant.pixEnabled && Boolean(tenant.pixKey);
       const usesRealPixCheckout = usesMercadoPago || usesStaticPixQR;
+      const awaitsOnlinePayment = usesRealPixCheckout || usesCardCheckout;
 
       const order = manager.create(Order, {
         tenantId,
@@ -934,13 +1036,17 @@ export class OrdersService {
         deliveryDistanceKm: deliveryQuote ? deliveryQuote.distanceKm : null,
         deliveryAddressPrecise: deliveryQuote ? deliveryQuote.precise : null,
         cashbackUsed: fromCents(cashbackUsedCents),
-        status: usesRealPixCheckout ? 'aguardando_pagamento' : 'pendente',
+        status: awaitsOnlinePayment ? 'aguardando_pagamento' : 'pendente',
         // Só guarda a intenção de pagamento do cliente pra mesa nunca —
         // lá quem define é o admin ao fechar a conta.
         paymentMethod: dto.orderType !== 'mesa' ? dto.paymentMethod ?? null : null,
         tipAmount: dto.orderType !== 'mesa' ? dto.tipAmount ?? 0 : 0,
         paymentStatus: 'pendente',
-        pixExpiresAt: usesRealPixCheckout ? new Date(Date.now() + PIX_PAYMENT_WINDOW_MS) : null,
+        // (a coluna se chama pix_expires_at por herança: vale para o prazo de
+        // pagamento online de Pix E de cartão)
+        pixExpiresAt: awaitsOnlinePayment
+          ? new Date(Date.now() + (usesCardCheckout ? CARD_PAYMENT_WINDOW_MS : PIX_PAYMENT_WINDOW_MS))
+          : null,
       });
       const savedOrder = await manager.save(order);
 
@@ -949,7 +1055,6 @@ export class OrdersService {
       // esse valor pra sempre — o QR nunca muda de valor debaixo do
       // cliente mesmo que o pedido seja editado depois por algum motivo.
       if (usesMercadoPago) {
-        const amount = fromCents(totalCents) + fromCents(tipCentsForPix);
         // Sem API_PUBLIC_URL configurada (ex: rodando só em localhost),
         // não tem como o Mercado Pago alcançar um webhook nosso mesmo —
         // nesse caso simplesmente não mandamos notification_url nenhuma,
@@ -958,7 +1063,8 @@ export class OrdersService {
         const publicUrl = process.env.API_PUBLIC_URL;
         const payment = await this.mercadoPagoService.createPixPayment({
           accessToken: decryptSecret(tenant.mercadoPagoAccessTokenEncrypted!),
-          amount,
+          amountCents: onlineChargeCents,
+          idempotencyKey: pixOrderIdempotencyKey(savedOrder.id),
           description: `Pedido ${tenant.name}`,
           payerEmail: customerEmail ?? `pedido-${savedOrder.id}@guest.cardapiosaas.com`,
           externalReference: savedOrder.id,
@@ -975,7 +1081,7 @@ export class OrdersService {
           pixKey: tenant.pixKey!,
           merchantName: tenant.name,
           merchantCity: tenant.pixMerchantCity || location.address || 'BRASIL',
-          amount: fromCents(totalCents) + fromCents(tipCentsForPix),
+          amount: fromCents(onlineChargeCents),
           txId: buildPixTxId(savedOrder.id),
         });
         await manager.save(savedOrder);
@@ -1132,7 +1238,13 @@ export class OrdersService {
   async checkPixStatus(
     tenantId: string,
     id: string,
-  ): Promise<{ status: string; paymentStatus: string; pixExpiresAt: Date | null }> {
+  ): Promise<{
+    status: string;
+    paymentStatus: string;
+    pixExpiresAt: Date | null;
+    // Preenchido só na consulta em que a recusa do cartão foi percebida.
+    rejectionCode: CardRejectionCode | null;
+  }> {
     const order = await this.orderRepo.findOne({ where: { id, tenantId } });
     if (!order) {
       throw new NotFoundException('Pedido não encontrado.');
@@ -1143,15 +1255,17 @@ export class OrdersService {
     // pagamento mesmo sem o webhook ter chegado ainda (essencial em dev
     // local, onde o Mercado Pago não alcança localhost; em produção isso
     // também serve de rede de segurança caso algum webhook se perca).
-    if (order.status === 'aguardando_pagamento' && order.mpPaymentId) {
+    let rejectionCode: CardRejectionCode | null = null;
+    if (order.status === 'aguardando_pagamento' && order.mpPaymentId && order.paymentStatus !== 'recusado') {
       const tenant = await this.tenantRepo.findOne({ where: { id: tenantId } });
       if (tenant?.mercadoPagoAccessTokenEncrypted) {
         try {
-          const { status } = await this.mercadoPagoService.getPaymentStatus(
+          const { status, statusDetail } = await this.mercadoPagoService.getPaymentStatus(
             decryptSecret(tenant.mercadoPagoAccessTokenEncrypted),
             order.mpPaymentId,
           );
-          await this.applyMercadoPagoStatus(order, status);
+          if (classifyMpStatus(status) === 'failed') rejectionCode = classifyRejection(statusDetail);
+          await this.applyMercadoPagoStatus(order, status, order.mpPaymentId);
           if (order.status !== 'aguardando_pagamento') {
             await this.orderRepo.save(order);
           }
@@ -1172,7 +1286,7 @@ export class OrdersService {
       // Antes, quando era o polling do CLIENTE que percebia o prazo
       // estourado primeiro, isso não era devolvido e o painel nunca mais
       // via o pedido como "aguardando" pra corrigir.
-      await this.markCancelled(order, 'Pix expirado sem pagamento');
+      await this.markCancelled(order, this.expiryReason(order));
       order.paymentStatus = 'falhou';
       await this.orderRepo.save(order);
       await this.cancelGatewayPaymentQuietly(tenantId, order.mpPaymentId);
@@ -1182,24 +1296,281 @@ export class OrdersService {
       status: order.status,
       paymentStatus: order.paymentStatus,
       pixExpiresAt: order.pixExpiresAt,
+      rejectionCode,
     };
   }
 
-  // Traduz o status do Mercado Pago (approved/rejected/cancelled/pending)
-  // pro nosso vocabulário de pedido — usado tanto pelo polling quanto
-  // pelo webhook, pra nunca ter duas traduções diferentes se
-  // divergindo uma da outra.
-  private async applyMercadoPagoStatus(order: Order, mpStatus: string): Promise<void> {
-    if (mpStatus === 'approved') {
-      order.status = 'pendente'; // aprovado = entra na cozinha
-      order.paymentStatus = 'pago';
-      await this.creditCashbackForPaidOrder(order);
-      await this.notifyPaymentCompleted(order);
-    } else if (mpStatus === 'rejected' || mpStatus === 'cancelled') {
-      await this.markCancelled(order, 'Pagamento recusado/cancelado no Mercado Pago');
-      order.paymentStatus = 'falhou';
+  // Motivo gravado quando o prazo de pagamento online estoura.
+  private expiryReason(order: Order): string {
+    return order.paymentMethod === 'cartao'
+      ? 'Pagamento por cartão expirado sem confirmação'
+      : 'Pix expirado sem pagamento';
+  }
+
+  // Traduz um evento do Mercado Pago (status de um pagamento) em ações no
+  // pedido — usado pelo polling do cliente, pelo polling do painel, pelo
+  // webhook e pela tentativa de cartão, pra NUNCA haver duas regras
+  // divergindo. O QUE fazer é decidido por planPaymentEvent (pura e testada);
+  // aqui só se executa, com a transição de "pago" feita de forma ATÔMICA
+  // (claimPaidTransition) para cashback/notificação não rodarem duas vezes.
+  private async applyMercadoPagoStatus(
+    order: Order,
+    mpStatus: string,
+    mpPaymentId: string | null = null,
+  ): Promise<void> {
+    const plan = planPaymentEvent(
+      {
+        orderStatus: order.status,
+        paymentMethod: order.paymentMethod,
+        paymentStatus: order.paymentStatus,
+        mpPaymentId: order.mpPaymentId,
+      },
+      { paymentId: mpPaymentId, outcome: classifyMpStatus(mpStatus), mpStatus },
+    );
+
+    for (const effect of plan.effects) {
+      switch (effect) {
+        case 'mark_paid': {
+          const won = await this.claimPaidTransition(order.id, order.tenantId);
+          if (!won) break; // outro processo já confirmou: nada a fazer aqui
+          order.status = 'pendente'; // aprovado = entra na cozinha
+          order.paymentStatus = 'pago';
+          await this.creditCashbackForPaidOrder(order);
+          await this.notifyPaymentCompleted(order);
+          await this.orderRepo.save(order);
+          break;
+        }
+        case 'cancel_order':
+          await this.markCancelled(order, 'Pagamento recusado/cancelado no Mercado Pago');
+          order.paymentStatus = 'falhou';
+          break;
+        case 'refund_orphan': {
+          // Dinheiro que chegou DEPOIS de o pedido ser cancelado/expirar.
+          const paymentId = mpPaymentId ?? order.mpPaymentId;
+          if (!paymentId) break;
+          const refunded = await this.refundPaymentQuietly(
+            order.tenantId,
+            paymentId,
+            `pagamento aprovado após cancelamento do pedido ${order.id}`,
+          );
+          order.paymentStatus = refunded ? 'estornado' : 'estorno_pendente';
+          await this.orderRepo.update({ id: order.id }, { paymentStatus: order.paymentStatus });
+          break;
+        }
+        case 'refund_duplicate': {
+          // Aprovação de uma tentativa que não é a do pedido: devolve essa.
+          if (!mpPaymentId) break;
+          await this.refundPaymentQuietly(
+            order.tenantId,
+            mpPaymentId,
+            `pagamento duplicado ${mpPaymentId} no pedido ${order.id}`,
+          );
+          break;
+        }
+      }
     }
-    // 'pending'/'in_process' — continua aguardando, nada muda.
+
+    // Campos que o plano muda sem efeito associado (recusa de cartão e
+    // estorno/chargeback feitos fora do app). Atualização CONDICIONAL: uma
+    // recusa atrasada nunca sobrescreve um pedido que já foi pago.
+    const handledByEffect = plan.effects.includes('mark_paid') || plan.effects.includes('cancel_order');
+    if (plan.next.paymentStatus && !handledByEffect && plan.effects.length === 0) {
+      const next = plan.next.paymentStatus;
+      if (next === 'recusado') {
+        await this.orderRepo.update(
+          { id: order.id, paymentStatus: In(['pendente', 'processando']) },
+          { paymentStatus: next },
+        );
+      } else {
+        await this.orderRepo.update({ id: order.id }, { paymentStatus: next });
+      }
+      order.paymentStatus = next;
+    }
+  }
+
+  // Pagamento por CARTÃO online. O navegador manda o card token (nunca o
+  // número do cartão) e o backend cobra no Mercado Pago com as credenciais do
+  // restaurante dono do pedido, SEMPRE pelo valor gravado no pedido (que o
+  // próprio backend calculou na criação) — nunca por valor vindo do cliente.
+  async payWithCard(tenantId: string, orderId: string, dto: PayCardDto): Promise<PayCardResult> {
+    const tenant = await this.tenantRepo.findOne({ where: { id: tenantId } });
+    if (!tenant) throw new NotFoundException('Estabelecimento não encontrado.');
+    const presence = {
+      hasAccessToken: Boolean(tenant.mercadoPagoAccessTokenEncrypted),
+      hasWebhookSecret: Boolean(tenant.mercadoPagoWebhookSecretEncrypted),
+      hasPublicKey: Boolean(tenant.mercadoPagoPublicKey),
+    };
+    if (!isCardOnlineActive(presence)) {
+      throw new BadRequestException('Este estabelecimento não aceita pagamento online por cartão.');
+    }
+    const accessToken = decryptSecret(tenant.mercadoPagoAccessTokenEncrypted!);
+
+    let order = await this.orderRepo.findOne({ where: { id: orderId, tenantId } });
+    if (!order) throw new NotFoundException('Pedido não encontrado.');
+
+    const snapshotOf = (o: Order): OrderPaymentSnapshot => ({
+      orderStatus: o.status,
+      paymentMethod: o.paymentMethod,
+      paymentStatus: o.paymentStatus,
+      mpPaymentId: o.mpPaymentId,
+      expiresAt: o.pixExpiresAt,
+      cardAttempts: o.cardPaymentAttempts,
+    });
+    const throwBlocked = (reason: CardAttemptBlock): never => {
+      throw new ConflictException({ message: CARD_BLOCK_MESSAGES[reason], code: reason });
+    };
+
+    // 1) Pode tentar agora? (pedido certo, no prazo, sem tentativa em curso...)
+    const decision = decideCardAttempt(snapshotOf(order), new Date());
+    if (decision.action === 'blocked') throwBlocked(decision.reason);
+
+    // Há uma cobrança anterior em aberto: pergunta ao MP o que aconteceu com
+    // ela antes de aceitar uma nova (nunca cobrar duas vezes o mesmo pedido).
+    if (decision.action === 'check_existing' && order.mpPaymentId) {
+      const existing = await this.mercadoPagoService.getPaymentStatus(accessToken, order.mpPaymentId);
+      const after = decideAfterExistingPayment(classifyMpStatus(existing.status));
+      if (after === 'return_paid') {
+        await this.applyMercadoPagoStatus(order, existing.status, order.mpPaymentId);
+        return this.buildCardResult(order, 'approved', null, null);
+      }
+      if (after === 'return_processing') {
+        return this.buildCardResult(order, 'processing', null, null);
+      }
+      if (after === 'blocked_reversed') {
+        throw new ConflictException({ message: CARD_BLOCK_MESSAGES.not_awaiting, code: 'not_awaiting' });
+      }
+      // 'proceed': a anterior foi recusada — segue para uma nova tentativa.
+    }
+
+    // 2) Reserva ATÔMICA da tentativa: só UMA requisição concorrente passa
+    //    (duplo clique, duas abas). Marca "processando" e conta a tentativa.
+    const previousPaymentStatus = order.paymentStatus;
+    const now = new Date();
+    const claim = await this.orderRepo
+      .createQueryBuilder()
+      .update(Order)
+      .set({ paymentStatus: 'processando', cardPaymentAttempts: () => 'card_payment_attempts + 1' })
+      .where(
+        'id = :id AND tenant_id = :tenantId AND status = :awaiting AND payment_method = :method ' +
+          'AND payment_status IN (:...allowed) AND card_payment_attempts < :max ' +
+          'AND (pix_expires_at IS NULL OR pix_expires_at > :now)',
+        {
+          id: order.id,
+          tenantId,
+          awaiting: 'aguardando_pagamento',
+          method: 'cartao',
+          allowed: ['pendente', 'recusado'],
+          max: MAX_CARD_ATTEMPTS,
+          now,
+        },
+      )
+      .execute();
+    if ((claim.affected ?? 0) !== 1) {
+      const fresh = await this.orderRepo.findOne({ where: { id: orderId, tenantId } });
+      const again = fresh ? decideCardAttempt(snapshotOf(fresh), new Date()) : null;
+      throwBlocked(again && again.action === 'blocked' ? again.reason : 'in_flight');
+    }
+
+    // 3) Valor: SEMPRE do pedido gravado, em centavos inteiros.
+    const amountCents = chargeCents(toCents(order.total), toCents(order.tipAmount));
+    const releaseClaim = async (): Promise<void> => {
+      // Volta ao estado anterior só se ainda estiver "processando".
+      await this.orderRepo.update(
+        { id: order!.id, paymentStatus: 'processando' },
+        { paymentStatus: previousPaymentStatus === 'recusado' ? 'recusado' : 'pendente' },
+      );
+    };
+    if (amountCents <= 0) {
+      await releaseClaim();
+      throw new BadRequestException('Este pedido não tem valor a cobrar.');
+    }
+
+    const customerEmail = order.customerId
+      ? (await this.customerRepo.findOne({ where: { id: order.customerId } }))?.email
+      : null;
+    const publicUrl = process.env.API_PUBLIC_URL;
+
+    let payment: Awaited<ReturnType<MercadoPagoService['createCardPayment']>>;
+    try {
+      payment = await this.mercadoPagoService.createCardPayment({
+        accessToken,
+        amountCents,
+        cardToken: dto.token,
+        paymentMethodId: dto.paymentMethodId,
+        issuerId: dto.issuerId ?? null,
+        installments: dto.installments ?? 1,
+        description: `Pedido ${tenant.name}`,
+        payerEmail: dto.payerEmail ?? customerEmail ?? `pedido-${order.id}@guest.cardapiosaas.com`,
+        payerIdentification:
+          dto.identificationType && dto.identificationNumber
+            ? { type: dto.identificationType, number: dto.identificationNumber }
+            : null,
+        externalReference: order.id,
+        idempotencyKey: cardIdempotencyKey(order.id, dto.token),
+        notificationUrl: publicUrl ? `${publicUrl}/orders/public/${tenantId}/webhook/mercadopago` : undefined,
+        deviceId: dto.deviceId,
+      });
+    } catch (err) {
+      await releaseClaim();
+      if (err instanceof MercadoPagoRequestError) {
+        // Token inválido/expirado ou dado faltando: o cliente refaz o envio.
+        throw new BadRequestException({
+          message: rejectionMessage('bad_card_data'),
+          code: 'bad_card_data' satisfies CardRejectionCode,
+        });
+      }
+      throw err; // BadGateway etc. — a reserva já foi liberada
+    }
+
+    // 4) Grava o id do pagamento e aplica o resultado. Recarrega o pedido:
+    //    o webhook pode ter chegado no meio e o contador de tentativas mudou.
+    await this.orderRepo.update({ id: order.id }, { mpPaymentId: payment.id });
+    order = (await this.orderRepo.findOne({ where: { id: orderId, tenantId } })) ?? order;
+    order.mpPaymentId = payment.id;
+
+    const outcome = classifyMpStatus(payment.status);
+    if (outcome === 'processing') {
+      // Em análise ou desafio 3DS: libera a reserva (sem sobrescrever um
+      // "pago" que o webhook já tenha gravado).
+      await this.orderRepo.update(
+        { id: order.id, status: 'aguardando_pagamento', paymentStatus: 'processando' },
+        { paymentStatus: 'pendente' },
+      );
+      order.paymentStatus = order.paymentStatus === 'processando' ? 'pendente' : order.paymentStatus;
+    }
+    await this.applyMercadoPagoStatus(order, payment.status, payment.id);
+
+    if (outcome === 'paid') return this.buildCardResult(order, 'approved', null, null);
+    if (outcome === 'processing') return this.buildCardResult(order, 'processing', null, payment.threeDs);
+
+    // Recusado: o pedido segue aguardando (nova tentativa na janela), a menos
+    // que as tentativas tenham acabado — aí cancela e libera promoção/cashback.
+    const code = classifyRejection(payment.statusDetail);
+    if (order.status === 'aguardando_pagamento' && order.cardPaymentAttempts >= MAX_CARD_ATTEMPTS) {
+      await this.markCancelled(order, 'Cartão recusado: limite de tentativas');
+      order.paymentStatus = 'falhou';
+      await this.orderRepo.save(order);
+      return this.buildCardResult(order, 'rejected', code, null);
+    }
+    return this.buildCardResult(order, 'rejected', code, null);
+  }
+
+  private buildCardResult(
+    order: Order,
+    status: PayCardResult['status'],
+    rejectionCode: CardRejectionCode | null,
+    threeDs: PayCardResult['threeDs'],
+  ): PayCardResult {
+    return {
+      status,
+      orderStatus: order.status,
+      paymentStatus: order.paymentStatus,
+      rejectionCode,
+      message: rejectionCode ? rejectionMessage(rejectionCode) : null,
+      threeDs,
+      attemptsLeft: Math.max(0, MAX_CARD_ATTEMPTS - order.cardPaymentAttempts),
+      orderCancelled: order.status === 'cancelado',
+    };
   }
 
   // Botão "Confirmar pagamento" no painel do admin — o único jeito de um
@@ -1212,6 +1583,19 @@ export class OrdersService {
       throw new BadRequestException(
         'Este pedido não está aguardando confirmação de pagamento Pix.',
       );
+    }
+    // Cartão online é confirmado SOMENTE pelo Mercado Pago (aprovação real):
+    // confirmar à mão marcaria como pago um pedido que ninguém pagou.
+    if (order.paymentMethod === 'cartao') {
+      throw new BadRequestException(
+        'Pagamento por cartão é confirmado automaticamente pelo Mercado Pago.',
+      );
+    }
+    // Transição atômica: se o webhook/polling confirmou no mesmo instante,
+    // só um dos dois credita cashback e notifica.
+    const won = await this.claimPaidTransition(order.id, tenantId);
+    if (!won) {
+      throw new BadRequestException('Este pedido já foi confirmado ou não está mais aguardando pagamento.');
     }
     order.status = 'pendente';
     order.paymentStatus = 'pago';
@@ -1281,12 +1665,16 @@ export class OrdersService {
     const order = await this.orderRepo.findOne({
       where: { id: externalReference, tenantId },
     });
-    if (!order || order.status !== 'aguardando_pagamento') {
+    if (!order) {
       return { received: true };
     }
 
-    await this.applyMercadoPagoStatus(order, status);
-    if (order.status !== 'aguardando_pagamento') {
+    // Não filtra mais por "aguardando": pagamento aprovado DEPOIS de o pedido
+    // ser cancelado precisa ser estornado, e estorno/chargeback de pedido
+    // pago precisa ser registrado — tudo decidido em planPaymentEvent.
+    const statusBefore = order.status;
+    await this.applyMercadoPagoStatus(order, status, dataId);
+    if (order.status !== statusBefore) {
       await this.orderRepo.save(order);
     }
     return { received: true };
