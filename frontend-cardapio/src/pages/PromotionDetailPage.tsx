@@ -1,13 +1,17 @@
 import { localizedField } from '../i18n/contentText';
-import { promotionReasonLabel } from '../i18n/labels';
 import { activeDateLocale } from '../i18n/languages';
 import { categoryLabel } from '../i18n/categoryLabel';
 import { useI18n } from '../i18n/I18nContext';
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Ban, Percent, Clock, Users, Tag, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Ban, Clock, Coins, Users, Tag, Package, CheckCircle2 } from 'lucide-react';
 import { ShareButton } from '../components/ShareButton';
 import { Tooltip } from '../components/Tooltip';
+import { PromotionAmbient } from '../components/promotion/PromotionAmbient';
+import { PromotionBadge } from '../components/promotion/PromotionBadge';
+import { PromotionHeroCard } from '../components/promotion/PromotionHeroCard';
+import { PromotionBenefitCard, PromotionEligibilityNote } from '../components/promotion/PromotionBenefitCard';
+import { PromotionSkeleton, PromotionUnavailable } from '../components/promotion/PromotionStates';
 import { buildShareUrl } from '../lib/shareLinks';
 import { fetchActivePromotions, fetchCategories, fetchProducts, fetchLocationById } from '../lib/menu-api';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
@@ -17,6 +21,8 @@ import { useAccentColor } from '../hooks/useAccentColor';
 import { useTableSessionContext } from '../contexts/TableSessionContext';
 import { useSelectedLocation } from '../hooks/useSelectedLocation';
 import { computePromotionEligibility } from '../lib/promotionEligibility';
+import { formatBRL, getPromotionBadgeKind, getPromotionHeroValue } from '../lib/promotionPresentation';
+import { PROMO_FOCUS, PROMO_LINK_BTN, PROMO_PRIMARY_BTN } from '../lib/promotionTheme';
 import { PROFILE_CARD } from '../lib/profileTheme';
 import {
   MENU_PAGE_BG,
@@ -114,25 +120,12 @@ export function PromotionDetailPage() {
     qrCodeToken ? `/${slug}/mesa/${qrCodeToken}/produto/${productId}` : `/${slug}/produto/${productId}`;
 
   if (isLoading || !tenant) {
-    return (
-      <div className={`flex items-center justify-center h-screen ${MENU_PAGE_BG}`}>
-        <div className="w-8 h-8 border-2 border-[#E5E7EB] dark:border-white/10 border-t-[#6B7280] dark:border-t-[#C4C7C5] rounded-full animate-spin" />
-      </div>
-    );
+    return <PromotionSkeleton />;
   }
 
   if (notFound || !promotion) {
     return (
-      <div className={`flex flex-col items-center justify-center h-screen px-6 text-center gap-3 ${MENU_PAGE_BG}`}>
-        <p className={MENU_TEXT_BODY}>{t('promotionDetailPage.essa_promocao_nao_esta')}</p>
-        <button
-          onClick={() => navigate(backHref)}
-          className="text-sm font-semibold"
-          style={{ color: accent }}
-        >
-          {t('promotionDetailPage.voltar_pro_cardapio')}
-        </button>
-      </div>
+      <PromotionUnavailable primaryColor={tenant.primaryColor} accent={accent} onBack={() => navigate(backHref)} />
     );
   }
 
@@ -171,12 +164,17 @@ export function PromotionDetailPage() {
       ? t('promotionDetailPage.discountvalue_de_desconto', { discountValue: promotion.discountValue })
       : t('promotionDetailPage.r_v0_de_desconto', { v0: Number(promotion.discountValue).toFixed(2).replace('.', ',') });
 
-  // Botão principal: cor da marca no claro; no escuro vira sólido claro com
-  // texto escuro (nunca a cor da marca apagada sobre o fundo escuro).
-  const primaryBtn =
-    'w-full py-3.5 rounded-xl text-sm font-semibold text-[#FFFFFF] bg-[var(--brand)] ring-1 ring-black/5 ' +
-    'dark:bg-[#E3E2E6] dark:text-[#131314] dark:ring-white/20 shadow-sm hover:brightness-110 dark:hover:brightness-95 ' +
-    'active:brightness-95 transition';
+  // Só apresentação: selo derivado de dados que a promoção já tem.
+  const isUsedUp = Boolean(promotion.alreadyUsedUp);
+  const badgeKind = getPromotionBadgeKind(promotion);
+  const hero = getPromotionHeroValue(promotion);
+
+  function handleSeeEligibleProducts() {
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    document
+      .getElementById('promo-eligible-products')
+      ?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+  }
 
   const cta = promotion.alreadyUsedUp ? (
     <button
@@ -201,33 +199,34 @@ export function PromotionDetailPage() {
   ) : isApplied ? (
     <button
       onClick={handleRemove}
-      className="w-full py-3.5 rounded-xl text-sm font-semibold border-2 transition hover:bg-black/[0.03] dark:hover:bg-white/[0.06]"
+      className={`w-full py-3.5 rounded-xl text-sm font-semibold border-2 transition hover:bg-black/[0.03] dark:hover:bg-white/[0.06] ${PROMO_FOCUS}`}
       style={{ borderColor: accent, color: accent }}
     >
       {t('promotionDetailPage.remover_promocao')}
     </button>
   ) : (
-    <button
-      onClick={handleApply}
-      className={primaryBtn}
-      style={{ '--brand': tenant.primaryColor } as React.CSSProperties}
-    >
+    <button onClick={handleApply} className={PROMO_PRIMARY_BTN}>
       {t('promotionDetailPage.usar_promocao')}
     </button>
   );
 
   return (
-    <div className={`min-h-screen ${MENU_PAGE_BG} pb-28 lg:pb-12`}>
-      <div className="w-full max-w-6xl mx-auto md:px-8 md:py-8 lg:py-10">
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:gap-10 items-start">
+    <div
+      className={`relative min-h-screen ${MENU_PAGE_BG} pb-28 lg:pb-12`}
+      style={{ '--brand': tenant.primaryColor, '--accent': accent } as React.CSSProperties}
+    >
+      <PromotionAmbient color={tenant.primaryColor} imageUrl={isUsedUp ? null : promotion.imageUrl} />
+
+      <div className="relative z-10 w-full max-w-7xl mx-auto md:px-8 md:py-8 lg:py-10">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-10 items-start">
           {/* Coluna esquerda: banner em destaque */}
-          <div className="relative aspect-[16/10] lg:aspect-[4/3] md:rounded-2xl overflow-hidden bg-[#F3F4F6] dark:bg-[#282A2C] lg:sticky lg:top-8 md:shadow-sm">
+          <div className="relative aspect-[16/10] lg:aspect-[4/3] md:rounded-3xl overflow-hidden bg-[#F3F4F6] dark:bg-[#282A2C] lg:sticky lg:top-8 md:shadow-lg md:ring-1 md:ring-black/5 dark:md:ring-white/10">
             {promotion.imageUrl ? (
               <img
                 src={promotion.imageUrl}
                 alt={localizedField(promotion, 'title')}
                 draggable={false}
-                className="w-full h-full object-cover"
+                className={`w-full h-full object-cover ${isUsedUp ? 'grayscale' : ''}`}
               />
             ) : (
               <div
@@ -237,13 +236,13 @@ export function PromotionDetailPage() {
                 }}
               />
             )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-black/20" aria-hidden="true" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-black/20" aria-hidden="true" />
             <Tooltip label={t('tooltip.back')} className="contents">
               <button
                 // Link compartilhado abre direto aqui (sem histórico): voltar leva ao cardápio.
                 onClick={() => (routerLocation.key === 'default' ? navigate(backHref, { replace: true }) : navigate(-1))}
                 aria-label={t('common.back')}
-                className="absolute top-4 left-4 w-10 h-10 rounded-full bg-white/90 dark:bg-[#1E1E20]/90 text-[#111827] dark:text-[#E3E2E6] flex items-center justify-center shadow-md hover:scale-105 transition"
+                className={`absolute top-4 left-4 w-10 h-10 rounded-full bg-white/90 dark:bg-[#1E1E20]/90 text-[#111827] dark:text-[#E3E2E6] flex items-center justify-center shadow-md hover:scale-105 transition motion-reduce:transform-none ${PROMO_FOCUS}`}
               >
                 <ArrowLeft size={18} strokeWidth={1.5} />
               </button>
@@ -256,31 +255,68 @@ export function PromotionDetailPage() {
                 text={localizedField(promotion, 'description') || t('promotionDetailPage.promocao_de_name', { name: tenant.name })}
               />
             )}
-            <div className="absolute bottom-4 left-4 inline-flex items-center gap-1.5 rounded-full bg-white/95 dark:bg-[#1E1E20]/95 text-[#111827] dark:text-[#E3E2E6] px-3.5 py-2 text-sm font-bold shadow-md">
-              <Percent size={15} strokeWidth={1.5} />
-              {discountLabel}
-            </div>
           </div>
 
-          {/* Coluna direita: título, regras e ação */}
+          {/* Coluna direita: selo, título, desconto em destaque, benefício e ação */}
           <div className="p-4 md:p-0 pt-5 lg:pt-1 flex flex-col gap-5">
-            <div>
+            <div className="flex flex-col items-start gap-3">
+              <PromotionBadge kind={badgeKind} primaryColor={tenant.primaryColor} accent={accent} muted={isUsedUp} />
               <h1 className={`font-display text-2xl md:text-3xl font-extrabold leading-tight ${MENU_TEXT}`}>
                 {localizedField(promotion, 'title')}
               </h1>
               {promotion.description && (
-                <p className={`text-sm md:text-base ${MENU_TEXT_BODY} leading-relaxed mt-2.5`}>
+                <p className={`text-sm md:text-base ${MENU_TEXT_BODY} leading-relaxed`}>
                   {localizedField(promotion, 'description')}
                 </p>
               )}
             </div>
+
+            <PromotionHeroCard
+              promotion={promotion}
+              primaryColor={tenant.primaryColor}
+              accent={accent}
+              ariaLabel={discountLabel}
+              muted={isUsedUp}
+            />
+
+            {isUsedUp ? (
+              <div className={`${PROFILE_CARD} p-4 md:p-5 flex flex-wrap items-center gap-3`}>
+                <CheckCircle2 size={20} strokeWidth={1.5} className={`${MENU_TEXT_BODY} shrink-0`} aria-hidden="true" />
+                <p className={`text-sm ${MENU_TEXT_SOFT} flex-1 min-w-0`}>{t('promotionDetailPage.voce_ja_usou_essa')}</p>
+                <button
+                  type="button"
+                  onClick={() => navigate(backHref)}
+                  className={PROMO_LINK_BTN}
+                  style={{ color: accent }}
+                >
+                  {t('promotionDetailPage.voltar_pro_cardapio')}
+                </button>
+              </div>
+            ) : (
+              <>
+                <PromotionBenefitCard
+                  eligibility={eligibility}
+                  isApplied={isApplied}
+                  primaryColor={tenant.primaryColor}
+                  accent={accent}
+                />
+                <PromotionEligibilityNote
+                  eligibility={eligibility}
+                  hasEligibleProducts={eligibleProducts.length > 0}
+                  accent={accent}
+                  onSeeProducts={handleSeeEligibleProducts}
+                />
+              </>
+            )}
+
+            {/* Ação principal inline no desktop; no celular fica fixa no rodapé. */}
+            <div className="hidden lg:block">{cta}</div>
 
             <div className={`${PROFILE_CARD} p-4 md:p-5`}>
               <p className={`text-xs font-semibold uppercase tracking-wider ${MENU_TEXT_MUTED} mb-3`}>
                 {t('promotionDetailPage.detalhes_e_condicoes')}
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <DetailRow icon={<Percent size={16} strokeWidth={1.5} />} label={discountLabel} />
                 {promotion.minOrderValue > 0 && (
                   <DetailRow
                     icon={<Tag size={16} strokeWidth={1.5} />}
@@ -303,6 +339,18 @@ export function PromotionDetailPage() {
                     label={t('promotionDetailPage.valida_ate_v0', { v0: formatDateTime(promotion.endsAt) })}
                   />
                 )}
+                {promotion.discountType === 'percentage' && promotion.maxDiscountAmount != null && (
+                  <DetailRow
+                    icon={<Coins size={16} strokeWidth={1.5} />}
+                    label={t('promotionDetailPage.desconto_maximo_de_r', { v0: formatBRL(promotion.maxDiscountAmount) })}
+                  />
+                )}
+                {promotion.maxEligibleQuantity != null && (
+                  <DetailRow
+                    icon={<Package size={16} strokeWidth={1.5} />}
+                    label={t('promotionDetailPage.desconto_em_ate_n_unidades', { n: promotion.maxEligibleQuantity })}
+                  />
+                )}
                 <DetailRow
                   className="sm:col-span-2"
                   icon={<Tag size={16} strokeWidth={1.5} />}
@@ -316,34 +364,12 @@ export function PromotionDetailPage() {
                 />
               </div>
             </div>
-
-            {promotion.alreadyUsedUp ? (
-              <div className="bg-[#F9FAFB] dark:bg-[#282A2C] border border-[#E5E7EB] dark:border-white/10 rounded-xl p-3.5 text-sm text-[#6B7280] dark:text-[#C4C7C5] text-center">
-                {t('promotionDetailPage.voce_ja_usou_essa')}
-              </div>
-            ) : eligibility.isEligible ? (
-              <div className="bg-green-50 dark:bg-green-500/10 border border-green-100 dark:border-green-400/20 rounded-xl p-3.5 flex items-center gap-2.5">
-                <CheckCircle2 size={18} strokeWidth={1.5} className="text-green-600 dark:text-green-400 shrink-0" />
-                <p className="text-sm text-green-700 dark:text-green-300">
-                  {t('promotionDetailPage.voce_economiza')} <strong>R$ {eligibility.discountAmount.toFixed(2).replace('.', ',')}</strong> {t('promotionDetailPage.com_o_carrinho_atual')}
-                </p>
-              </div>
-            ) : (
-              eligibility.reason && (
-                <div className="bg-orange-50 dark:bg-orange-500/10 border border-orange-100 dark:border-orange-400/20 rounded-xl p-3.5 text-sm text-orange-700 dark:text-orange-300">
-                  {promotionReasonLabel(eligibility, t)}
-                </div>
-              )
-            )}
-
-            {/* Ação principal inline no desktop; no celular fica fixa no rodapé. */}
-            <div className="hidden lg:block">{cta}</div>
           </div>
         </div>
 
         {/* Produtos elegíveis */}
         {eligibleProducts.length > 0 && (
-          <section className="px-4 md:px-0 mt-8 lg:mt-12">
+          <section id="promo-eligible-products" className="px-4 md:px-0 mt-8 lg:mt-12 scroll-mt-6">
             <h2 className={`font-display text-lg md:text-xl font-bold ${MENU_TEXT} mb-4`}>
               {t('promotionDetailPage.valida_para_itens_selecionados')}
             </h2>
@@ -355,9 +381,9 @@ export function PromotionDetailPage() {
                   <button
                     key={product.id}
                     onClick={() => navigate(productHref(product.id))}
-                    className={`group text-left ${PROFILE_CARD} overflow-hidden cursor-pointer transition duration-200 hover:-translate-y-0.5 hover:shadow-md motion-reduce:transform-none motion-reduce:transition-none`}
+                    className={`group text-left ${PROFILE_CARD} overflow-hidden cursor-pointer transition duration-200 hover:-translate-y-0.5 hover:shadow-md motion-reduce:transform-none motion-reduce:transition-none ${PROMO_FOCUS}`}
                   >
-                    <div className="aspect-[4/3] bg-[#F3F4F6] dark:bg-[#282A2C] overflow-hidden flex items-center justify-center">
+                    <div className="relative aspect-[4/3] bg-[#F3F4F6] dark:bg-[#282A2C] overflow-hidden flex items-center justify-center">
                       {product.imageUrl ? (
                         <img
                           src={product.imageUrl}
@@ -368,6 +394,14 @@ export function PromotionDetailPage() {
                         />
                       ) : (
                         <Tag size={24} strokeWidth={1.5} className={MENU_TEXT_MUTED} />
+                      )}
+                      {hero.kind === 'percentage' && !isUsedUp && (
+                        <span
+                          className="absolute top-2 left-2 rounded-lg px-2 py-1 text-[11px] font-extrabold tracking-wide text-[#FFFFFF] shadow-sm"
+                          style={{ backgroundColor: tenant.primaryColor }}
+                        >
+                          {hero.text} {t('promotionDetailPage.off')}
+                        </span>
                       )}
                     </div>
                     <div className="p-3">
@@ -394,7 +428,9 @@ export function PromotionDetailPage() {
       </div>
 
       {/* Barra fixa (celular/tablet) */}
-      <div className={`lg:hidden fixed bottom-0 left-0 right-0 p-4 ${MENU_SURFACE} border-t ${MENU_BORDER}`}>
+      <div
+        className={`lg:hidden fixed bottom-0 left-0 right-0 z-20 px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] ${MENU_SURFACE} border-t ${MENU_BORDER}`}
+      >
         <div className="max-w-xl mx-auto">{cta}</div>
       </div>
     </div>
@@ -406,7 +442,7 @@ function DetailRow({ icon, label, className = '' }: { icon: React.ReactNode; lab
     <div
       className={`flex items-center gap-3 rounded-xl bg-[#F9FAFB] dark:bg-[#282A2C] border border-[#F3F4F6] dark:border-white/10 px-3.5 py-3 text-sm ${MENU_TEXT_SOFT} ${className}`}
     >
-      <span className={`${MENU_TEXT_BODY} shrink-0`}>{icon}</span>
+      <span className={`${MENU_TEXT_BODY} shrink-0`} aria-hidden="true">{icon}</span>
       <span className="min-w-0 break-words">{label}</span>
     </div>
   );
