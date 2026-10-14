@@ -31,6 +31,8 @@ import { NotesModule } from './modules/notes/notes.module';
 import { TranslationsModule } from './modules/translations/translations.module';
 import { InternalNotificationsModule } from './modules/internal-notifications/internal-notifications.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
+import { SiodModule } from './modules/siod/siod.module';
+import { OrderDeliveryIntelligence } from './modules/siod/order-delivery-intelligence.entity';
 
 import { Note } from './modules/notes/note.entity';
 import { InternalNotification } from './modules/internal-notifications/internal-notification.entity';
@@ -142,6 +144,7 @@ import { BackupAuditLog } from './modules/backups/backup-audit-log.entity';
           Permission,
           TenantBackup,
           TenantBackupSettings,
+          OrderDeliveryIntelligence,
           BackupAuditLog,
         ],
         synchronize: false, // NUNCA true em produção — schema controlado só por migrations
@@ -168,6 +171,7 @@ import { BackupAuditLog } from './modules/backups/backup-audit-log.entity';
     CashModule,
     BackupsModule,
     AnalyticsModule,
+    SiodModule,
     InternalNotificationsModule,
     NotesModule,
     TranslationsModule,

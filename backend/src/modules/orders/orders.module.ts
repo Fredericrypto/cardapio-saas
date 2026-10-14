@@ -15,6 +15,7 @@ import { PromotionsModule } from '../promotions/promotions.module';
 import { TablesModule } from '../tables/tables.module';
 import { CashbackModule } from '../cashback/cashback.module';
 import { PushModule } from '../push/push.module';
+import { SiodModule } from '../siod/siod.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { PushModule } from '../push/push.module';
     TablesModule,
     CashbackModule,
     PushModule,
+    SiodModule,
   ],
   controllers: [OrdersController],
   providers: [OrdersService],

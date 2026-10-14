@@ -40,13 +40,16 @@ import {
 import type { CardAttemptBlock, OrderPaymentSnapshot } from '../payments/mp-order-state';
 import { isCardOnlineActive, isPixOnlineActive } from '../payments/mp-activation';
 import { PayCardDto } from './dto/pay-card.dto';
-import { DeliveryService, DeliveryQuoteResult } from '../delivery/delivery.service';
+import { DeliveryService, DeliveryQuoteWithCoordinates } from '../delivery/delivery.service';
 import { PromotionsService } from '../promotions/promotions.service';
 import type { CartLine } from '../promotions/promotions.service';
 import { CashbackService } from '../cashback/cashback.service';
 import { PushService } from '../push/push.service';
 import { CustomerVerificationService } from '../customers/customer-verification.service';
 import { TablesService } from '../tables/tables.service';
+import { SIODEngineService } from '../siod/siod-engine.service';
+import type { RouteResult } from '../siod/siod.types';
+import { stampOrderLifecycle } from './order-lifecycle';
 
 // Janela pro cliente pagar o Pix antes do pedido expirar sozinho — mesmo
 // tempo que o iFood usa (6 min). Com Mercado Pago configurado, a
@@ -99,6 +102,7 @@ export class OrdersService {
     private readonly pushService: PushService,
     private readonly verificationService: CustomerVerificationService,
     private readonly tablesService: TablesService,
+    private readonly siodEngine: SIODEngineService,
   ) {}
 
   // Ponto ÚNICO por onde um pedido vira 'cancelado' — usado nos 4
@@ -639,7 +643,9 @@ export class OrdersService {
     // — nunca confiamos num valor de taxa/distância vindo do cliente,
     // mesmo que ele tenha visto uma cotação antes (endpoint público
     // `/delivery/quote`); essa cotação é só uma prévia, não é autoridade.
-    let deliveryQuote: DeliveryQuoteResult | null = null;
+    let deliveryQuote: DeliveryQuoteWithCoordinates | null = null;
+    // SIOD: rota estimada (OSRM -> Haversine). Tambem fora da transacao (rede).
+    let siodRoute: RouteResult | null = null;
     if (dto.orderType === 'entrega') {
       if (!dto.deliveryStreet || !dto.deliveryCity || !dto.deliveryState) {
         throw new BadRequestException('Endereço de entrega incompleto.');
@@ -655,6 +661,8 @@ export class OrdersService {
         state: dto.deliveryState,
         postcode: dto.deliveryPostcode,
       });
+      // Nunca lanca (fallback interno): o checkout nao depende do mapa.
+      siodRoute = await this.siodEngine.resolveRoute(deliveryQuote.origin, deliveryQuote.destination);
     }
 
     // E-mail do cliente logado (se houver) — usado como payer.email na
@@ -1092,6 +1100,20 @@ export class OrdersService {
       }
       await manager.save(OrderItem, orderItems);
 
+      // SIOD (Camadas 1-2): congela a estimativa + o contexto do checkout. So
+      // pedido de ENTREGA. Num savepoint e sem lancar - falha aqui nunca derruba o pedido.
+      if (deliveryQuote && siodRoute) {
+        await this.siodEngine.recordOrderEstimate(manager, {
+          order: savedOrder,
+          tenantSettings: tenant.siodSettings,
+          route: siodRoute,
+          origin: deliveryQuote.origin,
+          destination: deliveryQuote.destination,
+          itemsCount: orderItems.reduce((sum, item) => sum + item.quantity, 0),
+          itemsValue: fromCents(orderItems.reduce((sum, item) => sum + toCents(item.subtotal), 0)),
+        });
+      }
+
       // Consumo de verdade do saldo de cashback — só agora que
       // savedOrder.id existe (CashbackConsumption tem FK pra orders).
       // Se o valor realmente debitado vier MENOR que a estimativa usada
@@ -1214,9 +1236,15 @@ export class OrdersService {
     if (dto.status === 'cancelado') {
       await this.markCancelled(order, dto.cancelReason, canceledByUserId);
     } else {
+      stampOrderLifecycle(order, dto.status);
       order.status = dto.status;
     }
     const saved = await this.orderRepo.save(order);
+    // SIOD (Camadas 3-4): pedido entregue -> fecha as metricas reais e o erro de
+    // previsao. Nunca lanca; sem registro SIOD (nao e entrega) nao faz nada.
+    if (saved.status === 'entregue') {
+      await this.siodEngine.finalizeOnDelivered(saved);
+    }
     // "Melhor esforço", depois de salvar — uma falha de envio nunca
     // desfaz a mudança de status que o admin acabou de fazer.
     await this.notifyOrderStatusChange(saved);
@@ -1718,12 +1746,14 @@ export class OrdersService {
       }
     }
 
+    stampOrderLifecycle(order, 'entregue');
     order.status = 'entregue';
     order.paymentMethod = paymentMethod;
     order.paymentStatus = 'pago';
     order.amountReceived = paymentMethod === 'dinheiro' ? amountReceived! : null;
     await this.creditCashbackForPaidOrder(order);
     const saved = await this.orderRepo.save(order);
+    await this.siodEngine.finalizeOnDelivered(saved);
     await this.notifyPaymentCompleted(saved);
     // Esse método É o "pedido terminou" pra esse fluxo (só pedido
     // avulso passa por aqui — mesa fecha pela sessão, ver comentário

@@ -36,6 +36,7 @@ import { Role } from '../modules/roles/entities/role.entity';
 import { Permission } from '../modules/roles/entities/permission.entity';
 import { TenantBackup } from '../modules/backups/tenant-backup.entity';
 import { TenantBackupSettings } from '../modules/backups/tenant-backup-settings.entity';
+import { OrderDeliveryIntelligence } from '../modules/siod/order-delivery-intelligence.entity';
 import { BackupAuditLog } from '../modules/backups/backup-audit-log.entity';
 
 // Este arquivo é usado SOMENTE pelo TypeORM CLI (migrations).
@@ -83,6 +84,7 @@ export const AppDataSource = new DataSource({
     Permission,
     TenantBackup,
     TenantBackupSettings,
+    OrderDeliveryIntelligence,
     BackupAuditLog,
   ],
   migrations: [__dirname + '/../migrations/*{.ts,.js}'],

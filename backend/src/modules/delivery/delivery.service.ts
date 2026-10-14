@@ -16,6 +16,13 @@ export interface DeliveryQuoteResult {
   precise: boolean;
 }
 
+// Uso INTERNO (SIOD): a cotação + as coordenadas já calculadas, pra não
+// geocodificar de novo. Nunca devolvido ao cliente (ver quotePublic).
+export interface DeliveryQuoteWithCoordinates extends DeliveryQuoteResult {
+  origin: { latitude: number; longitude: number };
+  destination: { latitude: number; longitude: number };
+}
+
 @Injectable()
 export class DeliveryService {
   constructor(
@@ -29,7 +36,7 @@ export class DeliveryService {
   // tanto pela cotação (antes de confirmar o pedido) quanto pela criação
   // do pedido em si (que recalcula do zero, nunca confia num valor de
   // taxa vindo do cliente — ver OrdersService.create).
-  async calculateQuote(locationId: string, input: StructuredAddressInput): Promise<DeliveryQuoteResult> {
+  async calculateQuote(locationId: string, input: StructuredAddressInput): Promise<DeliveryQuoteWithCoordinates> {
     const location = await this.locationRepo.findOne({ where: { id: locationId } });
     if (!location) {
       throw new NotFoundException('Loja não encontrada.');
@@ -67,10 +74,14 @@ export class DeliveryService {
       fee: fromCents(totalFeeCents),
       formattedAddress: geocode.formattedAddress,
       precise: geocode.precise,
+      origin: { latitude: location.latitude, longitude: location.longitude },
+      destination: { latitude: geocode.latitude, longitude: geocode.longitude },
     };
   }
 
+  // Rota pública: o formato da resposta NÃO muda (as coordenadas ficam só no servidor).
   async quotePublic(locationId: string, dto: DeliveryQuoteDto): Promise<DeliveryQuoteResult> {
-    return this.calculateQuote(locationId, dto);
+    const { distanceKm, fee, formattedAddress, precise } = await this.calculateQuote(locationId, dto);
+    return { distanceKm, fee, formattedAddress, precise };
   }
 }

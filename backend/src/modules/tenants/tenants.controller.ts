@@ -48,12 +48,13 @@ function toSafeTenant(tenant: Tenant) {
 // financeiros da aba Análise (CMV estimado, taxas de pagamento, imposto) e a
 // preferência de alertas internos — são dados de gestão do dono, nunca do cliente final.
 function toPublicTenant(tenant: Tenant) {
-  const { defaultCmvPercent, cardFeePercent, pixFeePercent, taxPercent, internalNotificationTarget, ...rest } = toSafeTenant(tenant);
+  const { defaultCmvPercent, cardFeePercent, pixFeePercent, taxPercent, internalNotificationTarget, siodSettings, ...rest } = toSafeTenant(tenant);
   void defaultCmvPercent;
   void cardFeePercent;
   void pixFeePercent;
   void taxPercent;
   void internalNotificationTarget;
+  void siodSettings;
   return rest;
 }
 

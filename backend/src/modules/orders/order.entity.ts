@@ -239,6 +239,17 @@ export class Order {
   @Column({ name: 'canceled_by_user_id', type: 'uuid', nullable: true })
   canceledByUserId: string | null;
 
+  // SIOD (Camada 3): carimbos do ciclo de vida. Ver orders/order-lifecycle.ts.
+  // null = a etapa nunca aconteceu (ou o pedido é anterior ao SIOD).
+  @Column({ name: 'preparing_at', type: 'timestamptz', nullable: true })
+  preparingAt: Date | null;
+
+  @Column({ name: 'ready_at', type: 'timestamptz', nullable: true })
+  readyAt: Date | null;
+
+  @Column({ name: 'delivered_at', type: 'timestamptz', nullable: true })
+  deliveredAt: Date | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 

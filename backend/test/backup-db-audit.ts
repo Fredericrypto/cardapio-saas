@@ -1,5 +1,5 @@
 // Auditoria do módulo de backup contra um Postgres REAL: ida-e-volta exata em todas
-// as 32 tabelas, isolamento entre restaurantes, atomicidade (ROLLBACK), adulteração,
+// as 33 tabelas, isolamento entre restaurantes, atomicidade (ROLLBACK), adulteração,
 // deriva de schema, travas, retenção, agendador e auditoria. Banco de teste obrigatório.
 import 'reflect-metadata';
 import { assertTestDatabase, createChecker } from './helpers';
@@ -56,14 +56,14 @@ const PASSWORD = 'SenhaForte#123';
 
   console.log('1) Snapshot');
   const docA = await exportTenantSnapshot(ds, plan, A.id);
-  ok(docA.tables.length === 32 && docA.tables.every((t) => t.rowCount === 2), `32 tabelas com 2 linhas cada no backup (${docA.tables.length})`);
+  ok(docA.tables.length === 33 && docA.tables.every((t) => t.rowCount === 2), `33 tabelas com 2 linhas cada no backup (${docA.tables.length})`);
   ok(same(await hashes(A.id), Object.fromEntries(docA.tables.map((t) => [t.name, `${t.rowCount}:${t.sha256}`]))), 'exportação é determinística (mesmo hash em duas leituras)');
   ok(docA.tables.every((t) => !t.rows.includes(B.id)), 'nenhuma linha do outro restaurante entra no backup de A');
   ok(docA.tables.find((t) => t.name === 'cashback_ledger_entries')!.rows.includes('"amount": ') || true, 'ok'); // formato jsonb preservado (texto)
   const golden = docA.tables.map((t) => t.name).sort().join(',');
   ok(golden === [
     'cash_transactions', 'cashback_consumptions', 'cashback_ledger_entries', 'cashback_settings', 'cashback_settings_locations', 'categories', 'customers', 'loyalty_program_locations',
-    'loyalty_programs', 'loyalty_rewards', 'loyalty_stamps', 'locations', 'notes', 'order_items', 'order_promotion_discounts', 'orders', 'product_option_values', 'product_options', 'products',
+    'loyalty_programs', 'loyalty_rewards', 'loyalty_stamps', 'locations', 'notes', 'order_delivery_intelligence', 'order_items', 'order_promotion_discounts', 'orders', 'product_option_values', 'product_options', 'products',
     'promotion_categories', 'promotion_customer_resets', 'promotion_locations', 'promotion_products', 'promotions', 'push_subscriptions', 'receipt_redemptions', 'restaurant_tables',
     'review_responses', 'reviews', 'table_session_participants', 'table_sessions', 'waiter_calls',
   ].sort().join(','), 'lista de tabelas incluídas = lista esperada (se uma tabela nova entrar/sair, este teste avisa)');
@@ -82,11 +82,11 @@ const PASSWORD = 'SenhaForte#123';
   ok(!same(await hashes(A.id), beforeA), 'estado de A foi realmente alterado');
   const bBefore = await hashes(B.id);
   const res = await restoreTenantSnapshot(ds, plan, A.id, docA, { lockTimeoutMs: 5000, statementTimeoutMs: 60000 });
-  ok(res.totalRows === 64, `restaurou 64 linhas (${res.totalRows})`);
-  ok(same(await hashes(A.id), beforeA), 'APÓS restaurar: todas as 32 tabelas de A idênticas ao snapshot (contagem + SHA-256 do conteúdo)');
+  ok(res.totalRows === 66, `restaurou 66 linhas (${res.totalRows})`);
+  ok(same(await hashes(A.id), beforeA), 'APÓS restaurar: todas as 33 tabelas de A idênticas ao snapshot (contagem + SHA-256 do conteúdo)');
   ok(same(await hashes(B.id), beforeB) && same(await hashes(B.id), bBefore), 'restaurante B intacto (isolamento)');
   const second = await restoreTenantSnapshot(ds, plan, A.id, docA, { lockTimeoutMs: 5000, statementTimeoutMs: 60000 });
-  ok(second.totalRows === 64 && same(await hashes(A.id), beforeA), 'restaurar de novo é idempotente');
+  ok(second.totalRows === 66 && same(await hashes(A.id), beforeA), 'restaurar de novo é idempotente');
 
   console.log('3) Atomicidade — falha no meio = ROLLBACK, nada muda');
   const state0 = await hashes(A.id);
@@ -133,7 +133,7 @@ const PASSWORD = 'SenhaForte#123';
   ok(checkCompatibility(plan4, docExtra).length === 0, 'coluna NOVA (não existia no backup) é compatível');
   const r4 = await restoreTenantSnapshot(ds, plan4, A.id, docA, { lockTimeoutMs: 5000, statementTimeoutMs: 60000 });
   const zz = await q(`SELECT DISTINCT zz_new FROM categories WHERE tenant_id=$1`, [A.id]);
-  ok(r4.totalRows === 64 && zz.length === 1 && zz[0].zz_new === 'padrao', 'restaura backup antigo em schema com coluna nova (usa o DEFAULT); verificação ignora a coluna nova');
+  ok(r4.totalRows === 66 && zz.length === 1 && zz[0].zz_new === 'padrao', 'restaura backup antigo em schema com coluna nova (usa o DEFAULT); verificação ignora a coluna nova');
   await q(`ALTER TABLE categories DROP COLUMN zz_new`);
   await q(`CREATE TABLE zz_novo (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE)`);
   const qr5 = ds.createQueryRunner(); const plan5 = buildPlan(await loadCatalog(qr5)); await qr5.release();
@@ -166,7 +166,7 @@ const PASSWORD = 'SenhaForte#123';
   const ctx = { ip: '203.0.113.9', forwardedFor: '1.1.1.1, 203.0.113.9', userAgent: 'teste' };
 
   const manual = await svc.createBackupAndWait(A.id, 'manual', actorA, ctx);
-  ok(manual.status === 'concluido' && manual.fileSize > 0 && manual.totalRows === 64, `backup manual concluído (${manual.fileSize} bytes, ${manual.totalRows} linhas)`);
+  ok(manual.status === 'concluido' && manual.fileSize > 0 && manual.totalRows === 66, `backup manual concluído (${manual.fileSize} bytes, ${manual.totalRows} linhas)`);
   const fileBuf = await storage.get(manual.storagePath);
   ok(sha256Hex(fileBuf) === manual.checksumSha256, 'SHA-256 registrado = SHA-256 do arquivo no storage');
   ok(!fileBuf.includes(Buffer.from('alfa')) && !fileBuf.includes(Buffer.from('ç✓')), 'arquivo no storage está criptografado (sem texto legível)');
@@ -209,7 +209,7 @@ const PASSWORD = 'SenhaForte#123';
 
   // restauração real
   const out = await svc.restoreBackup(A.id, manual.id, actorA, { password: PASSWORD, confirmationWord: 'RESTAURAR-DADOS' } as any, ctx);
-  ok(out.totalRows === 64 && same(await hashes(A.id), beforeA), 'RESTAURAÇÃO via serviço: estado de A idêntico ao do backup (32 tabelas, SHA-256)');
+  ok(out.totalRows === 66 && same(await hashes(A.id), beforeA), 'RESTAURAÇÃO via serviço: estado de A idêntico ao do backup (33 tabelas, SHA-256)');
   ok(same(await hashes(B.id), hashB0), 'B intacto');
   const rowAfter = (await q(`SELECT * FROM tenant_backups WHERE id=$1`, [manual.id]))[0];
   ok(rowAfter.status === 'restaurado' && rowAfter.restore_count === 1, 'status "restaurado", contador = 1');
@@ -239,7 +239,7 @@ const PASSWORD = 'SenhaForte#123';
 
   // preview
   const pv = await svc.getRestorePreview(A.id, manual.id);
-  ok(pv.rows.length === 32 && pv.backupTotal === 64, 'pré-visualização: contagens atual × backup');
+  ok(pv.rows.length === 33 && pv.backupTotal === 66, 'pré-visualização: contagens atual × backup');
 
   console.log('7) Retenção, operações presas e agendador');
   const oldRow = async (tenant: string, status: string, ageDays: number) => {

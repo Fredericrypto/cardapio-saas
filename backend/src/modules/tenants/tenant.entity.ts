@@ -149,6 +149,12 @@ export class Tenant {
   @Column({ name: 'tax_percent', type: 'numeric', precision: 5, scale: 2, default: 0, transformer: numericTransformer })
   taxPercent: number;
 
+  // Parâmetros do motor do SIOD (tempo base de preparo, penalidade por pedido na
+  // fila, janela, pico). null = padrão (ver siod/siod.math.ts → resolveSiodParams,
+  // que valida e limita cada campo). Dado de gestão: nunca vai pro cliente final.
+  @Column({ name: 'siod_settings', type: 'jsonb', nullable: true })
+  siodSettings: Record<string, unknown> | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 
