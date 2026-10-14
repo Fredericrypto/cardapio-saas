@@ -37,7 +37,7 @@ export function getPromotionBadgeKind(promo: BadgeSource, now: number = Date.now
   return 'featured';
 }
 
-// ---- Valor de destaque ("70%" / "R$ 10") ----------------------------------
+// ---- Valor de destaque (ex.: percentual ou valor em reais) -----------------
 
 export interface PromotionHeroValue {
   kind: 'percentage' | 'amount';
@@ -59,6 +59,21 @@ export function getPromotionHeroValue(promo: Pick<Promotion, 'discountType' | 'd
   return { kind: 'amount', text: `R$ ${amount}` };
 }
 
+/**
+ * Escala do número grande conforme o TAMANHO do texto, para qualquer valor que
+ * o admin cadastre ("5%", "100%", "12,75%", "R$ 10", "R$ 1000,50") caber sem
+ * estourar a largura. Só apresentação.
+ */
+export type HeroNumberScale = 'short' | 'medium' | 'long' | 'xlong';
+
+export function getHeroNumberScale(text: string): HeroNumberScale {
+  const length = text.length;
+  if (length <= 4) return 'short';
+  if (length <= 6) return 'medium';
+  if (length <= 8) return 'long';
+  return 'xlong';
+}
+
 // ---- Cor com transparência -------------------------------------------------
 
 /** `#rgb`/`#rrggbb` + alfa -> `rgba(...)`. Outros formatos CSS caem em color-mix. */
@@ -77,4 +92,44 @@ export function withAlpha(color: string, alpha: number): string {
 
 export function formatBRL(value: number): string {
   return Number(value).toFixed(2).replace('.', ',');
+}
+
+// ---- Contraste (cor da marca nunca pode deixar texto ilegível) ---------------
+
+function parseHex(color: string): [number, number, number] | null {
+  const hex = color.trim().match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  if (!hex) return null;
+  const raw = hex[1].length === 3 ? hex[1].split('').map((c) => c + c).join('') : hex[1];
+  return [parseInt(raw.slice(0, 2), 16), parseInt(raw.slice(2, 4), 16), parseInt(raw.slice(4, 6), 16)];
+}
+
+function relativeLuminance([r, g, b]: [number, number, number]): number {
+  const lin = (v: number) => {
+    const c = v / 255;
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  };
+  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+}
+
+export function contrastRatio(a: string, b: string): number {
+  const pa = parseHex(a);
+  const pb = parseHex(b);
+  if (!pa || !pb) return 1;
+  const la = relativeLuminance(pa);
+  const lb = relativeLuminance(pb);
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+}
+
+/** Texto escuro ou branco, o que tiver mais contraste sobre `background`. */
+export function readableTextOn(background: string): string {
+  return contrastRatio(background, '#FFFFFF') >= contrastRatio(background, '#111827') ? '#FFFFFF' : '#111827';
+}
+
+/**
+ * Cor de destaque para usar SOBRE superfície escura (ex.: a placa de vidro do
+ * desconto): a cor da marca se ela tiver contraste suficiente (>= 3:1) com o
+ * fundo; senão branco. Assim a identidade aparece quando funciona e nunca some.
+ */
+export function pickAccentOnDark(brand: string, darkBackground: string = '#1A1A1A'): string {
+  return contrastRatio(brand, darkBackground) >= 3 ? brand : '#FFFFFF';
 }
