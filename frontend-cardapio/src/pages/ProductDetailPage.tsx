@@ -17,6 +17,8 @@ import { CartIcon } from '../components/MenuIcons';
 import { useActiveLocation } from '../hooks/useActiveLocation';
 import { ShareButton } from '../components/ShareButton';
 import { Tooltip } from '../components/Tooltip';
+import { ProductImageCarousel } from '../components/ProductImageCarousel';
+import { getProductImages } from '../lib/productImages';
 import { buildShareUrl } from '../lib/shareLinks';
 import { PROFILE_CARD } from '../lib/profileTheme';
 import {
@@ -275,12 +277,12 @@ export function ProductDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-10 items-start">
           {/* Coluna esquerda: imagem em destaque */}
           <div className="relative aspect-[4/3] md:aspect-[16/9] lg:aspect-square md:rounded-2xl overflow-hidden bg-[#F3F4F6] dark:bg-[#282A2C] lg:sticky lg:top-8 md:shadow-sm">
-            {product.imageUrl ? (
-              <img
-                src={product.imageUrl}
+            {getProductImages(product).length > 0 ? (
+              <ProductImageCarousel
+                images={getProductImages(product)}
                 alt={localizedField(product, 'name')}
-                draggable={false}
-                className={`w-full h-full object-cover ${product.isAvailable === false ? 'grayscale opacity-60' : ''}`}
+                size="detail"
+                imgClassName={product.isAvailable === false ? 'grayscale opacity-60' : ''}
               />
             ) : (
               <div className={`w-full h-full flex items-center justify-center ${MENU_TEXT_MUTED}`}>

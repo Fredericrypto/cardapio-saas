@@ -60,8 +60,18 @@ export class Product {
   @Column({ name: 'cost_price', type: 'numeric', precision: 10, scale: 2, nullable: true, transformer: numericTransformer })
   costPrice: number | null;
 
+  // CAPA do item = images[0] (o service mantém os dois sempre em sincronia).
+  // Continua existindo para quem só precisa de UMA imagem: fallback do banner de
+  // promoção, avaliações, miniatura do carrinho e og:image do link compartilhado.
   @Column({ name: 'image_url', type: 'text', nullable: true })
   imageUrl: string | null;
+
+  // Galeria ordenada do item (máx. 5 — trava também no banco, ver migration
+  // ProductImagesGallery). O app do cliente mostra como carrossel quando há 2+.
+  // DEFAULT '{}' é obrigatório: sem ele o backup recusaria restaurar arquivos
+  // antigos (coluna nova NOT NULL sem padrão — backup-engine.checkCompatibility).
+  @Column({ name: 'images', type: 'text', array: true, default: () => "'{}'" })
+  images: string[];
 
   @Column({ name: 'is_available', default: true })
   isAvailable: boolean;

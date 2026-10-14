@@ -87,6 +87,47 @@ export class StorageService {
     return this.uploadBuffer(path, file.buffer, realMime);
   }
 
+  // Várias fotos de uma vez (galeria do item). TODAS são validadas ANTES de subir
+  // qualquer uma (uma foto inválida no meio não deixa as anteriores órfãs no
+  // bucket) e a ORDEM da lista devolvida é a ordem dos arquivos recebidos. Se
+  // algum upload falhar, o que já subiu é apagado (melhor esforço) e o erro sobe.
+  async uploadProductImages(
+    tenantId: string,
+    files: readonly Express.Multer.File[],
+  ): Promise<string[]> {
+    const validated = files.map((file) => ({
+      file,
+      mime: assertValidImage(file, MAX_FILE_SIZE_BYTES),
+    }));
+
+    const settled = await Promise.allSettled(
+      validated.map(({ file, mime }) => {
+        const extension = mime.split('/')[1];
+        const path = `${tenantId}/products/${randomUUID()}.${extension}`;
+        return this.uploadBuffer(path, file.buffer, mime);
+      }),
+    );
+
+    const urls: string[] = [];
+    let failure: unknown = null;
+    for (const result of settled) {
+      if (result.status === 'fulfilled') urls.push(result.value);
+      else if (failure === null) failure = result.reason;
+    }
+    if (failure !== null) {
+      await this.discardUploads(urls);
+      if (failure instanceof Error) throw failure;
+      throw new BadRequestException('Falha no upload das fotos.');
+    }
+    return urls;
+  }
+
+  // Apaga arquivos recém-enviados quando a operação seguinte não se concretizou
+  // (ex.: o item já estava com 5 fotos). Melhor esforço: nunca lança.
+  async discardUploads(urls: readonly string[]): Promise<void> {
+    await Promise.allSettled(urls.map((url) => this.deleteByPublicUrl(url)));
+  }
+
   // Avatar do cliente — path inclui tenantId E customerId (cliente é por
   // restaurante, não uma conta global; ver Customer entity), então nunca
   // colide entre clientes de restaurantes diferentes nem entre clientes

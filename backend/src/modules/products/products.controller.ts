@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Controller,
   Get,
   Post,
@@ -9,8 +10,9 @@ import {
   UseGuards,
   UseInterceptors,
   UploadedFile,
+  UploadedFiles,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 import { StorageService } from '../../common/services/storage.service';
@@ -19,6 +21,12 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { SetProductOptionsDto } from './dto/set-product-options.dto';
 import { RequirePermission } from '../auth/decorators/require-permission.decorator';
+import { MAX_PRODUCT_IMAGES, remainingSlots } from './product-images';
+
+// Teto de leitura do multer por arquivo: um pouco acima dos 5 MB aceitos, para
+// que a mensagem amigável do StorageService ("Imagem muito grande. Limite de
+// 5MB.") apareça em vez do erro seco de payload do multer.
+const MULTER_FILE_SIZE_CEILING_BYTES = 6 * 1024 * 1024;
 
 @Controller('products')
 export class ProductsController {
@@ -54,8 +62,46 @@ export class ProductsController {
     return this.productsService.create(tenantId, dto);
   }
 
-  // Upload de imagem separado da criação/edição do produto: o dono tira a
-  // foto, recebe a URL, e só então salva o produto com essa URL no campo imageUrl.
+  // Upload de VÁRIAS fotos de uma vez (galeria do item, até 5 no total). As
+  // fotos novas entram no FIM da galeria, na ordem enviada; reordenar/remover é
+  // um PATCH com `images`. Nada é gravado se a soma passar do limite.
+  @RequirePermission('menu:manage')
+  @Post(':id/images')
+  @UseInterceptors(
+    FilesInterceptor('files', MAX_PRODUCT_IMAGES, {
+      limits: { files: MAX_PRODUCT_IMAGES, fileSize: MULTER_FILE_SIZE_CEILING_BYTES },
+    }),
+  )
+  async uploadImages(
+    @CurrentTenant() tenantId: string,
+    @Param('id') id: string,
+    @UploadedFiles() files: Express.Multer.File[] | undefined,
+  ) {
+    if (!files || files.length === 0) {
+      throw new BadRequestException('Envie ao menos uma foto.');
+    }
+    const product = await this.productsService.findOne(tenantId, id); // garante que é do tenant
+    const room = remainingSlots(product.images.length);
+    if (files.length > room) {
+      throw new BadRequestException(
+        room === 0
+          ? `Este item já tem ${MAX_PRODUCT_IMAGES} fotos (o máximo). Remova uma para adicionar outra.`
+          : `Limite de ${MAX_PRODUCT_IMAGES} fotos por item: só cabem mais ${room}.`,
+      );
+    }
+
+    const urls = await this.storageService.uploadProductImages(tenantId, files);
+    try {
+      return await this.productsService.appendImages(tenantId, id, urls);
+    } catch (error) {
+      // Perdeu a corrida pelo limite (ou o produto sumiu): não deixa arquivo órfão.
+      await this.storageService.discardUploads(urls);
+      throw error;
+    }
+  }
+
+  // Upload de UMA imagem (formato antigo): troca só a CAPA e mantém as demais
+  // fotos da galeria. O painel novo usa POST :id/images.
   @RequirePermission('menu:manage')
   @Post(':id/image')
   @UseInterceptors(FileInterceptor('file'))

@@ -4,9 +4,14 @@ import {
   IsOptional,
   IsNumber,
   IsUUID,
+  IsArray,
+  IsUrl,
+  ArrayMaxSize,
+  MaxLength,
   Min,
   IsObject,
 } from 'class-validator';
+import { MAX_PRODUCT_IMAGES } from '../product-images';
 
 export class CreateProductDto {
   @IsUUID()
@@ -39,7 +44,20 @@ export class CreateProductDto {
   @Min(0)
   costPrice?: number | null;
 
+  // Formato antigo (uma foto só). Continua aceito: vira a capa da galeria.
   @IsOptional()
   @IsString()
   imageUrl?: string;
+
+  // Galeria ordenada — a primeira é a capa. Máximo de 5 fotos por item.
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(MAX_PRODUCT_IMAGES, { message: `Cada item aceita no máximo ${MAX_PRODUCT_IMAGES} fotos.` })
+  @IsString({ each: true })
+  @MaxLength(2048, { each: true, message: 'Endereço de foto muito longo.' })
+  @IsUrl(
+    { protocols: ['http', 'https'], require_protocol: true, require_tld: false },
+    { each: true, message: 'Cada foto precisa ser um endereço http(s) válido.' },
+  )
+  images?: string[];
 }

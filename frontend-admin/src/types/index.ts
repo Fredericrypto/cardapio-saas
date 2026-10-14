@@ -112,7 +112,11 @@ export interface Product {
   promoPrice: number | null;
   // Custo do item (opcional) — alimenta o CMV real na aba Análise.
   costPrice?: number | null;
+  // Capa do item (= primeira foto da galeria).
   imageUrl: string | null;
+  // Galeria ordenada, até 5 fotos (a primeira é a capa). Use getProductImages()
+  // (lib/productImages.ts), que também cobre produto antigo só com imageUrl.
+  images?: string[];
   isAvailable: boolean;
   displayOrder: number;
   options?: ProductOptionGroup[];

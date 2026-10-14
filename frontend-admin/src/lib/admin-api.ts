@@ -202,6 +202,22 @@ export async function uploadProductImage(id: string, file: File): Promise<Produc
   return data;
 }
 
+// Envia VÁRIAS fotos de uma vez; entram no fim da galeria (máx. 5 no total).
+export async function uploadProductImages(id: string, files: File[]): Promise<Product> {
+  const formData = new FormData();
+  for (const file of files) formData.append('files', file);
+  const { data } = await api.post<Product>(`/products/${id}/images`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return data;
+}
+
+// Grava a galeria COMPLETA na ordem recebida (reordenar/remover). A primeira é a capa.
+export async function setProductImages(id: string, images: string[]): Promise<Product> {
+  const { data } = await api.patch<Product>(`/products/${id}`, { images });
+  return data;
+}
+
 // ---------- Orders ----------
 export async function fetchOrders(): Promise<Order[]> {
   const { data } = await api.get<Order[]>('/orders');

@@ -128,7 +128,11 @@ export interface Product {
   description: string | null;
   price: number;
   promoPrice: number | null;
+  // Capa do item (= primeira foto da galeria).
   imageUrl: string | null;
+  // Galeria ordenada, até 5 fotos. Opcional: itens guardados no carrinho antes
+  // da galeria existir não têm — use getProductImages() (lib/productImages.ts).
+  images?: string[];
   isAvailable: boolean;
   displayOrder: number;
   options?: ProductOptionGroup[];

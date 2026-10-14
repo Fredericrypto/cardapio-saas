@@ -9,9 +9,10 @@ import {
   createProduct,
   updateProduct,
   deleteProduct,
-  uploadProductImage,
 } from '../lib/admin-api';
 import { ProductOptionsEditor } from '../components/ProductOptionsEditor';
+import { ProductImagesEditor } from '../components/ProductImagesEditor';
+import { MAX_PRODUCT_IMAGES, getProductImages } from '../lib/productImages';
 import type { Category, Product } from '../types';
 import { getCategoryIcon } from '../components/CategoryIcon';
 import { CategoryManager } from '../components/CategoryManager';
@@ -102,11 +103,6 @@ export function MenuManagementPage() {
     loadAll();
   }
 
-  async function handleImageUpload(productId: string, file: File) {
-    await uploadProductImage(productId, file);
-    loadAll();
-  }
-
   const activeCategories = categories.filter((c) => c.isActive);
   // Itens por categoria (o gerenciador mostra e usa pra decidir excluir × desativar).
   const productCounts: Record<string, number> = {};
@@ -171,7 +167,9 @@ export function MenuManagementPage() {
                   <span className="font-semibold text-gray-700">Foto do item:</span> use uma imagem{' '}
                   <span className="font-semibold text-gray-700">quadrada (1:1), de 1080 × 1080 px</span> — mínimo 800 × 800 px.
                   Formatos JPG, PNG ou WebP, até 5 MB. Deixe o prato bem no centro: no cardápio do cliente a foto é
-                  cortada nas bordas, principalmente em cima e embaixo na tela do item. Para trocar, clique na miniatura.
+                  cortada nas bordas, principalmente em cima e embaixo na tela do item.{' '}
+                  <span className="font-semibold text-gray-700">Até {MAX_PRODUCT_IMAGES} fotos por item</span> (a primeira é a capa;
+                  com 2 ou mais, o cliente vê um carrossel). Para adicionar, trocar ou reordenar, clique no item.
                 </p>
               </div>
               <div className="flex flex-col gap-3 mb-4">
@@ -181,29 +179,25 @@ export function MenuManagementPage() {
                     onClick={() => openEditProduct(product)}
                     className="bg-white border border-gray-100 rounded-xl p-3 flex gap-3 cursor-pointer hover:border-gray-300 transition-colors"
                   >
-                    <label
-                      onClick={(e) => e.stopPropagation()}
-                      className="w-16 h-16 rounded-lg bg-gray-100 shrink-0 overflow-hidden flex items-center justify-center cursor-pointer relative"
+                    <div
+                      title={getProductImages(product).length > 0 ? 'Editar fotos do item' : 'Adicionar fotos ao item'}
+                      className="w-16 h-16 rounded-lg bg-gray-100 shrink-0 overflow-hidden flex items-center justify-center relative"
                     >
-                      {product.imageUrl ? (
+                      {getProductImages(product).length > 0 ? (
                         <img
-                          src={product.imageUrl}
+                          src={getProductImages(product)[0]}
                           alt={product.name}
                           className="w-full h-full object-cover"
                         />
                       ) : (
                         <ImageIcon size={18} className="text-gray-300" />
                       )}
-                      <input
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) handleImageUpload(product.id, file);
-                        }}
-                      />
-                    </label>
+                      {getProductImages(product).length > 1 && (
+                        <span className="absolute bottom-0.5 right-0.5 bg-black/70 text-white text-[10px] font-semibold px-1.5 rounded-full">
+                          {getProductImages(product).length}
+                        </span>
+                      )}
+                    </div>
 
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-gray-900 truncate">
@@ -308,6 +302,15 @@ export function MenuManagementPage() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-40 p-4">
           <div className="bg-white rounded-2xl p-5 w-full max-w-sm flex flex-col gap-3 max-h-[85vh] overflow-y-auto">
             <p className="font-display font-bold text-gray-900">Editar produto</p>
+
+            <ProductImagesEditor
+              key={editingProduct.id}
+              product={editingProduct}
+              onChange={(updated) => {
+                setEditingProduct(updated);
+                setProducts((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+              }}
+            />
 
             <input
               value={editForm.name}

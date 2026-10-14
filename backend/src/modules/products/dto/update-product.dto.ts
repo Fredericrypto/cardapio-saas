@@ -5,9 +5,14 @@ import {
   IsUUID,
   IsBoolean,
   IsInt,
+  IsArray,
+  IsUrl,
+  ArrayMaxSize,
+  MaxLength,
   Min,
   IsObject,
 } from 'class-validator';
+import { MAX_PRODUCT_IMAGES } from '../product-images';
 
 export class UpdateProductDto {
   @IsOptional()
@@ -42,9 +47,23 @@ export class UpdateProductDto {
   @Min(0)
   costPrice?: number | null;
 
+  // Formato antigo (uma foto só): troca só a CAPA e mantém as demais fotos.
   @IsOptional()
   @IsString()
   imageUrl?: string;
+
+  // Galeria COMPLETA e ordenada (substitui a atual; a primeira é a capa). Mandar
+  // [] remove todas as fotos. Máximo de 5 por item. Tem precedência sobre imageUrl.
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(MAX_PRODUCT_IMAGES, { message: `Cada item aceita no máximo ${MAX_PRODUCT_IMAGES} fotos.` })
+  @IsString({ each: true })
+  @MaxLength(2048, { each: true, message: 'Endereço de foto muito longo.' })
+  @IsUrl(
+    { protocols: ['http', 'https'], require_protocol: true, require_tld: false },
+    { each: true, message: 'Cada foto precisa ser um endereço http(s) válido.' },
+  )
+  images?: string[];
 
   @IsOptional()
   @IsBoolean()

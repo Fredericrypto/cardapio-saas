@@ -15,6 +15,8 @@ import {
   MENU_TEXT_FAINT,
   MENU_TEXT_MUTED,
 } from '../lib/menuTheme';
+import { ProductImageCarousel } from './ProductImageCarousel';
+import { getProductImages } from '../lib/productImages';
 
 interface ProductCardProps {
   product: Product;
@@ -40,6 +42,8 @@ export function ProductCard({ product, primaryColor, onClick, storeClosed = fals
   const hasPromo = product.promoPrice != null;
   const isUnavailable = product.isAvailable === false;
   const hasRequiredOptions = (product.options ?? []).some((g) => g.minSelect > 0);
+  // Galeria do item (até 5). Com 2+ fotos vira carrossel; com 1 é a imagem de sempre.
+  const images = getProductImages(product);
 
   return (
     <button
@@ -47,11 +51,13 @@ export function ProductCard({ product, primaryColor, onClick, storeClosed = fals
       className={`flex flex-col h-full text-left rounded-2xl overflow-hidden border shadow-[0_2px_10px_rgba(0,0,0,0.04)] md:hover:shadow-[0_8px_22px_rgba(0,0,0,0.09)] active:scale-[0.985] transition-[transform,box-shadow] ${MENU_SURFACE} ${MENU_BORDER} ${isUnavailable ? 'opacity-90' : ''}`}
     >
       <div className={`relative aspect-square md:aspect-[4/3] ${MENU_SURFACE_SUBTLE}`}>
-        {product.imageUrl ? (
-          <img
-            src={product.imageUrl}
+        {images.length > 0 ? (
+          <ProductImageCarousel
+            images={images}
             alt={localizedField(product, 'name')}
-            className={`w-full h-full object-cover ${isUnavailable ? 'grayscale opacity-60' : storeClosed ? CLOSED_MUTED_CLASS : ''}`}
+            size="card"
+            nestedInButton
+            imgClassName={isUnavailable ? 'grayscale opacity-60' : storeClosed ? CLOSED_MUTED_CLASS : ''}
           />
         ) : (
           <div className={`w-full h-full flex items-center justify-center text-xs ${MENU_TEXT_FAINT}`}>
