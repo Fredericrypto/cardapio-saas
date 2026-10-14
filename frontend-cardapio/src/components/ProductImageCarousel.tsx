@@ -31,6 +31,11 @@ interface ProductImageCarouselProps {
   // Classes extras das fotos (indisponível = cinza, loja fechada = atenuado).
   imgClassName?: string;
   autoplayMs?: number;
+  // Quando informado, quem usa o carrossel CONTROLA o autoplay: roda só enquanto
+  // for true (ex.: card do cardápio, que só anda com o mouse em cima do card) e a
+  // pausa por mouse em cima da foto deixa de existir. Sem ele: autoplay sempre
+  // ligado e pausado com o mouse em cima (tela do item).
+  playing?: boolean;
 }
 
 interface View {
@@ -65,6 +70,7 @@ function CarouselSlides({
   nestedInButton = false,
   imgClassName = '',
   autoplayMs = CAROUSEL_AUTOPLAY_MS,
+  playing: controlledPlaying,
 }: ProductImageCarouselProps) {
   const count = images.length;
   const [view, setView] = useState<View>({ index: 0, prev: null, dir: 1 });
@@ -150,7 +156,8 @@ function CarouselSlides({
 
   // Autoplay: um timer por foto exibida. Mudou a foto (autoplay ou manual) =
   // contagem de 5 s recomeça do zero.
-  const playing = inView && docVisible && !hovered && !focused && !touching;
+  const allowed = controlledPlaying === undefined ? !hovered : controlledPlaying;
+  const playing = allowed && inView && docVisible && !focused && !touching;
   useEffect(() => {
     if (!playing || prefersReducedMotion()) return;
     const timer = window.setTimeout(() => go(1), autoplayMs);

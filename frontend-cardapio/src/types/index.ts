@@ -133,6 +133,8 @@ export interface Product {
   // Galeria ordenada, até 5 fotos. Opcional: itens guardados no carrinho antes
   // da galeria existir não têm — use getProductImages() (lib/productImages.ts).
   images?: string[];
+  // Quando o item entrou no cardápio (ISO). Usado no selo "Novo" do card.
+  createdAt?: string;
   isAvailable: boolean;
   displayOrder: number;
   options?: ProductOptionGroup[];
