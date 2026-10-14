@@ -62,6 +62,8 @@ export function MenuHeader({ tenant, location, onBack }: MenuHeaderProps) {
         }
       >
         <BannerViewer tenant={tenant} />
+        {/* Profundidade sutil sobre o banner (decorativa; não intercepta toque). */}
+        <span aria-hidden="true" className="atm-banner-depth" />
 
         {/* Voltar (só existe quando há mais de uma unidade): círculo no
             celular; no desktop fica oculto (a troca de unidade é feita pelo

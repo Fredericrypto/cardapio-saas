@@ -1,22 +1,23 @@
 import { useI18n } from '../../i18n/I18nContext';
-import { getPromotionHeroValue, withAlpha } from '../../lib/promotionPresentation';
-import { MENU_SURFACE, MENU_TEXT, MENU_TEXT_SOFT } from '../../lib/menuTheme';
+import { getHeroNumberScale, getPromotionHeroValue } from '../../lib/promotionPresentation';
+import { MENU_TEXT, MENU_TEXT_SOFT } from '../../lib/menuTheme';
 import type { Promotion } from '../../types';
 
-// Placa do desconto: o maior elemento da página, sobreposta à borda do banner
-// (quem posiciona é a página) para banner e desconto lerem como UMA peça.
+// Painel do desconto, ABAIXO da imagem: vidro transparente, compacto (largura
+// do conteúdo), com a SUA PRÓPRIA luz ambiente atrás, mais leve que a da
+// imagem: branca no tema escuro e escura no tema claro. A luz é um bloco do
+// mesmo tamanho do painel, desfocado (sem máscara: o desfoque cria o
+// esmaecimento, então não há bordas retas). Texto nos tokens do app.
 // Só exibe valores que a promoção já tem; não calcula nada.
+// Requer um ancestral `isolate` (PromotionMedia) para o z-index negativo da luz
+// ficar acima do fundo da página e abaixo do painel.
 export function PromotionHeroCard({
   promotion,
-  primaryColor,
-  accent,
   ariaLabel,
   muted = false,
   className = '',
 }: {
   promotion: Promotion;
-  primaryColor: string;
-  accent: string;
   ariaLabel: string;
   muted?: boolean;
   className?: string;
@@ -27,35 +28,36 @@ export function PromotionHeroCard({
     promotion.scope === 'all'
       ? t('promotionDetailPage.em_todo_o_cardapio')
       : t('promotionDetailPage.nos_itens_selecionados');
-  // Valores em reais ("R$ 10,50") têm mais caracteres que "70%": fonte menor
-  // para nunca estourar a largura no celular.
-  const numberSize =
-    hero.kind === 'percentage' ? 'text-7xl md:text-8xl' : 'text-5xl md:text-7xl';
+  // Tamanho pelo comprimento do valor (o admin edita livremente).
+  const numberSize = {
+    short: 'text-6xl md:text-8xl lg:text-9xl',
+    medium: 'text-5xl md:text-7xl lg:text-8xl',
+    long: 'text-4xl md:text-6xl lg:text-7xl',
+    xlong: 'text-3xl md:text-5xl lg:text-6xl',
+  }[getHeroNumberScale(hero.text)];
 
   return (
-    <div
-      role="group"
-      aria-label={ariaLabel}
-      className={`relative w-max max-w-full overflow-hidden rounded-2xl md:rounded-3xl border-2 py-4 pl-6 pr-5 md:py-5 md:pl-8 md:pr-7 ${MENU_SURFACE} ${muted ? 'opacity-80' : ''} ${className}`}
-      style={{
-        borderColor: withAlpha(primaryColor, 0.55),
-        backgroundImage: `linear-gradient(135deg, ${withAlpha(primaryColor, 0.22)}, ${withAlpha(primaryColor, 0.06)} 60%, transparent)`,
-        boxShadow: `0 24px 48px -16px ${withAlpha(primaryColor, 0.55)}, 0 8px 24px rgba(0, 0, 0, 0.25)`,
-      }}
-    >
-      <div aria-hidden="true" className="absolute inset-y-0 left-0 w-1.5" style={{ backgroundColor: primaryColor }} />
-      <div className="relative flex flex-wrap items-end gap-x-2.5">
-        <span className={`font-display font-extrabold leading-[0.9] tracking-tight tabular-nums ${numberSize} ${MENU_TEXT}`}>
-          {hero.text}
-        </span>
-        <span
-          className="pb-1 md:pb-2 font-display font-extrabold text-2xl md:text-3xl tracking-wide"
-          style={{ color: accent }}
-        >
-          {t('promotionDetailPage.off')}
-        </span>
+    <div className={`relative w-max max-w-full ${className}`}>
+      {/* luz própria do painel: escura no claro, branca no escuro; sutil */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 -z-10 rounded-2xl md:rounded-3xl bg-[#111827]/20 dark:bg-white/15 blur-xl md:blur-2xl"
+      />
+      <div
+        role="group"
+        aria-label={ariaLabel}
+        className={`rounded-2xl md:rounded-3xl border border-black/10 dark:border-white/15 bg-[#FFFFFF]/45 dark:bg-white/[0.05] backdrop-blur-xl shadow-lg px-4 py-3 md:px-7 md:py-5 ${muted ? 'opacity-80 grayscale' : ''}`}
+      >
+        <div className="flex flex-wrap items-end gap-x-2 md:gap-x-3 gap-y-1">
+          <span className={`font-display font-extrabold leading-[0.9] tracking-tight tabular-nums ${numberSize} ${MENU_TEXT}`}>
+            {hero.text}
+          </span>
+          <span className={`mb-1 md:mb-2 font-display text-lg md:text-3xl font-extrabold tracking-wide ${MENU_TEXT_SOFT}`}>
+            {t('promotionDetailPage.off')}
+          </span>
+        </div>
+        <p className={`mt-2 md:mt-3 text-sm md:text-base font-semibold ${MENU_TEXT_SOFT}`}>{subtitle}</p>
       </div>
-      <p className={`relative mt-2 text-sm md:text-base font-semibold ${MENU_TEXT_SOFT}`}>{subtitle}</p>
     </div>
   );
 }

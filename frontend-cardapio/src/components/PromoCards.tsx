@@ -97,10 +97,24 @@ function PromoCard({
   const { t } = useI18n();
   const countdownLabel = useCountdownLabel(promo.endsAt);
 
+  const gradient = `linear-gradient(135deg, ${primaryColor}, ${primaryColor}99)`;
+
   return (
+    // Invólucro = o item do carrossel/grade (leva as classes de tamanho e de
+    // snap que antes ficavam no botão) + a luz ambiente do card, que fica ATRÁS
+    // dele e só acende ao passar o mouse (ver .promo-ambient no index.css).
+    // Cards em cinza (loja fechada / promoção já usada) não têm luz.
+    <div
+      className={`promo-item relative shrink-0 w-[270px] md:w-auto h-36 md:h-40 snap-start ${muted || promo.alreadyUsedUp ? 'promo-item-quiet' : ''}`}
+    >
+      {promo.imageUrl ? (
+        <img src={promo.imageUrl} alt="" aria-hidden="true" decoding="async" draggable={false} className="promo-ambient" />
+      ) : (
+        <span aria-hidden="true" className="promo-ambient" style={{ background: gradient }} />
+      )}
     <button
       onClick={() => onSelect(promo.id)}
-      className={`shrink-0 w-[270px] md:w-auto h-36 md:h-40 snap-start rounded-2xl md:hover:shadow-[0_8px_22px_rgba(0,0,0,0.12)] transition-[transform,box-shadow] overflow-hidden relative shadow-[0_2px_10px_rgba(0,0,0,0.04)] text-left active:scale-[0.98] dark:ring-1 dark:ring-white/10 ${muted ? CLOSED_MUTED_CLASS : ''}`}
+      className={`atm-card w-full h-full rounded-2xl transition-[transform,box-shadow] overflow-hidden relative text-left active:scale-[0.98] ${muted ? CLOSED_MUTED_CLASS : ''}`}
     >
       <div className="relative h-full w-full">
         {promo.imageUrl ? (
@@ -113,7 +127,9 @@ function PromoCard({
           <div
             className="w-full h-full"
             style={{
-              background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}99)`,
+              // Reflexo suave no canto superior esquerdo (longe do texto, que fica
+              // embaixo) sobre o mesmo degradê de antes.
+              background: `radial-gradient(120% 90% at 0% 0%, rgb(255 255 255 / 0.14), transparent 55%), ${gradient}`,
             }}
           />
         )}
@@ -165,5 +181,6 @@ function PromoCard({
       </div>
 
     </button>
+    </div>
   );
 }

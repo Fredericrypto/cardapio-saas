@@ -1,20 +1,10 @@
 import { Clock, Flame, Sparkles } from 'lucide-react';
 import { useI18n } from '../../i18n/I18nContext';
-import { withAlpha } from '../../lib/promotionPresentation';
 import type { PromotionBadgeKind } from '../../lib/promotionPresentation';
 
-// Selo de destaque (só apresentação). O tipo vem de getPromotionBadgeKind.
-export function PromotionBadge({
-  kind,
-  primaryColor,
-  accent,
-  muted = false,
-}: {
-  kind: PromotionBadgeKind;
-  primaryColor: string;
-  accent: string;
-  muted?: boolean;
-}) {
+// Selo de destaque (só apresentação), nas cores do tema do app. O tipo vem de
+// getPromotionBadgeKind.
+export function PromotionBadge({ kind, muted = false }: { kind: PromotionBadgeKind; muted?: boolean }) {
   const { t } = useI18n();
   const Icon = kind === 'endingSoon' ? Clock : kind === 'hotDeal' ? Flame : Sparkles;
   const label =
@@ -26,15 +16,10 @@ export function PromotionBadge({
 
   return (
     <span
-      className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider"
-      style={
-        muted
-          ? undefined
-          : { color: accent, backgroundColor: withAlpha(primaryColor, 0.12), borderColor: withAlpha(primaryColor, 0.3) }
-      }
+      className={`inline-flex items-center gap-2 rounded-full border border-black/10 dark:border-white/15 bg-[#FFFFFF]/70 dark:bg-white/10 backdrop-blur px-3.5 py-2 text-xs font-bold uppercase tracking-wider text-[#111827] dark:text-[#E3E2E6] ${muted ? 'opacity-70' : ''}`}
     >
-      <Icon size={13} strokeWidth={1.5} aria-hidden="true" />
-      <span className={muted ? 'text-[#6B7280] dark:text-[#C4C7C5]' : undefined}>{label}</span>
+      <Icon size={15} strokeWidth={1.5} aria-hidden="true" />
+      {label}
     </span>
   );
 }

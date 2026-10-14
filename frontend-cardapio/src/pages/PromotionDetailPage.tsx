@@ -4,10 +4,10 @@ import { categoryLabel } from '../i18n/categoryLabel';
 import { useI18n } from '../i18n/I18nContext';
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Ban, Clock, Coins, Users, Tag, Package, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Ban, Clock, Coins, Compass, Users, Tag, Package, CheckCircle2 } from 'lucide-react';
 import { ShareButton } from '../components/ShareButton';
 import { Tooltip } from '../components/Tooltip';
-import { PromotionAmbient } from '../components/promotion/PromotionAmbient';
+import { PromotionMedia } from '../components/promotion/PromotionMedia';
 import { PromotionBadge } from '../components/promotion/PromotionBadge';
 import { PromotionHeroCard } from '../components/promotion/PromotionHeroCard';
 import { PromotionBenefitCard } from '../components/promotion/PromotionBenefitCard';
@@ -21,16 +21,17 @@ import { useAccentColor } from '../hooks/useAccentColor';
 import { useTableSessionContext } from '../contexts/TableSessionContext';
 import { useSelectedLocation } from '../hooks/useSelectedLocation';
 import { computePromotionEligibility } from '../lib/promotionEligibility';
+import { buildPromotionModePaths } from '../lib/promotionMode';
 import { formatBRL, getPromotionBadgeKind, getPromotionHeroValue } from '../lib/promotionPresentation';
 import { PROMO_FOCUS, PROMO_LINK_BTN, PROMO_PRIMARY_BTN } from '../lib/promotionTheme';
 import { PROFILE_CARD } from '../lib/profileTheme';
 import {
   MENU_PAGE_BG,
   MENU_SURFACE,
+  MENU_DIVIDER,
   MENU_BORDER,
   MENU_TEXT,
   MENU_TEXT_SOFT,
-  MENU_TEXT_BODY,
   MENU_TEXT_MUTED,
 } from '../lib/menuTheme';
 import type { Promotion, Category, Product, Location } from '../types';
@@ -214,7 +215,7 @@ export function PromotionDetailPage() {
   const conditionRows: { key: string; icon: React.ReactNode; label: string }[] = [];
   conditionRows.push({
     key: 'scope',
-    icon: <Tag size={15} strokeWidth={1.5} />,
+    icon: <Tag size={16} strokeWidth={1.5} />,
     label:
       promotion.scope === 'all'
         ? t('promotionDetailPage.valida_para_todos_os')
@@ -266,83 +267,62 @@ export function PromotionDetailPage() {
       className={`relative min-h-screen ${MENU_PAGE_BG} pb-28 lg:pb-12`}
       style={{ '--brand': tenant.primaryColor, '--accent': accent } as React.CSSProperties}
     >
-      <PromotionAmbient color={tenant.primaryColor} imageUrl={isUsedUp ? null : promotion.imageUrl} />
-
-      <div className="relative z-10 w-full max-w-7xl mx-auto md:px-8 md:py-8 lg:py-10">
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-10 items-start">
-          {/* Coluna esquerda: banner + placa do desconto sobreposta (uma peça só).
-              O pb-* reserva o trecho da placa que sai para fora do banner. */}
-          <div className="relative pb-14 md:pb-16 lg:pb-14 lg:sticky lg:top-8">
-            <div className="relative aspect-[16/10] lg:aspect-[4/3] md:rounded-3xl overflow-hidden bg-[#F3F4F6] dark:bg-[#282A2C] md:shadow-lg md:ring-1 md:ring-black/5 dark:md:ring-white/10">
-              {promotion.imageUrl ? (
-                <img
-                  src={promotion.imageUrl}
-                  alt={localizedField(promotion, 'title')}
-                  draggable={false}
-                  className={`w-full h-full object-cover ${isUsedUp ? 'grayscale' : ''}`}
-                />
-              ) : (
-                <div
-                  className="w-full h-full"
-                  style={{
-                    background: `linear-gradient(135deg, ${tenant.primaryColor}, ${tenant.primaryColor}99)`,
-                  }}
-                />
-              )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-black/25" aria-hidden="true" />
-              <Tooltip label={t('tooltip.back')} className="contents">
-                <button
-                  // Link compartilhado abre direto aqui (sem histórico): voltar leva ao cardápio.
-                  onClick={() => (routerLocation.key === 'default' ? navigate(backHref, { replace: true }) : navigate(-1))}
-                  aria-label={t('common.back')}
-                  className={`absolute top-4 left-4 w-10 h-10 rounded-full bg-white/90 dark:bg-[#1E1E20]/90 text-[#111827] dark:text-[#E3E2E6] flex items-center justify-center shadow-md hover:scale-105 transition motion-reduce:transform-none ${PROMO_FOCUS}`}
-                >
-                  <ArrowLeft size={18} strokeWidth={1.5} />
-                </button>
-              </Tooltip>
-              {slug && (
-                <ShareButton
-                  className="absolute top-4 right-4"
-                  url={buildShareUrl('promocao', slug, promotion.id)}
-                  title={localizedField(promotion, 'title')}
-                  text={localizedField(promotion, 'description') || t('promotionDetailPage.promocao_de_name', { name: tenant.name })}
-                />
-              )}
-            </div>
-
-            <PromotionHeroCard
-              promotion={promotion}
-              primaryColor={tenant.primaryColor}
-              accent={accent}
-              ariaLabel={discountLabel}
-              muted={isUsedUp}
-              className="absolute bottom-0 left-4 md:left-6 z-10"
-            />
-          </div>
+      <div className="relative w-full max-w-[88rem] mx-auto px-4 md:px-8 py-4 md:py-8 lg:py-10">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] gap-6 lg:gap-10 items-start">
+          {/* Coluna esquerda: imagem INTEIRA que cabe na altura da tela, luz ambiente
+              atrás de tudo e o painel do desconto (vidro) abaixo da imagem. */}
+          <PromotionMedia
+            imageUrl={promotion.imageUrl}
+            alt={localizedField(promotion, 'title')}
+            primaryColor={tenant.primaryColor}
+            grayscale={isUsedUp}
+            overlay={
+              <>
+                <Tooltip label={t('tooltip.back')} className="contents">
+                  <button
+                    // Link compartilhado abre direto aqui (sem histórico): voltar leva ao cardápio.
+                    onClick={() => (routerLocation.key === 'default' ? navigate(backHref, { replace: true }) : navigate(-1))}
+                    aria-label={t('common.back')}
+                    className={`absolute top-4 left-4 w-10 h-10 rounded-full bg-white/90 dark:bg-[#1E1E20]/90 text-[#111827] dark:text-[#E3E2E6] flex items-center justify-center shadow-md hover:scale-105 transition motion-reduce:transform-none ${PROMO_FOCUS}`}
+                  >
+                    <ArrowLeft size={18} strokeWidth={1.5} />
+                  </button>
+                </Tooltip>
+                {slug && (
+                  <ShareButton
+                    className="absolute top-4 right-4"
+                    url={buildShareUrl('promocao', slug, promotion.id)}
+                    title={localizedField(promotion, 'title')}
+                    text={localizedField(promotion, 'description') || t('promotionDetailPage.promocao_de_name', { name: tenant.name })}
+                  />
+                )}
+              </>
+            }
+            panel={<PromotionHeroCard promotion={promotion} ariaLabel={discountLabel} muted={isUsedUp} />}
+          />
 
           {/* Coluna direita: selo, título, benefício, ação e (por último) condições */}
-          <div className="p-4 md:p-0 pt-2 lg:pt-1 flex flex-col gap-5">
+          <div className="flex flex-col gap-6">
             <div className="flex flex-col items-start gap-3">
-              <PromotionBadge kind={badgeKind} primaryColor={tenant.primaryColor} accent={accent} muted={isUsedUp} />
-              <h1 className={`font-display text-2xl md:text-3xl font-extrabold leading-tight ${MENU_TEXT}`}>
+              <PromotionBadge kind={badgeKind} muted={isUsedUp} />
+              <h1 className={`font-display text-3xl md:text-4xl font-extrabold leading-tight ${MENU_TEXT}`}>
                 {localizedField(promotion, 'title')}
               </h1>
               {promotion.description && (
-                <p className={`text-sm md:text-base ${MENU_TEXT_BODY} leading-relaxed`}>
+                <p className={`text-base md:text-lg ${MENU_TEXT_SOFT} leading-relaxed`}>
                   {localizedField(promotion, 'description')}
                 </p>
               )}
             </div>
 
             {isUsedUp ? (
-              <div className={`${PROFILE_CARD} p-4 md:p-5 flex flex-wrap items-center gap-3`}>
-                <CheckCircle2 size={20} strokeWidth={1.5} className={`${MENU_TEXT_BODY} shrink-0`} aria-hidden="true" />
+              <div className="rounded-2xl border border-black/10 dark:border-white/15 bg-[#FFFFFF]/50 dark:bg-white/[0.06] backdrop-blur-xl p-5 flex flex-wrap items-center gap-3">
+                <CheckCircle2 size={22} strokeWidth={1.5} className={`${MENU_TEXT_SOFT} shrink-0`} aria-hidden="true" />
                 <p className={`text-sm ${MENU_TEXT_SOFT} flex-1 min-w-0`}>{t('promotionDetailPage.voce_ja_usou_essa')}</p>
                 <button
                   type="button"
                   onClick={() => navigate(backHref)}
-                  className={PROMO_LINK_BTN}
-                  style={{ color: accent }}
+                  className={`${PROMO_LINK_BTN} ${MENU_TEXT}`}
                 >
                   {t('promotionDetailPage.voltar_pro_cardapio')}
                 </button>
@@ -352,8 +332,6 @@ export function PromotionDetailPage() {
                 promotion={promotion}
                 eligibility={eligibility}
                 isApplied={isApplied}
-                primaryColor={tenant.primaryColor}
-                accent={accent}
                 hasEligibleProducts={eligibleProducts.length > 0}
                 onSeeProducts={handleSeeEligibleProducts}
               />
@@ -362,17 +340,32 @@ export function PromotionDetailPage() {
             {/* Ação principal inline no desktop; no celular fica fixa no rodapé. */}
             <div className="hidden lg:block">{cta}</div>
 
-            {/* Condições: a seção de MENOR peso da página (sem caixa, texto pequeno). */}
+            {/* Entrada do Modo Promoção: navegar só pelos itens que a promoção cobre. */}
+            {!isUsedUp && (
+              <button
+                type="button"
+                onClick={() => navigate(buildPromotionModePaths(slug ?? '', promotion.id, qrCodeToken).explore)}
+                className={`flex w-full items-center justify-center gap-2 rounded-xl border ${MENU_DIVIDER} py-3 text-sm font-semibold ${MENU_TEXT} transition hover:bg-black/[0.03] dark:hover:bg-white/[0.06] ${PROMO_FOCUS}`}
+              >
+                <Compass size={16} strokeWidth={1.5} aria-hidden="true" />
+                {t('promotionMode.exploreItems')}
+              </button>
+            )}
+
+            {/* Condições: depois do botão e mais leves que o benefício. */}
             <section aria-labelledby="promo-conditions-title">
               <h2
                 id="promo-conditions-title"
-                className={`text-[11px] font-semibold uppercase tracking-wider ${MENU_TEXT_BODY} mb-1`}
+                className={`text-xs font-semibold uppercase tracking-wider ${MENU_TEXT_SOFT} mb-2`}
               >
                 {t('promotionDetailPage.detalhes_e_condicoes')}
               </h2>
-              <ul className="divide-y divide-[#F3F4F6] dark:divide-white/10">
+              <ul className="flex flex-col gap-2">
                 {conditionRows.map((row) => (
-                  <li key={row.key} className={`flex items-center gap-2.5 py-2.5 text-[13px] ${MENU_TEXT_BODY}`}>
+                  <li
+                    key={row.key}
+                    className={`flex items-center gap-3 rounded-xl border border-black/10 dark:border-white/10 bg-[#FFFFFF]/40 dark:bg-white/[0.04] backdrop-blur-xl px-4 py-3 text-sm ${MENU_TEXT_SOFT}`}
+                  >
                     <span className="shrink-0" aria-hidden="true">{row.icon}</span>
                     <span className="min-w-0 break-words">{row.label}</span>
                   </li>
@@ -384,7 +377,7 @@ export function PromotionDetailPage() {
 
         {/* Produtos elegíveis */}
         {eligibleProducts.length > 0 && (
-          <section id="promo-eligible-products" className="px-4 md:px-0 mt-8 lg:mt-12 scroll-mt-6">
+          <section id="promo-eligible-products" className="mt-10 lg:mt-14 scroll-mt-6">
             <h2 className={`font-display text-lg md:text-xl font-bold ${MENU_TEXT} mb-4`}>
               {t('promotionDetailPage.valida_para_itens_selecionados')}
             </h2>
@@ -411,10 +404,7 @@ export function PromotionDetailPage() {
                         <Tag size={24} strokeWidth={1.5} className={MENU_TEXT_MUTED} />
                       )}
                       {hero.kind === 'percentage' && !isUsedUp && (
-                        <span
-                          className="absolute top-2 left-2 rounded-lg px-2 py-1 text-[11px] font-extrabold tracking-wide text-[#FFFFFF] shadow-sm"
-                          style={{ backgroundColor: tenant.primaryColor }}
-                        >
+                        <span className="absolute top-2 left-2 rounded-lg bg-black/70 backdrop-blur px-2 py-1 text-[11px] font-extrabold tracking-wide text-[#FFFFFF] shadow-sm">
                           {hero.text} {t('promotionDetailPage.off')}
                         </span>
                       )}

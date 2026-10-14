@@ -201,3 +201,195 @@ img, svg, video, a {
     animation: none;
   }
 }
+
+/* ============================================================
+   ATMOSFERA DO CARDÁPIO — "modo ambiente" (estilo YouTube)
+   A luz vem da FOTO: uma cópia desfocada e saturada da imagem fica atrás do
+   conteúdo e vaza pelas bordas. Só no cabeçalho (banner + cartão da loja) e nos
+   cards de promoção (ao passar o mouse). Produtos, categorias e textos ficam
+   limpos: as camadas ficam ATRÁS de tudo (z-index negativo dentro do `isolate`
+   da MenuPage), sem animação pesada, sem JS em rolagem e sem filtro global.
+   ============================================================ */
+
+/* --- Cabeçalho (componente AmbientGlow) -------------------------------- */
+/* Celular: o cartão é de ponta a ponta, então a luz só aparece embaixo dele.
+   Desktop: ela contorna o cartão inteiro. O blur é de ~40px, então a luz
+   termina de desvanecer a poucas dezenas de pixels da borda. */
+.amb-header {
+  position: absolute;
+  z-index: -10;
+  pointer-events: none;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: calc(100% + 20px);
+}
+@media (min-width: 768px) {
+  .amb-header {
+    left: -14px;
+    top: -14px;
+    width: calc(100% + 28px);
+    height: calc(100% + 28px);
+  }
+}
+.amb-media {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(40px) saturate(1.8);
+  /* Claro: fotos escuras viram névoa cinza sobre o branco, então a luz é mais
+     fraca; escuro: o "modo ambiente" clássico. */
+  opacity: 0.26;
+}
+.dark .amb-media {
+  /* `brightness` é o teto: foto muito clara (prato branco, fundo amarelo) não
+     pode clarear o fundo escuro a ponto de pesar sobre o texto ao redor. */
+  filter: blur(40px) saturate(1.8) brightness(0.65);
+  opacity: 0.46;
+}
+/* Loja fechada: banner em tons de cinza → luz cinza e mais fraca. */
+.amb-muted .amb-media {
+  filter: blur(40px) grayscale(1);
+  opacity: 0.25;
+}
+.dark .amb-muted .amb-media {
+  filter: blur(40px) grayscale(1) brightness(0.72);
+  opacity: 0.3;
+}
+
+/* Profundidade dentro do banner (sobre a foto, abaixo dos botões): vinheta
+   neutra bem leve em cima e embaixo + reflexo suave no canto superior esquerdo. */
+.atm-banner-depth {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(to bottom, rgb(0 0 0 / 0.10), transparent 42%),
+    linear-gradient(to top, rgb(0 0 0 / 0.08), transparent 38%),
+    radial-gradient(120% 100% at 0% 0%, rgb(255 255 255 / 0.09), transparent 55%);
+}
+
+/* --- Cards de promoção -------------------------------------------------- */
+/* Luz de cada card = a própria imagem do card, desfocada, atrás dele. Só
+   aparece ao passar o mouse (ou foco do teclado) em telas largas com mouse; no
+   celular não existe (nada é renderizado). Enquanto escondida usa
+   `visibility:hidden`, então não custa pintura em repouso. Fica no mesmo plano
+   negativo do cabeçalho: nunca cobre o card vizinho. */
+.promo-ambient {
+  display: none;
+}
+@media (hover: hover) and (min-width: 768px) {
+  .promo-ambient {
+    display: block;
+    position: absolute;
+    inset: -6px;
+    z-index: -10;
+    pointer-events: none;
+    width: calc(100% + 12px);
+    height: calc(100% + 12px);
+    object-fit: cover;
+    border-radius: 20px;
+    filter: blur(28px) saturate(1.6);
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 320ms ease, visibility 0s linear 320ms;
+  }
+  .promo-item:hover .promo-ambient,
+  .promo-item:focus-within .promo-ambient {
+    visibility: visible;
+    opacity: 0.42;
+    transition-delay: 0s;
+  }
+  .dark .promo-item:hover .promo-ambient,
+  .dark .promo-item:focus-within .promo-ambient {
+    opacity: 0.62;
+  }
+  /* Loja fechada ou promoção já usada: card em cinza → sem luz. */
+  .promo-item-quiet .promo-ambient {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .promo-ambient {
+    transition: none;
+  }
+}
+
+/* Acabamento do card: contorno fino + sombra curta neutra (a de antes) e um
+   filete de luz de 1px no topo. A elevação do hover (md+) só aumenta a sombra. */
+.atm-card {
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 0.04),
+    0 2px 10px rgb(0 0 0 / 0.04);
+}
+.dark .atm-card {
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.10);
+}
+@media (min-width: 768px) {
+  .atm-card:hover {
+    box-shadow:
+      0 0 0 1px rgb(0 0 0 / 0.05),
+      0 8px 22px rgb(0 0 0 / 0.12);
+  }
+  .dark .atm-card:hover {
+    box-shadow: 0 0 0 1px rgb(255 255 255 / 0.14);
+  }
+}
+.atm-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.16),
+    inset 0 0 0 1px rgb(0 0 0 / 0.04);
+}
+.dark .atm-card::after {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.10),
+    inset 0 0 0 1px rgb(255 255 255 / 0.04);
+}
+
+/* --- Faixa de categorias: SEM cor de fundo em repouso (desktop) ----------- */
+/* Em repouso a faixa não tem cor nenhuma: o fundo opaco que vinha da página sai
+   e quem aparece é o fundo da tela (claro ou escuro), com a luz dos cards de
+   promoção passando por trás sem nenhuma faixa escurecida. Textos e o hover das
+   abas não são tocados. Enquanto está PRESA no topo (`.atm-stuck`, ver
+   StickyCategoryBar) as regras abaixo não valem e ela mantém o fundo normal da
+   página, para os produtos que rolam por baixo não atrapalharem a leitura.
+   Setas das pontas: sem o gradiente colorido, só um desfoque que some em degradê
+   (sem cor). Celular continua com a faixa de sempre. */
+@media (min-width: 768px) {
+  .atm-glass:not(.atm-stuck) {
+    background-color: transparent;
+  }
+  .atm-glass:not(.atm-stuck) button.left-0,
+  .atm-glass:not(.atm-stuck) button.right-0 {
+    background-image: none;
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+  }
+  .atm-glass:not(.atm-stuck) button.left-0 {
+    -webkit-mask-image: linear-gradient(to right, #000 55%, transparent);
+    mask-image: linear-gradient(to right, #000 55%, transparent);
+  }
+  .atm-glass:not(.atm-stuck) button.right-0 {
+    -webkit-mask-image: linear-gradient(to left, #000 55%, transparent);
+    mask-image: linear-gradient(to left, #000 55%, transparent);
+  }
+}
+
+@media print {
+  .amb-header,
+  .promo-ambient,
+  .atm-banner-depth,
+  .atm-card::after {
+    display: none;
+  }
+  .atm-card {
+    box-shadow: none;
+  }
+}

@@ -5,6 +5,7 @@ import { MenuPage } from './pages/MenuPage';
 import { LocationPickerPage } from './pages/LocationPickerPage';
 import { ProductDetailPage } from './pages/ProductDetailPage';
 import { PromotionDetailPage } from './pages/PromotionDetailPage';
+import { PromotionExplorePage } from './pages/PromotionExplorePage';
 import { CartPage } from './pages/CartPage';
 import { MyAccountPage } from './pages/MyAccountPage';
 import { CustomerAuthPage } from './pages/CustomerAuthPage';
@@ -82,6 +83,18 @@ function App() {
                 </OptionalCustomerAuth>
               }
             />
+            {/* Modo Promoção (tela imersiva da promoção) — versão de mesa. O
+                token continua na URL, então a sessão da mesa não se perde. */}
+            <Route
+              path="mesa/:qrCodeToken/promocao/:promotionId/explorar"
+              element={
+                <OptionalCustomerAuth>
+                  <TableSessionGate>
+                    <PromotionExplorePage />
+                  </TableSessionGate>
+                </OptionalCustomerAuth>
+              }
+            />
             <Route
               path="mesa/:qrCodeToken/carrinho"
               element={
@@ -127,6 +140,15 @@ function App() {
               element={
                 <RequireCustomerAuth>
                   <PromotionDetailPage />
+                </RequireCustomerAuth>
+              }
+            />
+            {/* Modo Promoção — versão padrão (mesmas regras de login do detalhe). */}
+            <Route
+              path="promocao/:promotionId/explorar"
+              element={
+                <RequireCustomerAuth>
+                  <PromotionExplorePage />
                 </RequireCustomerAuth>
               }
             />

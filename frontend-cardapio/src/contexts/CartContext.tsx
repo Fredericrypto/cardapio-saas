@@ -56,6 +56,10 @@ interface CartContextValue {
   // Array vazio = nenhuma escolhida.
   selectedPromotionIds: string[];
   togglePromotion: (id: string) => void;
+  // Idempotente (ao contrário do toggle): garante que a promoção está
+  // selecionada. Usado pelo Modo Promoção, que não pode desligar sem querer
+  // uma promoção já ativa só por reabrir a tela.
+  selectPromotion: (id: string) => void;
   clearSelectedPromotions: () => void;
   // Chamado de dentro de CustomerAuthContext toda vez que tenant/cliente
   // logado mudam (login, logout, troca de conta, troca de restaurante).
@@ -225,6 +229,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  const selectPromotion = useCallback((id: string) => {
+    setSelectedPromotionIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+  }, []);
+
   const clearSelectedPromotions = useCallback(() => {
     setSelectedPromotionIds([]);
   }, []);
@@ -258,6 +266,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       totalPrice,
       selectedPromotionIds,
       togglePromotion,
+      selectPromotion,
       clearSelectedPromotions,
       setCartOwner,
     }),
@@ -272,6 +281,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       totalPrice,
       selectedPromotionIds,
       togglePromotion,
+      selectPromotion,
       clearSelectedPromotions,
       setCartOwner,
     ],

@@ -23,8 +23,9 @@ export function PromotionUnavailable({
       className={`relative min-h-screen ${MENU_PAGE_BG} flex items-center justify-center px-4`}
       style={{ '--brand': primaryColor, '--accent': accent } as React.CSSProperties}
     >
-      <PromotionAmbient color={primaryColor} />
-      <div className={`${PROMO_CARD} relative z-10 w-full max-w-md p-7 text-center flex flex-col items-center gap-3`}>
+      <div className="relative isolate z-10 w-full max-w-md">
+        <PromotionAmbient color={primaryColor} />
+        <div className={`${PROMO_CARD} relative w-full p-7 text-center flex flex-col items-center gap-3`}>
         <span
           className="grid h-14 w-14 place-items-center rounded-2xl"
           style={{ backgroundColor: withAlpha(primaryColor, 0.12), color: accent }}
@@ -39,6 +40,7 @@ export function PromotionUnavailable({
         <button type="button" onClick={onBack} className={`${PROMO_PRIMARY_BTN} mt-2`}>
           {t('promotionDetailPage.voltar_pro_cardapio')}
         </button>
+        </div>
       </div>
     </div>
   );
@@ -50,10 +52,10 @@ export function PromotionSkeleton() {
   const bar = 'rounded-xl bg-[#F3F4F6] dark:bg-[#282A2C] motion-safe:animate-pulse';
   return (
     <div className={`min-h-screen ${MENU_PAGE_BG}`} role="status" aria-busy="true">
-      <div className="w-full max-w-7xl mx-auto md:px-8 md:py-8 lg:py-10">
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-10">
-          <div className={`${bar} aspect-[16/10] lg:aspect-[4/3] md:rounded-3xl`} />
-          <div className="p-4 md:p-0 pt-5 flex flex-col gap-4">
+      <div className="w-full max-w-[88rem] mx-auto px-4 md:px-8 py-4 md:py-8 lg:py-10">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:gap-10">
+          <div className={`${bar} aspect-[16/9] rounded-2xl md:rounded-3xl`} />
+          <div className="pt-2 flex flex-col gap-4">
             <div className={`${bar} h-7 w-40 rounded-full`} />
             <div className={`${bar} h-9 w-3/4`} />
             <div className={`${bar} h-36 rounded-3xl`} />

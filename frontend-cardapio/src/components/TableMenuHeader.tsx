@@ -58,6 +58,8 @@ export function TableMenuHeader({
         }
       >
         <BannerViewer tenant={tenant} />
+        {/* Profundidade sutil sobre o banner (decorativa; não intercepta toque). */}
+        <span aria-hidden="true" className="atm-banner-depth" />
 
         <div className="absolute top-3.5 right-3.5 z-10">
           <ThemeToggle />
