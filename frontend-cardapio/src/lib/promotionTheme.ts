@@ -15,7 +15,7 @@ export const PROMO_FOCUS =
 
 /** Botão principal: cor do restaurante no claro; sólido claro no escuro. */
 export const PROMO_PRIMARY_BTN =
-  'w-full py-3.5 rounded-xl text-sm font-semibold text-[#FFFFFF] bg-[var(--brand)] ring-1 ring-black/5 ' +
+  'w-full py-3.5 md:py-4 rounded-xl text-[15px] font-semibold flex items-center justify-center gap-2 text-[#FFFFFF] bg-[var(--brand)] ring-1 ring-black/5 ' +
   'dark:bg-[#E3E2E6] dark:text-[#131314] dark:ring-white/20 shadow-sm hover:brightness-110 dark:hover:brightness-95 ' +
   `active:brightness-95 transition ${PROMO_FOCUS}`;
 

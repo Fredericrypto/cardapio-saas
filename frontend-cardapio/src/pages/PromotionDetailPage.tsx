@@ -4,13 +4,13 @@ import { categoryLabel } from '../i18n/categoryLabel';
 import { useI18n } from '../i18n/I18nContext';
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Ban, Clock, Coins, Users, Tag, Package, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Ban, Clock, Coins, Users, Tag, Package, CheckCircle2 } from 'lucide-react';
 import { ShareButton } from '../components/ShareButton';
 import { Tooltip } from '../components/Tooltip';
 import { PromotionAmbient } from '../components/promotion/PromotionAmbient';
 import { PromotionBadge } from '../components/promotion/PromotionBadge';
 import { PromotionHeroCard } from '../components/promotion/PromotionHeroCard';
-import { PromotionBenefitCard, PromotionEligibilityNote } from '../components/promotion/PromotionBenefitCard';
+import { PromotionBenefitCard } from '../components/promotion/PromotionBenefitCard';
 import { PromotionSkeleton, PromotionUnavailable } from '../components/promotion/PromotionStates';
 import { buildShareUrl } from '../lib/shareLinks';
 import { fetchActivePromotions, fetchCategories, fetchProducts, fetchLocationById } from '../lib/menu-api';
@@ -179,7 +179,7 @@ export function PromotionDetailPage() {
   const cta = promotion.alreadyUsedUp ? (
     <button
       disabled
-      className="w-full py-3.5 rounded-xl text-sm font-semibold bg-[#E5E7EB] text-[#6B7280] dark:bg-white/10 dark:text-[#C4C7C5] cursor-not-allowed"
+      className="w-full py-3.5 md:py-4 rounded-xl text-[15px] font-semibold bg-[#E5E7EB] text-[#6B7280] dark:bg-white/10 dark:text-[#C4C7C5] cursor-not-allowed"
     >
       {t('promotionDetailPage.promocao_ja_utilizada')}
     </button>
@@ -190,7 +190,7 @@ export function PromotionDetailPage() {
         type="button"
         disabled
         aria-disabled="true"
-        className="w-full py-3.5 rounded-xl text-sm bg-red-50 text-red-600 border border-red-100 dark:bg-red-500/10 dark:text-red-300 dark:border-red-400/20 font-semibold flex justify-center items-center gap-2 cursor-not-allowed"
+        className="w-full py-3.5 md:py-4 rounded-xl text-[15px] bg-red-50 text-red-600 border border-red-100 dark:bg-red-500/10 dark:text-red-300 dark:border-red-400/20 font-semibold flex justify-center items-center gap-2 cursor-not-allowed"
       >
         <Ban size={16} strokeWidth={1.5} />
         {t('store.closedEstablishment')}
@@ -199,16 +199,67 @@ export function PromotionDetailPage() {
   ) : isApplied ? (
     <button
       onClick={handleRemove}
-      className={`w-full py-3.5 rounded-xl text-sm font-semibold border-2 transition hover:bg-black/[0.03] dark:hover:bg-white/[0.06] ${PROMO_FOCUS}`}
+      className={`w-full py-3.5 md:py-4 rounded-xl text-[15px] font-semibold border-2 transition hover:bg-black/[0.03] dark:hover:bg-white/[0.06] ${PROMO_FOCUS}`}
       style={{ borderColor: accent, color: accent }}
     >
       {t('promotionDetailPage.remover_promocao')}
     </button>
   ) : (
     <button onClick={handleApply} className={PROMO_PRIMARY_BTN}>
-      {t('promotionDetailPage.usar_promocao')}
+      {t('promotionDetailPage.usar_desconto_de_valor', { value: hero.text })}
+      <ArrowRight size={18} strokeWidth={1.5} aria-hidden="true" />
     </button>
   );
+
+  const conditionRows: { key: string; icon: React.ReactNode; label: string }[] = [];
+  conditionRows.push({
+    key: 'scope',
+    icon: <Tag size={15} strokeWidth={1.5} />,
+    label:
+      promotion.scope === 'all'
+        ? t('promotionDetailPage.valida_para_todos_os')
+        : scopeNames.length > 0
+          ? t('promotionDetailPage.valida_so_para_v0', { v0: scopeNames.join(', ') })
+          : t('promotionDetailPage.valida_para_itens_selecionados'),
+  });
+  if (promotion.minOrderValue > 0) {
+    conditionRows.push({
+      key: 'min',
+      icon: <Tag size={15} strokeWidth={1.5} />,
+      label: t('promotionDetailPage.pedido_minimo_de_r', { v0: Number(promotion.minOrderValue).toFixed(2).replace('.', ',') }),
+    });
+  }
+  if (promotion.usageLimitPerCustomer != null) {
+    conditionRows.push({
+      key: 'usage',
+      icon: <Users size={15} strokeWidth={1.5} />,
+      label:
+        promotion.usageLimitPerCustomer === 1
+          ? t('promotionDetailPage.limite_de_1_uso')
+          : t('promotionDetailPage.limite_de_usagelimitpercustomer_usos', { usageLimitPerCustomer: promotion.usageLimitPerCustomer }),
+    });
+  }
+  if (promotion.endsAt) {
+    conditionRows.push({
+      key: 'ends',
+      icon: <Clock size={15} strokeWidth={1.5} />,
+      label: t('promotionDetailPage.valida_ate_v0', { v0: formatDateTime(promotion.endsAt) }),
+    });
+  }
+  if (promotion.discountType === 'percentage' && promotion.maxDiscountAmount != null) {
+    conditionRows.push({
+      key: 'maxdiscount',
+      icon: <Coins size={15} strokeWidth={1.5} />,
+      label: t('promotionDetailPage.desconto_maximo_de_r', { v0: formatBRL(promotion.maxDiscountAmount) }),
+    });
+  }
+  if (promotion.maxEligibleQuantity != null) {
+    conditionRows.push({
+      key: 'maxqty',
+      icon: <Package size={15} strokeWidth={1.5} />,
+      label: t('promotionDetailPage.desconto_em_ate_n_unidades', { n: promotion.maxEligibleQuantity }),
+    });
+  }
 
   return (
     <div
@@ -219,46 +270,58 @@ export function PromotionDetailPage() {
 
       <div className="relative z-10 w-full max-w-7xl mx-auto md:px-8 md:py-8 lg:py-10">
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-10 items-start">
-          {/* Coluna esquerda: banner em destaque */}
-          <div className="relative aspect-[16/10] lg:aspect-[4/3] md:rounded-3xl overflow-hidden bg-[#F3F4F6] dark:bg-[#282A2C] lg:sticky lg:top-8 md:shadow-lg md:ring-1 md:ring-black/5 dark:md:ring-white/10">
-            {promotion.imageUrl ? (
-              <img
-                src={promotion.imageUrl}
-                alt={localizedField(promotion, 'title')}
-                draggable={false}
-                className={`w-full h-full object-cover ${isUsedUp ? 'grayscale' : ''}`}
-              />
-            ) : (
-              <div
-                className="w-full h-full"
-                style={{
-                  background: `linear-gradient(135deg, ${tenant.primaryColor}, ${tenant.primaryColor}99)`,
-                }}
-              />
-            )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-black/20" aria-hidden="true" />
-            <Tooltip label={t('tooltip.back')} className="contents">
-              <button
-                // Link compartilhado abre direto aqui (sem histórico): voltar leva ao cardápio.
-                onClick={() => (routerLocation.key === 'default' ? navigate(backHref, { replace: true }) : navigate(-1))}
-                aria-label={t('common.back')}
-                className={`absolute top-4 left-4 w-10 h-10 rounded-full bg-white/90 dark:bg-[#1E1E20]/90 text-[#111827] dark:text-[#E3E2E6] flex items-center justify-center shadow-md hover:scale-105 transition motion-reduce:transform-none ${PROMO_FOCUS}`}
-              >
-                <ArrowLeft size={18} strokeWidth={1.5} />
-              </button>
-            </Tooltip>
-            {slug && (
-              <ShareButton
-                className="absolute top-4 right-4"
-                url={buildShareUrl('promocao', slug, promotion.id)}
-                title={localizedField(promotion, 'title')}
-                text={localizedField(promotion, 'description') || t('promotionDetailPage.promocao_de_name', { name: tenant.name })}
-              />
-            )}
+          {/* Coluna esquerda: banner + placa do desconto sobreposta (uma peça só).
+              O pb-* reserva o trecho da placa que sai para fora do banner. */}
+          <div className="relative pb-14 md:pb-16 lg:pb-14 lg:sticky lg:top-8">
+            <div className="relative aspect-[16/10] lg:aspect-[4/3] md:rounded-3xl overflow-hidden bg-[#F3F4F6] dark:bg-[#282A2C] md:shadow-lg md:ring-1 md:ring-black/5 dark:md:ring-white/10">
+              {promotion.imageUrl ? (
+                <img
+                  src={promotion.imageUrl}
+                  alt={localizedField(promotion, 'title')}
+                  draggable={false}
+                  className={`w-full h-full object-cover ${isUsedUp ? 'grayscale' : ''}`}
+                />
+              ) : (
+                <div
+                  className="w-full h-full"
+                  style={{
+                    background: `linear-gradient(135deg, ${tenant.primaryColor}, ${tenant.primaryColor}99)`,
+                  }}
+                />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-black/25" aria-hidden="true" />
+              <Tooltip label={t('tooltip.back')} className="contents">
+                <button
+                  // Link compartilhado abre direto aqui (sem histórico): voltar leva ao cardápio.
+                  onClick={() => (routerLocation.key === 'default' ? navigate(backHref, { replace: true }) : navigate(-1))}
+                  aria-label={t('common.back')}
+                  className={`absolute top-4 left-4 w-10 h-10 rounded-full bg-white/90 dark:bg-[#1E1E20]/90 text-[#111827] dark:text-[#E3E2E6] flex items-center justify-center shadow-md hover:scale-105 transition motion-reduce:transform-none ${PROMO_FOCUS}`}
+                >
+                  <ArrowLeft size={18} strokeWidth={1.5} />
+                </button>
+              </Tooltip>
+              {slug && (
+                <ShareButton
+                  className="absolute top-4 right-4"
+                  url={buildShareUrl('promocao', slug, promotion.id)}
+                  title={localizedField(promotion, 'title')}
+                  text={localizedField(promotion, 'description') || t('promotionDetailPage.promocao_de_name', { name: tenant.name })}
+                />
+              )}
+            </div>
+
+            <PromotionHeroCard
+              promotion={promotion}
+              primaryColor={tenant.primaryColor}
+              accent={accent}
+              ariaLabel={discountLabel}
+              muted={isUsedUp}
+              className="absolute bottom-0 left-4 md:left-6 z-10"
+            />
           </div>
 
-          {/* Coluna direita: selo, título, desconto em destaque, benefício e ação */}
-          <div className="p-4 md:p-0 pt-5 lg:pt-1 flex flex-col gap-5">
+          {/* Coluna direita: selo, título, benefício, ação e (por último) condições */}
+          <div className="p-4 md:p-0 pt-2 lg:pt-1 flex flex-col gap-5">
             <div className="flex flex-col items-start gap-3">
               <PromotionBadge kind={badgeKind} primaryColor={tenant.primaryColor} accent={accent} muted={isUsedUp} />
               <h1 className={`font-display text-2xl md:text-3xl font-extrabold leading-tight ${MENU_TEXT}`}>
@@ -270,14 +333,6 @@ export function PromotionDetailPage() {
                 </p>
               )}
             </div>
-
-            <PromotionHeroCard
-              promotion={promotion}
-              primaryColor={tenant.primaryColor}
-              accent={accent}
-              ariaLabel={discountLabel}
-              muted={isUsedUp}
-            />
 
             {isUsedUp ? (
               <div className={`${PROFILE_CARD} p-4 md:p-5 flex flex-wrap items-center gap-3`}>
@@ -293,77 +348,37 @@ export function PromotionDetailPage() {
                 </button>
               </div>
             ) : (
-              <>
-                <PromotionBenefitCard
-                  eligibility={eligibility}
-                  isApplied={isApplied}
-                  primaryColor={tenant.primaryColor}
-                  accent={accent}
-                />
-                <PromotionEligibilityNote
-                  eligibility={eligibility}
-                  hasEligibleProducts={eligibleProducts.length > 0}
-                  accent={accent}
-                  onSeeProducts={handleSeeEligibleProducts}
-                />
-              </>
+              <PromotionBenefitCard
+                promotion={promotion}
+                eligibility={eligibility}
+                isApplied={isApplied}
+                primaryColor={tenant.primaryColor}
+                accent={accent}
+                hasEligibleProducts={eligibleProducts.length > 0}
+                onSeeProducts={handleSeeEligibleProducts}
+              />
             )}
 
             {/* Ação principal inline no desktop; no celular fica fixa no rodapé. */}
             <div className="hidden lg:block">{cta}</div>
 
-            <div className={`${PROFILE_CARD} p-4 md:p-5`}>
-              <p className={`text-xs font-semibold uppercase tracking-wider ${MENU_TEXT_MUTED} mb-3`}>
+            {/* Condições: a seção de MENOR peso da página (sem caixa, texto pequeno). */}
+            <section aria-labelledby="promo-conditions-title">
+              <h2
+                id="promo-conditions-title"
+                className={`text-[11px] font-semibold uppercase tracking-wider ${MENU_TEXT_BODY} mb-1`}
+              >
                 {t('promotionDetailPage.detalhes_e_condicoes')}
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {promotion.minOrderValue > 0 && (
-                  <DetailRow
-                    icon={<Tag size={16} strokeWidth={1.5} />}
-                    label={t('promotionDetailPage.pedido_minimo_de_r', { v0: Number(promotion.minOrderValue).toFixed(2).replace('.', ',') })}
-                  />
-                )}
-                {promotion.usageLimitPerCustomer != null && (
-                  <DetailRow
-                    icon={<Users size={16} strokeWidth={1.5} />}
-                    label={
-                      promotion.usageLimitPerCustomer === 1
-                        ? t('promotionDetailPage.limite_de_1_uso')
-                        : t('promotionDetailPage.limite_de_usagelimitpercustomer_usos', { usageLimitPerCustomer: promotion.usageLimitPerCustomer })
-                    }
-                  />
-                )}
-                {promotion.endsAt && (
-                  <DetailRow
-                    icon={<Clock size={16} strokeWidth={1.5} />}
-                    label={t('promotionDetailPage.valida_ate_v0', { v0: formatDateTime(promotion.endsAt) })}
-                  />
-                )}
-                {promotion.discountType === 'percentage' && promotion.maxDiscountAmount != null && (
-                  <DetailRow
-                    icon={<Coins size={16} strokeWidth={1.5} />}
-                    label={t('promotionDetailPage.desconto_maximo_de_r', { v0: formatBRL(promotion.maxDiscountAmount) })}
-                  />
-                )}
-                {promotion.maxEligibleQuantity != null && (
-                  <DetailRow
-                    icon={<Package size={16} strokeWidth={1.5} />}
-                    label={t('promotionDetailPage.desconto_em_ate_n_unidades', { n: promotion.maxEligibleQuantity })}
-                  />
-                )}
-                <DetailRow
-                  className="sm:col-span-2"
-                  icon={<Tag size={16} strokeWidth={1.5} />}
-                  label={
-                    promotion.scope === 'all'
-                      ? t('promotionDetailPage.valida_para_todos_os')
-                      : scopeNames.length > 0
-                        ? t('promotionDetailPage.valida_so_para_v0', { v0: scopeNames.join(', ') })
-                        : t('promotionDetailPage.valida_para_itens_selecionados')
-                  }
-                />
-              </div>
-            </div>
+              </h2>
+              <ul className="divide-y divide-[#F3F4F6] dark:divide-white/10">
+                {conditionRows.map((row) => (
+                  <li key={row.key} className={`flex items-center gap-2.5 py-2.5 text-[13px] ${MENU_TEXT_BODY}`}>
+                    <span className="shrink-0" aria-hidden="true">{row.icon}</span>
+                    <span className="min-w-0 break-words">{row.label}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
           </div>
         </div>
 
@@ -433,17 +448,6 @@ export function PromotionDetailPage() {
       >
         <div className="max-w-xl mx-auto">{cta}</div>
       </div>
-    </div>
-  );
-}
-
-function DetailRow({ icon, label, className = '' }: { icon: React.ReactNode; label: string; className?: string }) {
-  return (
-    <div
-      className={`flex items-center gap-3 rounded-xl bg-[#F9FAFB] dark:bg-[#282A2C] border border-[#F3F4F6] dark:border-white/10 px-3.5 py-3 text-sm ${MENU_TEXT_SOFT} ${className}`}
-    >
-      <span className={`${MENU_TEXT_BODY} shrink-0`} aria-hidden="true">{icon}</span>
-      <span className="min-w-0 break-words">{label}</span>
     </div>
   );
 }
