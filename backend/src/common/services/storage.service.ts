@@ -2,6 +2,7 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { randomUUID } from 'crypto';
+import { prepareForStorage } from '../utils/image-optimizer';
 
 // Tipos MIME aceitos e limite de tamanho — nunca confiar só na extensão do
 // nome do arquivo, sempre validar o mimetype real recebido pelo multer.
@@ -82,9 +83,9 @@ export class StorageService {
     file: Express.Multer.File,
   ): Promise<string> {
     const realMime = assertValidImage(file, MAX_FILE_SIZE_BYTES);
-    const extension = realMime.split('/')[1];
-    const path = `${tenantId}/products/${randomUUID()}.${extension}`;
-    return this.uploadBuffer(path, file.buffer, realMime);
+    const image = await prepareForStorage(file, realMime, 'product');
+    const path = `${tenantId}/products/${randomUUID()}.${image.extension}`;
+    return this.uploadBuffer(path, image.buffer, image.contentType);
   }
 
   // Várias fotos de uma vez (galeria do item). TODAS são validadas ANTES de subir
@@ -100,11 +101,17 @@ export class StorageService {
       mime: assertValidImage(file, MAX_FILE_SIZE_BYTES),
     }));
 
+    // Otimiza UMA foto por vez (não em paralelo): o Render grátis tem pouca
+    // memória e uma foto de celular descompactada ocupa dezenas de MB.
+    const prepared: Array<Awaited<ReturnType<typeof prepareForStorage>>> = [];
+    for (const { file, mime } of validated) {
+      prepared.push(await prepareForStorage(file, mime, 'product'));
+    }
+
     const settled = await Promise.allSettled(
-      validated.map(({ file, mime }) => {
-        const extension = mime.split('/')[1];
-        const path = `${tenantId}/products/${randomUUID()}.${extension}`;
-        return this.uploadBuffer(path, file.buffer, mime);
+      prepared.map((image) => {
+        const path = `${tenantId}/products/${randomUUID()}.${image.extension}`;
+        return this.uploadBuffer(path, image.buffer, image.contentType);
       }),
     );
 
@@ -138,9 +145,9 @@ export class StorageService {
     file: Express.Multer.File,
   ): Promise<string> {
     const realMime = assertValidImage(file, MAX_AVATAR_SIZE_BYTES);
-    const extension = realMime.split('/')[1];
-    const path = `${tenantId}/customers/${customerId}/avatar-${randomUUID()}.${extension}`;
-    return this.uploadBuffer(path, file.buffer, realMime);
+    const image = await prepareForStorage(file, realMime, 'avatar');
+    const path = `${tenantId}/customers/${customerId}/avatar-${randomUUID()}.${image.extension}`;
+    return this.uploadBuffer(path, image.buffer, image.contentType);
   }
 
   // Banner de promoção — mesmo tratamento de imagem de produto (mesmo
@@ -150,27 +157,27 @@ export class StorageService {
     file: Express.Multer.File,
   ): Promise<string> {
     const realMime = assertValidImage(file, MAX_FILE_SIZE_BYTES);
-    const extension = realMime.split('/')[1];
-    const path = `${tenantId}/promotions/${randomUUID()}.${extension}`;
-    return this.uploadBuffer(path, file.buffer, realMime);
+    const image = await prepareForStorage(file, realMime, 'promotion');
+    const path = `${tenantId}/promotions/${randomUUID()}.${image.extension}`;
+    return this.uploadBuffer(path, image.buffer, image.contentType);
   }
 
   // Logo do restaurante — aparece no cardápio do cliente sobrepondo a
   // capa (banner), no formato quadrado.
   async uploadTenantLogo(tenantId: string, file: Express.Multer.File): Promise<string> {
     const realMime = assertValidImage(file, MAX_FILE_SIZE_BYTES);
-    const extension = realMime.split('/')[1];
-    const path = `${tenantId}/branding/logo-${randomUUID()}.${extension}`;
-    return this.uploadBuffer(path, file.buffer, realMime);
+    const image = await prepareForStorage(file, realMime, 'logo');
+    const path = `${tenantId}/branding/logo-${randomUUID()}.${image.extension}`;
+    return this.uploadBuffer(path, image.buffer, image.contentType);
   }
 
   // Banner/capa do header do cardápio — a foto grande no topo, atrás do
   // logo.
   async uploadTenantCoverImage(tenantId: string, file: Express.Multer.File): Promise<string> {
     const realMime = assertValidImage(file, MAX_FILE_SIZE_BYTES);
-    const extension = realMime.split('/')[1];
-    const path = `${tenantId}/branding/cover-${randomUUID()}.${extension}`;
-    return this.uploadBuffer(path, file.buffer, realMime);
+    const image = await prepareForStorage(file, realMime, 'banner');
+    const path = `${tenantId}/branding/cover-${randomUUID()}.${image.extension}`;
+    return this.uploadBuffer(path, image.buffer, image.contentType);
   }
 
   // Foto de verificação de identidade — nunca fica pública por padrão
@@ -183,6 +190,8 @@ export class StorageService {
     customerId: string,
     file: Express.Multer.File,
   ): Promise<string> {
+    // De propósito SEM otimização de imagem: documento de verificação de identidade
+    // sobe exatamente como foi enviado (nenhuma recompressão pode alterar o conteúdo).
     const realMime = assertValidImage(file, MAX_AVATAR_SIZE_BYTES);
     const extension = realMime.split('/')[1];
     const path = `${tenantId}/customers/${customerId}/verification-${randomUUID()}.${extension}`;

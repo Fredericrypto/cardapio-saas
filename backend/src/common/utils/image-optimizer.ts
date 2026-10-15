@@ -206,3 +206,25 @@ export async function prepareImageUpload(file: UploadedFileLike, preset: ImagePr
     optimized: result.optimized,
   };
 }
+
+export interface StorageReadyImage {
+  buffer: Buffer;
+  contentType: string;
+  extension: string;
+}
+
+// Usado pelo StorageService DEPOIS de validar a imagem (formato, tamanho e
+// assinatura): devolve o que realmente deve subir para o bucket. Se a
+// otimização valer a pena, WebP novo; senão, o arquivo original exatamente
+// como chegou (mesmo content-type e extensão de antes). Nunca lança.
+export async function prepareForStorage(
+  file: UploadedFileLike,
+  validatedMime: string,
+  preset: ImagePresetName,
+): Promise<StorageReadyImage> {
+  const prepared = await prepareImageUpload(file, preset);
+  if (prepared.optimized) {
+    return { buffer: prepared.buffer, contentType: prepared.mimetype, extension: prepared.extension };
+  }
+  return { buffer: file.buffer, contentType: validatedMime, extension: validatedMime.split('/')[1] };
+}

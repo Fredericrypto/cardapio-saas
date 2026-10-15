@@ -2,7 +2,7 @@
 // Rodar: cd backend && npx ts-node test/image-optimizer-audit.ts
 import assert from 'node:assert/strict';
 import sharp = require('sharp');
-import { optimizeImage, prepareImageUpload, imageTelemetry } from '../src/common/utils/image-optimizer';
+import { optimizeImage, prepareImageUpload, prepareForStorage, imageTelemetry } from '../src/common/utils/image-optimizer';
 
 let passed = 0;
 async function check(name: string, fn: () => Promise<void>): Promise<void> {
@@ -147,6 +147,42 @@ async function main() {
     assert.equal(t.keptOriginal, 1);
     assert.equal(t.optimized, 0);
     assert.equal(t.savedBytes, 0);
+  });
+
+  console.log('prepareForStorage (usado pelo StorageService)');
+
+  await check('foto otimizada sobe como WebP com content-type e extensão corretos', async () => {
+    imageTelemetry.reset();
+    const original = await photo(2000, 1500, 'jpeg');
+    const r = await prepareForStorage({ buffer: original, mimetype: 'image/jpeg' }, 'image/jpeg', 'banner');
+    assert.equal(r.contentType, 'image/webp');
+    assert.equal(r.extension, 'webp');
+    assert.ok(r.buffer.length < original.length);
+    assert.equal((await sharp(r.buffer).metadata()).format, 'webp');
+  });
+
+  await check('quando o original é mantido, sobe igual a antes (mesmo buffer, type e extensão)', async () => {
+    const raw = await photo(400, 300, 'png');
+    const heavy = await sharp(raw).webp({ quality: 20 }).toBuffer();
+    const r = await prepareForStorage({ buffer: heavy, mimetype: 'image/webp' }, 'image/webp', 'product');
+    assert.equal(r.buffer, heavy);
+    assert.equal(r.contentType, 'image/webp');
+    assert.equal(r.extension, 'webp');
+    const jpgHeavy = await sharp(raw).jpeg({ quality: 5 }).toBuffer();
+    const j = await prepareForStorage({ buffer: jpgHeavy, mimetype: 'image/jpeg' }, 'image/jpeg', 'product');
+    if (!j.buffer.equals(jpgHeavy)) {
+      assert.equal(j.extension, 'webp'); // otimizou: tudo coerente com WebP
+    } else {
+      assert.equal(j.contentType, 'image/jpeg');
+      assert.equal(j.extension, 'jpeg'); // mantido: extensão como o StorageService sempre usou
+    }
+  });
+
+  await check('arquivo estragado nunca lança: sobe o original', async () => {
+    const junk = Buffer.from('nao e imagem');
+    const r = await prepareForStorage({ buffer: junk, mimetype: 'image/png' }, 'image/png', 'logo');
+    assert.equal(r.buffer, junk);
+    assert.equal(r.contentType, 'image/png');
   });
 
   console.log(`\n${passed} verificações passaram${process.exitCode ? ' (COM FALHAS)' : ''}.`);
