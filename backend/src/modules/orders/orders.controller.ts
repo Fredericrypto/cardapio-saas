@@ -71,7 +71,7 @@ export class OrdersController {
     // Cache por restaurante + ETag: enquanto nenhum pedido mudou, o painel
     // recebe 304 (sem corpo) e o banco nem é consultado (ver TenantCache).
     const { orders, etag } = await this.ordersService.findAllForAdminCached(tenantId);
-    applyRevalidationHeaders(res, etag);
+    applyRevalidationHeaders(res, etag, 'admin-orders');
     return orders;
   }
 

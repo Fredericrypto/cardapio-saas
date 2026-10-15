@@ -614,6 +614,8 @@ export class OrdersService {
   //
   // Versão SEM cache (comportamento original). O painel usa findAllForAdminCached.
   async findAllForAdmin(tenantId: string): Promise<Order[]> {
+    // Qualquer chamada aqui consulta o banco sem cache: conta como bypass.
+    this.tenantCache?.recordBypass('admin-orders', 'orders');
     const orders = await this.queryAdminOrders(tenantId);
     this.decorateAdminOrders(orders);
     await this.syncPendingAdminOrders(tenantId, orders);
@@ -638,6 +640,7 @@ export class OrdersService {
           return orders;
         },
         {
+          label: 'admin-orders',
           maxAgeMs: ADMIN_ORDERS_MAX_AGE_MS,
           fingerprintEveryMs: ADMIN_ORDERS_FINGERPRINT_EVERY_MS,
           fingerprint: () => this.ordersFingerprint(tenantId),
@@ -663,7 +666,7 @@ export class OrdersService {
       const fresh = await this.queryAdminOrders(tenantId, candidateIds);
       const changed = await this.syncPendingAdminOrders(tenantId, fresh);
       if (changed) {
-        cache.invalidate(tenantId, ['orders', 'tables']);
+        cache.invalidate(tenantId, ['orders', 'tables'], 'findAllForAdminCached.sync');
         result = await load();
       }
     }
@@ -1282,6 +1285,7 @@ export class OrdersService {
     // Até 100 pedidos com itens por chamada: o item mais pesado depois da
     // listagem do painel. Qualquer escrita de pedido do restaurante invalida.
     const { value } = await this.tenantCache.getOrLoad(tenantId, 'orders', load, {
+      label: 'customer-history',
       maxAgeMs: CUSTOMER_HISTORY_MAX_AGE_MS,
       variant: `history:${customerId}`,
     });
@@ -1446,7 +1450,7 @@ export class OrdersService {
     }
 
     if (stateBefore !== `${order.status}|${order.paymentStatus}|${order.mpPaymentId ?? ''}`) {
-      this.tenantCache?.invalidate(tenantId, ['orders', 'tables']);
+      this.tenantCache?.invalidate(tenantId, ['orders', 'tables'], 'checkPixStatus');
     }
 
     return {

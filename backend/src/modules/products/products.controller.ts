@@ -43,7 +43,7 @@ export class ProductsController {
   async findAllForPublic(@Param('tenantId') tenantId: string, @Res({ passthrough: true }) res: Response) {
     // Cache por restaurante + ETag (304 quando o cardápio não mudou) — ver TenantCache.
     const { products, etag } = await this.productsService.findAllForPublicCached(tenantId);
-    applyRevalidationHeaders(res, etag, 'public');
+    applyRevalidationHeaders(res, etag, 'public-menu', 'public');
     return products;
   }
 

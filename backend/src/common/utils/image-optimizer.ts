@@ -87,3 +87,122 @@ export async function optimizeImage(
     return keep(input, mimetype);
   }
 }
+
+// ------------------------------------------------------------------ telemetria
+
+// Nome (pt-BR) de cada tipo de upload para os logs e métricas.
+const PRESET_LABEL: Record<ImagePresetName, string> = {
+  logo: 'Logo',
+  banner: 'Banner',
+  product: 'Produto',
+  promotion: 'Promoção',
+  category: 'Categoria',
+  avatar: 'Cliente',
+};
+
+interface ImageTotals {
+  uploads: number;
+  optimized: number;
+  keptOriginal: number;
+  originalBytes: number;
+  finalBytes: number;
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
+
+// Agrega o antes/depois de cada upload. Os contadores zeram quando o processo
+// reinicia; cada upload também sai numa linha de log (via `setSink`).
+export class ImageTelemetry {
+  private readonly byLabel = new Map<string, ImageTotals>();
+  private sink: ((line: string) => void) | null = null;
+
+  setSink(sink: ((line: string) => void) | null): void {
+    this.sink = sink;
+  }
+
+  record(label: string, originalBytes: number, finalBytes: number, optimized: boolean): void {
+    let t = this.byLabel.get(label);
+    if (!t) {
+      t = { uploads: 0, optimized: 0, keptOriginal: 0, originalBytes: 0, finalBytes: 0 };
+      this.byLabel.set(label, t);
+    }
+    t.uploads += 1;
+    if (optimized) t.optimized += 1;
+    else t.keptOriginal += 1;
+    t.originalBytes += originalBytes;
+    t.finalBytes += finalBytes;
+
+    if (this.sink) {
+      const saved = originalBytes > 0 ? ((originalBytes - finalBytes) / originalBytes) * 100 : 0;
+      this.sink(
+        `Upload ${label}: original ${formatBytes(originalBytes)} -> final ${formatBytes(finalBytes)} ` +
+          `(economia ${saved.toFixed(1)}%${optimized ? '' : ', original mantido'})`,
+      );
+    }
+  }
+
+  snapshot() {
+    const total: ImageTotals = { uploads: 0, optimized: 0, keptOriginal: 0, originalBytes: 0, finalBytes: 0 };
+    const byLabel: Record<string, ImageTotals & { savedBytes: number; savedPercent: number | null }> = {};
+    for (const [label, t] of this.byLabel) {
+      byLabel[label] = { ...t, ...this.derive(t) };
+      total.uploads += t.uploads;
+      total.optimized += t.optimized;
+      total.keptOriginal += t.keptOriginal;
+      total.originalBytes += t.originalBytes;
+      total.finalBytes += t.finalBytes;
+    }
+    return { total: { ...total, ...this.derive(total) }, byLabel };
+  }
+
+  reset(): void {
+    this.byLabel.clear();
+  }
+
+  private derive(t: ImageTotals): { savedBytes: number; savedPercent: number | null } {
+    const savedBytes = t.originalBytes - t.finalBytes;
+    return {
+      savedBytes,
+      savedPercent: t.originalBytes > 0 ? Math.round((savedBytes / t.originalBytes) * 1000) / 10 : null,
+    };
+  }
+}
+
+export const imageTelemetry = new ImageTelemetry();
+
+export interface UploadedFileLike {
+  buffer: Buffer;
+  mimetype: string;
+  originalname?: string;
+  size?: number;
+}
+
+export interface PreparedUpload {
+  buffer: Buffer;
+  mimetype: string;
+  originalname: string;
+  size: number;
+  extension: string;
+  optimized: boolean;
+}
+
+// Ponto de entrada para os uploads: devolve o arquivo pronto para ir ao
+// storage (WebP otimizado, ou o original quando não vale a pena) e registra
+// a telemetria. Troca a extensão do nome quando o formato muda.
+export async function prepareImageUpload(file: UploadedFileLike, preset: ImagePresetName): Promise<PreparedUpload> {
+  const result = await optimizeImage(file.buffer, file.mimetype, preset);
+  imageTelemetry.record(PRESET_LABEL[preset], result.originalBytes, result.buffer.length, result.optimized);
+  const original = file.originalname ?? 'imagem';
+  const name = result.optimized ? original.replace(/\.[^./\\]+$/, '') + '.webp' : original;
+  return {
+    buffer: result.buffer,
+    mimetype: result.mimetype,
+    originalname: name,
+    size: result.buffer.length,
+    extension: result.extension,
+    optimized: result.optimized,
+  };
+}

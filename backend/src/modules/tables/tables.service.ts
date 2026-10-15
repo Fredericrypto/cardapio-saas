@@ -740,7 +740,7 @@ export class TablesService {
     session.status = 'expirada';
     session.closedAt = new Date();
     await this.sessionRepo.save(session);
-    this.tenantCache?.invalidate(session.tenantId, ['orders', 'tables']);
+    this.tenantCache?.invalidate(session.tenantId, ['orders', 'tables'], 'expireIfStale');
     return true;
   }
 
@@ -823,6 +823,7 @@ export class TablesService {
     const orders = this.tenantCache
       ? (
           await this.tenantCache.getOrLoad(tenantId, 'tables', loadSessionOrders, {
+            label: 'session-orders',
             maxAgeMs: SESSION_SUMMARY_ORDERS_MAX_AGE_MS,
             variant: `summary:${session.id}`,
           })
@@ -1285,15 +1286,23 @@ export class TablesService {
   // usando — o garçom vê na hora, não só quando for fechar a conta.
   async findActiveOverviewCached(tenantId: string) {
     const cache = this.tenantCache;
-    if (!cache) return { overview: await this.findActiveOverview(tenantId), etag: null as string | null };
-    const { value, etag } = await cache.getOrLoad(tenantId, 'tables', () => this.findActiveOverview(tenantId), {
+    if (!cache) return { overview: await this.buildActiveOverview(tenantId), etag: null as string | null };
+    const { value, etag } = await cache.getOrLoad(tenantId, 'tables', () => this.buildActiveOverview(tenantId), {
+      label: 'tables-overview',
       maxAgeMs: OVERVIEW_MAX_AGE_MS,
       variant: 'overview',
     });
     return { overview: value, etag: etag as string | null };
   }
 
+  // Versão SEM cache (comportamento original). O painel usa findActiveOverviewCached;
+  // qualquer chamada direta a este método aparece como bypass nas métricas.
   async findActiveOverview(tenantId: string) {
+    this.tenantCache?.recordBypass('tables-overview', 'tables');
+    return this.buildActiveOverview(tenantId);
+  }
+
+  private async buildActiveOverview(tenantId: string) {
     const sessions = await this.sessionRepo.find({
       where: [
         { tenantId, status: 'aberta' },
@@ -1672,7 +1681,7 @@ export class TablesService {
     }
 
     if (stateBefore !== `${session.status}|${session.paymentStatus}|${session.mpPaymentId ?? ''}`) {
-      this.tenantCache?.invalidate(tenantId, ['orders', 'tables']);
+      this.tenantCache?.invalidate(tenantId, ['orders', 'tables'], 'checkSessionPixStatus');
     }
 
     return { status: session.status, paymentStatus: session.paymentStatus, pixExpiresAt: session.pixExpiresAt };

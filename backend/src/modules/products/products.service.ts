@@ -70,6 +70,12 @@ export class ProductsService {
   // mas continuam existindo de verdade (só filtrados na resposta), pro
   // admin poder reativar sem recriar nada.
   async findAllForPublic(tenantId: string): Promise<Product[]> {
+    // Versão SEM cache: o controller usa findAllForPublicCached; chamada direta = bypass.
+    this.tenantCache?.recordBypass('public-menu', 'products');
+    return this.loadPublicMenu(tenantId);
+  }
+
+  private async loadPublicMenu(tenantId: string): Promise<Product[]> {
     const products = await this.productRepo.find({
       where: { tenantId },
       order: { displayOrder: 'ASC' },
@@ -90,8 +96,9 @@ export class ProductsService {
   // zerado daqui, então nada sensível fica no cache.
   async findAllForPublicCached(tenantId: string): Promise<{ products: Product[]; etag: string | null }> {
     const cache = this.tenantCache;
-    if (!cache) return { products: await this.findAllForPublic(tenantId), etag: null };
-    const { value, etag } = await cache.getOrLoad(tenantId, 'products', () => this.findAllForPublic(tenantId), {
+    if (!cache) return { products: await this.loadPublicMenu(tenantId), etag: null };
+    const { value, etag } = await cache.getOrLoad(tenantId, 'products', () => this.loadPublicMenu(tenantId), {
+      label: 'public-menu',
       maxAgeMs: PUBLIC_MENU_MAX_AGE_MS,
       fingerprintEveryMs: PUBLIC_MENU_FINGERPRINT_EVERY_MS,
       fingerprint: () => this.productsFingerprint(tenantId),

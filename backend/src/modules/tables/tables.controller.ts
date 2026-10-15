@@ -91,7 +91,7 @@ export class TablesController {
   async findActiveOverview(@CurrentTenant() tenantId: string, @Res({ passthrough: true }) res: Response) {
     // Cache por restaurante + ETag (304 quando nada mudou) — ver TenantCache.
     const { overview, etag } = await this.tablesService.findActiveOverviewCached(tenantId);
-    applyRevalidationHeaders(res, etag);
+    applyRevalidationHeaders(res, etag, 'tables-overview');
     return overview;
   }
 

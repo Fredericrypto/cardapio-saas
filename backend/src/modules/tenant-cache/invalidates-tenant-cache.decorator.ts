@@ -18,7 +18,8 @@ export function InvalidatesTenantCache(
   scopes: CacheScope[],
   resolveTenant: TenantResolver = (args) => args[0] as string,
 ) {
-  return function (_target: object, _key: string | symbol, descriptor: PropertyDescriptor): PropertyDescriptor {
+  return function (_target: object, key: string | symbol, descriptor: PropertyDescriptor): PropertyDescriptor {
+    const source = String(key);
     const original = descriptor.value as (...args: unknown[]) => Promise<unknown>;
     descriptor.value = async function (this: { tenantCache?: TenantCache }, ...args: unknown[]) {
       try {
@@ -27,8 +28,8 @@ export function InvalidatesTenantCache(
         const cache = this.tenantCache;
         if (cache) {
           const tenant = resolveTenant(args);
-          if (tenant === ALL_TENANTS) cache.invalidateAll(scopes);
-          else if (typeof tenant === 'string' && tenant) cache.invalidate(tenant, scopes);
+          if (tenant === ALL_TENANTS) cache.invalidateAll(scopes, source);
+          else if (typeof tenant === 'string' && tenant) cache.invalidate(tenant, scopes, source);
         }
       }
     };

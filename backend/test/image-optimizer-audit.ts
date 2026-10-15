@@ -2,7 +2,7 @@
 // Rodar: cd backend && npx ts-node test/image-optimizer-audit.ts
 import assert from 'node:assert/strict';
 import sharp = require('sharp');
-import { optimizeImage } from '../src/common/utils/image-optimizer';
+import { optimizeImage, prepareImageUpload, imageTelemetry } from '../src/common/utils/image-optimizer';
 
 let passed = 0;
 async function check(name: string, fn: () => Promise<void>): Promise<void> {
@@ -113,6 +113,40 @@ async function main() {
     assert.equal(a.buffer, junk);
     const b = await optimizeImage(junk, 'application/pdf', 'product');
     assert.equal(b.optimized, false);
+  });
+
+  console.log('telemetria e preparo de upload');
+
+  await check('prepareImageUpload: troca extensão para .webp, registra antes/depois e loga', async () => {
+    imageTelemetry.reset();
+    const lines: string[] = [];
+    imageTelemetry.setSink((l) => lines.push(l));
+    const original = await photo(2400, 1800, 'jpeg');
+    const out = await prepareImageUpload({ buffer: original, mimetype: 'image/jpeg', originalname: 'Foto Prato.final.JPG' }, 'product');
+    assert.equal(out.optimized, true);
+    assert.equal(out.mimetype, 'image/webp');
+    assert.equal(out.originalname, 'Foto Prato.final.webp');
+    assert.equal(out.size, out.buffer.length);
+    assert.equal(lines.length, 1);
+    assert.match(lines[0], /^Upload Produto: original .* -> final .* \(economia \d+\.\d%\)$/);
+    const snap = imageTelemetry.snapshot();
+    assert.equal(snap.byLabel['Produto'].uploads, 1);
+    assert.equal(snap.byLabel['Produto'].originalBytes, original.length);
+    assert.equal(snap.byLabel['Produto'].finalBytes, out.buffer.length);
+    assert.ok((snap.total.savedPercent ?? 0) > 50);
+    imageTelemetry.setSink(null);
+  });
+
+  await check('prepareImageUpload: original mantido não muda o nome e conta como "mantido"', async () => {
+    imageTelemetry.reset();
+    const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4"/>');
+    const out = await prepareImageUpload({ buffer: svg, mimetype: 'image/svg+xml', originalname: 'logo.svg' }, 'logo');
+    assert.equal(out.optimized, false);
+    assert.equal(out.originalname, 'logo.svg');
+    const t = imageTelemetry.snapshot().byLabel['Logo'];
+    assert.equal(t.keptOriginal, 1);
+    assert.equal(t.optimized, 0);
+    assert.equal(t.savedBytes, 0);
   });
 
   console.log(`\n${passed} verificações passaram${process.exitCode ? ' (COM FALHAS)' : ''}.`);
