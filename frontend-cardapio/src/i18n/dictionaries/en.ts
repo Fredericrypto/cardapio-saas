@@ -185,6 +185,7 @@ export const en: Record<TranslationKey, string> = {
   'pixWaitingPanel.abra_o_app_do': 'Open your bank app, scan the QR or paste the code, and pay within',
   'pixWaitingPanel.receber_o_pagamento': 'to receive the payment.',
   'productCard.sem_foto': 'No photo',
+  'productCard.novo': 'New',
   'productCard.indisponivel': 'Unavailable',
   'promoCards.encerrada': 'Ended',
   'promoCards.hours_h_minutes_min': '{hours}h {minutes}min',

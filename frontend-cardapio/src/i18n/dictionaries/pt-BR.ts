@@ -196,6 +196,7 @@ export const ptBR = {
   'pixWaitingPanel.abra_o_app_do': 'Abra o app do seu banco, escaneie o QR ou cole o código, e pague em até',
   'pixWaitingPanel.receber_o_pagamento': 'receber o pagamento.',
   'productCard.sem_foto': 'Sem foto',
+  'productCard.novo': 'Novo',
   'productCard.indisponivel': 'Indisponível',
   'promoCards.encerrada': 'Encerrada',
   'promoCards.hours_h_minutes_min': '{hours}h {minutes}min',

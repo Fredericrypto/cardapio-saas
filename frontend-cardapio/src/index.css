@@ -289,55 +289,64 @@ img, svg, video, a {
 }
 
 /* ============================================================
-   ATMOSFERA PREMIUM DO CARDÁPIO (só banner, seção Deals e cards promocionais)
-   Profundidade e luz ambiente derivadas da identidade visual do restaurante.
-   Direção: discreto, "produto premium" — sem neon, partículas, brilho animado,
-   vidro (backdrop-filter) nem filtro global. Produtos, categorias e texto
-   permanecem limpos: nenhuma regra abaixo toca neles.
-
-   Como funciona:
-   - A MenuPage coloca `.atm` + variáveis inline (lib/atmosphere.ts) no elemento
-     raiz. Aqui `--atm-c`/`--atm-c2` viram a cor do tema atual (claro ou escura
-     clareada p/ contraste) e `--atm-kk` a intensidade (0–1).
-   - Fora de `.atm` (ou com cor inválida) `--atm-kk` é 0 → todo glow some e só
-     sobram as bordas finas neutras. Fail-safe.
-   - Opacidades ficam sempre baixas (pico ≤ 0,30 só em sombras de borda; fundos
-     ≤ 0,12) e NUNCA sobre texto de leitura: o sheet do cabeçalho tem fundo
-     opaco e a luz fica atrás do texto (z-index negativo).
-   - Zero animação; o único `filter` é um blur estático em 2 elementos.
+   ATMOSFERA DO CARDÁPIO — "modo ambiente" (estilo YouTube)
+   A luz vem da FOTO: uma cópia desfocada e saturada da imagem fica atrás do
+   conteúdo e vaza pelas bordas. Só no cabeçalho (banner + cartão da loja) e nos
+   cards de promoção (ao passar o mouse). Produtos, categorias e textos ficam
+   limpos: as camadas ficam ATRÁS de tudo (z-index negativo dentro do `isolate`
+   da MenuPage), sem animação pesada, sem JS em rolagem e sem filtro global.
    ============================================================ */
-.atm {
-  --atm-c: var(--atm-rgb, 0 0 0);
-  --atm-c2: var(--atm-rgb2, 0 0 0);
-  --atm-kk: var(--atm-k, 0);
+
+/* --- Cabeçalho (componente AmbientGlow) -------------------------------- */
+/* Celular: o cartão é de ponta a ponta, então a luz só aparece embaixo dele.
+   Desktop: ela contorna o cartão inteiro. O blur é de ~40px, então a luz
+   termina de desvanecer a poucas dezenas de pixels da borda. */
+.amb-header {
+  position: absolute;
+  z-index: -10;
+  pointer-events: none;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: calc(100% + 20px);
 }
-.dark .atm {
-  --atm-c: var(--atm-rgb-dk, 0 0 0);
-  --atm-c2: var(--atm-rgb2-dk, 0 0 0);
-  --atm-kk: var(--atm-k-dk, 0);
+@media (min-width: 768px) {
+  .amb-header {
+    left: -14px;
+    top: -14px;
+    width: calc(100% + 28px);
+    height: calc(100% + 28px);
+  }
+}
+.amb-media {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(40px) saturate(1.8);
+  /* Claro: fotos escuras viram névoa cinza sobre o branco, então a luz é mais
+     fraca; escuro: o "modo ambiente" clássico. */
+  opacity: 0.26;
+}
+.dark .amb-media {
+  /* `brightness` é o teto: foto muito clara (prato branco, fundo amarelo) não
+     pode clarear o fundo escuro a ponto de pesar sobre o texto ao redor. */
+  filter: blur(40px) saturate(1.8) brightness(0.65);
+  opacity: 0.46;
+}
+/* Loja fechada: banner em tons de cinza → luz cinza e mais fraca. */
+.amb-muted .amb-media {
+  filter: blur(40px) grayscale(1);
+  opacity: 0.25;
+}
+.dark .amb-muted .amb-media {
+  filter: blur(40px) grayscale(1) brightness(0.72);
+  opacity: 0.3;
 }
 
-/* --- Banner principal -------------------------------------------------- */
-
-/* Luz ambiente atrás do banner: halo em duas camadas (um mais fechado e um
-   largo) tingido pela cor da marca. É box-shadow do próprio banner — sem
-   elemento extra, sem filtro — e acompanha o `grayscale` do banner quando a
-   loja está fechada. No celular o banner é de ponta a ponta, então o halo
-   só aparece no desktop (cartão com cantos arredondados). */
-.atm-banner {
-  box-shadow:
-    0 6px 22px -10px rgb(var(--atm-c, 0 0 0) / calc(0.30 * var(--atm-kk, 0))),
-    0 18px 56px -20px rgb(var(--atm-c, 0 0 0) / calc(0.22 * var(--atm-kk, 0)));
-}
-.dark .atm-banner {
-  box-shadow:
-    0 6px 22px -10px rgb(var(--atm-c, 0 0 0) / calc(0.26 * var(--atm-kk, 0))),
-    0 18px 56px -20px rgb(var(--atm-c, 0 0 0) / calc(0.20 * var(--atm-kk, 0)));
-}
-
-/* Profundidade dentro do banner (sobre a foto/gradiente, abaixo dos botões):
-   vinheta bem leve em cima e embaixo + um reflexo suave no canto superior
-   esquerdo. Neutro (preto/branco), então não muda a cor da foto do cliente. */
+/* Profundidade dentro do banner (sobre a foto, abaixo dos botões): vinheta
+   neutra bem leve em cima e embaixo + reflexo suave no canto superior esquerdo. */
 .atm-banner-depth {
   position: absolute;
   inset: 0;
@@ -348,133 +357,72 @@ img, svg, video, a {
     radial-gradient(120% 100% at 0% 0%, rgb(255 255 255 / 0.09), transparent 55%);
 }
 
-/* A luz do banner "escorrendo" para o topo do sheet (celular e desktop).
-   Fica ATRÁS do conteúdo do sheet (z-index:-1 dentro do contexto z-10 dele),
-   então o texto nunca fica coberto — só o fundo opaco ganha um leve tom. */
-.atm-spill {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  height: 84px;
-  z-index: -1;
-  pointer-events: none;
-  border-radius: inherit;
-  background: radial-gradient(
-    ellipse 75% 100% at 50% 0%,
-    rgb(var(--atm-c, 0 0 0) / calc(0.07 * var(--atm-kk, 0))),
-    transparent 100%
-  );
+/* --- Cards de promoção -------------------------------------------------- */
+/* Luz de cada card = a própria imagem do card, desfocada, atrás dele. Só
+   aparece ao passar o mouse (ou foco do teclado) em telas largas com mouse; no
+   celular não existe (nada é renderizado). Enquanto escondida usa
+   `visibility:hidden`, então não custa pintura em repouso. Fica no mesmo plano
+   negativo do cabeçalho: nunca cobre o card vizinho. */
+.promo-ambient {
+  display: none;
 }
-.dark .atm-spill {
-  background: radial-gradient(
-    ellipse 75% 100% at 50% 0%,
-    rgb(var(--atm-c, 0 0 0) / calc(0.075 * var(--atm-kk, 0))),
-    transparent 100%
-  );
+@media (hover: hover) and (min-width: 768px) {
+  .promo-ambient {
+    display: block;
+    position: absolute;
+    inset: -6px;
+    z-index: -10;
+    pointer-events: none;
+    width: calc(100% + 12px);
+    height: calc(100% + 12px);
+    object-fit: cover;
+    border-radius: 20px;
+    filter: blur(28px) saturate(1.6);
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 320ms ease, visibility 0s linear 320ms;
+  }
+  .promo-item:hover .promo-ambient,
+  .promo-item:focus-within .promo-ambient {
+    visibility: visible;
+    opacity: 0.42;
+    transition-delay: 0s;
+  }
+  .dark .promo-item:hover .promo-ambient,
+  .dark .promo-item:focus-within .promo-ambient {
+    opacity: 0.62;
+  }
+  /* Loja fechada ou promoção já usada: card em cinza → sem luz. */
+  .promo-item-quiet .promo-ambient {
+    display: none;
+  }
 }
-
-/* --- Seção Deals ------------------------------------------------------- */
-
-/* Moldura das camadas: ocupa a caixa da seção, atrás do conteúdo, recortada
-   (sem rolagem lateral e sem tingir busca/categorias). O pai é `relative isolate`. */
-.atm-deals {
-  position: absolute;
-  inset: 0;
-  z-index: -10;
-  pointer-events: none;
-  overflow: hidden;
-}
-.atm-deals-muted {
-  opacity: 0.25;
-}
-
-/* Contraluz: elipse que nasce em 0% no topo da seção (sem degrau visível sob o
-   cabeçalho), tem o pico logo atrás dos cards e some nas laterais e embaixo. */
-.atm-deals-wash {
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(
-    closest-side at 50% 42%,
-    rgb(var(--atm-c, 0 0 0) / calc(0.11 * var(--atm-kk, 0))),
-    transparent
-  );
-}
-.dark .atm-deals-wash {
-  background: radial-gradient(
-    closest-side at 50% 42%,
-    rgb(var(--atm-c, 0 0 0) / calc(0.12 * var(--atm-kk, 0))),
-    transparent
-  );
+@media (prefers-reduced-motion: reduce) {
+  .promo-ambient {
+    transition: none;
+  }
 }
 
-/* Blur colorido localizado: dois focos estáticos, um por cor da marca, atrás
-   dos cards. Tamanho pequeno e blur fixo = custo de pintura desprezível. Ficam
-   no terço superior/médio da seção: com o blur de 34px (~50px de alcance) a luz
-   termina DENTRO da caixa, então o recorte do overflow nunca cria borda reta. */
-.atm-deals-blur {
-  position: absolute;
-  border-radius: 9999px;
-  filter: blur(34px);
-}
-.atm-deals-blur-a {
-  left: 10%;
-  top: 28%;
-  width: 36%;
-  height: 34%;
-  background: rgb(var(--atm-c, 0 0 0) / calc(0.14 * var(--atm-kk, 0)));
-}
-.atm-deals-blur-b {
-  right: 10%;
-  top: 32%;
-  width: 32%;
-  height: 30%;
-  background: rgb(var(--atm-c2, 0 0 0) / calc(0.10 * var(--atm-kk, 0)));
-}
-.dark .atm-deals-blur-a {
-  background: rgb(var(--atm-c, 0 0 0) / calc(0.16 * var(--atm-kk, 0)));
-}
-.dark .atm-deals-blur-b {
-  background: rgb(var(--atm-c2, 0 0 0) / calc(0.12 * var(--atm-kk, 0)));
-}
-
-/* --- Cards promocionais ------------------------------------------------ */
-
-/* Borda de 1px + sombra curta neutra + sombra longa tingida pela marca
-   (profundidade tipo Stripe/Linear). No escuro mantém o anel branco/10% que
-   os cards já tinham. A elevação do hover (md+) só aumenta a sombra — nada
-   de movimento. `.atm-card-quiet` (loja fechada / promoção já usada) zera o
-   brilho colorido e deixa só a borda e a sombra neutra. */
+/* Acabamento do card: contorno fino + sombra curta neutra (a de antes) e um
+   filete de luz de 1px no topo. A elevação do hover (md+) só aumenta a sombra. */
 .atm-card {
   box-shadow:
     0 0 0 1px rgb(0 0 0 / 0.04),
-    0 1px 2px rgb(0 0 0 / 0.05),
-    0 12px 24px -14px rgb(var(--atm-c, 0 0 0) / calc(0.45 * var(--atm-kk, 0)));
+    0 2px 10px rgb(0 0 0 / 0.04);
 }
 .dark .atm-card {
-  box-shadow:
-    0 0 0 1px rgb(255 255 255 / 0.10),
-    0 12px 26px -14px rgb(var(--atm-c, 0 0 0) / calc(0.34 * var(--atm-kk, 0)));
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.10);
 }
 @media (min-width: 768px) {
   .atm-card:hover {
     box-shadow:
       0 0 0 1px rgb(0 0 0 / 0.05),
-      0 2px 4px rgb(0 0 0 / 0.06),
-      0 18px 32px -14px rgb(var(--atm-c, 0 0 0) / calc(0.52 * var(--atm-kk, 0)));
+      0 8px 22px rgb(0 0 0 / 0.12);
   }
   .dark .atm-card:hover {
-    box-shadow:
-      0 0 0 1px rgb(255 255 255 / 0.14),
-      0 18px 34px -14px rgb(var(--atm-c, 0 0 0) / calc(0.42 * var(--atm-kk, 0)));
+    box-shadow: 0 0 0 1px rgb(255 255 255 / 0.14);
   }
 }
-.atm-card-quiet {
-  --atm-kk: 0;
-}
-
-/* Filete de luz de 1px no topo + contorno interno finíssimo (por cima da foto,
-   sem interceptar toque). O botão do card já é `relative overflow-hidden`. */
 .atm-card::after {
   content: '';
   position: absolute;
@@ -491,15 +439,43 @@ img, svg, video, a {
     inset 0 0 0 1px rgb(255 255 255 / 0.04);
 }
 
-@media print {
-  .atm-banner,
-  .atm-card {
-    box-shadow: none;
+/* --- Faixa de categorias: SEM cor de fundo em repouso (desktop) ----------- */
+/* Em repouso a faixa não tem cor nenhuma: o fundo opaco que vinha da página sai
+   e quem aparece é o fundo da tela (claro ou escuro), com a luz dos cards de
+   promoção passando por trás sem nenhuma faixa escurecida. Textos e o hover das
+   abas não são tocados. Enquanto está PRESA no topo (`.atm-stuck`, ver
+   StickyCategoryBar) as regras abaixo não valem e ela mantém o fundo normal da
+   página, para os produtos que rolam por baixo não atrapalharem a leitura.
+   Setas das pontas: sem o gradiente colorido, só um desfoque que some em degradê
+   (sem cor). Celular continua com a faixa de sempre. */
+@media (min-width: 768px) {
+  .atm-glass:not(.atm-stuck) {
+    background-color: transparent;
   }
+  .atm-glass:not(.atm-stuck) button.left-0,
+  .atm-glass:not(.atm-stuck) button.right-0 {
+    background-image: none;
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+  }
+  .atm-glass:not(.atm-stuck) button.left-0 {
+    -webkit-mask-image: linear-gradient(to right, #000 55%, transparent);
+    mask-image: linear-gradient(to right, #000 55%, transparent);
+  }
+  .atm-glass:not(.atm-stuck) button.right-0 {
+    -webkit-mask-image: linear-gradient(to left, #000 55%, transparent);
+    mask-image: linear-gradient(to left, #000 55%, transparent);
+  }
+}
+
+@media print {
+  .amb-header,
+  .promo-ambient,
   .atm-banner-depth,
-  .atm-spill,
-  .atm-deals,
   .atm-card::after {
     display: none;
+  }
+  .atm-card {
+    box-shadow: none;
   }
 }

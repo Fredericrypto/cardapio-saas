@@ -185,6 +185,7 @@ export const es: Record<TranslationKey, string> = {
   'pixWaitingPanel.abra_o_app_do': 'Abre la app de tu banco, escanea el QR o pega el código, y paga en un máximo de',
   'pixWaitingPanel.receber_o_pagamento': 'para recibir el pago.',
   'productCard.sem_foto': 'Sin foto',
+  'productCard.novo': 'Nuevo',
   'productCard.indisponivel': 'No disponible',
   'promoCards.encerrada': 'Finalizada',
   'promoCards.hours_h_minutes_min': '{hours}h {minutes}min',
