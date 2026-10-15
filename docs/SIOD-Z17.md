@@ -99,3 +99,40 @@ SELECT route_provider, count(*) FROM order_delivery_intelligence GROUP BY 1;
 - O OSRM público é um servidor de demonstração (sem SLA); para produção, use um container próprio.
 - A distância de OSRM (`distance_km`) é a de rota por ruas; `orders.delivery_distance_km` (taxa de entrega)
   continua sendo a linha reta e NÃO foi alterada.
+
+## Aba "Entregas" (visualização e configuração)
+
+Menu **Entregas** (`/entregas`, painel admin). Três abas: **Visão geral**, **Pedidos** e **Parâmetros**.
+
+**Permissões** (reaproveita o catálogo, sem permissão nova nem migration): ver tudo = `analytics:view`;
+salvar/restaurar parâmetros = `settings:manage` (Gerente só vê; Administrador edita).
+
+**API** (`/siod`, sempre escopada ao restaurante do token; `Cache-Control: no-store`):
+
+| Rota | Permissão | O que faz |
+|---|---|---|
+| `GET /siod/settings` | analytics:view | parâmetros em vigor, padrões, limites e rótulos |
+| `PUT /siod/settings` | settings:manage | salva o conjunto COMPLETO (8 campos), validação estrita campo a campo (400 com mensagens em português) |
+| `DELETE /siod/settings` | settings:manage | volta ao padrão (`siod_settings = NULL`) |
+| `GET /siod/overview?period=&from=&to=&locationId=` | analytics:view | contagens, precisão, etapas, série, quebras e sugestões |
+| `GET /siod/orders?...&recordClass=&confidence=&provider=&page=&pageSize=` | analytics:view | lista paginada (máx. 100 por página) |
+
+**Classes de registro** (partição: todo pedido de entrega cai em exatamente uma): `valid` (medido), `invalid`
+(horários contraditórios, ou VALID sem métricas), `skipped` (entregue sem passar por preparo/pronto),
+`in_progress`, `cancelled`. Só `valid` entra na precisão. Pedidos com soft-delete continuam contados.
+
+**Precisão** (somente `valid`): viés = média de (real − prometido); erro absoluto médio, mediana e p90;
+"dentro da janela" = real entre o mínimo e o máximo prometidos, **inclusive** nos dois limites.
+"Preparo" real = do pedido até ficar pronto (inclui a espera na fila), que é o que o motor estima; a cozinha
+(preparando → pronto) aparece separada. No Pix a espera do pagamento entra no tempo total (há quebra por pagamento).
+
+**Sugestões** (só com 30+ pedidos comparáveis; nunca aplicadas sozinhas): preparo base = mediana do tempo
+pedido→pronto em pedidos com cozinha vazia, sem pico e sem piso; minutos por pedido = mediana de
+`((pedido→pronto) − base usada) / fila` em pedidos com fila, sem pico e sem piso. Sempre dentro dos limites.
+
+**Limites** (fonte única `SIOD_PARAM_LIMITS` em `siod.types.ts`, usada pelo motor e pela validação): preparo base
+0–240, min/pedido 0–60, prazo mínimo 15–480 (nunca < 15), janela −0–60 / +0–120, limiar de pico 1–200,
+acréscimo por pedido 0–1 (2 casas), teto de pico 1–3 (2 casas).
+
+Testes: `npm run test:siod-insights` (backend, Postgres de teste obrigatório; apaga os dados) e
+`npm run test:logic` (frontend-admin; inclui paridade formulário × servidor).

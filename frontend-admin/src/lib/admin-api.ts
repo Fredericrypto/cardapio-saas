@@ -2,6 +2,13 @@ import type { ContentTranslations, TranslatableField } from '../types/translatio
 import { api } from './api';
 import type { Analytics, AnalyticsPeriod } from '../types/analytics';
 import type {
+  SiodOrdersPage,
+  SiodOrdersQuery,
+  SiodOverview,
+  SiodParams,
+  SiodSettingsView,
+} from '../types/siod';
+import type {
   BackupAuditItem,
   BackupOverview,
   BackupSettingsView,
@@ -741,6 +748,35 @@ export async function fetchAnalytics(query: AnalyticsQuery, signal?: AbortSignal
 
 export async function fetchAnalyticsLocations(): Promise<Location[]> {
   return fetchLocations();
+}
+
+// ---------- SIOD (aba "Entregas") ----------
+export async function fetchSiodOverview(
+  query: { period: AnalyticsPeriod; from?: string; to?: string; locationId?: string },
+  signal?: AbortSignal,
+): Promise<SiodOverview> {
+  const { data } = await api.get<SiodOverview>('/siod/overview', { params: query, signal });
+  return data;
+}
+
+export async function fetchSiodOrders(query: SiodOrdersQuery, signal?: AbortSignal): Promise<SiodOrdersPage> {
+  const { data } = await api.get<SiodOrdersPage>('/siod/orders', { params: query, signal });
+  return data;
+}
+
+export async function fetchSiodSettings(): Promise<SiodSettingsView> {
+  const { data } = await api.get<SiodSettingsView>('/siod/settings');
+  return data;
+}
+
+export async function saveSiodSettings(params: SiodParams): Promise<SiodSettingsView> {
+  const { data } = await api.put<SiodSettingsView>('/siod/settings', params);
+  return data;
+}
+
+export async function resetSiodSettings(): Promise<SiodSettingsView> {
+  const { data } = await api.delete<SiodSettingsView>('/siod/settings');
+  return data;
 }
 
 // ---------- Anotações (mural da equipe) ----------

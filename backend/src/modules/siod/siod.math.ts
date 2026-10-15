@@ -10,7 +10,7 @@ import {
   EngineOutput,
   EstimationConfidence,
   LifecycleTimes,
-  SIOD_STRUCTURAL_FLOOR_MINUTES,
+  SIOD_PARAM_LIMITS,
   SiodParams,
 } from './siod.types';
 
@@ -34,15 +34,26 @@ export function resolveSiodParams(raw: unknown): SiodParams {
   const source: Record<string, unknown> =
     raw !== null && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
   const d = DEFAULT_SIOD_PARAMS;
+  const L = SIOD_PARAM_LIMITS;
   return {
-    basePrepMinutes: clampInt(source.basePrepMinutes, 0, 240, d.basePrepMinutes),
-    queuePenaltyMinutesPerOrder: clampInt(source.queuePenaltyMinutesPerOrder, 0, 60, d.queuePenaltyMinutesPerOrder),
-    minTotalMinutes: clampInt(source.minTotalMinutes, SIOD_STRUCTURAL_FLOOR_MINUTES, 480, d.minTotalMinutes),
-    windowBelowMinutes: clampInt(source.windowBelowMinutes, 0, 60, d.windowBelowMinutes),
-    windowAboveMinutes: clampInt(source.windowAboveMinutes, 0, 120, d.windowAboveMinutes),
-    peakThresholdActiveOrders: clampInt(source.peakThresholdActiveOrders, 1, 200, d.peakThresholdActiveOrders),
-    peakStepPerOrder: clampDecimal(source.peakStepPerOrder, 0, 1, d.peakStepPerOrder),
-    peakMaxMultiplier: clampDecimal(source.peakMaxMultiplier, 1, 3, d.peakMaxMultiplier),
+    basePrepMinutes: clampInt(source.basePrepMinutes, L.basePrepMinutes.min, L.basePrepMinutes.max, d.basePrepMinutes),
+    queuePenaltyMinutesPerOrder: clampInt(
+      source.queuePenaltyMinutesPerOrder,
+      L.queuePenaltyMinutesPerOrder.min,
+      L.queuePenaltyMinutesPerOrder.max,
+      d.queuePenaltyMinutesPerOrder,
+    ),
+    minTotalMinutes: clampInt(source.minTotalMinutes, L.minTotalMinutes.min, L.minTotalMinutes.max, d.minTotalMinutes),
+    windowBelowMinutes: clampInt(source.windowBelowMinutes, L.windowBelowMinutes.min, L.windowBelowMinutes.max, d.windowBelowMinutes),
+    windowAboveMinutes: clampInt(source.windowAboveMinutes, L.windowAboveMinutes.min, L.windowAboveMinutes.max, d.windowAboveMinutes),
+    peakThresholdActiveOrders: clampInt(
+      source.peakThresholdActiveOrders,
+      L.peakThresholdActiveOrders.min,
+      L.peakThresholdActiveOrders.max,
+      d.peakThresholdActiveOrders,
+    ),
+    peakStepPerOrder: clampDecimal(source.peakStepPerOrder, L.peakStepPerOrder.min, L.peakStepPerOrder.max, d.peakStepPerOrder),
+    peakMaxMultiplier: clampDecimal(source.peakMaxMultiplier, L.peakMaxMultiplier.min, L.peakMaxMultiplier.max, d.peakMaxMultiplier),
   };
 }
 

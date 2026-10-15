@@ -52,6 +52,29 @@ export const DEFAULT_SIOD_PARAMS: Readonly<SiodParams> = Object.freeze({
   peakMaxMultiplier: 1.5,
 });
 
+// FONTE ÚNICA dos limites de cada parâmetro. O motor (resolveSiodParams, que
+// LIMITA valores ruins vindos do banco) e a validação da tela de configuração
+// (validateSiodSettingsInput, que REJEITA com mensagem) usam esta mesma tabela,
+// então nunca divergem.
+export interface SiodParamLimit {
+  min: number;
+  max: number;
+  integer: boolean; // false = até 2 casas decimais
+}
+
+export const SIOD_PARAM_LIMITS: Readonly<Record<keyof SiodParams, SiodParamLimit>> = Object.freeze({
+  basePrepMinutes: { min: 0, max: 240, integer: true },
+  queuePenaltyMinutesPerOrder: { min: 0, max: 60, integer: true },
+  minTotalMinutes: { min: SIOD_STRUCTURAL_FLOOR_MINUTES, max: 480, integer: true },
+  windowBelowMinutes: { min: 0, max: 60, integer: true },
+  windowAboveMinutes: { min: 0, max: 120, integer: true },
+  peakThresholdActiveOrders: { min: 1, max: 200, integer: true },
+  peakStepPerOrder: { min: 0, max: 1, integer: false },
+  peakMaxMultiplier: { min: 1, max: 3, integer: false },
+});
+
+export const SIOD_PARAM_KEYS = Object.freeze(Object.keys(SIOD_PARAM_LIMITS) as Array<keyof SiodParams>);
+
 export interface GeoPoint {
   latitude: number;
   longitude: number;

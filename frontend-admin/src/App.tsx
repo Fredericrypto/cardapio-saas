@@ -11,6 +11,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { MenuManagementPage } from './pages/MenuManagementPage';
 import { TablesPage } from './pages/TablesPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
+import { SiodPage } from './pages/SiodPage';
 import { ManagerCalculatorPage } from './pages/ManagerCalculatorPage';
 import { NotesPage } from './pages/NotesPage';
 import { NotificationsPage } from './pages/NotificationsPage';
@@ -64,6 +65,7 @@ function App() {
             <Route path="/cashback" element={guarded('/cashback', <CashbackSettingsPage />)} />
             <Route path="/avaliacoes" element={guarded('/avaliacoes', <ReviewsPage />)} />
             <Route path="/analise" element={guarded('/analise', <AnalyticsPage />)} />
+            <Route path="/entregas" element={guarded('/entregas', <SiodPage />)} />
             <Route path="/calculadora" element={guarded('/calculadora', <ManagerCalculatorPage />)} />
             <Route path="/anotacoes" element={guarded('/anotacoes', <NotesPage />)} />
             <Route path="/notificacoes" element={guarded('/notificacoes', <NotificationsPage />)} />

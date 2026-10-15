@@ -27,6 +27,8 @@ export const SIDEBAR_ITEMS: readonly MenuItem[] = [
   { id: 'avaliacoes', label: 'Avaliações', path: '/avaliacoes', iconName: 'Star', permission: 'reviews:view' },
   { id: 'verificacoes', label: 'Verificações', path: '/verificacoes', iconName: 'BadgeCheck', permission: 'verifications:view' },
   { id: 'analise', label: 'Análise', path: '/analise', iconName: 'TrendingUp', permission: 'analytics:view' },
+  // SIOD: mesmos dados de gestao da Analise (ver); editar parametros exige settings:manage (checado no backend).
+  { id: 'entregas', label: 'Entregas', path: '/entregas', iconName: 'Truck', permission: 'analytics:view' },
   // Reaproveita a permissao da Analise (mesmos dados financeiros): sem migration nem cargo novo.
   { id: 'calculadora', label: 'Calculadora', path: '/calculadora', iconName: 'Calculator', permission: 'analytics:view' },
   { id: 'anotacoes', label: 'Anotações', path: '/anotacoes', iconName: 'StickyNote' },

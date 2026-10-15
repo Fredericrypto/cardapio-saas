@@ -14,6 +14,7 @@ import {
   Store,
   Table2,
   TrendingUp,
+  Truck,
   UtensilsCrossed,
   Wallet,
   Circle,
@@ -37,6 +38,7 @@ const ICONS: Record<string, LucideIcon> = {
   Store,
   Table2,
   TrendingUp,
+  Truck,
   UtensilsCrossed,
   Wallet,
 };
