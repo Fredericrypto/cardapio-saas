@@ -1,4 +1,5 @@
 import type { ContentTranslations } from './translations';
+import type { AutoBadge, DeclaredBadgeCode } from './productBadges';
 export interface Admin {
   id: string;
   email: string;
@@ -119,6 +120,9 @@ export interface Product {
   images?: string[];
   isAvailable: boolean;
   displayOrder: number;
+  // Selos DECLARADOS (o restaurante liga/desliga) e AUTOMÁTICOS (o servidor calcula; só leitura).
+  badges?: DeclaredBadgeCode[];
+  autoBadges?: AutoBadge[];
   options?: ProductOptionGroup[];
 }
 

@@ -20,6 +20,23 @@ export const ptBR = {
   'nav.account': 'Conta',
   'nav.goHome': 'Voltar ao início do cardápio',
 
+  'productBadges.listLabel': 'Destaques do item',
+  'productBadges.illustrative_image': 'Imagem ilustrativa',
+  'productBadges.selected_ingredients': 'Ingredientes selecionados',
+  'productBadges.artisanal': 'Produção artesanal',
+  'productBadges.always_fresh': 'Sempre fresco',
+  'productBadges.house_recipe': 'Receita da casa',
+  'productBadges.chef_recommended': 'Recomendado pelo chef',
+  'productBadges.limited_edition': 'Edição limitada',
+  'productBadges.vegan': 'Vegano',
+  'productBadges.gluten_free': 'Sem glúten',
+  'productBadges.lactose_free': 'Sem lactose',
+  'productBadges.spicy': 'Picante',
+  'productBadges.healthy_option': 'Opção saudável',
+  'productBadges.top_ordered': 'Mais pedido',
+  'productBadges.customer_favorite': 'Favorito dos clientes',
+  'productBadges.trending': 'Tendência',
+
   // Dias da semana (usados em "Abre Segunda-feira às 09:30")
   'day.name.domingo': 'Domingo',
   'day.name.segunda': 'Segunda-feira',

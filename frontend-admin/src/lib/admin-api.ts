@@ -1,4 +1,5 @@
 import type { ContentTranslations, TranslatableField } from '../types/translations';
+import type { DeclaredBadgeCode } from '../types/productBadges';
 import { api } from './api';
 import type { Analytics, AnalyticsPeriod } from '../types/analytics';
 import type {
@@ -169,6 +170,7 @@ export async function createProduct(payload: {
   price: number;
   promoPrice?: number;
   costPrice?: number | null;
+  badges?: DeclaredBadgeCode[];
 }): Promise<Product> {
   const { data } = await api.post<Product>('/products', payload);
   return data;

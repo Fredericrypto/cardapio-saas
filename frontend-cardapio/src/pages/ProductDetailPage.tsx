@@ -19,6 +19,8 @@ import { ShareButton } from '../components/ShareButton';
 import { Tooltip } from '../components/Tooltip';
 import { GlassBackButton } from '../components/GlassBackButton';
 import { PromotionAmbient } from '../components/promotion/PromotionAmbient';
+import { IllustrativeImageSeal, ProductBadgeRow } from '../components/ProductBadges';
+import { resolveProductBadges } from '../lib/productBadgeCatalog';
 import { ProductImageCarousel } from '../components/ProductImageCarousel';
 import { getProductImages } from '../lib/productImages';
 import { buildShareUrl } from '../lib/shareLinks';
@@ -165,6 +167,7 @@ export function ProductDetailPage() {
 
   const brand = tenant.primaryColor;
   const productImages = getProductImages(product);
+  const badgeView = resolveProductBadges(product);
   const backHref = qrCodeToken ? `/${slug}/mesa/${qrCodeToken}` : `/${slug}`;
 
   // Grupo sem nenhuma opção cadastrada não aparece pro cliente — ficaria
@@ -349,6 +352,9 @@ export function ProductDetailPage() {
                     {t('productCard.sem_foto')}
                   </div>
                 )}
+                {badgeView.imageNotice && productImages.length > 0 && (
+                  <IllustrativeImageSeal className="absolute bottom-3 left-3" />
+                )}
                 {slug && (
                   <ShareButton
                     className="absolute top-4 right-4"
@@ -400,6 +406,9 @@ export function ProductDetailPage() {
                   )}
                 </button>
               )}
+
+              {/* Selos: abaixo do título/nota e acima do preço. Automáticos na frente. */}
+              <ProductBadgeRow view={badgeView} className="mt-3" />
 
               <div className="flex items-baseline gap-2.5 mt-4">
                 <span className="text-3xl font-extrabold tabular-nums" style={{ color: accent }}>

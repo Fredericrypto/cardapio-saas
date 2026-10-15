@@ -11,8 +11,10 @@ import {
   MaxLength,
   Min,
   IsObject,
+  IsIn,
 } from 'class-validator';
 import { MAX_PRODUCT_IMAGES } from '../product-images';
+import { DECLARED_BADGE_CODES, type DeclaredBadgeCode } from '../badges/product-badges.types';
 
 export class UpdateProductDto {
   @IsOptional()
@@ -64,6 +66,14 @@ export class UpdateProductDto {
     { each: true, message: 'Cada foto precisa ser um endereço http(s) válido.' },
   )
   images?: string[];
+
+  // Selos declarativos (o que só o restaurante pode afirmar). Códigos do catálogo; o limite
+  // de selos de texto é validado no service. [] limpa.
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(DECLARED_BADGE_CODES.length)
+  @IsIn([...DECLARED_BADGE_CODES], { each: true, message: 'Selo desconhecido.' })
+  badges?: DeclaredBadgeCode[];
 
   @IsOptional()
   @IsBoolean()

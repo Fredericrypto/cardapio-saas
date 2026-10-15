@@ -137,7 +137,18 @@ export interface Product {
   createdAt?: string;
   isAvailable: boolean;
   displayOrder: number;
+  // Selos DECLARADOS pelo restaurante (códigos). Desconhecidos são ignorados no app.
+  badges?: string[];
+  // Selos AUTOMÁTICOS decididos pelo servidor (mais pedido, favorito, tendência...).
+  autoBadges?: AutoBadgeDto[];
   options?: ProductOptionGroup[];
+}
+
+export interface AutoBadgeDto {
+  kind: 'behavioral' | 'analytical';
+  code: string;
+  // Só nos analíticos (SIOD, futuro): ex. { daypart: 'lunch', channel: 'delivery' }.
+  scope?: { daypart?: string; channel?: string };
 }
 
 export interface SelectedCartOption {

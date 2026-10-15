@@ -15,6 +15,7 @@ import { Tenant } from '../tenants/tenant.entity';
 import { Category } from '../categories/category.entity';
 import { ProductOption } from './product-option.entity';
 import { numericTransformer } from '../../common/utils/numeric-transformer';
+import type { DeclaredBadgeCode } from './badges/product-badges.types';
 
 @Entity('products')
 export class Product {
@@ -72,6 +73,12 @@ export class Product {
   // antigos (coluna nova NOT NULL sem padrão — backup-engine.checkCompatibility).
   @Column({ name: 'images', type: 'text', array: true, default: () => "'{}'" })
   images: string[];
+
+  // Selos DECLARATIVOS (códigos estáveis do catálogo em badges/product-badges.types.ts).
+  // Os automáticos (mais pedido, favorito, tendência) NÃO ficam aqui: são calculados na
+  // leitura. DEFAULT '{}' é obrigatório (compatibilidade com backups antigos, como `images`).
+  @Column({ name: 'badges', type: 'text', array: true, default: () => "'{}'" })
+  badges: DeclaredBadgeCode[];
 
   @Column({ name: 'is_available', default: true })
   isAvailable: boolean;

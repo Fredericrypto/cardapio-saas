@@ -12,6 +12,9 @@ import {
 } from '../lib/admin-api';
 import { ProductOptionsEditor } from '../components/ProductOptionsEditor';
 import { ProductImagesEditor } from '../components/ProductImagesEditor';
+import { ProductBadgesEditor } from '../components/ProductBadgesEditor';
+import { resolveDeclaredBadges } from '../lib/productBadges';
+import type { DeclaredBadgeCode } from '../types/productBadges';
 import { MAX_PRODUCT_IMAGES, getProductImages } from '../lib/productImages';
 import type { Category, Product } from '../types';
 import { getCategoryIcon } from '../components/CategoryIcon';
@@ -30,6 +33,8 @@ export function MenuManagementPage() {
   const [editTranslations, setEditTranslations] = useState<ContentTranslations>({});
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editForm, setEditForm] = useState({ name: '', description: '', price: '', costPrice: '' });
+  const [newBadges, setNewBadges] = useState<DeclaredBadgeCode[]>([]);
+  const [editBadges, setEditBadges] = useState<DeclaredBadgeCode[]>([]);
 
   async function loadAll() {
     const [categoriesData, productsData] = await Promise.all([
@@ -61,9 +66,11 @@ export function MenuManagementPage() {
       price: Number(newProduct.price),
       costPrice: newProduct.costPrice ? Number(newProduct.costPrice) : undefined,
       translations: newTranslations,
+      badges: newBadges,
     });
     setNewProduct({ name: '', description: '', price: '', costPrice: '' });
     setNewTranslations({});
+    setNewBadges([]);
     setIsAddingProduct(false);
     loadAll();
   }
@@ -71,6 +78,7 @@ export function MenuManagementPage() {
   function openEditProduct(product: Product) {
     setEditingProduct(product);
     setEditTranslations(product.translations ?? {});
+    setEditBadges(resolveDeclaredBadges(product.badges));
     setEditForm({
       name: product.name,
       description: product.description ?? '',
@@ -87,6 +95,7 @@ export function MenuManagementPage() {
       price: Number(editForm.price),
       costPrice: editForm.costPrice ? Number(editForm.costPrice) : null,
       translations: editTranslations,
+      badges: editBadges,
     } as Partial<Product>);
     setEditingProduct(null);
     loadAll();
@@ -269,6 +278,7 @@ export function MenuManagementPage() {
                     placeholder="Custo (opcional) — para o CMV real na Análise"
                     className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none"
                   />
+                  <ProductBadgesEditor value={newBadges} onChange={setNewBadges} />
                   <div className="flex gap-2 mt-1">
                     <button
                       onClick={() => setIsAddingProduct(false)}
@@ -343,6 +353,7 @@ export function MenuManagementPage() {
               placeholder="Custo (opcional) — para o CMV real na Análise"
               className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none"
             />
+            <ProductBadgesEditor value={editBadges} onChange={setEditBadges} autoBadges={editingProduct.autoBadges} />
 
             <div className="flex gap-2 mt-1">
               <button
