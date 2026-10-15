@@ -147,6 +147,16 @@ export interface SinglePromoResult {
   reasonParams?: { missing: string; minimum: string };
 }
 
+// Parcela do desconto de UMA promoção atribuída a UMA linha do carrinho —
+// alimenta a etiqueta "Promoção X aplicada · economia R$ Y" de cada item.
+export interface LinePromotionApplication {
+  promotionId: string;
+  // Unidades da linha que essa promoção reivindicou.
+  units: number;
+  // Fatia do desconto da promoção que cabe a essa linha (reais, 2 casas).
+  discountAmount: number;
+}
+
 export interface MultiPromotionEligibility {
   totalDiscountAmount: number;
   // Merge de TODAS as promoções da lista — quantas unidades de cada
@@ -157,6 +167,29 @@ export interface MultiPromotionEligibility {
   // promoção pode aparecer com desconto R$0/inelegível se as anteriores
   // da lista já consumiram tudo que ela cobriria.
   perPromo: Map<string, SinglePromoResult>;
+  // Por linha (lineKey): quais promoções aplicadas a tocam e a fatia de cada
+  // uma. Só contém promoções que de fato geraram desconto. A soma das fatias de
+  // uma promoção em todas as linhas é, em centavos, exatamente o desconto dela.
+  applicationsByLine: Map<string, LinePromotionApplication[]>;
+}
+
+// Rateia `totalCents` entre `weights` (centavos) na proporção dos pesos, com o
+// método do maior resto: a soma do resultado é SEMPRE `totalCents`, nenhum
+// centavo se perde nem sobra, e nenhuma fatia passa do seu peso quando
+// totalCents <= soma dos pesos. Desempate determinístico (menor índice).
+export function allocateProportionally(totalCents: number, weights: number[]): number[] {
+  const sum = weights.reduce((a, b) => a + b, 0);
+  if (!(totalCents > 0) || !(sum > 0)) return weights.map(() => 0);
+  const shares = weights.map((w) => Math.floor((totalCents * w) / sum));
+  const fractions = weights.map((w, index) => ({ index, rest: (totalCents * w) % sum }));
+  let leftover = totalCents - shares.reduce((a, b) => a + b, 0);
+  fractions.sort((a, b) => b.rest - a.rest || a.index - b.index);
+  for (const { index } of fractions) {
+    if (leftover <= 0) break;
+    shares[index] += 1;
+    leftover -= 1;
+  }
+  return shares;
 }
 
 // Espelha EXATAMENTE PromotionsService.validateSelectedPromotions: cada
@@ -178,6 +211,7 @@ export function computeSelectedPromotionsEligibility(
 
   const discountedQuantityByLine = new Map<string, number>();
   const perPromo = new Map<string, SinglePromoResult>();
+  const applicationsByLine = new Map<string, LinePromotionApplication[]>();
   let totalDiscountCents = 0;
 
   for (const promo of promos) {
@@ -205,10 +239,13 @@ export function computeSelectedPromotionsEligibility(
         qty: remainingQty.get(i.lineKey)!,
       }));
 
+    // Unidades que ESTA promoção reivindicou, linha a linha (base do rateio).
+    const claims: { lineKey: string; units: number; cents: number }[] = [];
     let eligibleCents = 0;
     if (promo.maxEligibleQuantity == null) {
       for (const line of matching) {
         eligibleCents += line.unitPriceCents * line.qty;
+        claims.push({ lineKey: line.lineKey, units: line.qty, cents: line.unitPriceCents * line.qty });
         discountedQuantityByLine.set(line.lineKey, (discountedQuantityByLine.get(line.lineKey) ?? 0) + line.qty);
         remainingQty.set(line.lineKey, 0);
       }
@@ -219,6 +256,7 @@ export function computeSelectedPromotionsEligibility(
         if (cap <= 0) break;
         const taken = Math.min(cap, line.qty);
         eligibleCents += taken * line.unitPriceCents;
+        claims.push({ lineKey: line.lineKey, units: taken, cents: taken * line.unitPriceCents });
         discountedQuantityByLine.set(line.lineKey, (discountedQuantityByLine.get(line.lineKey) ?? 0) + taken);
         remainingQty.set(line.lineKey, line.qty - taken);
         cap -= taken;
@@ -252,9 +290,16 @@ export function computeSelectedPromotionsEligibility(
 
     perPromo.set(promo.id, { discountAmount: fromCents(discountCents), isEligible: true, reason: null });
     totalDiscountCents += discountCents;
+
+    const shares = allocateProportionally(discountCents, claims.map((c) => c.cents));
+    claims.forEach((claim, i) => {
+      const list = applicationsByLine.get(claim.lineKey) ?? [];
+      list.push({ promotionId: promo.id, units: claim.units, discountAmount: fromCents(shares[i]) });
+      applicationsByLine.set(claim.lineKey, list);
+    });
   }
 
-  return { totalDiscountAmount: fromCents(totalDiscountCents), discountedQuantityByLine, perPromo };
+  return { totalDiscountAmount: fromCents(totalDiscountCents), discountedQuantityByLine, perPromo, applicationsByLine };
 }
 
 // Quais itens do carrinho essa promoção afeta — usado pra destacar os
@@ -416,4 +461,30 @@ export function previewItemPromotion(
     lineDiscount: fromCents(lineDiscountCents),
     lineTotalAfterPromo: fromCents(beforeCents * quantity - lineDiscountCents),
   };
+}
+
+// ---------------------------------------------------------------------------
+// Promoção que vale para um item FORA do Modo Promoção
+// ---------------------------------------------------------------------------
+//
+// Só entram promoções que o cliente ATIVOU (selectedPromotionIds): mostrar
+// preço promocional de uma promoção que o carrinho não vai aplicar seria
+// enganoso. A ordem é a da seleção — a mesma em que o motor reparte o carrinho
+// (a primeira ativada reivindica a unidade primeiro), então o preço exibido no
+// cardápio é o que o carrinho vai cobrar. Sem promoção elegível: null.
+export interface AppliedItemPromotion {
+  promotion: Promotion;
+  preview: ItemPromotionPreview;
+}
+
+export function pickItemPromotion(
+  selectedPromotions: readonly Promotion[],
+  product: Product,
+  options: ItemPreviewOptions = {},
+): AppliedItemPromotion | null {
+  for (const promotion of selectedPromotions) {
+    const preview = previewItemPromotion(promotion, product, options);
+    if (preview.isEligible) return { promotion, preview };
+  }
+  return null;
 }

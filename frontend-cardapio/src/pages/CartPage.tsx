@@ -46,7 +46,8 @@ import {
   CART_TITLE,
 } from '../lib/cartTheme';
 import { CartShell } from '../components/cart/CartShell';
-import { CartItemRow } from '../components/cart/CartItemRow';
+import { PROMO_SUCCESS_TEXT } from '../lib/promotionTheme';
+import { CartItemRow, type CartLinePromotionTag } from '../components/cart/CartItemRow';
 import { CartReviewItems } from '../components/cart/CartReviewItems';
 import { CartOrderSummary } from '../components/cart/CartOrderSummary';
 import { CartSummaryPanel } from '../components/cart/CartSummaryPanel';
@@ -798,6 +799,24 @@ export function CartPage() {
     return multiEligibility.discountedQuantityByLine.get(lineKey) ?? 0;
   }
 
+  // Quais promoções (com nome e economia da linha) estão aplicadas a uma linha
+  // — a etiqueta "Promoção X aplicada" do item. Mesma fonte do desconto cobrado.
+  function promotionTagsFor(lineKey: string): CartLinePromotionTag[] {
+    return (multiEligibility.applicationsByLine.get(lineKey) ?? []).flatMap((application) => {
+      const promo = selectedPromotions.find((p) => p.id === application.promotionId);
+      return promo
+        ? [
+            {
+              promotionId: promo.id,
+              title: localizedField(promo, 'title'),
+              units: application.units,
+              discountAmount: application.discountAmount,
+            },
+          ]
+        : [];
+    });
+  }
+
   // Estimativa de quanto do saldo de cashback entra no total — só uma
   // prévia visual, o valor real é sempre recalculado no backend (ver
   // OrdersService.create). Abate depois de promoção e taxa de entrega,
@@ -965,6 +984,7 @@ export function CartPage() {
                       item={item}
                       primaryColor={tenant.primaryColor}
                       discountedQty={discountedQtyFor(item.lineKey)}
+                      promotionTags={promotionTagsFor(item.lineKey)}
                       onIncrease={increaseItem}
                       onDecrease={decreaseItem}
                       onRequestRemoval={setItemPendingRemoval}
@@ -976,6 +996,12 @@ export function CartPage() {
                   <span className={`text-sm ${CART_TEXT_BODY}`}>{t('closingPaymentSheet.subtotal')}</span>
                   <span className={`text-3xl md:text-4xl font-light tabular-nums ${CART_TEXT}`}>{formatBRL(totalPrice)}</span>
                 </div>
+                {appliedDiscountAmount > 0 && (
+                  <p className={`flex items-center justify-end gap-1.5 pt-2 text-sm font-semibold ${PROMO_SUCCESS_TEXT}`}>
+                    <Tag size={14} strokeWidth={1.5} aria-hidden="true" />
+                    {t('cartPage.promoTotalSaving', { value: appliedDiscountAmount.toFixed(2).replace('.', ',') })}
+                  </p>
+                )}
               </section>
 
               <div className={CART_CARD}>

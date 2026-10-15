@@ -10,14 +10,27 @@ import {
   CART_TEXT,
   CART_TEXT_MUTED,
 } from '../../lib/cartTheme';
+import { PROMO_SUCCESS_TEXT } from '../../lib/promotionTheme';
 import type { CartItem } from '../../types';
 import { Tooltip } from '../Tooltip';
+
+/** Promoção aplicada a uma linha, já com o título traduzido (a CartPage monta). */
+export interface CartLinePromotionTag {
+  promotionId: string;
+  title: string;
+  /** Unidades da linha que essa promoção cobre. */
+  units: number;
+  /** Fatia do desconto da promoção que cabe a esta linha (reais). */
+  discountAmount: number;
+}
 
 interface CartItemRowProps {
   item: CartItem;
   primaryColor: string;
   /** Quantas unidades da linha têm cupom aplicado (0 = nenhuma). */
   discountedQty: number;
+  /** Quais promoções (nome + economia) estão aplicadas a esta linha. */
+  promotionTags: CartLinePromotionTag[];
   onIncrease: (lineKey: string) => void;
   onDecrease: (lineKey: string) => void;
   /** Abre o modal "Remover item?" — nunca remove direto. */
@@ -38,6 +51,7 @@ export function CartItemRow({
   item,
   primaryColor,
   discountedQty,
+  promotionTags,
   onIncrease,
   onDecrease,
   onRequestRemoval,
@@ -53,12 +67,27 @@ export function CartItemRow({
   const subtitle = optionsLabel ?? formatBRL(unitPrice);
   const lineTotal = unitPrice * item.quantity;
 
-  const couponBadge = (label: string) => (
-    <p className="text-[11px] font-semibold mt-0.5 flex items-center gap-1" style={{ color: accent }}>
-      <Tag size={11} strokeWidth={1.5} aria-hidden="true" className="shrink-0" />
-      <span className="truncate">{label}</span>
-    </p>
-  );
+  // Etiqueta explícita por promoção: "Promoção X aplicada" + economia da linha.
+  // Sem detalhe por promoção (não deveria ocorrer), cai no aviso genérico antigo.
+  const couponBadges =
+    promotionTags.length > 0 ? (
+      promotionTags.map((tag) => (
+        <div key={tag.promotionId} className="mt-0.5">
+          <p className="text-[11px] font-semibold flex items-center gap-1" style={{ color: accent }}>
+            <Tag size={11} strokeWidth={1.5} aria-hidden="true" className="shrink-0" />
+            <span className="truncate">{t('cartPage.promoApplied', { title: tag.title })}</span>
+          </p>
+          <p className={`text-[11px] font-medium tabular-nums ${PROMO_SUCCESS_TEXT}`}>
+            {t('cartPage.promoSaving', { value: formatBRL(tag.discountAmount).replace('R$ ', '') })}
+          </p>
+        </div>
+      ))
+    ) : (
+      <p className="text-[11px] font-semibold mt-0.5 flex items-center gap-1" style={{ color: accent }}>
+        <Tag size={11} strokeWidth={1.5} aria-hidden="true" className="shrink-0" />
+        <span className="truncate">{t('cartPage.cupom_aplicado')}</span>
+      </p>
+    );
 
   return (
     <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] md:grid-cols-[auto_minmax(0,1fr)_auto_6.5rem_auto] items-center gap-x-4 gap-y-3 md:gap-x-6 py-5 first:pt-1">
@@ -79,7 +108,8 @@ export function CartItemRow({
                 {discountedQty}x {name}
               </p>
               {optionsLabel && <p className={`text-xs truncate ${CART_TEXT_MUTED}`}>{optionsLabel}</p>}
-              {couponBadge(`${t('cartPage.cupom_aplicado_r')} ${(unitPrice * discountedQty).toFixed(2).replace('.', ',')}`)}
+              <p className={`text-xs ${CART_TEXT_MUTED}`}>{formatBRL(unitPrice * discountedQty)}</p>
+              {couponBadges}
             </div>
             <div className="px-0.5">
               <p className={`text-sm font-medium truncate ${CART_TEXT}`}>
@@ -93,7 +123,7 @@ export function CartItemRow({
           <div>
             <p className={`text-base font-semibold line-clamp-2 break-words ${CART_TEXT}`}>{name}</p>
             <p className={`text-xs truncate ${CART_TEXT_MUTED}`}>{subtitle}</p>
-            {discountedQty > 0 && couponBadge(t('cartPage.cupom_aplicado'))}
+            {discountedQty > 0 && couponBadges}
           </div>
         )}
       </div>

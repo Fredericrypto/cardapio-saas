@@ -1,16 +1,16 @@
 import { localizedField } from '../i18n/contentText';
-import { addonGroupHint } from '../i18n/labels';
 import { useI18n } from '../i18n/I18nContext';
 import { useStoreStatus } from '../hooks/useStoreStatus';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Ban, Check, ChevronRight, Minus, Plus, Star } from 'lucide-react';
-import { fetchProducts } from '../lib/menu-api';
+import { ArrowLeft, Ban, ChevronRight, Minus, Plus, Star, Tag } from 'lucide-react';
+import { fetchActivePromotions, fetchProducts } from '../lib/menu-api';
 import { fetchItemReviewsSummary } from '../lib/customer-api';
 import type { ReviewSummary } from '../lib/customer-api';
-import type { Product, SelectedCartOption } from '../types';
+import type { Product, ProductOptionGroup, Promotion } from '../types';
 import { useCart } from '../contexts/CartContext';
+import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { useAccentColor } from '../hooks/useAccentColor';
 import { useTenant } from '../contexts/TenantContext';
 import { CartIcon } from '../components/MenuIcons';
@@ -20,6 +20,17 @@ import { Tooltip } from '../components/Tooltip';
 import { ProductImageCarousel } from '../components/ProductImageCarousel';
 import { getProductImages } from '../lib/productImages';
 import { buildShareUrl } from '../lib/shareLinks';
+import { ProductOptionGroupList } from '../components/ProductOptionGroupList';
+import {
+  buildSelectedOptions,
+  findUnmetOptionGroup,
+  toggleOptionValue,
+  visibleOptionGroups,
+  type OptionSelections,
+} from '../lib/productOptions';
+import { pickItemPromotion } from '../lib/promotionEligibility';
+import { formatBRL as formatBRLPlain } from '../lib/promotionPresentation';
+import { PROMO_SUCCESS_TEXT } from '../lib/promotionTheme';
 import { PROFILE_CARD } from '../lib/profileTheme';
 import {
   MENU_PAGE_BG,
@@ -59,7 +70,8 @@ export function ProductDetailPage() {
   }>();
   const navigate = useNavigate();
   const routerLocation = useLocation();
-  const { addItem } = useCart();
+  const { addItem, selectedPromotionIds, totalPrice } = useCart();
+  const { token: customerToken } = useCustomerAuth();
 
   const { tenant } = useTenant();
   const accent = useAccentColor(tenant?.primaryColor ?? '#111827');
@@ -71,7 +83,7 @@ export function ProductDetailPage() {
   const [quantity, setQuantity] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   // groupId -> array de valueIds escolhidos nesse grupo
-  const [selections, setSelections] = useState<Record<string, string[]>>({});
+  const [selections, setSelections] = useState<OptionSelections>({});
   const [validationError, setValidationError] = useState<string | null>(null);
   const itemReviewSummary = useItemReviewSummary(tenant?.id ?? '', productId);
 
@@ -106,6 +118,31 @@ export function ProductDetailPage() {
     return () => clearInterval(interval);
   }, [tenant?.id, productId]);
 
+  // Promoções ativas da loja (mesma busca do cardápio) para mostrar, aqui também,
+  // o preço riscado e o preço final de uma promoção que o cliente ativou.
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
+  useEffect(() => {
+    if (!tenant?.id) return;
+    let isStale = false;
+    fetchActivePromotions(tenant.id, customerToken, activeLocation?.id)
+      .then((result) => {
+        if (!isStale) setPromotions(result);
+      })
+      .catch(() => {
+        if (!isStale) setPromotions([]);
+      });
+    return () => {
+      isStale = true;
+    };
+  }, [tenant?.id, customerToken, activeLocation?.id]);
+  const selectedPromotions = useMemo(
+    () =>
+      selectedPromotionIds
+        .map((id) => promotions.find((p) => p.id === id))
+        .filter((p): p is Promotion => p != null),
+    [selectedPromotionIds, promotions],
+  );
+
   if (isLoading || !tenant) {
     return (
       <div className={`flex items-center justify-center h-screen ${MENU_PAGE_BG}`}>
@@ -128,42 +165,42 @@ export function ProductDetailPage() {
   // Grupo sem nenhuma opção cadastrada não aparece pro cliente — ficaria
   // um título "morto" sem nada clicável embaixo (bug visto em produção:
   // grupo criado no admin sem nenhuma opção preenchida).
-  const optionGroups = (product.options ?? []).filter((g) => g.values.length > 0);
+  const optionGroups = visibleOptionGroups(product);
 
-  function toggleValue(groupId: string, groupName: string, valueId: string, maxSelect: number) {
+  function handleToggleOption(group: ProductOptionGroup, valueId: string) {
     setValidationError(null);
-    setSelections((prev) => {
-      const current = prev[groupId] ?? [];
-
-      if (maxSelect === 1) {
-        // Rádio: escolher de novo o mesmo desmarca (permitido mesmo em
-        // grupo obrigatório — a validação de mínimo só barra no "Adicionar").
-        const next = current[0] === valueId ? [] : [valueId];
-        return { ...prev, [groupId]: next };
-      }
-
-      if (current.includes(valueId)) {
-        return { ...prev, [groupId]: current.filter((id) => id !== valueId) };
-      }
-      if (current.length >= maxSelect) {
-        setValidationError(t('productDetailPage.maximo_de_maxselect_opcoes', { maxSelect: maxSelect, groupName: groupName }));
-        return prev;
-      }
-      return { ...prev, [groupId]: [...current, valueId] };
-    });
+    const result = toggleOptionValue(selections, group, valueId);
+    if (result.error) {
+      setValidationError(
+        t('productDetailPage.maximo_de_maxselect_opcoes', {
+          maxSelect: result.error.maxSelect,
+          groupName: result.error.groupName,
+        }),
+      );
+    }
+    setSelections(result.selections);
   }
 
   // Preço = base + soma dos adicionais escolhidos, em todos os grupos.
-  const selectedOptionsList: SelectedCartOption[] = optionGroups.flatMap((group) =>
-    (selections[group.id] ?? []).flatMap((valueId) => {
-      const value = group.values.find((v) => v.id === valueId);
-      if (!value) return [];
-      return [{ valueId: value.id, groupName: group.name, label: value.label, priceDelta: Number(value.priceDelta) }];
-    }),
-  );
+  const selectedOptionsList = buildSelectedOptions(optionGroups, selections);
   const optionsDelta = selectedOptionsList.reduce((sum, o) => sum + o.priceDelta, 0);
   const displayPrice = Number(product.promoPrice ?? product.price) + optionsDelta;
-  const subtotal = displayPrice * quantity;
+  // Promoção ATIVADA que cobre o item: mesma simulação do cardápio e do Modo
+  // Promoção (motor único), então o preço daqui bate com o do carrinho.
+  const headerDeal = pickItemPromotion(selectedPromotions, product);
+  const lineDeal = pickItemPromotion(selectedPromotions, product, {
+    selectedOptions: selectedOptionsList,
+    quantity,
+    cartTotal: totalPrice,
+  });
+  const subtotal = lineDeal ? lineDeal.preview.lineTotalAfterPromo : displayPrice * quantity;
+  const headerPrice = headerDeal ? headerDeal.preview.unitPriceAfterPromo : Number(product.promoPrice ?? product.price);
+  const headerStrike = headerDeal
+    ? headerDeal.preview.unitPriceBeforePromo
+    : product.promoPrice != null
+      ? Number(product.price)
+      : null;
+  const minOrderMissing = lineDeal?.preview.minOrder ?? null;
 
   function handleAddToCart() {
     if (!product || product.isAvailable === false || isStoreClosed) return;
@@ -171,23 +208,20 @@ export function ProductDetailPage() {
     // Confere grupos obrigatórios antes de deixar adicionar — mesma
     // regra que o backend também confere (defesa em profundidade: aqui
     // é só pra dar feedback rápido, quem garante de verdade é o server).
-    for (const group of optionGroups) {
-      const chosenCount = (selections[group.id] ?? []).length;
-      if (chosenCount < group.minSelect) {
-        setValidationError(
-          group.minSelect === 1
-            ? t('productDetailPage.escolha_uma_opcao_em', { name: group.name })
-            : t('productDetailPage.escolha_pelo_menos_minselect', { minSelect: group.minSelect, name: group.name }),
-        );
-        return;
-      }
+    const unmet = findUnmetOptionGroup(optionGroups, selections);
+    if (unmet) {
+      setValidationError(
+        unmet.minSelect === 1
+          ? t('productDetailPage.escolha_uma_opcao_em', { name: unmet.name })
+          : t('productDetailPage.escolha_pelo_menos_minselect', { minSelect: unmet.minSelect, name: unmet.name }),
+      );
+      return;
     }
 
     addItem(product, selectedOptionsList, quantity);
     navigate(backHref);
   }
 
-  const hasPromoPrice = product.promoPrice != null;
   const ratingStars =
     itemReviewSummary && itemReviewSummary.count > 0 ? Math.round(itemReviewSummary.average) : 0;
 
@@ -267,7 +301,14 @@ export function ProductDetailPage() {
           <CartIcon size={16} />
           {t('productDetailPage.adicionar')}
         </span>
-        <span className="tabular-nums">{formatMoney(subtotal)}</span>
+        <span className="flex items-baseline gap-2 tabular-nums">
+          {lineDeal && lineDeal.preview.lineDiscount > 0 && (
+            <span className="text-xs font-normal line-through opacity-70">
+              {formatMoney(lineDeal.preview.lineTotalBeforePromo)}
+            </span>
+          )}
+          <span>{formatMoney(subtotal)}</span>
+        </span>
       </button>
     );
 
@@ -355,14 +396,38 @@ export function ProductDetailPage() {
 
               <div className="flex items-baseline gap-2.5 mt-4">
                 <span className="text-3xl font-extrabold tabular-nums" style={{ color: accent }}>
-                  {formatMoney(Number(product.promoPrice ?? product.price))}
+                  {formatMoney(headerPrice)}
                 </span>
-                {hasPromoPrice && (
+                {headerStrike != null && (
                   <span className={`text-base line-through tabular-nums ${MENU_TEXT_MUTED}`}>
-                    {formatMoney(Number(product.price))}
+                    {formatMoney(headerStrike)}
                   </span>
                 )}
               </div>
+
+              {headerDeal && (
+                <div className="mt-3 flex flex-col gap-1">
+                  <p className="inline-flex items-center gap-1.5 self-start rounded-full bg-green-50 px-2.5 py-1 text-xs font-bold text-green-700 dark:bg-green-500/10 dark:text-green-300">
+                    <Tag size={12} strokeWidth={1.75} aria-hidden="true" />
+                    {t('promotionMode.appliedTag', { title: localizedField(headerDeal.promotion, 'title') })}
+                    {' · '}
+                    {t('promotionMode.unitSaving', { value: formatBRLPlain(headerDeal.preview.unitDiscount) })}
+                  </p>
+                  {minOrderMissing && (
+                    <p className={`text-xs ${MENU_TEXT_BODY}`}>
+                      {t('promotionMode.minOrderMissing', {
+                        missing: formatBRLPlain(minOrderMissing.missing),
+                        minimum: formatBRLPlain(minOrderMissing.required),
+                      })}
+                    </p>
+                  )}
+                  {lineDeal && lineDeal.preview.lineDiscount > 0 && (
+                    <p className={`text-xs font-semibold ${PROMO_SUCCESS_TEXT}`}>
+                      {t('promotionMode.lineSaving', { value: formatBRLPlain(lineDeal.preview.lineDiscount) })}
+                    </p>
+                  )}
+                </div>
+              )}
 
               {product.description && (
                 <p className={`text-sm md:text-base ${MENU_TEXT_BODY} leading-relaxed mt-4`}>
@@ -375,74 +440,12 @@ export function ProductDetailPage() {
             <div className="lg:hidden">{quantityControl}</div>
 
             {optionGroups.length > 0 && (
-              <div className="flex flex-col gap-4">
-                {optionGroups.map((group) => {
-                  const hint = addonGroupHint(group.minSelect, group.maxSelect, t);
-                  const isMulti = group.maxSelect > 1;
-                  return (
-                    <div key={group.id} className={`${PROFILE_CARD} p-4 md:p-5`}>
-                      <div className="flex items-baseline flex-wrap gap-x-1.5 mb-3">
-                        <p className={`text-sm font-bold ${MENU_TEXT}`}>{group.name}</p>
-                        {hint && <span className={`text-xs ${MENU_TEXT_MUTED}`}>· {hint}</span>}
-                      </div>
-
-                      <div
-                        className="flex flex-col gap-2"
-                        role={isMulti ? 'group' : 'radiogroup'}
-                        aria-label={group.name}
-                      >
-                        {group.values.map((value) => {
-                          const isSelected = (selections[group.id] ?? []).includes(value.id);
-                          return (
-                            <button
-                              key={value.id}
-                              type="button"
-                              role={isMulti ? 'checkbox' : 'radio'}
-                              aria-checked={isSelected}
-                              onClick={() => toggleValue(group.id, group.name, value.id, group.maxSelect)}
-                              style={{ '--brand': brand } as CSSProperties}
-                              className={`w-full flex items-center justify-between gap-3 rounded-xl border px-3.5 py-3 text-left transition ${
-                                isSelected
-                                  ? 'border-[var(--brand)] dark:border-[#E3E2E6] bg-black/[0.03] dark:bg-white/[0.06]'
-                                  : 'border-[#E5E7EB] dark:border-white/10 bg-[#F9FAFB] dark:bg-[#282A2C] hover:bg-black/[0.03] dark:hover:bg-white/[0.06]'
-                              }`}
-                            >
-                              <span className={`text-sm min-w-0 break-words ${MENU_TEXT_SOFT}`}>{value.label}</span>
-                              <span className="flex items-center gap-3 shrink-0">
-                                {Number(value.priceDelta) > 0 && (
-                                  <span
-                                    className={`text-xs font-medium tabular-nums rounded-full px-2 py-0.5 bg-[#F3F4F6] dark:bg-white/10 ${MENU_TEXT_BODY}`}
-                                  >
-                                    + {formatMoney(Number(value.priceDelta))}
-                                  </span>
-                                )}
-                                <span
-                                  aria-hidden="true"
-                                  className={`w-5 h-5 flex items-center justify-center border-2 shrink-0 transition ${
-                                    isMulti ? 'rounded-md' : 'rounded-full'
-                                  } ${
-                                    isSelected
-                                      ? 'border-[var(--brand)] bg-[var(--brand)] dark:border-[#E3E2E6] dark:bg-[#E3E2E6]'
-                                      : 'border-[#D1D5DB] dark:border-white/25 bg-transparent'
-                                  }`}
-                                >
-                                  {isSelected && (
-                                    <Check
-                                      size={12}
-                                      strokeWidth={2}
-                                      className="text-[#FFFFFF] dark:text-[#131314]"
-                                    />
-                                  )}
-                                </span>
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              <ProductOptionGroupList
+                groups={optionGroups}
+                selections={selections}
+                onToggle={handleToggleOption}
+                brand={brand}
+              />
             )}
 
             {validationError && (

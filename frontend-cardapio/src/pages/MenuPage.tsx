@@ -17,13 +17,13 @@ import type { Location, Category, Product, Promotion } from '../types';
 import { useTableSessionContext } from '../contexts/TableSessionContext';
 import { useSelectedLocation } from '../hooks/useSelectedLocation';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
+import { useCart } from '../contexts/CartContext';
 import { useTenant } from '../contexts/TenantContext';
 import { SplashScreen } from '../components/SplashScreen';
 import { MenuHeader } from '../components/MenuHeader';
 import { TableMenuHeader } from '../components/TableMenuHeader';
 import { PromoCards } from '../components/PromoCards';
-import { HeaderAmbient } from '../components/AmbientGlow';
-import { StickyCategoryBar } from '../components/StickyCategoryBar';
+import { DealsAtmosphere } from '../components/DealsAtmosphere';
 import { SearchBar } from '../components/SearchBar';
 import { CategoryChips } from '../components/CategoryChips';
 import { getCategoryIcon, PromocoesIcon } from '../components/CategoryIcon';
@@ -31,6 +31,8 @@ import { ProductCard } from '../components/ProductCard';
 import { CartBar } from '../components/CartBar';
 import { BottomNav, DesktopNav } from '../components/BottomNav';
 import { buildShareUrl } from '../lib/shareLinks';
+import { pickItemPromotion, type ItemPromotionPreview } from '../lib/promotionEligibility';
+import { atmosphereVars } from '../lib/atmosphere';
 import {
   MENU_PAGE_BG,
   MENU_TEXT_BODY,
@@ -120,6 +122,23 @@ export function MenuPage() {
       isStale = true;
     };
   }, [tenant?.id, customerToken, activeLocation?.id]);
+
+  // Preço promocional também FORA do Modo Promoção: só para promoções que o
+  // cliente ativou (selectedPromotionIds), na ordem da seleção — a mesma em que
+  // o carrinho as aplica. Item sem promoção ativa e elegível: sem entrada no mapa.
+  const { selectedPromotionIds } = useCart();
+  const itemPromotions = useMemo(() => {
+    const map = new Map<string, ItemPromotionPreview>();
+    const selected = selectedPromotionIds
+      .map((id) => promotions.find((p) => p.id === id))
+      .filter((p): p is Promotion => p != null);
+    if (selected.length === 0) return map;
+    for (const product of products) {
+      const applied = pickItemPromotion(selected, product);
+      if (applied) map.set(product.id, applied.preview);
+    }
+    return map;
+  }, [selectedPromotionIds, promotions, products]);
 
   // Só usados no fluxo de mesa — chamar garçom não existe sem uma sessão.
   const [isCallingWaiter, setIsCallingWaiter] = useState(false);
@@ -303,12 +322,12 @@ export function MenuPage() {
   const isOpenNow = activeLocation?.isOpenNow ?? true;
 
   return (
-    // `isolate`: a página vira um contexto de empilhamento próprio. É o que deixa
-    // as luzes ambiente (z-index negativo: cabeçalho e cards de promoção) ficarem
-    // ATRÁS de todo o conteúdo sem sumirem atrás do fundo da página. Tudo que é
-    // sobreposição (CartBar, BottomNav, DesktopNav) está dentro desta div; modais
-    // usam portal.
-    <div className={`min-h-screen ${MENU_PAGE_BG} pb-24 md:pb-28 relative isolate`}>
+    // `atm` + variáveis: luz ambiente derivada das cores do restaurante (banner,
+    // Deals e cards promocionais; ver lib/atmosphere.ts e o bloco ATMOSFERA do index.css).
+    <div
+      className={`min-h-screen ${MENU_PAGE_BG} pb-24 md:pb-28 relative atm`}
+      style={atmosphereVars(tenant.primaryColor, tenant.secondaryColor)}
+    >
       <DesktopNav
         slug={slug!}
         qrCodeToken={qrCodeToken}
@@ -321,9 +340,6 @@ export function MenuPage() {
       />
 
       <div className="w-full max-w-7xl mx-auto md:px-8 md:pt-4">
-        {/* Luz ambiente da foto do banner atrás do cabeçalho inteiro. No fluxo de
-            mesa o banner não é cinza com a loja fechada, então a luz também não. */}
-        <HeaderAmbient tenant={tenant} muted={!isOpenNow && !isTableFlow}>
         {isTableFlow ? (
           <TableMenuHeader
             tenant={tenant}
@@ -347,7 +363,6 @@ export function MenuPage() {
             }
           />
         )}
-        </HeaderAmbient>
 
         {/* Avisos do garçom: FloatingNotice (portal no body, fixo no topo) em
             vez de um bloco inline com margem negativa — esse era cortado pela
@@ -377,7 +392,11 @@ export function MenuPage() {
             botões de adicionar/pedir ficam travados (ver ProductCard e telas de
             detalhe). */}
         <div>
-          <div className="pt-1 pb-5">
+          {/* `relative isolate`: contexto próprio para as camadas de fundo da seção
+              Deals ficarem ATRÁS do conteúdo sem sumir atrás da cor da página. Só
+              aparecem com promoções reais visíveis. */}
+          <div className="relative isolate pt-1 pb-5">
+            {showPromotions && promotions.length > 0 && <DealsAtmosphere muted={!isOpenNow} />}
             {/* Mesmo cabeçalho das categorias da aba "Todos": ícone à
                 esquerda + nome + seta de recolher (decisão do Felipe, 30/09). */}
             <button
@@ -412,17 +431,15 @@ export function MenuPage() {
           <div className="md:hidden">
             <SearchBar value={searchTerm} onChange={setSearchTerm} />
           </div>
-          {/* Desktop: categorias fixas logo abaixo da barra superior (h-16). Sem cor
-              de fundo em repouso (a luz dos cards passa por trás); com o fundo da
-              tela só enquanto está presa no topo. Ver StickyCategoryBar. */}
-          <StickyCategoryBar>
+          {/* Desktop: categorias fixas logo abaixo da barra superior (h-16). */}
+          <div className={`md:sticky md:top-16 md:z-30 ${MENU_PAGE_BG}`}>
             <CategoryChips
               categories={categories}
               activeCategoryId={activeCategoryId}
               onSelect={setActiveCategoryId}
               primaryColor={tenant.primaryColor}
             />
-          </StickyCategoryBar>
+          </div>
 
           {filteredProducts.length === 0 ? (
             <p className={`text-center text-sm py-12 ${MENU_TEXT_MUTED}`}>
@@ -437,6 +454,7 @@ export function MenuPage() {
                   primaryColor={tenant.primaryColor}
                   storeClosed={!isOpenNow}
                   shareUrl={buildShareUrl('produto', slug!, product.id)}
+                  itemPromotion={itemPromotions.get(product.id) ?? null}
                   onClick={() => navigate(productHref(product.id))}
                 />
               ))}
@@ -483,6 +501,7 @@ export function MenuPage() {
                             primaryColor={tenant.primaryColor}
                             storeClosed={!isOpenNow}
                             shareUrl={buildShareUrl('produto', slug!, product.id)}
+                            itemPromotion={itemPromotions.get(product.id) ?? null}
                             onClick={() => navigate(productHref(product.id))}
                           />
                         ))}

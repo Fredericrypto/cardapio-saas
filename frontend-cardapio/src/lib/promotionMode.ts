@@ -30,37 +30,90 @@ export function buildPromotionModePaths(slug: string, promotionId: string, qrCod
   };
 }
 
+// Produtos de UMA categoria, já na ordem do cardápio. Serve às duas seções da
+// tela (elegíveis e demais itens).
 export interface EligibleProductGroup {
   category: Category;
   products: Product[];
 }
 
 export interface PromotionModeCatalog {
+  /** Elegíveis (cobertos pela promoção e disponíveis), por categoria. */
   groups: EligibleProductGroup[];
   /** Total de produtos elegíveis (soma exata dos grupos). */
   count: number;
+  /**
+   * Demais itens do cardápio (fora do escopo da promoção OU indisponíveis),
+   * por categoria, para a seção "logo abaixo" dos elegíveis. Item indisponível
+   * continua visível (regra 14 do projeto); só não conta como elegível.
+   */
+  otherGroups: EligibleProductGroup[];
+  /** Total de demais itens (soma exata dos otherGroups). */
+  otherCount: number;
 }
 
 // Elegível = coberto pelo escopo da promoção E disponível E de categoria ativa
 // (a API pública só manda as ativas; produto de categoria fora da lista não
-// aparece no cardápio, então também não conta aqui). Ordem: a das abas do
-// cardápio, depois displayOrder — mesma ordem do MenuPage.
+// aparece no cardápio, então não aparece aqui em nenhuma seção). Ordem: a das
+// abas do cardápio, depois displayOrder — mesma ordem do MenuPage. Todo produto
+// de categoria listada cai em EXATAMENTE uma das duas seções.
 export function buildPromotionModeCatalog(
   promo: Promotion,
   products: Product[],
   categories: Category[],
 ): PromotionModeCatalog {
   const groups: EligibleProductGroup[] = [];
+  const otherGroups: EligibleProductGroup[] = [];
   let count = 0;
+  let otherCount = 0;
   for (const category of categories) {
-    const inCategory = products
-      .filter(
-        (p) => p.categoryId === category.id && p.isAvailable !== false && isProductCoveredByPromotion(promo, p),
-      )
-      .sort((a, b) => a.displayOrder - b.displayOrder);
-    if (inCategory.length === 0) continue;
-    groups.push({ category, products: inCategory });
-    count += inCategory.length;
+    const eligible: Product[] = [];
+    const others: Product[] = [];
+    for (const product of products) {
+      if (product.categoryId !== category.id) continue;
+      if (product.isAvailable !== false && isProductCoveredByPromotion(promo, product)) eligible.push(product);
+      else others.push(product);
+    }
+    const byOrder = (a: Product, b: Product) => a.displayOrder - b.displayOrder;
+    if (eligible.length > 0) {
+      groups.push({ category, products: eligible.sort(byOrder) });
+      count += eligible.length;
+    }
+    if (others.length > 0) {
+      otherGroups.push({ category, products: others.sort(byOrder) });
+      otherCount += others.length;
+    }
   }
-  return { groups, count };
+  return { groups, count, otherGroups, otherCount };
 }
+
+export type CatalogSection = 'eligible' | 'other';
+
+/** Acha um produto em qualquer seção do catálogo (null se sumiu da lista). */
+export function findCatalogProduct(
+  catalog: Pick<PromotionModeCatalog, 'groups' | 'otherGroups'>,
+  productId: string | null,
+): { product: Product; section: CatalogSection } | null {
+  if (!productId) return null;
+  for (const [section, groups] of [
+    ['eligible', catalog.groups],
+    ['other', catalog.otherGroups],
+  ] as const) {
+    for (const group of groups) {
+      const product = group.products.find((p) => p.id === productId);
+      if (product) return { product, section };
+    }
+  }
+  return null;
+}
+
+// Master-detail: clicar no item já aberto o recolhe; clicar em outro troca o
+// painel. O estado vive na URL (?item=<id>), então a função é pura.
+export const PROMOTION_ITEM_PARAM = 'item';
+
+export function toggleSelectedProductId(current: string | null, clicked: string): string | null {
+  return current === clicked ? null : clicked;
+}
+
+/** id do card no DOM (âncora de rolagem e devolução de foco ao fechar o painel). */
+export const promotionCardDomId = (productId: string): string => `promo-item-${productId}`;
