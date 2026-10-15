@@ -6,7 +6,7 @@ import type { DeclaredBadgeCode } from '../types/productBadges';
 // "Imagem ilustrativa" aparece sobre a foto no app do cliente e não conta no limite.
 export const IMAGE_NOTICE_BADGE: DeclaredBadgeCode = 'illustrative_image';
 // Mesmo limite do servidor (MAX_DECLARED_CHIP_BADGES) — o servidor é quem manda.
-export const MAX_DECLARED_CHIP_BADGES = 4;
+export const MAX_DECLARED_CHIP_BADGES = 6;
 
 export const DECLARED_BADGE_LABEL: Record<DeclaredBadgeCode, string> = {
   illustrative_image: 'Imagem ilustrativa',

@@ -34,7 +34,7 @@ export type DeclaredBadgeCode = (typeof DECLARED_BADGE_CODES)[number];
 export const IMAGE_NOTICE_BADGE: DeclaredBadgeCode = 'illustrative_image';
 
 // Limite de selos declarativos "de texto" por produto (design: sem poluir a tela).
-export const MAX_DECLARED_CHIP_BADGES = 4;
+export const MAX_DECLARED_CHIP_BADGES = 6;
 
 export const BEHAVIORAL_BADGE_CODES = ['top_ordered', 'customer_favorite', 'trending'] as const;
 export type BehavioralBadgeCode = (typeof BEHAVIORAL_BADGE_CODES)[number];
