@@ -100,7 +100,7 @@ const PRESET_LABEL: Record<ImagePresetName, string> = {
   avatar: 'Cliente',
 };
 
-interface ImageTotals {
+export interface ImageTotals {
   uploads: number;
   optimized: number;
   keptOriginal: number;

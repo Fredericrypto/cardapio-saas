@@ -138,7 +138,7 @@ interface MinuteBucket {
 
 // Contadores HTTP de revalidação (ETag/304). Singleton de módulo porque quem
 // registra é o helper de cabeçalhos, usado nos controllers sem injeção.
-interface HttpCounters {
+export interface HttpCounters {
   responses: number;
   conditional: number; // chegou com If-None-Match
   notModified: number; // If-None-Match casou -> o Express responde 304 sem corpo
