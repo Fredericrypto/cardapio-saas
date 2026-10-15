@@ -17,6 +17,7 @@ export function PromotionMedia({
   primaryColor,
   grayscale = false,
   overlay,
+  topBar,
   panel,
 }: {
   imageUrl?: string | null;
@@ -25,6 +26,9 @@ export function PromotionMedia({
   grayscale?: boolean;
   /** Botões sobre a imagem (voltar/compartilhar). */
   overlay?: ReactNode;
+  /** Acima do card, FORA dele (ex.: botão voltar de vidro). Fica no mesmo contexto da
+   *  luz ambiente, então a luz passa por trás. */
+  topBar?: ReactNode;
   /** Painel colocado abaixo da imagem, alinhado a ela. */
   panel?: ReactNode;
 }) {
@@ -49,6 +53,7 @@ export function PromotionMedia({
       {/* A luz da imagem fica colada SOMENTE nela (mesmo raio nos 4 lados); o painel
           de baixo tem a luz dele (dentro do próprio painel). Os z-index negativos
           vivem neste contexto `isolate`: acima do fundo, abaixo de todo o conteúdo. */}
+      {topBar && <div className="mb-2 flex">{topBar}</div>}
       <div className="relative">
         <PromotionAmbient color={primaryColor} imageUrl={grayscale ? null : imageUrl} />
 

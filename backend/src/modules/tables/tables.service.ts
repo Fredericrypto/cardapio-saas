@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException, ForbiddenException, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull, Not, In, MoreThan, FindOptionsWhere } from 'typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
@@ -21,12 +21,21 @@ import { toCents, fromCents } from '../../common/utils/money';
 import { isPixOnlineActive } from '../payments/mp-activation';
 import { computeIsOpenNow } from '../../common/utils/schedule';
 import { signReceipt, verifyReceiptSignature, formatVerificationCode, parseVerificationCode } from '../../common/utils/receipt-signature';
+import { TenantCacheService } from '../tenant-cache/tenant-cache.service';
+import { InvalidatesTenantCache } from '../tenant-cache/invalidates-tenant-cache.decorator';
+import { ALL_TENANTS } from '../tenant-cache/tenant-cache';
 
 // Janela de pagamento do Pix de MESA (28/09) — bem maior que a de um
 // pedido avulso (6 min, em OrdersService): fechar a conta de uma mesa
 // inteira envolve reunir todo mundo, decidir gorjeta, abrir o banco...
 // 6 minutos seria apertado demais e expiraria cobranças legítimas.
 const TABLE_PIX_PAYMENT_WINDOW_MS = 15 * 60 * 1000;
+
+// Cache das leituras que o painel e o app do cliente repetem por polling.
+// Invalidação explícita em toda escrita de mesa/pedido; o teto abaixo só cobre
+// escritas feitas fora deste processo ou por outro módulo (ex.: nome/foto do cliente).
+const OVERVIEW_MAX_AGE_MS = 10_000;
+const SESSION_SUMMARY_ORDERS_MAX_AGE_MS = 8_000;
 
 @Injectable()
 export class TablesService {
@@ -47,6 +56,8 @@ export class TablesService {
     private readonly pushService: PushService,
     private readonly mercadoPagoService: MercadoPagoService,
     private readonly verificationService: CustomerVerificationService,
+    // @Optional: testes que montam o service à mão continuam funcionando (sem cache).
+    @Optional() private readonly tenantCache?: TenantCacheService,
   ) {}
 
   // Mesma checagem usada na criação de pedido (OrdersService) — chamar
@@ -318,6 +329,7 @@ export class TablesService {
   // instante por outro celular, ou a saída enxerga esse pedido e recusa,
   // ou o pedido enxerga o assento morto e é recusado (OrdersService.create
   // trava a mesma linha antes de aceitar).
+  @InvalidatesTenantCache(['orders', 'tables'], () => ALL_TENANTS)
   async leaveTable(
     qrCodeToken: string,
     seatToken: string | null,
@@ -389,6 +401,7 @@ export class TablesService {
     });
   }
 
+  @InvalidatesTenantCache(['orders', 'tables'], () => ALL_TENANTS)
   async openOrJoinSession(
     qrCodeToken: string,
     customerId?: string | null,
@@ -727,6 +740,7 @@ export class TablesService {
     session.status = 'expirada';
     session.closedAt = new Date();
     await this.sessionRepo.save(session);
+    this.tenantCache?.invalidate(session.tenantId, ['orders', 'tables']);
     return true;
   }
 
@@ -793,14 +807,27 @@ export class TablesService {
     // mostrar de quem foi cada pedido, não só um nome único pra sessão
     // inteira. Mesmo `select` restrito de `OrdersService.findAllForAdmin`
     // pra nunca vazar campo sensível (senha etc.) do cliente.
-    const orders = await this.orderRepo.find({
-      where: { tableSessionId: session.id },
-      order: { createdAt: 'ASC' },
-      relations: { items: true, customer: true } as any,
-      select: {
-        customer: { id: true, name: true, avatarUrl: true },
-      } as any,
-    });
+    const loadSessionOrders = () =>
+      this.orderRepo.find({
+        where: { tableSessionId: session.id },
+        order: { createdAt: 'ASC' },
+        relations: { items: true, customer: true } as any,
+        select: {
+          customer: { id: true, name: true, avatarUrl: true },
+        } as any,
+      });
+    // A lista de pedidos da sessão é igual para todos que estão na mesa (cada
+    // celular consulta a cada 4–20 s): fica em cache por sessão, derrubado por
+    // qualquer escrita de pedido/mesa do restaurante. A sessão acima já foi
+    // conferida contra o restaurante, então a chave por sessão é segura.
+    const orders = this.tenantCache
+      ? (
+          await this.tenantCache.getOrLoad(tenantId, 'tables', loadSessionOrders, {
+            maxAgeMs: SESSION_SUMMARY_ORDERS_MAX_AGE_MS,
+            variant: `summary:${session.id}`,
+          })
+        ).value
+      : await loadSessionOrders();
 
     // BUG CORRIGIDO: pedidos cancelados estavam entrando na soma do total.
     // Continuam aparecendo na lista (transparência pro cliente/garçom ver
@@ -1040,6 +1067,7 @@ export class TablesService {
   // 100% e apertou "pagar com cashback"), nunca inferida sozinha.
   // Quando é Pix de verdade (Mercado Pago configurado) e sobra algo a
   // pagar, já cria a cobrança aqui — o cliente sai dessa tela vendo o QR.
+  @InvalidatesTenantCache(['orders', 'tables'])
   async requestClosing(
     tenantId: string,
     sessionId: string,
@@ -1255,6 +1283,16 @@ export class TablesService {
   // a abertura e total acumulado. Não impede fraude sozinho, mas dá
   // visibilidade imediata de qualquer mesa "ativa" que ninguém devia estar
   // usando — o garçom vê na hora, não só quando for fechar a conta.
+  async findActiveOverviewCached(tenantId: string) {
+    const cache = this.tenantCache;
+    if (!cache) return { overview: await this.findActiveOverview(tenantId), etag: null as string | null };
+    const { value, etag } = await cache.getOrLoad(tenantId, 'tables', () => this.findActiveOverview(tenantId), {
+      maxAgeMs: OVERVIEW_MAX_AGE_MS,
+      variant: 'overview',
+    });
+    return { overview: value, etag: etag as string | null };
+  }
+
   async findActiveOverview(tenantId: string) {
     const sessions = await this.sessionRepo.find({
       where: [
@@ -1291,8 +1329,22 @@ export class TablesService {
     // painel do garçom pode ter várias mesas abertas ao mesmo tempo.
     const sessionOrdersMap = new Map<string, Order[]>();
     const accountCustomerIds = new Set<string>();
+    // UMA consulta para todas as mesas (antes era uma por mesa, a cada poll).
+    const allSessionOrders =
+      sessions.length > 0
+        ? await this.orderRepo.find({
+            where: { tableSessionId: In(sessions.map((s) => s.id)) },
+            order: { createdAt: 'ASC' },
+          })
+        : [];
+    for (const order of allSessionOrders) {
+      if (!order.tableSessionId) continue;
+      const list = sessionOrdersMap.get(order.tableSessionId) ?? [];
+      list.push(order);
+      sessionOrdersMap.set(order.tableSessionId, list);
+    }
     for (const session of sessions) {
-      const orders = await this.orderRepo.find({ where: { tableSessionId: session.id } });
+      const orders = sessionOrdersMap.get(session.id) ?? [];
       sessionOrdersMap.set(session.id, orders);
       for (const order of orders) {
         if (order.status !== 'cancelado' && order.customerId) {
@@ -1563,6 +1615,9 @@ export class TablesService {
     sessionId: string,
   ): Promise<{ status: string; paymentStatus: string | null; pixExpiresAt: Date | null }> {
     const session = await this.findSession(tenantId, sessionId);
+    // POLL do cliente (a cada poucos segundos): só invalida o cache se a sessão
+    // de fato mudou aqui dentro (aprovou, recusou, expirou, fechou).
+    const stateBefore = `${session.status}|${session.paymentStatus}|${session.mpPaymentId ?? ''}`;
 
     if (session.status === 'fechamento_solicitado' && session.mpPaymentId && session.paymentStatus === 'pendente') {
       const tenant = await this.orderRepo.manager
@@ -1616,6 +1671,10 @@ export class TablesService {
       }
     }
 
+    if (stateBefore !== `${session.status}|${session.paymentStatus}|${session.mpPaymentId ?? ''}`) {
+      this.tenantCache?.invalidate(tenantId, ['orders', 'tables']);
+    }
+
     return { status: session.status, paymentStatus: session.paymentStatus, pixExpiresAt: session.pixExpiresAt };
   }
 
@@ -1664,6 +1723,7 @@ export class TablesService {
   // Usado pelo painel admin/garçom pra encerrar de fato a mesa, com o
   // pagamento já resolvido. Todo cálculo de troco é feito aqui, em
   // centavos, nunca confiando em nenhum valor pré-calculado do frontend.
+  @InvalidatesTenantCache(['orders', 'tables'])
   async closeSession(
     tenantId: string,
     sessionId: string,
@@ -1927,6 +1987,7 @@ export class TablesService {
   // sozinho). Os pedidos continuam no histórico normalmente, só a
   // sessão é marcada como encerrada, e a mesa fica livre pra uma sessão
   // nova no próximo QR code escaneado.
+  @InvalidatesTenantCache(['orders', 'tables'])
   async forceResetSession(
     tenantId: string,
     sessionId: string,
@@ -1965,6 +2026,7 @@ export class TablesService {
 
   // ---------- Chamar garçom ----------
 
+  @InvalidatesTenantCache(['orders', 'tables'])
   async callWaiter(
     tenantId: string,
     sessionId: string,
@@ -2016,6 +2078,7 @@ export class TablesService {
   // "Cancelar chamar garçom" — pro caso do cliente ter clicado sem
   // querer. Só cancela o chamado mais recente, e só se ainda estiver
   // 'pendente' (se o garçom já foi atender, não faz sentido desfazer).
+  @InvalidatesTenantCache(['orders', 'tables'])
   async cancelWaiterCall(
     tenantId: string,
     sessionId: string,
@@ -2035,6 +2098,7 @@ export class TablesService {
     return { cancelled: true };
   }
 
+  @InvalidatesTenantCache(['orders', 'tables'])
   async attendWaiterCall(tenantId: string, callId: string): Promise<WaiterCall> {
     const call = await this.waiterCallRepo.findOne({ where: { id: callId, tenantId } });
     if (!call) {

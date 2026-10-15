@@ -12,6 +12,7 @@ import { CashbackModule } from '../cashback/cashback.module';
 import { PushModule } from '../push/push.module';
 import { CustomersModule } from '../customers/customers.module';
 import { PaymentsModule } from '../payments/payments.module';
+import { TenantCacheModule } from '../tenant-cache/tenant-cache.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { PaymentsModule } from '../payments/payments.module';
     PushModule,
     CustomersModule,
     PaymentsModule,
+    TenantCacheModule,
   ],
   controllers: [TablesController],
   providers: [TablesService],

@@ -16,6 +16,7 @@ import { TablesModule } from '../tables/tables.module';
 import { CashbackModule } from '../cashback/cashback.module';
 import { PushModule } from '../push/push.module';
 import { SiodModule } from '../siod/siod.module';
+import { TenantCacheModule } from '../tenant-cache/tenant-cache.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { SiodModule } from '../siod/siod.module';
     CashbackModule,
     PushModule,
     SiodModule,
+    TenantCacheModule,
   ],
   controllers: [OrdersController],
   providers: [OrdersService],

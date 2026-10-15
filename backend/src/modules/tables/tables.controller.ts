@@ -7,7 +7,9 @@ import {
   Param,
   Headers,
   UseGuards,
+  Res,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { SkipThrottle } from '@nestjs/throttler';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 import { CurrentAdminUser } from '../../common/decorators/current-admin-user.decorator';
@@ -22,6 +24,7 @@ import { RequestClosingDto } from './dto/request-closing.dto';
 import { CloseSessionDto } from './dto/close-session.dto';
 import { ForceResetSessionDto } from './dto/force-reset-session.dto';
 import { RequirePermission } from '../auth/decorators/require-permission.decorator';
+import { applyRevalidationHeaders } from '../tenant-cache/http-cache';
 
 @Controller()
 export class TablesController {
@@ -85,8 +88,11 @@ export class TablesController {
   @RequirePermission('tables:view')
   @SkipThrottle()
   @Get('table-sessions/active-overview')
-  async findActiveOverview(@CurrentTenant() tenantId: string) {
-    return this.tablesService.findActiveOverview(tenantId);
+  async findActiveOverview(@CurrentTenant() tenantId: string, @Res({ passthrough: true }) res: Response) {
+    // Cache por restaurante + ETag (304 quando nada mudou) — ver TenantCache.
+    const { overview, etag } = await this.tablesService.findActiveOverviewCached(tenantId);
+    applyRevalidationHeaders(res, etag);
+    return overview;
   }
 
   @RequirePermission('tables:view')

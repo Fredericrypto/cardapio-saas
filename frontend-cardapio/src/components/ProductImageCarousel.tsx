@@ -36,6 +36,8 @@ interface ProductImageCarouselProps {
   // pausa por mouse em cima da foto deixa de existir. Sem ele: autoplay sempre
   // ligado e pausado com o mouse em cima (tela do item).
   playing?: boolean;
+  // Avisa qual foto está na tela (a luz ambiente da tela do item acompanha a foto ativa).
+  onIndexChange?: (index: number) => void;
 }
 
 interface View {
@@ -71,6 +73,7 @@ function CarouselSlides({
   imgClassName = '',
   autoplayMs = CAROUSEL_AUTOPLAY_MS,
   playing: controlledPlaying,
+  onIndexChange,
 }: ProductImageCarouselProps) {
   const count = images.length;
   const [view, setView] = useState<View>({ index: 0, prev: null, dir: 1 });
@@ -79,6 +82,10 @@ function CarouselSlides({
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
   const [touching, setTouching] = useState(false);
+
+  useEffect(() => {
+    onIndexChange?.(view.index);
+  }, [view.index, onIndexChange]);
 
   const rootRef = useRef<HTMLDivElement | null>(null);
   const currentRef = useRef<HTMLDivElement | null>(null);

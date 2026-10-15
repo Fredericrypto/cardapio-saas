@@ -4,9 +4,9 @@ import { categoryLabel } from '../i18n/categoryLabel';
 import { useI18n } from '../i18n/I18nContext';
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Ban, Clock, Coins, Compass, Users, Tag, Package, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, Ban, Clock, Coins, Compass, Users, Tag, Package, CheckCircle2 } from 'lucide-react';
 import { ShareButton } from '../components/ShareButton';
-import { Tooltip } from '../components/Tooltip';
+import { GlassBackButton } from '../components/GlassBackButton';
 import { AnimatedGradientButton } from '../components/AnimatedGradientButton';
 import { PromotionMedia } from '../components/promotion/PromotionMedia';
 import { PromotionBadge } from '../components/promotion/PromotionBadge';
@@ -279,18 +279,16 @@ export function PromotionDetailPage() {
             alt={localizedField(promotion, 'title')}
             primaryColor={tenant.primaryColor}
             grayscale={isUsedUp}
+            topBar={
+              <GlassBackButton
+                // Link compartilhado abre direto aqui (sem histórico): voltar leva ao cardápio.
+                onClick={() => (routerLocation.key === 'default' ? navigate(backHref, { replace: true }) : navigate(-1))}
+                label={t('common.back')}
+                tooltip={t('tooltip.back')}
+              />
+            }
             overlay={
               <>
-                <Tooltip label={t('tooltip.back')} className="contents">
-                  <button
-                    // Link compartilhado abre direto aqui (sem histórico): voltar leva ao cardápio.
-                    onClick={() => (routerLocation.key === 'default' ? navigate(backHref, { replace: true }) : navigate(-1))}
-                    aria-label={t('common.back')}
-                    className={`absolute top-4 left-4 w-10 h-10 rounded-full bg-white/90 dark:bg-[#1E1E20]/90 text-[#111827] dark:text-[#E3E2E6] flex items-center justify-center shadow-md hover:scale-105 transition motion-reduce:transform-none ${PROMO_FOCUS}`}
-                  >
-                    <ArrowLeft size={18} strokeWidth={1.5} />
-                  </button>
-                </Tooltip>
                 {slug && (
                   <ShareButton
                     className="absolute top-4 right-4"

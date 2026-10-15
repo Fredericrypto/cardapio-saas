@@ -3,7 +3,7 @@ import { useI18n } from '../i18n/I18nContext';
 import { useStoreStatus } from '../hooks/useStoreStatus';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Ban, ChevronRight, Minus, Plus, Star, Tag } from 'lucide-react';
+import { Ban, ChevronRight, Minus, Plus, Star, Tag } from 'lucide-react';
 import { fetchActivePromotions, fetchProducts } from '../lib/menu-api';
 import { fetchItemReviewsSummary } from '../lib/customer-api';
 import type { ReviewSummary } from '../lib/customer-api';
@@ -17,6 +17,8 @@ import { AnimatedGradientButton } from '../components/AnimatedGradientButton';
 import { useActiveLocation } from '../hooks/useActiveLocation';
 import { ShareButton } from '../components/ShareButton';
 import { Tooltip } from '../components/Tooltip';
+import { GlassBackButton } from '../components/GlassBackButton';
+import { PromotionAmbient } from '../components/promotion/PromotionAmbient';
 import { ProductImageCarousel } from '../components/ProductImageCarousel';
 import { getProductImages } from '../lib/productImages';
 import { buildShareUrl } from '../lib/shareLinks';
@@ -75,6 +77,8 @@ export function ProductDetailPage() {
 
   const { tenant } = useTenant();
   const accent = useAccentColor(tenant?.primaryColor ?? '#111827');
+  // Foto ativa do carrossel: a luz ambiente atrás do card acompanha a foto que está na tela.
+  const [ambientIndex, setAmbientIndex] = useState(0);
   // Loja fechada: a tela abre normalmente para ler o item, mas não deixa adicionar.
   const activeLocation = useActiveLocation(tenant?.id, Boolean(qrCodeToken));
   const storeStatus = useStoreStatus(activeLocation);
@@ -160,6 +164,7 @@ export function ProductDetailPage() {
   }
 
   const brand = tenant.primaryColor;
+  const productImages = getProductImages(product);
   const backHref = qrCodeToken ? `/${slug}/mesa/${qrCodeToken}` : `/${slug}`;
 
   // Grupo sem nenhuma opção cadastrada não aparece pro cliente — ficaria
@@ -310,42 +315,50 @@ export function ProductDetailPage() {
     <div className={`min-h-screen ${MENU_PAGE_BG} pb-28 lg:pb-12`}>
       <div className="w-full max-w-6xl mx-auto md:px-8 md:py-8 lg:py-10">
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-10 items-start">
-          {/* Coluna esquerda: imagem em destaque */}
-          <div className="relative aspect-[4/3] md:aspect-[16/9] lg:aspect-square md:rounded-2xl overflow-hidden bg-[#F3F4F6] dark:bg-[#282A2C] lg:sticky lg:top-24 md:shadow-sm">
-            {getProductImages(product).length > 0 ? (
-              <ProductImageCarousel
-                images={getProductImages(product)}
-                alt={localizedField(product, 'name')}
-                size="detail"
-                imgClassName={product.isAvailable === false ? 'grayscale opacity-60' : ''}
-              />
-            ) : (
-              <div className={`w-full h-full flex items-center justify-center ${MENU_TEXT_MUTED}`}>
-                {t('productCard.sem_foto')}
-              </div>
-            )}
-            <Tooltip label={t('tooltip.back')} className="contents">
-              <button
-                type="button"
+          {/* Coluna esquerda: botão voltar de vidro FORA do card + imagem em destaque com a
+              MESMA luz ambiente da promoção (PromotionAmbient). `isolate` mantém o z-index
+              negativo da luz acima do fundo da página e abaixo do conteúdo. */}
+          <div className="isolate px-4 pt-4 md:px-0 md:pt-0 lg:sticky lg:top-24">
+            <div className="mb-2 flex">
+              <GlassBackButton
                 // Link compartilhado abre direto aqui (sem histórico para voltar):
                 // nesse caso "voltar" leva ao cardápio em vez de sair do app.
                 onClick={() =>
                   routerLocation.key === 'default' ? navigate(backHref, { replace: true }) : navigate(-1)
                 }
-                aria-label={t('common.back')}
-                className="absolute top-4 left-4 w-10 h-10 rounded-full bg-white/90 dark:bg-[#1E1E20]/90 text-[#111827] dark:text-[#E3E2E6] flex items-center justify-center shadow-md hover:scale-105 transition"
-              >
-                <ArrowLeft size={18} strokeWidth={1.5} />
-              </button>
-            </Tooltip>
-            {slug && (
-              <ShareButton
-                className="absolute top-4 right-4"
-                url={buildShareUrl('produto', slug, product.id)}
-                title={localizedField(product, 'name')}
-                text={product.description ?? t('productDetailPage.olha_esse_item_de', { name: tenant.name })}
+                label={t('common.back')}
+                tooltip={t('tooltip.back')}
               />
-            )}
+            </div>
+            <div className="relative">
+              <PromotionAmbient
+                color={brand}
+                imageUrl={product.isAvailable === false ? null : (productImages[ambientIndex] ?? productImages[0] ?? null)}
+              />
+              <div className="relative aspect-[4/3] md:aspect-[16/9] lg:aspect-square overflow-hidden rounded-2xl md:rounded-3xl bg-[#F3F4F6] dark:bg-[#282A2C] ring-1 ring-black/10 dark:ring-white/15 shadow-xl">
+                {productImages.length > 0 ? (
+                  <ProductImageCarousel
+                    images={productImages}
+                    alt={localizedField(product, 'name')}
+                    size="detail"
+                    imgClassName={product.isAvailable === false ? 'grayscale opacity-60' : ''}
+                    onIndexChange={setAmbientIndex}
+                  />
+                ) : (
+                  <div className={`w-full h-full flex items-center justify-center ${MENU_TEXT_MUTED}`}>
+                    {t('productCard.sem_foto')}
+                  </div>
+                )}
+                {slug && (
+                  <ShareButton
+                    className="absolute top-4 right-4"
+                    url={buildShareUrl('produto', slug, product.id)}
+                    title={localizedField(product, 'name')}
+                    text={product.description ?? t('productDetailPage.olha_esse_item_de', { name: tenant.name })}
+                  />
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Coluna direita: título, nota, preço, descrição, opções e ação */}

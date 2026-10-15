@@ -1,5 +1,5 @@
 import { sanitizeTranslations } from '../../common/i18n/content-translations';
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Optional } from '@nestjs/common';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { Repository, DataSource, In } from 'typeorm';
 import { Product } from './product.entity';
@@ -14,6 +14,15 @@ import {
   resolveProductImages,
   sanitizeImageList,
 } from './product-images';
+import { TenantCacheService } from '../tenant-cache/tenant-cache.service';
+import { InvalidatesTenantCache } from '../tenant-cache/invalidates-tenant-cache.decorator';
+
+// Cardápio público: o app do cliente consulta a cada 15 s (e ao abrir cada tela).
+// Produto muda pouco: fica em cache, derrubado na hora por toda escrita aqui e
+// conferido (contagem + max(updated_at)) no máximo a cada 5 s para pegar escritas
+// de outros caminhos (ex.: categorias). Teto duro de 2 min.
+const PUBLIC_MENU_MAX_AGE_MS = 120_000;
+const PUBLIC_MENU_FINGERPRINT_EVERY_MS = 5_000;
 
 @Injectable()
 export class ProductsService {
@@ -22,6 +31,8 @@ export class ProductsService {
     private readonly productRepo: Repository<Product>,
     @InjectDataSource()
     private readonly dataSource: DataSource,
+    // @Optional: testes que montam o service à mão continuam funcionando (sem cache).
+    @Optional() private readonly tenantCache?: TenantCacheService,
   ) {}
 
   // Garante `images` coerente com a capa (`imageUrl`) em TODA leitura: produto
@@ -74,6 +85,29 @@ export class ProductsService {
     return products.map((p) => this.withGallery(p));
   }
 
+  // Versão com cache do cardápio público (usada pelo controller). O valor é
+  // compartilhado entre requisições: serializar, nunca mutar. `costPrice` já sai
+  // zerado daqui, então nada sensível fica no cache.
+  async findAllForPublicCached(tenantId: string): Promise<{ products: Product[]; etag: string | null }> {
+    const cache = this.tenantCache;
+    if (!cache) return { products: await this.findAllForPublic(tenantId), etag: null };
+    const { value, etag } = await cache.getOrLoad(tenantId, 'products', () => this.findAllForPublic(tenantId), {
+      maxAgeMs: PUBLIC_MENU_MAX_AGE_MS,
+      fingerprintEveryMs: PUBLIC_MENU_FINGERPRINT_EVERY_MS,
+      fingerprint: () => this.productsFingerprint(tenantId),
+    });
+    return { products: value, etag };
+  }
+
+  private async productsFingerprint(tenantId: string): Promise<string> {
+    const rows: Array<{ n: number; m: string }> = await this.productRepo.query(
+      `SELECT COUNT(*)::int AS n, COALESCE(MAX(updated_at)::text, '') AS m
+         FROM products WHERE tenant_id = $1 AND deleted_at IS NULL`,
+      [tenantId],
+    );
+    return `${rows[0]?.n ?? 0}|${rows[0]?.m ?? ''}`;
+  }
+
   async findOne(tenantId: string, id: string): Promise<Product> {
     const product = await this.productRepo.findOne({
       where: { id, tenantId },
@@ -85,6 +119,7 @@ export class ProductsService {
     return this.withGallery(product);
   }
 
+  @InvalidatesTenantCache(['products'])
   async create(tenantId: string, dto: CreateProductDto): Promise<Product> {
     const { images, imageUrl, ...rest } = dto;
     // `images` (galeria) tem precedência; `imageUrl` sozinho (formato antigo)
@@ -100,6 +135,7 @@ export class ProductsService {
     return this.withGallery(await this.productRepo.save(product));
   }
 
+  @InvalidatesTenantCache(['products'])
   async update(
     tenantId: string,
     id: string,
@@ -129,6 +165,7 @@ export class ProductsService {
   // limite nem percam fotos um do outro (leitura-modificação-escrita seria
   // corrida). O CHECK do banco é a última barreira. Sem `relations` de
   // propósito: FOR UPDATE não combina com o lado anulável de um LEFT JOIN.
+  @InvalidatesTenantCache(['products'])
   async appendImages(tenantId: string, id: string, urls: readonly string[]): Promise<Product> {
     await this.dataSource.transaction(async (manager) => {
       const product = await manager.findOne(Product, {
@@ -150,6 +187,7 @@ export class ProductsService {
     return this.findOne(tenantId, id);
   }
 
+  @InvalidatesTenantCache(['products'])
   async remove(tenantId: string, id: string): Promise<void> {
     await this.findOne(tenantId, id);
     await this.productRepo.softDelete(id);
@@ -161,6 +199,7 @@ export class ProductsService {
   // salva tudo junto). Pedidos já criados não são afetados: OrderItem
   // guarda um SNAPSHOT das opções escolhidas (nome + preço no momento),
   // nunca uma referência viva a ProductOption/ProductOptionValue.
+  @InvalidatesTenantCache(['products'])
   async setOptions(
     tenantId: string,
     productId: string,

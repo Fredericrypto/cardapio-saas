@@ -5,6 +5,7 @@ import {
   ConflictException,
   Logger,
   ForbiddenException,
+  Optional,
 } from '@nestjs/common';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { Repository, DataSource, EntityManager, In } from 'typeorm';
@@ -50,6 +51,8 @@ import { TablesService } from '../tables/tables.service';
 import { SIODEngineService } from '../siod/siod-engine.service';
 import type { RouteResult } from '../siod/siod.types';
 import { stampOrderLifecycle } from './order-lifecycle';
+import { TenantCacheService } from '../tenant-cache/tenant-cache.service';
+import { InvalidatesTenantCache } from '../tenant-cache/invalidates-tenant-cache.decorator';
 
 // Janela pro cliente pagar o Pix antes do pedido expirar sozinho — mesmo
 // tempo que o iFood usa (6 min). Com Mercado Pago configurado, a
@@ -57,6 +60,14 @@ import { stampOrderLifecycle } from './order-lifecycle';
 // manual dos dois lados, então o admin precisa estar de olho no painel
 // durante essa janela.
 const PIX_PAYMENT_WINDOW_MS = 6 * 60 * 1000;
+
+// Cache da listagem do painel (ver TenantCache): teto duro de 60 s, conferência
+// barata (contagem + max(updated_at)) no máximo a cada 2 s por restaurante, e
+// invalidação imediata em toda escrita feita por este processo.
+const ADMIN_ORDERS_MAX_AGE_MS = 60_000;
+const ADMIN_ORDERS_FINGERPRINT_EVERY_MS = 2_000;
+// Histórico do cliente: dado só dele, invalidado por qualquer escrita de pedido.
+const CUSTOMER_HISTORY_MAX_AGE_MS = 20_000;
 
 // Resposta de POST /orders/public/:tenantId/:id/pay-card.
 export interface PayCardResult {
@@ -103,6 +114,8 @@ export class OrdersService {
     private readonly verificationService: CustomerVerificationService,
     private readonly tablesService: TablesService,
     private readonly siodEngine: SIODEngineService,
+    // @Optional: testes que montam o service à mão continuam funcionando (sem cache).
+    @Optional() private readonly tenantCache?: TenantCacheService,
   ) {}
 
   // Ponto ÚNICO por onde um pedido vira 'cancelado' — usado nos 4
@@ -471,9 +484,13 @@ export class OrdersService {
   // `passwordHash` do cliente (entidade inteira) vazaria pra dentro da
   // resposta JSON do admin. Nunca remover esse `select` sem substituir
   // por outra forma de excluir campos sensíveis.
-  async findAllForAdmin(tenantId: string): Promise<Order[]> {
-    const orders = await this.orderRepo.find({
-      where: { tenantId },
+  // Consulta única da listagem do painel. `ids` restringe a poucos pedidos
+  // (usado só para processar Pix pendente/expirado) mantendo EXATAMENTE os
+  // mesmos relations/select — inclusive o `select` do cliente, que impede o
+  // `passwordHash` de vazar.
+  private queryAdminOrders(tenantId: string, ids?: string[]): Promise<Order[]> {
+    return this.orderRepo.find({
+      where: ids ? { tenantId, id: In(ids) } : { tenantId },
       order: { createdAt: 'DESC' },
       relations: { items: true, customer: true },
       select: {
@@ -489,23 +506,25 @@ export class OrdersService {
         },
       },
     });
+  }
 
-    // Nunca confia no `isVerified` cru vindo do banco pro card do
-    // admin — recalcula a prova de integridade (ver
-    // verification-signature.ts) antes de expor. Ver mesmo raciocínio
-    // em TablesService.findActiveOverview.
-    //
-    // BUG REAL CORRIGIDO (17/09): `avatarUrl` do cliente vem gravado no
-    // banco como caminho RELATIVO (ex: "/uploads/avatars/xyz.jpg"),
-    // servido pelo app do cliente (frontend-cardapio) — nunca pelo
-    // painel admin. Sem resolver pra URL absoluta aqui, o navegador do
-    // admin tentava carregar essa imagem contra o PRÓPRIO domínio do
-    // admin (onde esse arquivo não existe) e mostrava um círculo cinza
-    // vazio, sem foto nem inicial — só nos cards de Balcão/Entrega
-    // (avulsos), porque o card de Mesa já resolvia isso corretamente
-    // (`resolveAvatarUrl` em TablesService.findActiveOverview). Mesma
-    // lógica replicada aqui: só mexe em caminho relativo (começa com
-    // "/"); uma URL já absoluta (ex: login social) passa direto.
+  // Nunca confia no `isVerified` cru vindo do banco pro card do
+  // admin — recalcula a prova de integridade (ver
+  // verification-signature.ts) antes de expor. Ver mesmo raciocínio
+  // em TablesService.findActiveOverview.
+  //
+  // BUG REAL CORRIGIDO (17/09): `avatarUrl` do cliente vem gravado no
+  // banco como caminho RELATIVO (ex: "/uploads/avatars/xyz.jpg"),
+  // servido pelo app do cliente (frontend-cardapio) — nunca pelo
+  // painel admin. Sem resolver pra URL absoluta aqui, o navegador do
+  // admin tentava carregar essa imagem contra o PRÓPRIO domínio do
+  // admin (onde esse arquivo não existe) e mostrava um círculo cinza
+  // vazio, sem foto nem inicial — só nos cards de Balcão/Entrega
+  // (avulsos), porque o card de Mesa já resolvia isso corretamente
+  // (`resolveAvatarUrl` em TablesService.findActiveOverview). Mesma
+  // lógica replicada aqui: só mexe em caminho relativo (começa com
+  // "/"); uma URL já absoluta (ex: login social) passa direto.
+  private decorateAdminOrders(orders: Order[]): void {
     const customerAppUrl = (process.env.CUSTOMER_APP_URL ?? '').replace(/\/$/, '');
     for (const order of orders) {
       if (order.customer) {
@@ -517,6 +536,13 @@ export class OrdersService {
         }
       }
     }
+  }
+
+  // Efeitos colaterais que a listagem do painel sempre teve (e que NÃO podem
+  // depender de cache): confirma Pix pendente no Mercado Pago e expira pedido
+  // cujo prazo estourou. Devolve true se algum pedido mudou.
+  private async syncPendingAdminOrders(tenantId: string, orders: Order[]): Promise<boolean> {
+    let changed = false;
 
     // Consulta o Mercado Pago pros pedidos ainda aguardando confirmação —
     // assim o painel do admin reflete "pagamento confirmado" sozinho, a
@@ -547,6 +573,7 @@ export class OrdersService {
         }
         if (changedOrders.length > 0) {
           await this.orderRepo.save(changedOrders);
+          changed = true;
         }
       }
     }
@@ -568,9 +595,91 @@ export class OrdersService {
         await this.cancelGatewayPaymentQuietly(tenantId, order.mpPaymentId);
       }
       await this.orderRepo.save(expiredOrders);
+      changed = true;
     }
 
+    return changed;
+  }
+
+  // `customer: true` traz avatar/nome de quem fez o pedido, SE ele
+  // estava logado — visível só aqui, pro admin DESSE restaurante (nunca
+  // pra outro tenant, nem publicamente). Pedido de convidado (sem login)
+  // simplesmente não tem customer nenhum vinculado.
+  //
+  // IMPORTANTE: o `select` em queryAdminOrders limita os campos do
+  // relacionamento aos estritamente necessários pra exibir no painel — sem
+  // isso, o `passwordHash` do cliente (entidade inteira) vazaria pra dentro
+  // da resposta JSON do admin. Nunca remover esse `select` sem substituir
+  // por outra forma de excluir campos sensíveis.
+  //
+  // Versão SEM cache (comportamento original). O painel usa findAllForAdminCached.
+  async findAllForAdmin(tenantId: string): Promise<Order[]> {
+    const orders = await this.queryAdminOrders(tenantId);
+    this.decorateAdminOrders(orders);
+    await this.syncPendingAdminOrders(tenantId, orders);
     return orders;
+  }
+
+  // Listagem do painel (polling de 5 s) com cache por restaurante. Enquanto
+  // nenhum pedido mudou, não toca no Supabase além de UMA consulta de 1 linha
+  // (contagem + max(updated_at)), no máximo a cada 2 s. O valor devolvido é
+  // compartilhado: serializar, nunca mutar. `etag` serve a revalidação 304.
+  async findAllForAdminCached(tenantId: string): Promise<{ orders: Order[]; etag: string | null }> {
+    const cache = this.tenantCache;
+    if (!cache) return { orders: await this.findAllForAdmin(tenantId), etag: null };
+
+    const load = () =>
+      cache.getOrLoad(
+        tenantId,
+        'orders',
+        async () => {
+          const orders = await this.queryAdminOrders(tenantId);
+          this.decorateAdminOrders(orders);
+          return orders;
+        },
+        {
+          maxAgeMs: ADMIN_ORDERS_MAX_AGE_MS,
+          fingerprintEveryMs: ADMIN_ORDERS_FINGERPRINT_EVERY_MS,
+          fingerprint: () => this.ordersFingerprint(tenantId),
+        },
+      );
+
+    let result = await load();
+
+    // Efeitos colaterais continuam rodando a cada poll — mas só quando EXISTE
+    // candidato (Pix pendente com cobrança no gateway, ou prazo vencido). Aí
+    // recarrega só esses poucos pedidos (nunca o histórico inteiro), processa
+    // com as entidades frescas e, se algo mudou, invalida e relê.
+    const now = Date.now();
+    const candidateIds = result.value
+      .filter(
+        (o) =>
+          o.status === 'aguardando_pagamento' &&
+          ((o.mpPaymentId && o.paymentStatus !== 'recusado') ||
+            (o.pixExpiresAt && o.pixExpiresAt.getTime() < now)),
+      )
+      .map((o) => o.id);
+    if (candidateIds.length > 0) {
+      const fresh = await this.queryAdminOrders(tenantId, candidateIds);
+      const changed = await this.syncPendingAdminOrders(tenantId, fresh);
+      if (changed) {
+        cache.invalidate(tenantId, ['orders', 'tables']);
+        result = await load();
+      }
+    }
+    return { orders: result.value, etag: result.etag };
+  }
+
+  // Resumo barato do estado dos pedidos do restaurante: quantidade + último
+  // updated_at (texto, com microssegundos). Pega qualquer escrita feita por
+  // OUTRO caminho (outro módulo, SQL manual) que a invalidação explícita não viu.
+  private async ordersFingerprint(tenantId: string): Promise<string> {
+    const rows: Array<{ n: number; m: string }> = await this.orderRepo.query(
+      `SELECT COUNT(*)::int AS n, COALESCE(MAX(updated_at)::text, '') AS m
+         FROM orders WHERE tenant_id = $1 AND deleted_at IS NULL`,
+      [tenantId],
+    );
+    return `${rows[0]?.n ?? 0}|${rows[0]?.m ?? ''}`;
   }
 
   async findOne(tenantId: string, id: string): Promise<Order> {
@@ -590,6 +699,7 @@ export class OrdersService {
   // e cancelar sozinho antes do estabelecimento perceber, escapando de
   // pagar. Nesses dois casos, a ação do cliente é sempre "chamar
   // atendente/garçom" (ver botões correspondentes no lugar disso).
+  @InvalidatesTenantCache(['orders', 'tables'])
   async cancelByCustomer(tenantId: string, id: string): Promise<Order> {
     const order = await this.findOne(tenantId, id);
     if (order.orderType === 'mesa' || order.orderType === 'balcao') {
@@ -614,6 +724,7 @@ export class OrdersService {
   // Pedido de balcão não tem "chamar garçom" (não há mesa/sessão) — só
   // acende o mesmo destaque de atenção que o painel já usa. Idempotente
   // (chamar de novo não faz nada demais).
+  @InvalidatesTenantCache(['orders', 'tables'])
   async flagForAttention(tenantId: string, id: string): Promise<Order> {
     const order = await this.findOne(tenantId, id);
     order.flagged = true;
@@ -623,6 +734,7 @@ export class OrdersService {
   // Cria o pedido inteiro em UMA transação: ou tudo é salvo, ou nada é.
   // O preço de cada item vem sempre do banco (nunca do que o cliente mandou),
   // pra impedir que alguém manipule o preço direto na requisição.
+  @InvalidatesTenantCache(['orders', 'tables'])
   async create(
     tenantId: string,
     dto: CreateOrderDto,
@@ -1159,12 +1271,21 @@ export class OrdersService {
   // os pedidos de mesa por sessão (uma "visita") em vez de mostrar cada
   // pedido avulso da mesa como se fosse independente.
   async findByCustomerId(tenantId: string, customerId: string): Promise<Order[]> {
-    return this.orderRepo.find({
-      where: { tenantId, customerId },
-      relations: { items: true, tableSession: { table: true } },
-      order: { createdAt: 'DESC' },
-      take: 100,
+    const load = () =>
+      this.orderRepo.find({
+        where: { tenantId, customerId },
+        relations: { items: true, tableSession: { table: true } },
+        order: { createdAt: 'DESC' },
+        take: 100,
+      });
+    if (!this.tenantCache) return load();
+    // Até 100 pedidos com itens por chamada: o item mais pesado depois da
+    // listagem do painel. Qualquer escrita de pedido do restaurante invalida.
+    const { value } = await this.tenantCache.getOrLoad(tenantId, 'orders', load, {
+      maxAgeMs: CUSTOMER_HISTORY_MAX_AGE_MS,
+      variant: `history:${customerId}`,
     });
+    return value;
   }
 
   // Pedido avulso (balcão/entrega) individual pro cupom do cliente —
@@ -1226,6 +1347,7 @@ export class OrdersService {
   }
 
   // Só o painel admin usa isso — mover o pedido entre os estados do fluxo da cozinha.
+  @InvalidatesTenantCache(['orders', 'tables'])
   async updateStatus(
     tenantId: string,
     id: string,
@@ -1277,6 +1399,9 @@ export class OrdersService {
     if (!order) {
       throw new NotFoundException('Pedido não encontrado.');
     }
+    // Este método é POLL do cliente (a cada poucos segundos): só invalida o
+    // cache se o pedido de fato mudou aqui dentro, senão o cache nunca valeria.
+    const stateBefore = `${order.status}|${order.paymentStatus}|${order.mpPaymentId ?? ''}`;
 
     // Se é um pedido via Mercado Pago ainda em aberto, pergunta pra API
     // deles diretamente qual o status real — é o que permite confirmar o
@@ -1318,6 +1443,10 @@ export class OrdersService {
       order.paymentStatus = 'falhou';
       await this.orderRepo.save(order);
       await this.cancelGatewayPaymentQuietly(tenantId, order.mpPaymentId);
+    }
+
+    if (stateBefore !== `${order.status}|${order.paymentStatus}|${order.mpPaymentId ?? ''}`) {
+      this.tenantCache?.invalidate(tenantId, ['orders', 'tables']);
     }
 
     return {
@@ -1420,6 +1549,7 @@ export class OrdersService {
   // número do cartão) e o backend cobra no Mercado Pago com as credenciais do
   // restaurante dono do pedido, SEMPRE pelo valor gravado no pedido (que o
   // próprio backend calculou na criação) — nunca por valor vindo do cliente.
+  @InvalidatesTenantCache(['orders', 'tables'])
   async payWithCard(tenantId: string, orderId: string, dto: PayCardDto): Promise<PayCardResult> {
     const tenant = await this.tenantRepo.findOne({ where: { id: tenantId } });
     if (!tenant) throw new NotFoundException('Estabelecimento não encontrado.');
@@ -1605,6 +1735,7 @@ export class OrdersService {
   // pedido sair de 'aguardando_pagamento' pra entrar de fato na cozinha.
   // Confere o estado atual em vez de aceitar cegamente, pra nunca liberar
   // pra cozinha um pedido que já expirou ou que nem estava esperando Pix.
+  @InvalidatesTenantCache(['orders', 'tables'])
   async confirmPixPayment(tenantId: string, id: string): Promise<Order> {
     const order = await this.findOne(tenantId, id);
     if (order.status !== 'aguardando_pagamento') {
@@ -1639,6 +1770,7 @@ export class OrdersService {
   // "ok, alguma coisa mudou no pagamento X" — e então perguntamos pro
   // Mercado Pago diretamente, com nosso próprio access token, qual é o
   // status de verdade.
+  @InvalidatesTenantCache(['orders', 'tables'])
   async handleMercadoPagoWebhook(
     tenantId: string,
     dataId: string | undefined,
@@ -1714,6 +1846,7 @@ export class OrdersService {
   // "concluir" tem que ser o momento em que a forma de pagamento é
   // registrada — nunca marcar como entregue silenciosamente sem saber
   // como (ou se) foi pago.
+  @InvalidatesTenantCache(['orders', 'tables'])
   async concludeWithPayment(
     tenantId: string,
     id: string,

@@ -11,7 +11,9 @@ import {
   UseInterceptors,
   UploadedFile,
   UploadedFiles,
+  Res,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
@@ -22,6 +24,7 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { SetProductOptionsDto } from './dto/set-product-options.dto';
 import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { MAX_PRODUCT_IMAGES, remainingSlots } from './product-images';
+import { applyRevalidationHeaders } from '../tenant-cache/http-cache';
 
 // Teto de leitura do multer por arquivo: um pouco acima dos 5 MB aceitos, para
 // que a mensagem amigável do StorageService ("Imagem muito grande. Limite de
@@ -37,8 +40,11 @@ export class ProductsController {
 
   // Rota PÚBLICA: cardápio do cliente final.
   @Get('public/:tenantId')
-  async findAllForPublic(@Param('tenantId') tenantId: string) {
-    return this.productsService.findAllForPublic(tenantId);
+  async findAllForPublic(@Param('tenantId') tenantId: string, @Res({ passthrough: true }) res: Response) {
+    // Cache por restaurante + ETag (304 quando o cardápio não mudou) — ver TenantCache.
+    const { products, etag } = await this.productsService.findAllForPublicCached(tenantId);
+    applyRevalidationHeaders(res, etag, 'public');
+    return products;
   }
 
   @UseGuards(JwtAuthGuard)

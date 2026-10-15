@@ -10,7 +10,9 @@ import {
   Headers,
   ForbiddenException,
   UseGuards,
+  Res,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 import { CurrentCustomer } from '../../common/decorators/current-customer.decorator';
@@ -24,6 +26,7 @@ import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { ConcludeOrderDto } from './dto/conclude-order.dto';
 import { PayCardDto } from './dto/pay-card.dto';
 import { RequirePermission } from '../auth/decorators/require-permission.decorator';
+import { applyRevalidationHeaders } from '../tenant-cache/http-cache';
 
 @Controller('orders')
 export class OrdersController {
@@ -64,8 +67,12 @@ export class OrdersController {
   // foi o que causou o 429 no login do cliente reportado.
   @SkipThrottle()
   @Get()
-  async findAll(@CurrentTenant() tenantId: string) {
-    return this.ordersService.findAllForAdmin(tenantId);
+  async findAll(@CurrentTenant() tenantId: string, @Res({ passthrough: true }) res: Response) {
+    // Cache por restaurante + ETag: enquanto nenhum pedido mudou, o painel
+    // recebe 304 (sem corpo) e o banco nem é consultado (ver TenantCache).
+    const { orders, etag } = await this.ordersService.findAllForAdminCached(tenantId);
+    applyRevalidationHeaders(res, etag);
+    return orders;
   }
 
   // Histórico do cliente logado NESTE restaurante — cliente é por
