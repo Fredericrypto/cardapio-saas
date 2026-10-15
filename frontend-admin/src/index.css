@@ -276,3 +276,20 @@ h1, h2, h3, .font-display {
 @media (prefers-reduced-motion: reduce) {
   .animate-coupon-pop { animation: none; }
 }
+
+/* Barra de rolagem discreta (modais e painéis rolantes): fina, e o "polegar" só aparece
+   quando o mouse está sobre a área — imita o auto-ocultar dos navegadores modernos.
+   (O auto-ocultar de verdade é uma opção do sistema operacional e o CSS não controla;
+   isto dá o mesmo efeito visual em Firefox e Chrome 121+.) */
+.scroll-modern {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.scroll-modern:hover,
+.scroll-modern:focus-within {
+  scrollbar-color: #c9ccd1 transparent;
+}
+.dark .scroll-modern:hover,
+.dark .scroll-modern:focus-within {
+  scrollbar-color: #4a4c4e transparent;
+}
