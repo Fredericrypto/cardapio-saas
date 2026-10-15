@@ -1,10 +1,11 @@
 import { Compass, Wallet, X } from 'lucide-react';
 import { useI18n } from '../../i18n/I18nContext';
+import { AnimatedGradientButton } from '../AnimatedGradientButton';
 import { localizedField } from '../../i18n/contentText';
 import { formatBRL, getPromotionHeroValue } from '../../lib/promotionPresentation';
 import type { MinOrderProgress } from '../../lib/promotionEligibility';
 import { MENU_BORDER, MENU_SURFACE, MENU_TEXT, MENU_TEXT_SOFT } from '../../lib/menuTheme';
-import { PROMO_FOCUS, PROMO_LINK_BTN, PROMO_SUCCESS_TEXT } from '../../lib/promotionTheme';
+import { PROMO_LINK_BTN, PROMO_SUCCESS_TEXT } from '../../lib/promotionTheme';
 import type { Promotion } from '../../types';
 
 interface PromotionModeBannerProps {
@@ -128,13 +129,13 @@ export function PromotionModeBanner({
       )}
 
       {!isActive && canActivate && (
-        <button
-          type="button"
+        <AnimatedGradientButton
           onClick={onActivate}
-          className={`mt-3 w-full rounded-xl bg-[var(--brand)] px-4 py-2.5 text-sm font-bold text-[#FFFFFF] transition hover:brightness-110 dark:bg-[#E3E2E6] dark:text-[#131314] ${PROMO_FOCUS}`}
+          className="mt-3 w-full rounded-xl"
+          contentClassName="px-4 py-2.5 text-center text-sm font-bold"
         >
           {t('promotionMode.activate')}
-        </button>
+        </AnimatedGradientButton>
       )}
     </aside>
   );

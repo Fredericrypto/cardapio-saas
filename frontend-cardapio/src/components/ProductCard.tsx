@@ -11,6 +11,7 @@ import { useTenant } from '../contexts/TenantContext';
 import { CLOSED_MUTED_CLASS } from '../lib/storeStatus';
 import { ShareButton } from './ShareButton';
 import { Tooltip } from './Tooltip';
+import { AnimatedGradientButton } from './AnimatedGradientButton';
 import { useAccentColor } from '../hooks/useAccentColor';
 import {
   MENU_BORDER,
@@ -210,8 +211,8 @@ export function ProductCard({ product, primaryColor, onClick, storeClosed = fals
           </Tooltip>
         ) : (
           <Tooltip label={t('product.add', { name: localizedField(product, 'name') })} className="contents">
-            <span
-              role="button"
+            <AnimatedGradientButton
+              as="span"
               aria-label={t('product.add', { name: localizedField(product, 'name') })}
               onClick={(e) => {
                 e.stopPropagation();
@@ -221,11 +222,16 @@ export function ProductCard({ product, primaryColor, onClick, storeClosed = fals
                   addItem(product);
                 }
               }}
-              className="absolute -bottom-3 right-2.5 md:-bottom-4 md:right-3 w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center text-white shadow-md active:scale-90 transition-transform border-2 border-white dark:border-[#1E1E20]"
-              style={{ backgroundColor: primaryColor }}
+              // Grade com muitos cards: a borda só aparece/gira com mouse ou foco.
+              // Moldura 4px maior (borda branca 2px + folga 2px) com o encosto recuado 2px:
+              // mesmo centro e mesmo tamanho do "+" de antes.
+              animation="hover"
+              className="absolute -bottom-[14px] right-2 md:-bottom-[18px] md:right-[10px] w-9 h-9 md:w-10 md:h-10 rounded-full shadow-md border-2 border-white dark:border-[#1E1E20]"
+              fillClassName="bg-[var(--brand)] text-white"
+              contentClassName="flex h-full w-full items-center justify-center"
             >
               <Plus size={16} strokeWidth={2.75} />
-            </span>
+            </AnimatedGradientButton>
           </Tooltip>
         )}
       </div>

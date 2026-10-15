@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import { Ban, Plus } from 'lucide-react';
 import { useI18n } from '../../i18n/I18nContext';
+import { AnimatedGradientButton } from '../AnimatedGradientButton';
 import { localizedField } from '../../i18n/contentText';
 import { formatBRL } from '../../lib/promotionPresentation';
 import { getProductImages } from '../../lib/productImages';
@@ -36,7 +37,6 @@ interface PromotionExploreProductCardProps {
 function PromotionExploreProductCardImpl({
   product,
   preview,
-  primaryColor,
   storeClosed,
   isSelected,
   panelId,
@@ -125,16 +125,17 @@ function PromotionExploreProductCardImpl({
           <Ban size={15} strokeWidth={1.5} />
         </span>
       ) : (
-        <button
-          type="button"
+        <AnimatedGradientButton
           onClick={() => (hasRequiredOptions ? onSelect(product.id) : onQuickAdd(product))}
           aria-label={actionLabel}
           title={actionLabel}
-          className={`absolute bottom-3 right-3 flex h-8 w-8 items-center justify-center rounded-full text-white shadow-md transition-transform active:scale-90 ${PROMO_FOCUS}`}
-          style={{ backgroundColor: primaryColor }}
+          animation="hover"
+          className="absolute bottom-[10px] right-[10px] h-9 w-9 rounded-full shadow-md"
+          fillClassName="bg-[var(--brand)] text-white"
+          contentClassName="flex h-full w-full items-center justify-center"
         >
           <Plus size={16} strokeWidth={2.75} aria-hidden="true" />
-        </button>
+        </AnimatedGradientButton>
       )}
     </div>
   );

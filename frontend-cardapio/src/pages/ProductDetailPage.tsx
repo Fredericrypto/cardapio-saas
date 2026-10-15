@@ -2,7 +2,6 @@ import { localizedField } from '../i18n/contentText';
 import { useI18n } from '../i18n/I18nContext';
 import { useStoreStatus } from '../hooks/useStoreStatus';
 import { useEffect, useMemo, useState } from 'react';
-import type { CSSProperties } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Ban, ChevronRight, Minus, Plus, Star, Tag } from 'lucide-react';
 import { fetchActivePromotions, fetchProducts } from '../lib/menu-api';
@@ -14,6 +13,7 @@ import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { useAccentColor } from '../hooks/useAccentColor';
 import { useTenant } from '../contexts/TenantContext';
 import { CartIcon } from '../components/MenuIcons';
+import { AnimatedGradientButton } from '../components/AnimatedGradientButton';
 import { useActiveLocation } from '../hooks/useActiveLocation';
 import { ShareButton } from '../components/ShareButton';
 import { Tooltip } from '../components/Tooltip';
@@ -259,13 +259,6 @@ export function ProductDetailPage() {
     </div>
   );
 
-  // Botão principal: cor da marca no claro; no escuro vira sólido claro com
-  // texto escuro (nunca a cor da marca apagada sobre o fundo escuro).
-  const primaryBtn =
-    'w-full py-3.5 rounded-xl text-sm font-semibold text-[#FFFFFF] bg-[var(--brand)] ring-1 ring-black/5 ' +
-    'dark:bg-[#E3E2E6] dark:text-[#131314] dark:ring-white/20 shadow-sm hover:brightness-110 dark:hover:brightness-95 ' +
-    'active:brightness-95 transition flex justify-between items-center px-5';
-
   const cta =
     isStoreClosed && product.isAvailable !== false ? (
       <div className="flex flex-col gap-1.5">
@@ -291,11 +284,12 @@ export function ProductDetailPage() {
         {t('productCard.indisponivel')}
       </button>
     ) : (
-      <button
-        type="button"
+      // Botão principal: cor da marca no claro; no escuro vira sólido claro com
+      // texto escuro (nunca a cor da marca apagada sobre o fundo escuro). A borda
+      // animada usa a cor primária e a secundária do restaurante.
+      <AnimatedGradientButton
         onClick={handleAddToCart}
-        className={primaryBtn}
-        style={{ '--brand': brand } as CSSProperties}
+        contentClassName="py-3.5 text-sm font-semibold flex justify-between items-center px-5"
       >
         <span className="flex items-center gap-2">
           <CartIcon size={16} />
@@ -309,7 +303,7 @@ export function ProductDetailPage() {
           )}
           <span>{formatMoney(subtotal)}</span>
         </span>
-      </button>
+      </AnimatedGradientButton>
     );
 
   return (

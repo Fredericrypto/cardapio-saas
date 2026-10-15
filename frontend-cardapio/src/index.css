@@ -479,3 +479,124 @@ img, svg, video, a {
     box-shadow: none;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   AnimatedGradientButton (components/AnimatedGradientButton.tsx)
+   SÓ a borda: dois pontos com cauda girando, nas cores do restaurante
+   (--cta-a primária, --cta-b secundária; --brand é a cor crua do preenchimento).
+   Sem sombra e sem brilho.
+
+   IMPORTANTE: tudo isto fica dentro de `@layer components`. Em Tailwind v4 as
+   utilitárias (`absolute`, `flex`, `w-full`...) estão em `@layer utilities`, e
+   CSS FORA de layer vence qualquer layer — por isso, fora dele, `position` e
+   `display` daqui anulavam as classes de posição/layout de quem usa o botão.
+
+   Performance: só `transform` de um quadrado dentro de um contêiner com
+   overflow hidden é animado (compositor/GPU).
+   --------------------------------------------------------------------------- */
+@layer components {
+  .cta-border {
+    position: relative;
+    display: block;
+    isolation: isolate;
+    overflow: hidden;
+    padding: 2px;
+    cursor: pointer;
+    transition: transform 120ms ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .cta-border__ring {
+    position: absolute;
+    z-index: -1;
+    left: 50%;
+    top: 50%;
+    width: 160%;
+    aspect-ratio: 1 / 1;
+    /* Dois cometas em lados opostos: cauda que some (transparente) até a cabeça,
+       que termina em corte seco. Gira no sentido horário. */
+    background: conic-gradient(
+      from 0deg,
+      transparent 0deg,
+      var(--cta-a) 92deg,
+      color-mix(in srgb, #ffffff 60%, var(--cta-a)) 96deg,
+      transparent 96deg 180deg,
+      var(--cta-b) 272deg,
+      color-mix(in srgb, #ffffff 60%, var(--cta-b)) 276deg,
+      transparent 276deg 360deg
+    );
+    transform: translate(-50%, -50%) rotate(0turn);
+    animation: cta-border-spin 2.6s linear infinite;
+    will-change: transform;
+    pointer-events: none;
+  }
+  .cta-border__fill {
+    position: relative;
+    display: block;
+    border-radius: inherit;
+    transition: filter 150ms ease;
+  }
+  @keyframes cta-border-spin {
+    to {
+      transform: translate(-50%, -50%) rotate(1turn);
+    }
+  }
+  .cta-border:focus-visible {
+    outline: 2px solid var(--cta-a);
+    outline-offset: 3px;
+  }
+  .cta-border:active:not(.cta-border--off) {
+    transform: scale(0.985);
+  }
+  @media (hover: hover) {
+    .cta-border:hover:not(.cta-border--off) .cta-border__fill {
+      filter: brightness(1.08);
+    }
+  }
+
+  /* Só com hover/foco: a borda aparece e gira quando o mouse/foco está no botão.
+     Em repouso a folga de 2px tem a cor do preenchimento (botão do mesmo tamanho). */
+  .cta-border--hover:not(.cta-border--off) {
+    background: var(--brand);
+  }
+  .cta-border--hover:not(.cta-border--off) .cta-border__ring {
+    opacity: 0;
+    animation-play-state: paused;
+    transition: opacity 150ms ease;
+  }
+  .cta-border--hover:not(.cta-border--off):focus-visible .cta-border__ring {
+    opacity: 1;
+    animation-play-state: running;
+  }
+  @media (hover: hover) {
+    .cta-border--hover:not(.cta-border--off):hover .cta-border__ring {
+      opacity: 1;
+      animation-play-state: running;
+    }
+  }
+
+  /* Desabilitado ou desligado: sem giro e sem borda. */
+  .cta-border--off {
+    cursor: not-allowed;
+  }
+  .cta-border--off .cta-border__ring {
+    animation: none;
+    opacity: 0;
+  }
+  .cta-border:disabled {
+    opacity: 0.6;
+  }
+
+  /* Movimento reduzido: borda estática (um traço contínuo), sem giro. */
+  @media (prefers-reduced-motion: reduce) {
+    .cta-border__ring {
+      animation: none;
+      background: linear-gradient(135deg, var(--cta-a), var(--cta-b));
+    }
+    .cta-border {
+      transition: none;
+    }
+    .cta-border:active:not(.cta-border--off) {
+      transform: none;
+    }
+  }
+}

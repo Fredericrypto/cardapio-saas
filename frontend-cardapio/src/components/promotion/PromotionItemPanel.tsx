@@ -5,6 +5,7 @@ import { useCart } from '../../contexts/CartContext';
 import { localizedField } from '../../i18n/contentText';
 import { useI18n } from '../../i18n/I18nContext';
 import { CartIcon } from '../MenuIcons';
+import { AnimatedGradientButton } from '../AnimatedGradientButton';
 import { ProductImageCarousel } from '../ProductImageCarousel';
 import { ProductOptionGroupList } from '../ProductOptionGroupList';
 import { ShareButton } from '../ShareButton';
@@ -30,12 +31,10 @@ const QTY_BUTTON =
   'flex items-center justify-center shadow-sm border border-[#E5E7EB] dark:border-white/10 ' +
   'hover:bg-[#F9FAFB] dark:hover:bg-[#46484A] disabled:opacity-40 disabled:cursor-not-allowed transition';
 
-const CTA_BASE = 'w-full py-3.5 rounded-xl text-sm font-semibold flex justify-between items-center gap-3 px-5 transition ';
-const CTA_BRAND =
-  CTA_BASE +
-  'text-[#FFFFFF] bg-[var(--brand)] ring-1 ring-black/5 dark:bg-[#E3E2E6] dark:text-[#131314] dark:ring-white/20 ' +
-  'shadow-sm hover:brightness-110 dark:hover:brightness-95 active:brightness-95';
-const CTA_ADDED = CTA_BASE + 'text-[#FFFFFF] bg-green-600 ring-1 ring-black/5 dark:bg-green-500 dark:text-[#131314] promo-added-pop';
+// Layout interno do CTA; a moldura e a borda animada vêm do AnimatedGradientButton.
+const CTA_CONTENT = 'py-3.5 text-sm font-semibold flex justify-between items-center gap-3 px-5';
+// "Adicionado": preenchimento verde e SEM borda animada (confirmação, não convite).
+const CTA_ADDED_FILL = 'text-[#FFFFFF] bg-green-600 dark:bg-green-500 dark:text-[#131314]';
 
 export interface PromotionItemPanelProps {
   product: Product;
@@ -187,17 +186,18 @@ export function PromotionItemPanel({
     );
   } else {
     cta = (
-      <button
-        type="button"
+      <AnimatedGradientButton
         onClick={handleAdd}
-        className={`${justAdded ? CTA_ADDED : CTA_BRAND} ${PROMO_FOCUS}`}
+        animated={!justAdded}
+        fillClassName={justAdded ? CTA_ADDED_FILL : undefined}
+        contentClassName={`${CTA_CONTENT} ${justAdded ? 'promo-added-pop' : ''}`}
       >
         <span className="flex items-center gap-2 whitespace-nowrap">
           {justAdded ? <Check size={16} strokeWidth={2} aria-hidden="true" /> : <CartIcon size={16} />}
           {justAdded ? t('promotionMode.added') : t('productDetailPage.adicionar')}
         </span>
         <span className="whitespace-nowrap tabular-nums">R$ {lineAfter}</span>
-      </button>
+      </AnimatedGradientButton>
     );
   }
 

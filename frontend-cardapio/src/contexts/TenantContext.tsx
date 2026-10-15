@@ -72,3 +72,10 @@ export function useTenant(): TenantContextValue {
   if (!ctx) throw new Error('useTenant precisa estar dentro de um TenantProvider');
   return ctx;
 }
+
+// Versão que não lança fora do provider: devolve null. Para componentes de UI
+// genéricos (ex.: AnimatedGradientButton) que só querem as cores do restaurante
+// quando existirem.
+export function useOptionalTenant(): Tenant | null {
+  return useContext(TenantContext)?.tenant ?? null;
+}

@@ -7,6 +7,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Ban, Clock, Coins, Compass, Users, Tag, Package, CheckCircle2 } from 'lucide-react';
 import { ShareButton } from '../components/ShareButton';
 import { Tooltip } from '../components/Tooltip';
+import { AnimatedGradientButton } from '../components/AnimatedGradientButton';
 import { PromotionMedia } from '../components/promotion/PromotionMedia';
 import { PromotionBadge } from '../components/promotion/PromotionBadge';
 import { PromotionHeroCard } from '../components/promotion/PromotionHeroCard';
@@ -23,12 +24,11 @@ import { useSelectedLocation } from '../hooks/useSelectedLocation';
 import { computePromotionEligibility } from '../lib/promotionEligibility';
 import { buildPromotionModePaths } from '../lib/promotionMode';
 import { formatBRL, getPromotionBadgeKind, getPromotionHeroValue } from '../lib/promotionPresentation';
-import { PROMO_FOCUS, PROMO_LINK_BTN, PROMO_PRIMARY_BTN } from '../lib/promotionTheme';
+import { PROMO_FOCUS, PROMO_LINK_BTN } from '../lib/promotionTheme';
 import { PROFILE_CARD } from '../lib/profileTheme';
 import {
   MENU_PAGE_BG,
   MENU_SURFACE,
-  MENU_DIVIDER,
   MENU_BORDER,
   MENU_TEXT,
   MENU_TEXT_SOFT,
@@ -206,10 +206,13 @@ export function PromotionDetailPage() {
       {t('promotionDetailPage.remover_promocao')}
     </button>
   ) : (
-    <button onClick={handleApply} className={PROMO_PRIMARY_BTN}>
+    <AnimatedGradientButton
+      onClick={handleApply}
+      contentClassName="py-4 text-base font-bold flex items-center justify-center gap-2"
+    >
       {t('promotionDetailPage.usar_desconto_de_valor', { value: hero.text })}
       <ArrowRight size={18} strokeWidth={1.5} aria-hidden="true" />
-    </button>
+    </AnimatedGradientButton>
   );
 
   const conditionRows: { key: string; icon: React.ReactNode; label: string }[] = [];
@@ -342,14 +345,14 @@ export function PromotionDetailPage() {
 
             {/* Entrada do Modo Promoção: navegar só pelos itens que a promoção cobre. */}
             {!isUsedUp && (
-              <button
-                type="button"
+              <AnimatedGradientButton
                 onClick={() => navigate(buildPromotionModePaths(slug ?? '', promotion.id, qrCodeToken).explore)}
-                className={`flex w-full items-center justify-center gap-2 rounded-xl border ${MENU_DIVIDER} py-3 text-sm font-semibold ${MENU_TEXT} transition hover:bg-black/[0.03] dark:hover:bg-white/[0.06] ${PROMO_FOCUS}`}
+                fillClassName={`bg-[#FFFFFF] dark:bg-[#1E1E20] ${MENU_TEXT}`}
+                contentClassName="flex items-center justify-center gap-2 py-3 text-sm font-semibold"
               >
                 <Compass size={16} strokeWidth={1.5} aria-hidden="true" />
                 {t('promotionMode.exploreItems')}
-              </button>
+              </AnimatedGradientButton>
             )}
 
             {/* Condições: depois do botão e mais leves que o benefício. */}

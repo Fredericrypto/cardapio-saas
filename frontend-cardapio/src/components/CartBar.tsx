@@ -1,7 +1,9 @@
 import { useI18n } from '../i18n/I18nContext';
 import { useCart } from '../contexts/CartContext';
+import type { CSSProperties } from 'react';
 import { ArrowRight, ShoppingBag } from 'lucide-react';
 import { Tooltip } from './Tooltip';
+import { AnimatedGradientButton } from './AnimatedGradientButton';
 
 interface CartBarProps {
   primaryColor: string;
@@ -30,11 +32,13 @@ export function CartBar({ primaryColor, onClick }: CartBarProps) {
   return (
     // `contents`: o botão é `fixed`; o invólucro não pode ganhar caixa própria.
     <Tooltip label={t('tooltip.viewCart')} className="contents">
-      <button
+      <AnimatedGradientButton
         onClick={onClick}
         aria-label={`${itemsLabel} · ${t('tooltip.viewCart')}`}
-        className="fixed bottom-20 left-4 right-4 max-w-md mx-auto md:bottom-8 md:left-auto md:right-8 md:mx-0 md:w-[22rem] md:max-w-none rounded-2xl pl-3 pr-3.5 py-3 flex items-center gap-3 text-white text-left shadow-[0_10px_28px_rgba(0,0,0,0.22)] ring-1 ring-black/5 dark:ring-white/15 md:hover:brightness-110 transition-[filter] z-50"
-        style={{ backgroundColor: primaryColor, transform: 'translateZ(0)' }}
+        className="fixed bottom-20 left-4 right-4 max-w-md mx-auto md:bottom-8 md:left-auto md:right-8 md:mx-0 md:w-[22rem] md:max-w-none rounded-2xl shadow-[0_10px_28px_rgba(0,0,0,0.22)] z-50"
+        fillClassName="bg-[var(--brand)] text-white"
+        contentClassName="flex items-center gap-3 pl-3 pr-3.5 py-3 text-left"
+        style={{ '--brand': primaryColor, transform: 'translateZ(0)' } as CSSProperties}
       >
         <span className="shrink-0 w-10 h-10 rounded-full bg-white/15 flex items-center justify-center">
           <ShoppingBag size={18} strokeWidth={1.5} />
@@ -48,7 +52,7 @@ export function CartBar({ primaryColor, onClick }: CartBarProps) {
         <span className="shrink-0 w-8 h-8 rounded-full bg-white/15 flex items-center justify-center">
           <ArrowRight size={16} strokeWidth={2} />
         </span>
-      </button>
+      </AnimatedGradientButton>
     </Tooltip>
   );
 }

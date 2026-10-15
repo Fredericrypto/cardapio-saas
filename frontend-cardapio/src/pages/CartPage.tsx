@@ -26,6 +26,7 @@ import { CurrencyInput } from '../components/CurrencyInput';
 import { PhoneInput } from '../components/PhoneInput';
 import { isValidBrazilPhone } from '../lib/phone';
 import { Tooltip } from '../components/Tooltip';
+import { AnimatedGradientButton } from '../components/AnimatedGradientButton';
 import { formatBRL } from '../lib/cartFormat';
 import { MENU_BORDER, MENU_DIVIDER, MENU_PAGE_BG, MENU_SURFACE_SUBTLE } from '../lib/menuTheme';
 import {
@@ -900,8 +901,7 @@ export function CartPage() {
               : t('cartPage.confirmar_pedido');
 
   const primaryButton = (
-    <button
-      type="button"
+    <AnimatedGradientButton
       onClick={handlePrimaryAction}
       disabled={
         isSubmitting ||
@@ -909,8 +909,9 @@ export function CartPage() {
         (checkoutStep === 'form' && orderType !== 'mesa' && !canProceedFromForm) ||
         (checkoutStep === 'review' && !canSubmit)
       }
-      className="w-full py-3.5 rounded-xl text-white font-semibold flex justify-between items-center gap-3 px-5 disabled:opacity-60 ring-1 ring-black/5 dark:ring-white/15 md:hover:brightness-110 md:transition"
-      style={{ backgroundColor: tenant.primaryColor }}
+      // No carrinho o preenchimento segue a cor da marca nos dois temas (como antes).
+      fillClassName="bg-[var(--brand)] text-white"
+      contentClassName="py-3.5 font-semibold flex justify-between items-center gap-3 px-5"
     >
       {/* `key` = o texto/total viram nós NOVOS do DOM quando mudam (a
           loja carrega depois de montar e o rótulo troca): pintura
@@ -918,7 +919,7 @@ export function CartPage() {
           nó antigo (ver o bug do texto que só aparecia ao tocar). */}
       <span key={primaryButtonLabel} className="min-w-0 text-left leading-tight">{primaryButtonLabel}</span>
       <span key={displayTotal.toFixed(2)} className="shrink-0 whitespace-nowrap">{formatBRL(displayTotal)}</span>
-    </button>
+    </AnimatedGradientButton>
   );
 
   const stepTitle = showPaymentStep

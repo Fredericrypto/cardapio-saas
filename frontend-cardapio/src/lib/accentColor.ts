@@ -37,3 +37,21 @@ export function accentOnDark(hex: string): string {
   }
   return '#FFFFFF';
 }
+
+// Espelho de accentOnDark para o tema CLARO: cores claras demais (amarelo, bege,
+// branco…) somem sobre o fundo branco. Aqui elas são escurecidas (misturadas com
+// preto, mantendo o matiz) até ficarem visíveis (~3,5:1 contra branco, o mínimo de
+// 3:1 que a WCAG pede para elementos gráficos). Cores já escuras passam intactas.
+// Usar só em borda/traço/ícone — fundos de botão continuam com a cor original.
+const MAX_LUMINANCE_ON_LIGHT = 0.25;
+
+export function accentOnLight(hex: string): string {
+  const rgb = parseHex(hex);
+  if (!rgb) return hex;
+  if (luminance(rgb) <= MAX_LUMINANCE_ON_LIGHT) return hex;
+  for (let t = 0.05; t <= 1; t += 0.05) {
+    const shaded = rgb.map((v) => Math.round(v * (1 - t))) as [number, number, number];
+    if (luminance(shaded) <= MAX_LUMINANCE_ON_LIGHT) return toHex(shaded);
+  }
+  return '#000000';
+}
