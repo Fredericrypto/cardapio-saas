@@ -7,7 +7,6 @@ import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { useAccentColor } from '../hooks/useAccentColor';
 import { useTheme } from '../hooks/useTheme';
 import type { Tenant } from '../types';
-import { LogoViewer } from './LogoViewer';
 import { SearchBar } from './SearchBar';
 import { Tooltip } from './Tooltip';
 import { ThemeToggle } from './ThemeToggle';
@@ -227,14 +226,20 @@ export function DesktopNav({
   return (
     <nav className="hidden md:block sticky top-0 z-40 bg-white border-b border-gray-100">
       <div className="mx-auto w-full max-w-7xl md:px-8 h-16 flex items-center gap-4 lg:gap-6">
-        <div className="flex items-center gap-2.5 shrink-0 min-w-0 max-w-[14rem] self-center">
-          {/* Caixa fixa 36x36 que centraliza a logo na vertical com o nome e
-              zera qualquer margem/deslocamento herdado do LogoViewer. */}
-          <div className="relative w-9 h-9 shrink-0 flex items-center justify-center [&>*]:!m-0 [&>*]:!top-0 [&>*]:!translate-y-0">
-            <LogoViewer tenant={tenant} size="w-9 h-9" />
-          </div>
-          <span className="font-display text-sm font-bold text-gray-900 truncate">{tenant.name}</span>
-        </div>
+        {/* Marca (logo + nome) = botão "início do cardápio": leva à rota-base do
+            restaurante (com a mesa, se houver). Tooltip no hover e no foco do
+            teclado. A logo aqui é só imagem; a do BANNER (LogoViewer) continua
+            expandindo a foto, sem relação com este botão. */}
+        <Tooltip label={nav.t('nav.goHome')} className="inline-flex shrink-0 min-w-0 max-w-[14rem] self-center">
+          <Link
+            to={nav.menuHref}
+            aria-label={nav.t('nav.goHome')}
+            className="flex items-center gap-2.5 min-w-0 rounded-2xl px-2 py-1.5 -mx-2 transition-colors hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-400"
+          >
+            <NavBrandLogo tenant={tenant} />
+            <span className="font-display text-sm font-bold text-gray-900 truncate">{tenant.name}</span>
+          </Link>
+        </Tooltip>
 
         {searchVisible && onSearchChange && (
           <div className="flex-1 min-w-0 max-w-xl">
@@ -298,6 +303,25 @@ export function DesktopNav({
         </div>
       </div>
     </nav>
+  );
+}
+
+// Logo da navbar: só a imagem (ou a inicial sobre a cor da marca). Não abre o
+// lightbox — quem faz isso é o LogoViewer do banner do cardápio.
+function NavBrandLogo({ tenant }: { tenant: Tenant }) {
+  return (
+    <span className="w-9 h-9 shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-white border border-gray-100">
+      {tenant.logoUrl ? (
+        <img src={tenant.logoUrl} alt="" draggable={false} className="w-full h-full object-cover" />
+      ) : (
+        <span
+          className="w-full h-full flex items-center justify-center text-white text-sm font-bold"
+          style={{ backgroundColor: tenant.primaryColor }}
+        >
+          {tenant.name[0]?.toUpperCase()}
+        </span>
+      )}
+    </span>
   );
 }
 

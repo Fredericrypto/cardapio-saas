@@ -311,7 +311,7 @@ export function ProductDetailPage() {
       <div className="w-full max-w-6xl mx-auto md:px-8 md:py-8 lg:py-10">
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-10 items-start">
           {/* Coluna esquerda: imagem em destaque */}
-          <div className="relative aspect-[4/3] md:aspect-[16/9] lg:aspect-square md:rounded-2xl overflow-hidden bg-[#F3F4F6] dark:bg-[#282A2C] lg:sticky lg:top-8 md:shadow-sm">
+          <div className="relative aspect-[4/3] md:aspect-[16/9] lg:aspect-square md:rounded-2xl overflow-hidden bg-[#F3F4F6] dark:bg-[#282A2C] lg:sticky lg:top-24 md:shadow-sm">
             {getProductImages(product).length > 0 ? (
               <ProductImageCarousel
                 images={getProductImages(product)}
@@ -463,7 +463,7 @@ export function ProductDetailPage() {
           é pintada depois de QUALQUER interação na tela. `translateZ(0)` força
           esse bloco para a própria camada de composição. */}
       <div
-        className={`lg:hidden fixed bottom-0 left-0 right-0 p-4 ${MENU_SURFACE} border-t ${MENU_BORDER}`}
+        className={`lg:hidden fixed bottom-[var(--bottom-nav-h,0px)] left-0 right-0 p-4 ${MENU_SURFACE} border-t ${MENU_BORDER}`}
         style={{ transform: 'translateZ(0)' }}
       >
         <div className="max-w-xl mx-auto">{cta}</div>

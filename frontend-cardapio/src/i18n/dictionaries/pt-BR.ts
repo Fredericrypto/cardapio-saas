@@ -18,6 +18,7 @@ export const ptBR = {
   'nav.menu': 'Cardápio',
   'nav.cart': 'Carrinho',
   'nav.account': 'Conta',
+  'nav.goHome': 'Voltar ao início do cardápio',
 
   // Dias da semana (usados em "Abre Segunda-feira às 09:30")
   'day.name.domingo': 'Domingo',

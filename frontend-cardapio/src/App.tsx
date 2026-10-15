@@ -25,6 +25,7 @@ import { NotificationsPage } from './pages/NotificationsPage';
 import { RequireCustomerAuth } from './components/RequireCustomerAuth';
 import { OptionalCustomerAuth } from './components/OptionalCustomerAuth';
 import { CustomerAppShell } from './components/CustomerAppShell';
+import { NavLayout } from './components/NavLayout';
 import { TableSessionGate } from './components/TableSessionGate';
 
 function App() {
@@ -54,48 +55,6 @@ function App() {
               }
             />
             <Route
-              path="mesa/:qrCodeToken/conta"
-              element={
-                <OptionalCustomerAuth>
-                  <TableSessionGate>
-                    <MyAccountPage />
-                  </TableSessionGate>
-                </OptionalCustomerAuth>
-              }
-            />
-            <Route
-              path="mesa/:qrCodeToken/produto/:productId"
-              element={
-                <OptionalCustomerAuth>
-                  <TableSessionGate>
-                    <ProductDetailPage />
-                  </TableSessionGate>
-                </OptionalCustomerAuth>
-              }
-            />
-            <Route
-              path="mesa/:qrCodeToken/promocao/:promotionId"
-              element={
-                <OptionalCustomerAuth>
-                  <TableSessionGate>
-                    <PromotionDetailPage />
-                  </TableSessionGate>
-                </OptionalCustomerAuth>
-              }
-            />
-            {/* Modo Promoção (tela imersiva da promoção) — versão de mesa. O
-                token continua na URL, então a sessão da mesa não se perde. */}
-            <Route
-              path="mesa/:qrCodeToken/promocao/:promotionId/explorar"
-              element={
-                <OptionalCustomerAuth>
-                  <TableSessionGate>
-                    <PromotionExplorePage />
-                  </TableSessionGate>
-                </OptionalCustomerAuth>
-              }
-            />
-            <Route
               path="mesa/:qrCodeToken/carrinho"
               element={
                 <OptionalCustomerAuth>
@@ -115,43 +74,6 @@ function App() {
                 </RequireCustomerAuth>
               }
             />
-            <Route path="avaliacoes" element={<PublicReviewsPage />} />
-            {/* Avaliações de um item — pública como a do restaurante; serve os
-                dois fluxos (geral e mesa), o voltar usa o histórico. */}
-            <Route path="produto/:productId/avaliacoes" element={<ItemReviewsPage />} />
-            <Route
-              path="escolher-loja"
-              element={
-                <RequireCustomerAuth>
-                  <LocationPickerPage />
-                </RequireCustomerAuth>
-              }
-            />
-            <Route
-              path="produto/:productId"
-              element={
-                <RequireCustomerAuth>
-                  <ProductDetailPage />
-                </RequireCustomerAuth>
-              }
-            />
-            <Route
-              path="promocao/:promotionId"
-              element={
-                <RequireCustomerAuth>
-                  <PromotionDetailPage />
-                </RequireCustomerAuth>
-              }
-            />
-            {/* Modo Promoção — versão padrão (mesmas regras de login do detalhe). */}
-            <Route
-              path="promocao/:promotionId/explorar"
-              element={
-                <RequireCustomerAuth>
-                  <PromotionExplorePage />
-                </RequireCustomerAuth>
-              }
-            />
             <Route
               path="carrinho"
               element={
@@ -160,12 +82,6 @@ function App() {
                 </RequireCustomerAuth>
               }
             />
-
-            {/* Conta do cliente final — SEMPRE dentro do restaurante
-                (:slug). Cliente é por restaurante, não uma conta cruzando
-                vários. A tela de entrar/criar conta é a ÚNICA rota que
-                nunca exige login (senão ninguém conseguiria logar). */}
-            <Route path="conta-cliente/entrar" element={<CustomerAuthPage />} />
             <Route
               path="conta-cliente/perfil"
               element={
@@ -262,6 +178,95 @@ function App() {
                 </RequireCustomerAuth>
               }
             />
+
+            {/* Rotas SEM navbar própria: NavLayout põe a navbar global (DesktopNav no desktop,
+                BottomNav no celular). Busca só na página principal do cardápio. */}
+            <Route element={<NavLayout />}>
+              <Route
+                path="mesa/:qrCodeToken/conta"
+                element={
+                  <OptionalCustomerAuth>
+                    <TableSessionGate>
+                      <MyAccountPage />
+                    </TableSessionGate>
+                  </OptionalCustomerAuth>
+                }
+              />
+              <Route
+                path="mesa/:qrCodeToken/produto/:productId"
+                element={
+                  <OptionalCustomerAuth>
+                    <TableSessionGate>
+                      <ProductDetailPage />
+                    </TableSessionGate>
+                  </OptionalCustomerAuth>
+                }
+              />
+              <Route
+                path="mesa/:qrCodeToken/promocao/:promotionId"
+                element={
+                  <OptionalCustomerAuth>
+                    <TableSessionGate>
+                      <PromotionDetailPage />
+                    </TableSessionGate>
+                  </OptionalCustomerAuth>
+                }
+              />
+              {/* Modo Promoção (tela imersiva da promoção) — versão de mesa. O
+                  token continua na URL, então a sessão da mesa não se perde. */}
+              <Route
+                path="mesa/:qrCodeToken/promocao/:promotionId/explorar"
+                element={
+                  <OptionalCustomerAuth>
+                    <TableSessionGate>
+                      <PromotionExplorePage />
+                    </TableSessionGate>
+                  </OptionalCustomerAuth>
+                }
+              />
+              <Route path="avaliacoes" element={<PublicReviewsPage />} />
+              {/* Avaliações de um item — pública como a do restaurante; serve os
+                  dois fluxos (geral e mesa), o voltar usa o histórico. */}
+              <Route path="produto/:productId/avaliacoes" element={<ItemReviewsPage />} />
+              <Route
+                path="escolher-loja"
+                element={
+                  <RequireCustomerAuth>
+                    <LocationPickerPage />
+                  </RequireCustomerAuth>
+                }
+              />
+              <Route
+                path="produto/:productId"
+                element={
+                  <RequireCustomerAuth>
+                    <ProductDetailPage />
+                  </RequireCustomerAuth>
+                }
+              />
+              <Route
+                path="promocao/:promotionId"
+                element={
+                  <RequireCustomerAuth>
+                    <PromotionDetailPage />
+                  </RequireCustomerAuth>
+                }
+              />
+              {/* Modo Promoção — versão padrão (mesmas regras de login do detalhe). */}
+              <Route
+                path="promocao/:promotionId/explorar"
+                element={
+                  <RequireCustomerAuth>
+                    <PromotionExplorePage />
+                  </RequireCustomerAuth>
+                }
+              />
+              {/* Conta do cliente final — SEMPRE dentro do restaurante
+                  (:slug). Cliente é por restaurante, não uma conta cruzando
+                  vários. A tela de entrar/criar conta é a ÚNICA rota que
+                  nunca exige login (senão ninguém conseguiria logar). */}
+              <Route path="conta-cliente/entrar" element={<CustomerAuthPage />} />
+            </Route>
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />

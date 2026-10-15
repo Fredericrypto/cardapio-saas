@@ -12,6 +12,7 @@ export const es: Record<TranslationKey, string> = {
   'nav.menu': 'Menú',
   'nav.cart': 'Carrito',
   'nav.account': 'Cuenta',
+  'nav.goHome': 'Volver al inicio del menú',
 
   'day.name.domingo': 'domingo',
   'day.name.segunda': 'lunes',

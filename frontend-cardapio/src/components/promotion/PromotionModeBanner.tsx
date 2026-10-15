@@ -44,7 +44,7 @@ export function PromotionModeBanner({
   return (
     <aside
       aria-label={t('promotionMode.badge')}
-      className={`sticky top-0 z-30 border-b ${MENU_BORDER} ${MENU_SURFACE} shadow-sm px-4 py-3 lg:top-6 lg:self-start lg:rounded-2xl lg:border lg:p-5 lg:shadow-md`}
+      className={`sticky top-0 md:top-16 z-30 border-b ${MENU_BORDER} ${MENU_SURFACE} shadow-sm px-4 py-3 lg:top-24 lg:self-start lg:rounded-2xl lg:border lg:p-5 lg:shadow-md`}
     >
       <div className="flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">

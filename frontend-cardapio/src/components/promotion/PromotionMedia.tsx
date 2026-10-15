@@ -43,7 +43,7 @@ export function PromotionMedia({
 
   return (
     <div
-      className="isolate mx-auto w-full max-w-[max(16rem,calc((100dvh_-_14rem)*var(--promo-ratio)))] lg:max-w-[max(20rem,calc((100dvh_-_20rem)*var(--promo-ratio)))]"
+      className="isolate mx-auto w-full max-w-[max(16rem,calc((100dvh_-_14rem)*var(--promo-ratio)))] md:max-w-[max(16rem,calc((100dvh_-_18rem)*var(--promo-ratio)))] lg:max-w-[max(20rem,calc((100dvh_-_24rem)*var(--promo-ratio)))]"
       style={{ '--promo-ratio': effectiveRatio } as React.CSSProperties}
     >
       {/* A luz da imagem fica colada SOMENTE nela (mesmo raio nos 4 lados); o painel

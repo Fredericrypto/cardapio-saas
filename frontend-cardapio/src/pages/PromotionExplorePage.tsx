@@ -424,7 +424,7 @@ export function PromotionExplorePage() {
               key={selectedProduct?.id}
               id={PANEL_ID}
               aria-label={t('promotionMode.panelLabel')}
-              className={`promo-panel-in sticky top-6 flex max-h-[calc(100dvh-10rem)] flex-col overflow-hidden rounded-2xl border shadow-md ${MENU_SURFACE} ${MENU_BORDER}`}
+              className={`promo-panel-in sticky top-24 flex max-h-[calc(100dvh-14rem)] flex-col overflow-hidden rounded-2xl border shadow-md ${MENU_SURFACE} ${MENU_BORDER}`}
             >
               {panel}
             </aside>

@@ -12,6 +12,7 @@ export const en: Record<TranslationKey, string> = {
   'nav.menu': 'Menu',
   'nav.cart': 'Cart',
   'nav.account': 'Account',
+  'nav.goHome': 'Back to the menu home',
 
   'day.name.domingo': 'Sunday',
   'day.name.segunda': 'Monday',
