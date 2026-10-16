@@ -2,6 +2,8 @@ import { memo } from 'react';
 import { Ban, Plus } from 'lucide-react';
 import { useI18n } from '../../i18n/I18nContext';
 import { AnimatedGradientButton } from '../AnimatedGradientButton';
+import { Tooltip } from '../Tooltip';
+import { PromotionQuantityStepper } from './PromotionQuantityStepper';
 import { localizedField } from '../../i18n/contentText';
 import { formatBRL } from '../../lib/promotionPresentation';
 import { getProductImages } from '../../lib/productImages';
@@ -27,6 +29,13 @@ interface PromotionExploreProductCardProps {
   onToggle: (productId: string) => void;
   onSelect: (productId: string) => void;
   onQuickAdd: (product: Product) => void;
+  // Quantidade deste produto no carrinho (soma de todas as linhas). 0 = o botão
+  // "+" simples; > 0 = seletor compacto [ − ] [ qtd ] [ + ].
+  quantity: number;
+  // Também estáveis: agem na linha do carrinho que o card controla
+  // (findProductCartLine). "−" em 1 remove o item do carrinho.
+  onIncrease: (product: Product) => void;
+  onDecrease: (product: Product) => void;
 }
 
 // Card do Modo Promoção: preço de hoje riscado e preço com a promoção, ambos
@@ -34,6 +43,12 @@ interface PromotionExploreProductCardProps {
 // quem avisa quanto falta é o banner. Item fora da promoção (ou indisponível)
 // aparece abaixo dos elegíveis, atenuado e com selo, mas segue clicável e
 // comprável: o cliente nunca fica travado fora do desconto.
+//
+// Carrinho no card: sem o item (quantity 0) é o "+" de sempre; com o item vira
+// o seletor compacto. Produto com adicionais obrigatórios continua abrindo o
+// painel no primeiro "+" (precisa escolher); já no carrinho, "+" repete a linha
+// existente e "−" tira dela. Item indisponível ou loja fechada nunca aumenta,
+// mas o cliente ainda consegue REMOVER o que já está no carrinho.
 function PromotionExploreProductCardImpl({
   product,
   preview,
@@ -43,6 +58,9 @@ function PromotionExploreProductCardImpl({
   onToggle,
   onSelect,
   onQuickAdd,
+  quantity,
+  onIncrease,
+  onDecrease,
 }: PromotionExploreProductCardProps) {
   const { t } = useI18n();
   const name = localizedField(product, 'name');
@@ -57,6 +75,8 @@ function PromotionExploreProductCardImpl({
   const listStrike = !showDeal && product.promoPrice != null ? formatBRL(preview.listUnitPrice) : null;
   const addLabel = t('product.add', { name });
   const actionLabel = hasRequiredOptions ? t('promotionMode.options') : addLabel;
+  const inCart = quantity > 0;
+  const blocked = storeClosed || isUnavailable;
 
   return (
     <div
@@ -104,11 +124,17 @@ function PromotionExploreProductCardImpl({
           <p className={`line-clamp-2 min-h-[2.5rem] text-sm font-semibold ${isUnavailable ? MENU_TEXT_MUTED : MENU_TEXT}`}>
             {name}
           </p>
-          <div className="mt-auto flex items-baseline gap-2 pt-1.5">
-            {showDeal && <span className={`text-xs tabular-nums line-through ${MENU_TEXT_MUTED}`}>R$ {from}</span>}
-            {listStrike && <span className={`text-xs tabular-nums line-through ${MENU_TEXT_MUTED}`}>R$ {listStrike}</span>}
+          {/* Com o seletor no canto, só cabe o preço final (o "de R$" segue no
+              aria-label do card e o selo "Economize" na foto). */}
+          <div className={`mt-auto flex items-baseline gap-2 pt-1.5 ${inCart ? 'pr-9' : ''}`}>
+            {!inCart && showDeal && (
+              <span className={`text-xs tabular-nums line-through ${MENU_TEXT_MUTED}`}>R$ {from}</span>
+            )}
+            {!inCart && listStrike && (
+              <span className={`text-xs tabular-nums line-through ${MENU_TEXT_MUTED}`}>R$ {listStrike}</span>
+            )}
             <span
-              className={`text-sm font-bold tabular-nums ${showDeal ? '' : isUnavailable ? MENU_TEXT_MUTED : MENU_TEXT}`}
+              className={`whitespace-nowrap text-sm font-bold tabular-nums ${showDeal ? '' : isUnavailable ? MENU_TEXT_MUTED : MENU_TEXT}`}
               style={showDeal ? { color: 'var(--accent)' } : undefined}
             >
               R$ {to}
@@ -117,25 +143,44 @@ function PromotionExploreProductCardImpl({
         </div>
       </button>
 
-      {storeClosed || isUnavailable ? (
-        <span
-          aria-label={`${name}: ${isUnavailable ? t('productCard.indisponivel') : t('store.closedEstablishment')}`}
-          className="absolute bottom-3 right-3 flex h-8 w-8 cursor-not-allowed items-center justify-center rounded-full bg-gray-400 text-white shadow-md"
+      {inCart ? (
+        <PromotionQuantityStepper
+          size="compact"
+          className="absolute bottom-[10px] right-[10px]"
+          value={quantity}
+          onDecrease={() => onDecrease(product)}
+          onIncrease={() => onIncrease(product)}
+          disableIncrease={blocked}
+          groupLabel={`${name}: ${t('promotionMode.quantity')}`}
+          increaseLabel={t('tooltip.increase')}
+          decreaseLabel={t('tooltip.decrease')}
+          removeLabel={t('tooltip.remove')}
+        />
+      ) : blocked ? (
+        <Tooltip
+          label={isUnavailable ? t('productCard.indisponivel') : t('store.closedEstablishment')}
+          className="contents"
         >
-          <Ban size={15} strokeWidth={1.5} />
-        </span>
+          <span
+            aria-label={`${name}: ${isUnavailable ? t('productCard.indisponivel') : t('store.closedEstablishment')}`}
+            className="absolute bottom-3 right-3 flex h-8 w-8 cursor-not-allowed items-center justify-center rounded-full bg-gray-400 text-white shadow-md"
+          >
+            <Ban size={15} strokeWidth={1.5} />
+          </span>
+        </Tooltip>
       ) : (
-        <AnimatedGradientButton
-          onClick={() => (hasRequiredOptions ? onSelect(product.id) : onQuickAdd(product))}
-          aria-label={actionLabel}
-          title={actionLabel}
-          animation="hover"
-          className="absolute bottom-[10px] right-[10px] h-9 w-9 rounded-full shadow-md"
-          fillClassName="bg-[var(--brand)] text-white"
-          contentClassName="flex h-full w-full items-center justify-center"
-        >
-          <Plus size={16} strokeWidth={2.75} aria-hidden="true" />
-        </AnimatedGradientButton>
+        <Tooltip label={actionLabel} className="contents">
+          <AnimatedGradientButton
+            onClick={() => (hasRequiredOptions ? onSelect(product.id) : onQuickAdd(product))}
+            aria-label={actionLabel}
+            animation="hover"
+            className="absolute bottom-[10px] right-[10px] h-9 w-9 rounded-full shadow-md"
+            fillClassName="bg-[var(--brand)] text-white"
+            contentClassName="flex h-full w-full items-center justify-center"
+          >
+            <Plus size={16} strokeWidth={2.75} aria-hidden="true" />
+          </AnimatedGradientButton>
+        </Tooltip>
       )}
     </div>
   );

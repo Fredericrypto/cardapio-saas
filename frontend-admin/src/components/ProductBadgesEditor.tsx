@@ -109,7 +109,11 @@ export function ProductBadgesEditor({ value, onChange, autoBadges = [] }: Produc
                 <label
                   key={code}
                   title={locked ? `Limite de ${MAX_DECLARED_CHIP_BADGES} badges. Desmarque outro para escolher este.` : undefined}
-                  className={`group flex cursor-pointer items-center gap-3 rounded-xl border border-gray-200 px-3 py-2.5 transition hover:border-gray-300 has-[:checked]:border-[#111827] has-[:checked]:bg-[#F3F4F6] dark:has-[:checked]:border-[#E3E2E6] dark:has-[:checked]:bg-[#282A2C] has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-gray-400 ${
+                  className={`group flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 transition ${
+                    checked
+                      ? 'border-[#111827] bg-[#F3F4F6] dark:border-[#E3E2E6] dark:bg-[#282A2C]'
+                      : 'border-gray-200 hover:border-gray-300'
+                  } has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-gray-400 ${
                     wide ? 'sm:col-span-2' : ''
                   }`}
                 >
@@ -120,7 +124,13 @@ export function ProductBadgesEditor({ value, onChange, autoBadges = [] }: Produc
                     onChange={(e) => toggle(code, e.target.checked)}
                     className="sr-only"
                   />
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-500 transition-colors group-has-[:checked]:bg-[#111827] group-has-[:checked]:text-white dark:group-has-[:checked]:bg-[#E3E2E6] dark:group-has-[:checked]:text-[#131314]">
+                  <span
+                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${
+                      checked
+                        ? 'bg-[#111827] text-white dark:bg-[#E3E2E6] dark:text-[#131314]'
+                        : 'bg-gray-100 text-gray-500'
+                    }`}
+                  >
                     <Icon size={16} strokeWidth={1.5} aria-hidden="true" />
                   </span>
                   <span className="min-w-0 flex-1 text-sm leading-tight text-gray-700">

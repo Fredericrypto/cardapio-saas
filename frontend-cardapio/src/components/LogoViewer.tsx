@@ -52,7 +52,7 @@ function LogoImage({ tenant, textSize }: { tenant: Tenant; textSize: string }) {
 // ao tocar fora ou no botão voltar do aparelho. `onClose` vai por ref para
 // um re-render do pai não refazer o efeito (o que desfaria e recriaria a
 // entrada de histórico e fecharia o viewer sozinho).
-function FullscreenOverlay({
+export function FullscreenOverlay({
   label,
   onClose,
   children,

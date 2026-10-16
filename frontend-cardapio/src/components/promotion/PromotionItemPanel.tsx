@@ -1,15 +1,19 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useCallback, useId, useMemo, useRef, useState } from 'react';
+import type { MouseEvent as ReactMouseEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { Ban, Check, ChevronRight, Info, Minus, Plus, Tag, X } from 'lucide-react';
+import { Ban, Check, ChevronRight, Info, Maximize2, Tag, X } from 'lucide-react';
 import { useCart } from '../../contexts/CartContext';
 import { localizedField } from '../../i18n/contentText';
 import { useI18n } from '../../i18n/I18nContext';
 import { CartIcon } from '../MenuIcons';
 import { AnimatedGradientButton } from '../AnimatedGradientButton';
+import { ImageLightbox } from '../ImageLightbox';
 import { ProductImageCarousel } from '../ProductImageCarousel';
 import { ProductOptionGroupList } from '../ProductOptionGroupList';
 import { ShareButton } from '../ShareButton';
+import { PromotionQuantityStepper } from './PromotionQuantityStepper';
 import { Tooltip } from '../Tooltip';
+import { buildLineKey, findCartLine } from '../../lib/cartLines';
 import { MENU_SURFACE, MENU_TEXT, MENU_TEXT_BODY, MENU_TEXT_MUTED } from '../../lib/menuTheme';
 import { getProductImages } from '../../lib/productImages';
 import {
@@ -24,16 +28,12 @@ import { formatBRL } from '../../lib/promotionPresentation';
 import { PROMO_FOCUS, PROMO_SUCCESS_TEXT } from '../../lib/promotionTheme';
 import type { Product, ProductOptionGroup, Promotion } from '../../types';
 
-const ADDED_FEEDBACK_MS = 1800;
-
-const QTY_BUTTON =
-  'w-9 h-9 rounded-full bg-[#FFFFFF] dark:bg-[#3A3C3E] text-[#374151] dark:text-[#E3E2E6] ' +
-  'flex items-center justify-center shadow-sm border border-[#E5E7EB] dark:border-white/10 ' +
-  'hover:bg-[#F9FAFB] dark:hover:bg-[#46484A] disabled:opacity-40 disabled:cursor-not-allowed transition';
-
 // Layout interno do CTA; a moldura e a borda animada vêm do AnimatedGradientButton.
 const CTA_CONTENT = 'py-3.5 text-sm font-semibold flex justify-between items-center gap-3 px-5';
-// "Adicionado": preenchimento verde e SEM borda animada (confirmação, não convite).
+// Status "Adicionado ao carrinho": padding menor e texto que pode quebrar em 2 linhas (cabe ao lado do seletor).
+const CTA_STATUS = 'py-2.5 px-4 text-sm font-semibold leading-tight flex justify-between items-center gap-3';
+// "Adicionado ao carrinho": preenchimento verde, SEM borda animada e sem ação
+// (é status, não convite: quem mexe na quantidade é o seletor ao lado).
 const CTA_ADDED_FILL = 'text-[#FFFFFF] bg-green-600 dark:bg-green-500 dark:text-[#131314]';
 
 export interface PromotionItemPanelProps {
@@ -58,6 +58,14 @@ export interface PromotionItemPanelProps {
 // com a quantidade e os adicionais escolhidos aqui. A tela pai remonta o painel
 // (key = id do produto) a cada troca de item, então quantidade e escolhas
 // começam limpas para cada item.
+//
+// Carrinho: o painel representa "este produto com ESTES adicionais" (a linha do
+// carrinho, achada por buildLineKey). Fora do carrinho, o seletor ajusta a
+// quantidade de um rascunho e o botão principal adiciona. Com a linha no
+// carrinho, o seletor passa a ser o do próprio carrinho (tempo real, inclusive
+// quando o card ou o carrinho mudam a quantidade) e o botão vira o status
+// "Adicionado ao carrinho"; reduzir a 0 remove a linha e o botão volta a
+// "Adicionar".
 export function PromotionItemPanel({
   product,
   promotion,
@@ -71,25 +79,25 @@ export function PromotionItemPanel({
   titleId,
 }: PromotionItemPanelProps) {
   const { t } = useI18n();
-  const { addItem } = useCart();
+  const { items, addItem, increaseItem, decreaseItem } = useCart();
   const fallbackId = useId();
   const headingId = titleId ?? fallbackId;
 
-  const [quantity, setQuantity] = useState(1);
+  // Quantidade do RASCUNHO (só vale enquanto a linha não está no carrinho).
+  const [draftQuantity, setDraftQuantity] = useState(1);
   const [selections, setSelections] = useState<OptionSelections>({});
   const [validationError, setValidationError] = useState<string | null>(null);
-  const [justAdded, setJustAdded] = useState(false);
-  const addedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(
-    () => () => {
-      if (addedTimer.current) clearTimeout(addedTimer.current);
-    },
-    [],
-  );
+  // Foto ampliada (ImageLightbox): abre na foto que o carrossel estava mostrando.
+  const [zoomOpen, setZoomOpen] = useState(false);
+  const [photoIndex, setPhotoIndex] = useState(0);
+  const zoomButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const groups = useMemo(() => visibleOptionGroups(product), [product]);
   const selectedOptions = useMemo(() => buildSelectedOptions(groups, selections), [groups, selections]);
+  const lineKey = useMemo(() => buildLineKey(product.id, selectedOptions), [product.id, selectedOptions]);
+  const cartLine = useMemo(() => findCartLine(items, lineKey), [items, lineKey]);
+  const inCart = cartLine !== null;
+  const quantity = cartLine ? cartLine.quantity : draftQuantity;
   const preview = useMemo(
     () => previewItemPromotion(promotion, product, { selectedOptions, quantity, cartTotal }),
     [promotion, product, selectedOptions, quantity, cartTotal],
@@ -103,6 +111,11 @@ export function PromotionItemPanel({
   const outOfPromotion = !preview.covered;
   // Item com promoPrice próprio e fora da promoção: mantém o preço de tabela riscado.
   const showListStrike = !showDeal && product.promoPrice != null && preview.listUnitPrice > preview.unitPriceBeforePromo;
+
+  const closeZoom = useCallback(() => {
+    setZoomOpen(false);
+    requestAnimationFrame(() => zoomButtonRef.current?.focus({ preventScroll: true }));
+  }, []);
 
   const handleToggle = useCallback(
     (group: ProductOptionGroup, valueId: string) => {
@@ -134,12 +147,28 @@ export function PromotionItemPanel({
       );
       return;
     }
-    addItem(product, selectedOptions, quantity);
+    addItem(product, selectedOptions, draftQuantity);
     setValidationError(null);
-    setQuantity(1);
-    setJustAdded(true);
-    if (addedTimer.current) clearTimeout(addedTimer.current);
-    addedTimer.current = setTimeout(() => setJustAdded(false), ADDED_FEEDBACK_MS);
+    setDraftQuantity(1);
+  }
+
+  // Item indisponível/loja fechada: nunca aumenta, mas dá para REMOVER o que já
+  // está no carrinho. Sem a linha no carrinho não há o que ajustar.
+  const blocked = isUnavailable || storeClosed;
+
+  function handleIncrease() {
+    if (blocked) return;
+    if (cartLine) increaseItem(cartLine.lineKey);
+    else setDraftQuantity((q) => q + 1);
+  }
+
+  function handleDecrease() {
+    if (cartLine) {
+      setValidationError(null);
+      decreaseItem(cartLine.lineKey); // em 1 remove a linha; o painel volta ao rascunho
+    } else {
+      setDraftQuantity((q) => Math.max(1, q - 1));
+    }
   }
 
   const from = formatBRL(preview.unitPriceBeforePromo);
@@ -184,17 +213,22 @@ export function PromotionItemPanel({
         {t('productCard.indisponivel')}
       </button>
     );
+  } else if (inCart) {
+    cta = (
+      <div className={`w-full rounded-xl promo-added-pop ${CTA_STATUS} ${CTA_ADDED_FILL}`}>
+        <span className="flex min-w-0 items-center gap-2">
+          <Check size={16} strokeWidth={2} className="shrink-0" aria-hidden="true" />
+          <span className="min-w-0">{t('promotionMode.added')}</span>
+        </span>
+        <span className="shrink-0 whitespace-nowrap tabular-nums">R$ {lineAfter}</span>
+      </div>
+    );
   } else {
     cta = (
-      <AnimatedGradientButton
-        onClick={handleAdd}
-        animated={!justAdded}
-        fillClassName={justAdded ? CTA_ADDED_FILL : undefined}
-        contentClassName={`${CTA_CONTENT} ${justAdded ? 'promo-added-pop' : ''}`}
-      >
+      <AnimatedGradientButton onClick={handleAdd} contentClassName={CTA_CONTENT}>
         <span className="flex items-center gap-2 whitespace-nowrap">
-          {justAdded ? <Check size={16} strokeWidth={2} aria-hidden="true" /> : <CartIcon size={16} />}
-          {justAdded ? t('promotionMode.added') : t('productDetailPage.adicionar')}
+          <CartIcon size={16} />
+          {t('productDetailPage.adicionar')}
         </span>
         <span className="whitespace-nowrap tabular-nums">R$ {lineAfter}</span>
       </AnimatedGradientButton>
@@ -210,12 +244,18 @@ export function PromotionItemPanel({
           }`}
         >
           {images.length > 0 ? (
-            <ProductImageCarousel
-              images={images}
-              alt={name}
-              size="detail"
-              imgClassName={isUnavailable ? 'grayscale opacity-60' : ''}
-            />
+            // Clicar na foto amplia (só aqui, no painel — os cards da grade não). Setas
+            // do carrossel e arrastar já interrompem o clique; o botão abaixo é o
+            // caminho para teclado/leitor de tela.
+            <div className="absolute inset-0 cursor-zoom-in" onClick={() => setZoomOpen(true)}>
+              <ProductImageCarousel
+                images={images}
+                alt={name}
+                size="detail"
+                imgClassName={isUnavailable ? 'grayscale opacity-60' : ''}
+                onIndexChange={setPhotoIndex}
+              />
+            </div>
           ) : (
             <div className={`flex h-full w-full items-center justify-center text-sm ${MENU_TEXT_MUTED}`}>
               {t('productCard.sem_foto')}
@@ -238,6 +278,27 @@ export function PromotionItemPanel({
               title={name}
               text={product.description ?? undefined}
             />
+          )}
+          {images.length > 0 && (
+            <Tooltip label={t('promotionMode.zoomPhoto')} className="contents">
+              <button
+                ref={zoomButtonRef}
+                type="button"
+                onClick={() => setZoomOpen(true)}
+                aria-label={t('promotionMode.zoomPhoto')}
+                aria-haspopup="dialog"
+                className={`absolute bottom-3 right-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-[#111827] shadow-md transition hover:scale-105 dark:bg-[#1E1E20]/90 dark:text-[#E3E2E6] ${PROMO_FOCUS}`}
+              >
+                <Maximize2 size={16} strokeWidth={1.5} aria-hidden="true" />
+              </button>
+            </Tooltip>
+          )}
+          {zoomOpen && (
+            // `contents` + stopPropagation: eventos de um portal sobem pela árvore do
+            // React; sem isso um clique no visualizador chegaria ao sheet por baixo.
+            <div className="contents" onClick={(e: ReactMouseEvent) => e.stopPropagation()}>
+              <ImageLightbox images={images} alt={name} initialIndex={photoIndex} onClose={closeZoom} />
+            </div>
           )}
         </div>
 
@@ -331,40 +392,22 @@ export function PromotionItemPanel({
           </p>
         )}
         <div className="flex items-center gap-3">
-          <div
-            role="group"
-            aria-label={t('promotionMode.quantity')}
-            className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#E5E7EB] bg-[#F3F4F6] p-1 dark:border-white/10 dark:bg-[#1E1E20]"
-          >
-            <Tooltip label={t('tooltip.decrease')}>
-              <button
-                type="button"
-                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                disabled={quantity <= 1}
-                aria-label={t('tooltip.decrease')}
-                className={QTY_BUTTON}
-              >
-                <Minus size={16} strokeWidth={1.5} aria-hidden="true" />
-              </button>
-            </Tooltip>
-            <span className={`w-7 text-center font-semibold tabular-nums ${MENU_TEXT}`} aria-live="polite">
-              {quantity}
-            </span>
-            <Tooltip label={t('tooltip.increase')}>
-              <button
-                type="button"
-                onClick={() => setQuantity((q) => q + 1)}
-                aria-label={t('tooltip.increase')}
-                className={QTY_BUTTON}
-              >
-                <Plus size={16} strokeWidth={1.5} aria-hidden="true" />
-              </button>
-            </Tooltip>
-          </div>
+          <PromotionQuantityStepper
+            size="regular"
+            value={quantity}
+            onDecrease={handleDecrease}
+            onIncrease={handleIncrease}
+            disableDecrease={inCart ? false : blocked || draftQuantity <= 1}
+            disableIncrease={blocked}
+            groupLabel={t('promotionMode.quantity')}
+            increaseLabel={t('tooltip.increase')}
+            decreaseLabel={t('tooltip.decrease')}
+            removeLabel={inCart ? t('tooltip.remove') : undefined}
+          />
           <div className="min-w-0 flex-1">{cta}</div>
         </div>
         <span className="sr-only" role="status" aria-live="polite">
-          {justAdded ? t('promotionMode.added') : ''}
+          {inCart ? t('promotionMode.added') : ''}
         </span>
       </div>
     </div>

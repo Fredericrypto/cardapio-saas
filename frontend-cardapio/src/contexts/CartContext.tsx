@@ -1,15 +1,8 @@
 import { createContext, useContext, useState, useMemo, useCallback, useRef, useEffect, type ReactNode } from 'react';
 import type { CartItem, Product, SelectedCartOption } from '../types';
-
-// Chave que identifica uma linha do carrinho de forma única — o mesmo
-// produto com customizações DIFERENTES (ex: "sem cebola" vs "com bacon")
-// são linhas separadas, nunca somadas na mesma quantidade. Ids de opção
-// ordenados pra "bacon + queijo" e "queijo + bacon" caírem na mesma
-// linha (mesma escolha, ordem diferente).
-function buildLineKey(productId: string, selectedOptions: SelectedCartOption[]): string {
-  const sortedIds = selectedOptions.map((o) => o.valueId).sort().join(',');
-  return `${productId}::${sortedIds}`;
-}
+// A chave da linha (produto + adicionais) mora em lib/cartLines.ts: o Modo
+// Promoção precisa calcular a MESMA chave para achar a linha no carrinho.
+import { buildLineKey } from '../lib/cartLines';
 
 interface PersistedCart {
   items: CartItem[];

@@ -117,3 +117,25 @@ export function toggleSelectedProductId(current: string | null, clicked: string)
 
 /** id do card no DOM (âncora de rolagem e devolução de foco ao fechar o painel). */
 export const promotionCardDomId = (productId: string): string => `promo-item-${productId}`;
+
+export interface BackStepInput {
+  /** `window.history.state.idx` do react-router (0 = primeira entrada da sessão); null se indisponível. */
+  historyIdx: number | null;
+  /** `location.key` do react-router ('default' = entrada inicial, sem tela anterior no app). */
+  routerKey: string;
+  /** Esta tela empurrou uma entrada de histórico para o painel do item (?item=). */
+  panelPushed: boolean;
+}
+
+/**
+ * Passos de histórico que o botão "Voltar" da tela deve dar para SAIR dela, ou
+ * null quando não há tela anterior confiável no app (link compartilhado, aba
+ * nova): aí o chamador vai para o cardápio. Com o painel aberto por esta tela
+ * há uma entrada extra (o `?item=`), então sair custa 2 passos, não 1 — senão o
+ * "Voltar" só fecharia o painel.
+ */
+export function resolveBackStep({ historyIdx, routerKey, panelPushed }: BackStepInput): number | null {
+  const steps = panelPushed ? 2 : 1;
+  if (historyIdx !== null) return historyIdx >= steps ? -steps : null;
+  return !panelPushed && routerKey !== 'default' ? -1 : null;
+}

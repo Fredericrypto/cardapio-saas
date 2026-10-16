@@ -4,4 +4,4 @@
 // essa string manualmente a cada entrega nova; se o rodapé do painel
 // mostrar uma versão diferente da que eu acabei de mandar, é sinal de que o
 // deploy/reload não pegou — não precisa adivinhar mais.
-export const BUILD_VERSION = '2026-10-14-sessao-siod-02';
+export const BUILD_VERSION = '2026-10-15-sessao-siod-04';

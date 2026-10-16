@@ -1,20 +1,25 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
+import { ArrowLeft } from 'lucide-react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { categoryLabel } from '../i18n/categoryLabel';
 import { useI18n } from '../i18n/I18nContext';
 import { CartBar } from '../components/CartBar';
+import { getCategoryIcon, PromocoesIcon } from '../components/CategoryIcon';
+import { TodosIcon } from '../components/MenuIcons';
 import { PromotionModeBanner } from '../components/promotion/PromotionModeBanner';
 import { PromotionExploreProductCard } from '../components/promotion/PromotionExploreProductCard';
 import { PromotionItemPanel } from '../components/promotion/PromotionItemPanel';
 import { PromotionItemSheet } from '../components/promotion/PromotionItemSheet';
 import { PromotionSkeleton, PromotionUnavailable } from '../components/promotion/PromotionStates';
+import { Tooltip } from '../components/Tooltip';
 import { useCart } from '../contexts/CartContext';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { useTenant } from '../contexts/TenantContext';
 import { useAccentColor } from '../hooks/useAccentColor';
 import { useActiveMenuLocation } from '../hooks/useActiveMenuLocation';
 import { useMediaQuery } from '../hooks/useMediaQuery';
+import { buildProductQuantityMap, findProductCartLine } from '../lib/cartLines';
 import { fetchActivePromotions, fetchCategories, fetchProducts } from '../lib/menu-api';
 import {
   computeMinOrderProgress,
@@ -28,11 +33,13 @@ import {
   findCatalogProduct,
   promotionCardDomId,
   PROMOTION_ITEM_PARAM,
+  resolveBackStep,
   toggleSelectedProductId,
   type EligibleProductGroup,
 } from '../lib/promotionMode';
 import { buildShareUrl } from '../lib/shareLinks';
 import { MENU_BORDER, MENU_PAGE_BG, MENU_SURFACE, MENU_TEXT, MENU_TEXT_BODY, MENU_TEXT_SOFT } from '../lib/menuTheme';
+import { PROMO_FOCUS } from '../lib/promotionTheme';
 import type { Category, Product, Promotion } from '../types';
 
 const PRODUCT_REFRESH_MS = 15000;
@@ -84,7 +91,7 @@ export function PromotionExplorePage() {
   const isTableFlow = Boolean(qrCodeToken);
   const { tenant } = useTenant();
   const { token: customerToken } = useCustomerAuth();
-  const { items, totalPrice, addItem, selectedPromotionIds, selectPromotion } = useCart();
+  const { items, totalPrice, addItem, increaseItem, decreaseItem, selectedPromotionIds, selectPromotion } = useCart();
   const accent = useAccentColor(tenant?.primaryColor ?? '#111827');
   const { location, isReady } = useActiveMenuLocation(isTableFlow);
   const isSplit = useMediaQuery(SPLIT_QUERY);
@@ -279,6 +286,49 @@ export function PromotionExplorePage() {
 
   const quickAdd = useCallback((product: Product) => addItem(product), [addItem]);
 
+  // Seletor dos cards: age sobre a linha do carrinho que o card controla. Lê o
+  // carrinho por ref para os callbacks continuarem estáveis (cards memoizados);
+  // as quantidades exibidas vêm de `quantityByProduct`, que reage a `items`.
+  const itemsRef = useRef(items);
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
+
+  const quickIncrease = useCallback(
+    (product: Product) => {
+      const line = findProductCartLine(itemsRef.current, product.id);
+      if (line) increaseItem(line.lineKey);
+      else addItem(product);
+    },
+    [addItem, increaseItem],
+  );
+
+  // "−" em 1 unidade remove a linha (decreaseItem descarta quantidade 0).
+  const quickDecrease = useCallback(
+    (product: Product) => {
+      const line = findProductCartLine(itemsRef.current, product.id);
+      if (line) decreaseItem(line.lineKey);
+    },
+    [decreaseItem],
+  );
+
+  const quantityByProduct = useMemo(() => buildProductQuantityMap(items), [items]);
+
+  // Voltar: sai DESTA tela para a anterior do histórico (detalhe da promoção,
+  // cardápio...). Com o painel aberto há uma entrada extra no histórico, que
+  // resolveBackStep já considera. Sem tela anterior no app (link compartilhado,
+  // aba nova) vai ao cardápio, igual à página de detalhe da promoção.
+  const goBack = useCallback(() => {
+    const idx = (window.history.state as { idx?: unknown } | null)?.idx;
+    const step = resolveBackStep({
+      historyIdx: typeof idx === 'number' ? idx : null,
+      routerKey: routerLocation.key,
+      panelPushed: urlRef.current.panelPushed,
+    });
+    if (step !== null) navigate(step);
+    else navigate(paths.menu, { replace: true });
+  }, [navigate, paths.menu, routerLocation.key]);
+
   // Fechar pelo painel/teclado devolve o foco ao card de origem.
   const closeItemAndRefocus = useCallback(() => {
     const current = urlRef.current.selectedId;
@@ -328,9 +378,12 @@ export function PromotionExplorePage() {
   const renderGroups = (groups: EligibleProductGroup[], scope: 'eligible' | 'other') =>
     groups.map(({ category, products: groupProducts }) => {
       const headingId = `promo-${scope}-cat-${category.id}`;
+      // Mesmo ícone da seção da categoria no cardápio (MenuPage).
+      const CategoryGlyph = getCategoryIcon(category.key, category.name);
       return (
         <section key={category.id} className="mb-8 last:mb-0" aria-labelledby={headingId}>
-          <h3 id={headingId} className={`mb-3 font-display text-lg font-bold ${MENU_TEXT}`}>
+          <h3 id={headingId} className={`mb-3 flex items-center gap-2 font-display text-lg font-bold ${MENU_TEXT}`}>
+            {CategoryGlyph && <CategoryGlyph size={18} />}
             {categoryLabel(category, t)}
           </h3>
           <div className={gridClass}>
@@ -346,6 +399,9 @@ export function PromotionExplorePage() {
                 onToggle={toggleItem}
                 onSelect={selectItem}
                 onQuickAdd={quickAdd}
+                quantity={quantityByProduct.get(product.id) ?? 0}
+                onIncrease={quickIncrease}
+                onDecrease={quickDecrease}
               />
             ))}
           </div>
@@ -374,62 +430,80 @@ export function PromotionExplorePage() {
       className={`relative min-h-screen ${MENU_PAGE_BG} pb-28 lg:pb-12`}
       style={{ '--brand': tenant.primaryColor, '--accent': accent } as CSSProperties}
     >
-      <div className="mx-auto w-full max-w-[88rem] lg:grid lg:grid-cols-[19rem_minmax(0,1fr)] lg:items-start lg:gap-8 lg:px-8 lg:py-8">
-        <PromotionModeBanner
-          promotion={promotion}
-          eligibleCount={catalog.count}
-          minOrder={minOrder}
-          savingAmount={savingAmount}
-          isActive={isActive}
-          canActivate={!isUsedUp && !isStoreClosed}
-          onActivate={() => selectPromotion(promotion.id)}
-          onExit={exitMode}
-        />
-
-        <main
-          className={`px-4 pb-6 pt-4 lg:p-0 ${
-            hasSplitPanel ? 'xl:grid xl:grid-cols-[minmax(0,1fr)_26rem] xl:items-start xl:gap-6' : ''
-          }`}
-        >
-          <div className="min-w-0">
-            {isUsedUp && <p className={`mb-4 text-sm ${MENU_TEXT_BODY}`}>{t('promotionDetailPage.voce_ja_usou_essa')}</p>}
-            {isStoreClosed && !isUsedUp && (
-              <p className={`mb-4 text-sm ${MENU_TEXT_BODY}`}>{t('promotionMode.closedNotice')}</p>
-            )}
-
-            <section aria-labelledby="promo-eligible-title">
-              <h2 id="promo-eligible-title" className={`mb-4 font-display text-xl font-extrabold ${MENU_TEXT}`}>
-                {t('promotionMode.eligibleItemsTitle')}
-              </h2>
-              {catalog.count === 0 ? (
-                <p className={`py-8 text-center text-sm ${MENU_TEXT_BODY}`}>{t('promotionMode.empty')}</p>
-              ) : (
-                renderGroups(catalog.groups, 'eligible')
-              )}
-            </section>
-
-            {catalog.otherCount > 0 && (
-              <section aria-labelledby="promo-other-title" className={`mt-10 border-t pt-8 ${MENU_BORDER}`}>
-                <h2 id="promo-other-title" className={`font-display text-xl font-extrabold ${MENU_TEXT_SOFT}`}>
-                  {t('promotionMode.otherItemsTitle')}
-                </h2>
-                <p className={`mb-4 mt-1 text-sm ${MENU_TEXT_BODY}`}>{t('promotionMode.otherItemsHint')}</p>
-                {renderGroups(catalog.otherGroups, 'other')}
-              </section>
-            )}
-          </div>
-
-          {hasSplitPanel && (
-            <aside
-              key={selectedProduct?.id}
-              id={PANEL_ID}
-              aria-label={t('promotionMode.panelLabel')}
-              className={`promo-panel-in sticky top-24 flex max-h-[calc(100dvh-14rem)] flex-col overflow-hidden rounded-2xl border shadow-md ${MENU_SURFACE} ${MENU_BORDER}`}
+      <div className="mx-auto w-full max-w-[88rem]">
+        {/* Mesmo botão das subpáginas do cardápio (ProfileSubpageShell). */}
+        <div className="flex items-center px-4 pb-3 pt-4 md:px-8 lg:pb-0 lg:pt-8">
+          <Tooltip label={t('tooltip.back')}>
+            <button
+              type="button"
+              onClick={goBack}
+              aria-label={t('common.back')}
+              className={`flex h-10 w-10 items-center justify-center rounded-full border ${MENU_SURFACE} ${MENU_BORDER} ${MENU_TEXT} transition-colors hover:bg-black/[0.03] dark:hover:bg-white/5 ${PROMO_FOCUS}`}
             >
-              {panel}
-            </aside>
-          )}
-        </main>
+              <ArrowLeft size={20} strokeWidth={1.5} aria-hidden="true" />
+            </button>
+          </Tooltip>
+        </div>
+
+        <div className="lg:grid lg:grid-cols-[19rem_minmax(0,1fr)] lg:items-start lg:gap-8 lg:px-8 lg:pb-8 lg:pt-6">
+          <PromotionModeBanner
+            promotion={promotion}
+            eligibleCount={catalog.count}
+            minOrder={minOrder}
+            savingAmount={savingAmount}
+            isActive={isActive}
+            canActivate={!isUsedUp && !isStoreClosed}
+            onActivate={() => selectPromotion(promotion.id)}
+            onExit={exitMode}
+          />
+
+          <main
+            className={`px-4 pb-6 pt-4 lg:p-0 ${
+              hasSplitPanel ? 'xl:grid xl:grid-cols-[minmax(0,1fr)_26rem] xl:items-start xl:gap-6' : ''
+            }`}
+          >
+            <div className="min-w-0">
+              {isUsedUp && <p className={`mb-4 text-sm ${MENU_TEXT_BODY}`}>{t('promotionDetailPage.voce_ja_usou_essa')}</p>}
+              {isStoreClosed && !isUsedUp && (
+                <p className={`mb-4 text-sm ${MENU_TEXT_BODY}`}>{t('promotionMode.closedNotice')}</p>
+              )}
+
+              <section aria-labelledby="promo-eligible-title">
+                <h2 id="promo-eligible-title" className={`mb-4 flex items-center gap-2 font-display text-xl font-extrabold ${MENU_TEXT}`}>
+                  <PromocoesIcon size={20} />
+                  {t('promotionMode.eligibleItemsTitle')}
+                </h2>
+                {catalog.count === 0 ? (
+                  <p className={`py-8 text-center text-sm ${MENU_TEXT_BODY}`}>{t('promotionMode.empty')}</p>
+                ) : (
+                  renderGroups(catalog.groups, 'eligible')
+                )}
+              </section>
+
+              {catalog.otherCount > 0 && (
+                <section aria-labelledby="promo-other-title" className={`mt-10 border-t pt-8 ${MENU_BORDER}`}>
+                  <h2 id="promo-other-title" className={`flex items-center gap-2 font-display text-xl font-extrabold ${MENU_TEXT_SOFT}`}>
+                    <TodosIcon size={20} />
+                    {t('promotionMode.otherItemsTitle')}
+                  </h2>
+                  <p className={`mb-4 mt-1 text-sm ${MENU_TEXT_BODY}`}>{t('promotionMode.otherItemsHint')}</p>
+                  {renderGroups(catalog.otherGroups, 'other')}
+                </section>
+              )}
+            </div>
+
+            {hasSplitPanel && (
+              <aside
+                key={selectedProduct?.id}
+                id={PANEL_ID}
+                aria-label={t('promotionMode.panelLabel')}
+                className={`promo-panel-in sticky top-24 flex max-h-[calc(100dvh-14rem)] flex-col overflow-hidden rounded-2xl border shadow-md ${MENU_SURFACE} ${MENU_BORDER}`}
+              >
+                {panel}
+              </aside>
+            )}
+          </main>
+        </div>
       </div>
 
       {!isSplit && panel && (
