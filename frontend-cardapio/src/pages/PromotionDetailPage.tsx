@@ -28,8 +28,6 @@ import { PROMO_FOCUS, PROMO_LINK_BTN } from '../lib/promotionTheme';
 import { PROFILE_CARD } from '../lib/profileTheme';
 import {
   MENU_PAGE_BG,
-  MENU_SURFACE,
-  MENU_BORDER,
   MENU_TEXT,
   MENU_TEXT_SOFT,
   MENU_TEXT_MUTED,
@@ -435,9 +433,9 @@ export function PromotionDetailPage() {
 
       {/* Barra fixa (celular/tablet) */}
       <div
-        className={`lg:hidden fixed bottom-[var(--bottom-nav-h,0px)] left-0 right-0 z-20 px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] ${MENU_SURFACE} border-t ${MENU_BORDER}`}
+        className={`lg:hidden fixed bottom-[var(--bottom-nav-h,0px)] left-0 right-0 z-20 px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] pointer-events-none`}
       >
-        <div className="max-w-xl mx-auto">{cta}</div>
+        <div className="max-w-xl mx-auto pointer-events-auto">{cta}</div>
       </div>
     </div>
   );

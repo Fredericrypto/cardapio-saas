@@ -366,18 +366,23 @@ function InfoColumn({
       >
         {title}
       </h3>
-      <div className="relative flex flex-col items-center justify-center gap-4 w-full text-center md:flex-1">
+      {/* Corpo = conteudo + acao do rodape. O divisor vertical mora AQUI (e nao so na area do
+          conteudo) para ter exatamente a mesma altura em todas as colunas, mesmo quando o
+          rodape (rota / telefone) muda a altura do conteudo. */}
+      <div className="relative flex flex-col items-center gap-2 w-full md:flex-1">
         {divider && (
           <span
             aria-hidden="true"
             className="hidden md:block absolute -left-4 top-[12%] bottom-[12%] w-px bg-[#E5E7EB] dark:bg-white/10"
           />
         )}
-        {children}
+        <div className="flex flex-col items-center justify-center gap-4 w-full text-center md:flex-1">
+          {children}
+        </div>
+        {/* Acao no rodape: as colunas esticam pela mais alta, entao o botao de rota (endereco) e o
+            de telefone (contato) terminam na mesma base. */}
+        {action && <div className="flex w-full items-end justify-center">{action}</div>}
       </div>
-      {/* Acao no rodape: as colunas esticam pela mais alta, entao o botao de rota (endereco) e o
-          de telefone (contato) ficam na mesma altura. */}
-      {action && <div className="flex w-full items-end justify-center">{action}</div>}
     </div>
   );
 }
