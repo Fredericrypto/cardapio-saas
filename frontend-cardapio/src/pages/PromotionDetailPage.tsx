@@ -433,7 +433,7 @@ export function PromotionDetailPage() {
 
       {/* Barra fixa (celular/tablet) */}
       <div
-        className={`lg:hidden fixed bottom-[var(--bottom-nav-h,0px)] left-0 right-0 z-20 px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] pointer-events-none`}
+        className={`lg:hidden fixed bottom-[var(--bottom-nav-h,0px)] left-0 right-0 z-20 px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] pointer-events-none transform-gpu will-change-transform`}
       >
         <div className="max-w-xl mx-auto pointer-events-auto">{cta}</div>
       </div>
