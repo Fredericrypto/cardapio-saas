@@ -65,6 +65,7 @@ import { CashbackLedgerEntry } from './modules/cashback/cashback-ledger-entry.en
 import { CashbackConsumption } from './modules/cashback/cashback-consumption.entity';
 import { Review } from './modules/reviews/review.entity';
 import { ReviewResponse } from './modules/reviews/review-response.entity';
+import { ReviewLike } from './modules/reviews/review-like.entity';
 import { PushSubscription } from './modules/push/push-subscription.entity';
 
 import { TenantBackup } from './modules/backups/tenant-backup.entity';
@@ -139,6 +140,7 @@ import { BackupAuditLog } from './modules/backups/backup-audit-log.entity';
           CashbackConsumption,
           Review,
           ReviewResponse,
+          ReviewLike,
           PushSubscription,
           Role,
           Permission,

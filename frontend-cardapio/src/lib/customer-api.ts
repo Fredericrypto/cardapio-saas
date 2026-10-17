@@ -397,6 +397,9 @@ export interface PublicReview {
   isAnonymous: boolean;
   createdAt: string;
   response: { responseText: string; createdAt: string } | null;
+  // Opcionais de propósito: respostas antigas/cacheadas sem esses campos contam como 0 / não curtiu.
+  likeCount?: number;
+  likedByMe?: boolean;
 }
 
 export interface ReviewSummary {
@@ -482,14 +485,39 @@ export async function deleteReview(tenantId: string, token: string, reviewId: st
 // Públicas, sem login — pro cardápio mostrar nota + reviews recentes.
 // Sempre passa locationId quando disponível: cada unidade tem sua
 // própria nota, independente das outras.
+// `opts.token` (opcional) faz o servidor devolver `likedByMe`; `opts.rating` (1-5) filtra por nota
+// no servidor (total e paginação continuam certos).
+export interface PublicReviewsOptions {
+  token?: string | null;
+  rating?: number;
+}
+
 export async function fetchPublicReviews(
   tenantId: string,
   locationId?: string,
   page = 1,
+  opts: PublicReviewsOptions = {},
 ): Promise<{ items: PublicReview[]; total: number }> {
   const { data } = await api.get<{ items: PublicReview[]; total: number }>(
     `/reviews/public/${tenantId}`,
-    { params: { page, locationId } },
+    {
+      params: { page, locationId, rating: opts.rating || undefined },
+      headers: opts.token ? { Authorization: `Bearer ${opts.token}` } : undefined,
+    },
+  );
+  return data;
+}
+
+// Curtir / descurtir (alterna). Só cliente logado. Devolve o estado final do servidor.
+export async function toggleReviewLike(
+  tenantId: string,
+  token: string,
+  reviewId: string,
+): Promise<{ liked: boolean; likeCount: number }> {
+  const { data } = await api.post<{ liked: boolean; likeCount: number }>(
+    `/reviews/public/${tenantId}/${reviewId}/like`,
+    undefined,
+    { headers: { Authorization: `Bearer ${token}` } },
   );
   return data;
 }
@@ -525,10 +553,14 @@ export async function fetchItemReviews(
   tenantId: string,
   productId: string,
   page = 1,
+  opts: PublicReviewsOptions = {},
 ): Promise<{ items: PublicReview[]; total: number }> {
   const { data } = await api.get<{ items: PublicReview[]; total: number }>(
     `/reviews/public/${tenantId}/item/${productId}`,
-    { params: { page } },
+    {
+      params: { page, rating: opts.rating || undefined },
+      headers: opts.token ? { Authorization: `Bearer ${opts.token}` } : undefined,
+    },
   );
   return data;
 }

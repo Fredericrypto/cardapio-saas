@@ -1,14 +1,27 @@
 import { activeDateLocale } from '../i18n/languages';
 import { useI18n } from '../i18n/I18nContext';
-import { ArrowLeft, Star, User } from 'lucide-react';
+import type { CSSProperties, ReactNode } from 'react';
+import { ArrowLeft, ChevronDown, Star, User } from 'lucide-react';
 import type { PublicReview, ReviewSummary } from '../lib/customer-api';
 import { useTenant } from '../contexts/TenantContext';
+import { MENU_BORDER, MENU_PAGE_BG, MENU_SURFACE, MENU_TEXT, MENU_TEXT_BODY, MENU_TEXT_MUTED, MENU_TEXT_SOFT } from '../lib/menuTheme';
+import { PAGE_CONTAINER } from '../lib/profileTheme';
+import { FoodBackdrop } from './FoodBackdrop';
+import { GlassCard } from './GlassCard';
+import { GlowButton } from './GlowButton';
+import { LikeButton } from './LikeButton';
+import { ReviewFilter } from './ReviewFilter';
+import type { RatingFilterValue } from './ReviewFilter';
+import './review-extras.css';
+import { Tooltip } from './Tooltip';
 import { VerifiedBadge } from './VerifiedBadge';
 
 // Peças visuais ÚNICAS das telas de avaliação: a do restaurante
 // (PublicReviewsPage) e a de cada item (ItemReviewsPage) usam exatamente
 // o mesmo padrão — nota geral + distribuição, cards de avaliação e a
-// resposta do restaurante.
+// resposta do restaurante. Visual: o mesmo fundo de ícones de comida do
+// cardápio (FoodBackdrop) e cartões de vidro com glow (GlassCard) da tela de
+// login do painel, nos temas claro e escuro.
 
 export function formatReviewDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString(activeDateLocale(), {
@@ -20,13 +33,14 @@ export function formatReviewDate(dateStr: string): string {
 
 export function Stars({ rating, size = 14 }: { rating: number; size?: number }) {
   return (
-    <div className="flex items-center gap-0.5">
+    <div className="flex items-center gap-0.5" role="img" aria-label={`${rating}/5`}>
       {[1, 2, 3, 4, 5].map((n) => (
         <Star
           key={n}
           size={size}
+          aria-hidden="true"
           fill={n <= rating ? '#F59E0B' : 'transparent'}
-          className={n <= rating ? 'text-amber-500' : 'text-gray-300'}
+          className={n <= rating ? 'text-amber-500' : 'text-[#D1D5DB] dark:text-white/20'}
         />
       ))}
     </div>
@@ -44,16 +58,22 @@ export function ReviewerAvatar({
   avatarUrl,
   isAnonymous,
   isVerified,
+  size = 32,
 }: {
   name: string;
   avatarUrl: string | null;
   isAnonymous: boolean;
   isVerified: boolean;
+  size?: number;
 }) {
+  const box = { width: size, height: size };
   if (isAnonymous) {
     return (
-      <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center shrink-0">
-        <User size={16} className="text-gray-400" />
+      <div
+        className="rounded-full bg-gray-200 dark:bg-white/10 flex items-center justify-center shrink-0"
+        style={box}
+      >
+        <User size={Math.round(size / 2)} className="text-gray-400" />
       </div>
     );
   }
@@ -62,11 +82,11 @@ export function ReviewerAvatar({
   return (
     <div className="relative shrink-0">
       {avatarUrl ? (
-        <img src={avatarUrl} alt="" className="w-8 h-8 rounded-full object-cover bg-gray-100" />
+        <img src={avatarUrl} alt="" className="rounded-full object-cover bg-gray-100 dark:bg-white/10" style={box} />
       ) : (
         <div
-          className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold"
-          style={{ backgroundColor: AVATAR_COLORS[colorIndex] }}
+          className={`rounded-full flex items-center justify-center text-white font-bold ${size >= 40 ? 'text-sm' : 'text-xs'}`}
+          style={{ ...box, backgroundColor: AVATAR_COLORS[colorIndex] }}
         >
           {initial}
         </div>
@@ -83,20 +103,30 @@ export function ReviewerAvatar({
 // Resposta do restaurante: identificada SÓ pelo nome do restaurante e
 // pela foto dele — na mesma janelinha QUADRADA de cantos arredondados do
 // perfil do restaurante (nunca redonda, que é o formato dos avatares de
-// cliente) — seguidos do texto da resposta.
+// cliente) — seguidos do texto da resposta. `glass` = variante para cima
+// de cartão de vidro (claro/escuro); sem ele, o visual original (usado por
+// "Minhas avaliações").
 export function RestaurantResponse({
   responseText,
   className = '',
+  glass = false,
 }: {
   responseText: string;
   className?: string;
+  glass?: boolean;
 }) {
   const { t } = useI18n();
   const { tenant } = useTenant();
   return (
-    <div className={`bg-gray-50 rounded-xl px-3 py-2.5 border border-gray-100 ${className}`}>
+    <div
+      className={`${
+        glass
+          ? 'bg-black/[0.03] dark:bg-white/[0.05] rounded-xl px-3.5 py-3 border border-[#E5E7EB] dark:border-white/10'
+          : 'bg-gray-50 rounded-xl px-3 py-2.5 border border-gray-100'
+      } ${className}`}
+    >
       <div className="flex items-center gap-2">
-        <div className="w-8 h-8 rounded-lg border-2 border-white shadow-sm bg-white overflow-hidden shrink-0">
+        <div className="w-8 h-8 rounded-lg border-2 border-white dark:border-white/15 shadow-sm bg-white overflow-hidden shrink-0">
           {tenant?.logoUrl ? (
             <img src={tenant.logoUrl} alt="" className="w-full h-full object-cover" />
           ) : (
@@ -108,43 +138,143 @@ export function RestaurantResponse({
             </div>
           )}
         </div>
-        <p className="text-xs font-semibold text-gray-700 truncate">{tenant?.name ?? t('reviewsShared.restaurante')}</p>
+        <p className={`text-xs font-semibold truncate ${glass ? MENU_TEXT_SOFT : 'text-gray-700'}`}>
+          {tenant?.name ?? t('reviewsShared.restaurante')}
+        </p>
       </div>
-      <p className="text-sm text-gray-700 mt-2">{responseText}</p>
+      <p className={`text-sm mt-2 ${glass ? MENU_TEXT_SOFT : 'text-gray-700'}`}>{responseText}</p>
     </div>
   );
 }
 
 export function ReviewCard({ review }: { review: PublicReview }) {
   return (
-    <div className="bg-white rounded-2xl p-4 border border-gray-100">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
+    <GlassCard radius={20} cursorGlow={false} bodyClassName="p-4 md:p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           <ReviewerAvatar
             name={review.customerDisplayName}
             avatarUrl={review.customerAvatarUrl}
             isAnonymous={review.isAnonymous}
             isVerified={review.customerIsVerified}
+            size={40}
           />
-          <p className="text-sm font-semibold text-gray-900 flex items-center gap-1">
-            {review.customerDisplayName}
-            {review.customerIsVerified && <VerifiedBadge size={13} />}
-          </p>
+          <div className="min-w-0">
+            <p className={`flex items-center gap-1 text-sm font-semibold ${MENU_TEXT}`}>
+              <span className="truncate">{review.customerDisplayName}</span>
+              {review.customerIsVerified && <VerifiedBadge size={13} />}
+            </p>
+            <p className={`text-xs ${MENU_TEXT_MUTED}`}>{formatReviewDate(review.createdAt)}</p>
+          </div>
         </div>
-        <Stars rating={review.rating} />
+        <Stars rating={review.rating} size={15} />
       </div>
-      <p className="text-xs text-gray-400 mt-0.5 ml-[38px]">{formatReviewDate(review.createdAt)}</p>
-      {review.comment && <p className="text-sm text-gray-700 mt-2">{review.comment}</p>}
-      {review.response && (
-        <RestaurantResponse responseText={review.response.responseText} className="mt-2.5" />
+      {review.comment && (
+        <p className={`mt-3 break-words text-sm leading-relaxed ${MENU_TEXT_SOFT}`}>{review.comment}</p>
       )}
+      {review.response && <RestaurantResponse glass responseText={review.response.responseText} className="mt-3" />}
+      <div className="mt-4 flex justify-start">
+        <LikeButton
+          reviewId={review.id}
+          initialCount={review.likeCount ?? 0}
+          initialLiked={review.likedByMe ?? false}
+        />
+      </div>
+    </GlassCard>
+  );
+}
+
+// Cartão de destaque: nota geral + distribuição por estrelas. Em telas grandes fica
+// fixo na coluna da esquerda enquanto a lista rola ao lado.
+function SummaryBody({ summary, row = false }: { summary: ReviewSummary; row?: boolean }) {
+  const { t } = useI18n();
+  const hasReviews = summary.count > 0;
+  return (
+    <div className={`flex items-center gap-5 ${row ? '' : 'lg:flex-col lg:items-stretch lg:gap-6'}`}>
+      <div className={`shrink-0 text-center ${row ? '' : 'lg:pt-1'}`}>
+        <p className={`font-display text-5xl font-bold leading-none ${MENU_TEXT}`}>
+          {hasReviews ? summary.average.toFixed(1) : '—'}
+        </p>
+        {hasReviews && (
+          <div className="mt-2.5 flex justify-center">
+            <Stars rating={Math.round(summary.average)} size={18} />
+          </div>
+        )}
+        <p className={`mt-2 text-xs ${MENU_TEXT_MUTED}`}>
+          {summary.count} {summary.count === 1 ? t('reviewsShared.avaliacao') : t('reviewsShared.avaliacoes_2')}
+        </p>
+      </div>
+      <div className="flex flex-1 flex-col gap-2">
+        {[5, 4, 3, 2, 1].map((n) => {
+          const count = summary.distribution[n as 1 | 2 | 3 | 4 | 5];
+          const pct = hasReviews ? (count / summary.count) * 100 : 0;
+          return (
+            <div key={n} className="flex items-center gap-2">
+              <span className={`w-3 text-right text-[11px] font-semibold tabular-nums ${MENU_TEXT_BODY}`}>{n}</span>
+              <Star size={11} fill="#F59E0B" className="shrink-0 text-amber-500" aria-hidden="true" />
+              <div className="h-2 flex-1 overflow-hidden rounded-full bg-black/[0.06] dark:bg-white/10">
+                <div
+                  className="h-full rounded-full"
+                  style={{ width: `${pct}%`, background: 'linear-gradient(90deg, #FBBF24, #F59E0B)' }}
+                />
+              </div>
+              <span className={`w-6 text-right text-[11px] tabular-nums ${MENU_TEXT_MUTED}`}>{count}</span>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
-// Página completa de avaliações (cabeçalho com voltar, nota geral com a
-// distribuição, lista de cards e "Ver mais"). A do restaurante e a de
-// cada item usam este mesmo layout.
+function SummaryCard({ summary }: { summary: ReviewSummary }) {
+  return (
+    <GlassCard orbit cursorGlow={false} radius={28} className="lg:sticky lg:top-24" bodyClassName="p-5 md:p-6">
+      <SummaryBody summary={summary} />
+    </GlassCard>
+  );
+}
+
+// Esqueletos enquanto a primeira página carrega (no lugar do vazio de antes).
+function SummarySkeleton() {
+  return (
+    <GlassCard radius={28} cursorGlow={false} className="lg:sticky lg:top-24" bodyClassName="p-5 md:p-6">
+      <div className="flex animate-pulse items-center gap-5 lg:flex-col lg:items-stretch lg:gap-6" aria-hidden="true">
+        <div className="mx-auto h-24 w-24 rounded-2xl bg-black/[0.06] dark:bg-white/10" />
+        <div className="flex flex-1 flex-col gap-2.5 self-stretch">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-2 rounded-full bg-black/[0.06] dark:bg-white/10" />
+          ))}
+        </div>
+      </div>
+    </GlassCard>
+  );
+}
+
+function ReviewSkeleton() {
+  return (
+    <GlassCard radius={20} cursorGlow={false} bodyClassName="p-4 md:p-5">
+      <div className="flex animate-pulse flex-col gap-3" aria-hidden="true">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-full bg-black/[0.06] dark:bg-white/10" />
+          <div className="flex flex-1 flex-col gap-2">
+            <div className="h-3 w-1/3 rounded-full bg-black/[0.06] dark:bg-white/10" />
+            <div className="h-2.5 w-1/5 rounded-full bg-black/[0.06] dark:bg-white/10" />
+          </div>
+        </div>
+        <div className="h-3 w-full rounded-full bg-black/[0.06] dark:bg-white/10" />
+        <div className="h-3 w-2/3 rounded-full bg-black/[0.06] dark:bg-white/10" />
+      </div>
+    </GlassCard>
+  );
+}
+
+// Página completa de avaliações (cabeçalho com voltar, nota geral com a distribuição, filtro por
+// nota, lista de cards e "Ver mais"). A do restaurante e a de cada item usam este mesmo layout.
+//  - COM `hero` (página do restaurante): grid assimétrico no desktop — hero à esquerda (fixo) e,
+//    à direita, UM painel de vidro com os pontos de luz na borda contendo resumo + filtro + lista.
+//  - SEM `hero` (página de item): layout de sempre (nota geral à esquerda, lista ao lado).
+// Celular: uma coluna. A navbar vem do NavLayout; aqui só o conteúdo e o fundo.
 export function ReviewsPageLayout({
   subtitle,
   onBack,
@@ -153,6 +283,9 @@ export function ReviewsPageLayout({
   total,
   isLoading,
   onLoadMore,
+  hero,
+  ratingFilter = 0,
+  onRatingFilterChange,
 }: {
   subtitle?: string;
   onBack: () => void;
@@ -161,67 +294,109 @@ export function ReviewsPageLayout({
   total: number;
   isLoading: boolean;
   onLoadMore: () => void;
+  hero?: ReactNode;
+  ratingFilter?: RatingFilterValue;
+  onRatingFilterChange?: (v: RatingFilterValue) => void;
 }) {
   const { t } = useI18n();
-  return (
-    <div className="min-h-screen bg-gray-50 pb-10 max-w-md mx-auto">
-      <div className="flex items-center gap-3 px-4 py-4 bg-white border-b border-gray-100">
-        <button onClick={onBack} aria-label={t('common.back')}>
-          <ArrowLeft size={20} />
-        </button>
-        <div className="min-w-0">
-          <h1 className="font-display font-bold text-lg leading-tight">{t('reviewsShared.avaliacoes')}</h1>
-          {subtitle && <p className="text-xs text-gray-400 truncate">{subtitle}</p>}
-        </div>
-      </div>
+  const { tenant } = useTenant();
+  const heading = subtitle ?? tenant?.name;
+  const showSide = summary !== null || isLoading;
+  const firstLoad = isLoading && reviews.length === 0;
+  const filtering = ratingFilter !== 0;
+  const wide = !hero; // sem hero a lista pode ter 2 colunas em telas largas
 
-      {summary && (
-        <div className="px-4 mt-4">
-          <div className="bg-white rounded-2xl p-5 border border-gray-100 flex items-center gap-4">
-            <div className="text-center shrink-0">
-              <p className="text-3xl font-bold text-gray-900">
-                {summary.count > 0 ? summary.average.toFixed(1) : '—'}
-              </p>
-              {summary.count > 0 && <Stars rating={Math.round(summary.average)} />}
-              <p className="text-[11px] text-gray-400 mt-0.5">
-                {summary.count} {summary.count === 1 ? t('reviewsShared.avaliacao') : t('reviewsShared.avaliacoes_2')}
-              </p>
-            </div>
-            <div className="flex-1 flex flex-col gap-1">
-              {[5, 4, 3, 2, 1].map((n) => {
-                const count = summary.distribution[n as 1 | 2 | 3 | 4 | 5];
-                const pct = summary.count > 0 ? (count / summary.count) * 100 : 0;
-                return (
-                  <div key={n} className="flex items-center gap-1.5">
-                    <span className="text-[10px] text-gray-400 w-3">{n}</span>
-                    <div className="flex-1 h-1.5 rounded-full bg-gray-100 overflow-hidden">
-                      <div className="h-full bg-amber-500" style={{ width: `${pct}%` }} />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+  const filterBar = onRatingFilterChange ? (
+    <ReviewFilter value={ratingFilter} onChange={onRatingFilterChange} summary={summary} />
+  ) : null;
+
+  const list = (
+    // `key` = filtro: ao trocar, a lista remonta e os cartões entram de novo, escalonados.
+    <div
+      key={`f-${ratingFilter}`}
+      aria-busy={isLoading}
+      className={`rv-stagger grid grid-cols-1 gap-3 transition-opacity duration-200 ${wide ? 'xl:grid-cols-2 xl:gap-4' : ''} ${
+        isLoading && reviews.length > 0 ? 'opacity-60' : 'opacity-100'
+      }`}
+    >
+      {firstLoad && [0, 1, 2].map((i) => <ReviewSkeleton key={i} />)}
+
+      {!isLoading && reviews.length === 0 && (
+        <div className={wide ? 'xl:col-span-2' : ''}>
+          <GlassCard radius={20} cursorGlow={false} bodyClassName="flex flex-col items-center gap-3 px-6 py-12 text-center">
+            <Star size={28} strokeWidth={1.5} className={MENU_TEXT_MUTED} aria-hidden="true" />
+            <p className={`text-sm ${MENU_TEXT_BODY}`}>
+              {filtering ? t('reviewsFilter.empty') : t('reviewsShared.ainda_nao_ha_avaliacoes')}
+            </p>
+          </GlassCard>
         </div>
       )}
 
-      <div className="px-4 mt-4 flex flex-col gap-3">
-        {!isLoading && reviews.length === 0 && (
-          <p className="text-sm text-gray-400 text-center py-12">{t('reviewsShared.ainda_nao_ha_avaliacoes')}</p>
-        )}
+      {reviews.map((review, i) => (
+        <div key={review.id} style={{ '--rv-i': Math.min(i, 8) } as CSSProperties}>
+          <ReviewCard review={review} />
+        </div>
+      ))}
 
-        {reviews.map((review) => (
-          <ReviewCard key={review.id} review={review} />
-        ))}
-
-        {reviews.length < total && (
-          <button
+      {reviews.length > 0 && reviews.length < total && (
+        <div className={`flex justify-center pt-2 ${wide ? 'xl:col-span-2' : ''}`}>
+          <GlowButton
             onClick={onLoadMore}
-            disabled={isLoading}
-            className="py-2.5 text-sm font-semibold text-gray-500"
+            loading={isLoading}
+            icon={<ChevronDown size={16} strokeWidth={1.75} aria-hidden="true" />}
           >
-            {isLoading ? 'Carregando...' : t('reviewsShared.ver_mais_avaliacoes')}
-          </button>
+            {isLoading ? t('common.loading') : t('reviewsShared.ver_mais_avaliacoes')}
+          </GlowButton>
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div className={`relative isolate min-h-screen ${MENU_PAGE_BG} pb-10 md:pb-16 print:bg-white`}>
+      <FoodBackdrop />
+      <div className={PAGE_CONTAINER}>
+        <div className="mb-5 flex items-center gap-3 md:mb-8 print:hidden">
+          <Tooltip label={t('common.back')}>
+            <button
+              onClick={onBack}
+              aria-label={t('common.back')}
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border ${MENU_SURFACE} ${MENU_BORDER} ${MENU_TEXT} transition-colors hover:bg-black/[0.03] dark:hover:bg-white/5`}
+            >
+              <ArrowLeft size={20} strokeWidth={1.5} />
+            </button>
+          </Tooltip>
+          <div className="min-w-0">
+            <h1 className={`font-display text-lg font-bold leading-tight md:text-2xl ${MENU_TEXT}`}>
+              {t('reviewsShared.avaliacoes')}
+            </h1>
+            {heading && <p className={`truncate text-xs md:text-sm ${MENU_TEXT_MUTED}`}>{heading}</p>}
+          </div>
+        </div>
+
+        {hero ? (
+          <div className="lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-start lg:gap-10 xl:gap-14">
+            <div className="mb-8 lg:sticky lg:top-24 lg:mb-0 lg:py-6">{hero}</div>
+            <GlassCard orbit cursorGlow={false} radius={28} bodyClassName="flex flex-col gap-4 p-4 md:p-6">
+              {summary ? (
+                <SummaryBody summary={summary} row />
+              ) : (
+                showSide && <div className="h-24 animate-pulse rounded-2xl bg-black/[0.06] dark:bg-white/10" aria-hidden="true" />
+              )}
+              {filterBar}
+              {list}
+            </GlassCard>
+          </div>
+        ) : (
+          <div className={showSide ? 'lg:grid lg:grid-cols-[21rem_minmax(0,1fr)] lg:items-start lg:gap-8' : ''}>
+            {showSide && (
+              <div className="mb-4 lg:mb-0">{summary ? <SummaryCard summary={summary} /> : <SummarySkeleton />}</div>
+            )}
+            <div className="flex flex-col gap-3">
+              {filterBar}
+              {list}
+            </div>
+          </div>
         )}
       </div>
     </div>

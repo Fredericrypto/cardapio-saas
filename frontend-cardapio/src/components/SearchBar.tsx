@@ -1,6 +1,6 @@
 import { useI18n } from '../i18n/I18nContext';
 import { Search } from 'lucide-react';
-import { MENU_BORDER, MENU_SURFACE_SUBTLE, MENU_TEXT_MUTED, MENU_TEXT_SOFT } from '../lib/menuTheme';
+import { MENU_BORDER, MENU_TEXT_MUTED, MENU_TEXT_SOFT } from '../lib/menuTheme';
 import { Tooltip } from './Tooltip';
 
 interface SearchBarProps {
@@ -17,7 +17,7 @@ export function SearchBar({ value, onChange }: SearchBarProps) {
           aparece com o mouse sobre a barra. */}
       <Tooltip label={t('tooltip.search')} showOnFocus={false} className="block w-full">
         <div
-          className={`border rounded-xl md:rounded-full px-3.5 md:px-4 py-2.5 flex items-center gap-2 transition-colors focus-within:border-[#D1D5DB] dark:focus-within:border-white/30 ${MENU_SURFACE_SUBTLE} ${MENU_BORDER}`}
+          className={`border rounded-xl md:rounded-full px-3.5 md:px-4 py-2.5 flex items-center gap-2 transition-colors focus-within:border-[#D1D5DB] dark:focus-within:border-white/30 bg-transparent backdrop-blur-md ${MENU_BORDER}`}
         >
           <Search size={18} className={`shrink-0 ${MENU_TEXT_MUTED}`} />
           <input

@@ -6,7 +6,7 @@ import type { Category } from '../types';
 import { getCategoryIcon } from './CategoryIcon';
 import { useAccentColor } from '../hooks/useAccentColor';
 import { useWheelHorizontalScroll } from '../hooks/useWheelHorizontalScroll';
-import { MENU_BORDER, MENU_TEXT_MUTED } from '../lib/menuTheme';
+import { MENU_TEXT_MUTED } from '../lib/menuTheme';
 import { Tooltip } from './Tooltip';
 
 interface CategoryChipsProps {
@@ -76,7 +76,7 @@ export function CategoryChips({
   };
 
   return (
-    <div className={`relative border-b ${MENU_BORDER}`}>
+    <div className="relative">
     <div ref={scrollRef} className="overflow-x-auto no-scrollbar">
       {/* `w-max min-w-full justify-center` centraliza quando cabe na tela e, quando não
           cabe, continua rolando normal pra esquerda (justify-center
@@ -108,7 +108,7 @@ export function CategoryChips({
         tabIndex={-1}
         aria-hidden="true"
         onClick={() => scrollByStep(-1)}
-        className={`absolute left-0 top-0 h-full w-10 flex items-center justify-start pl-1.5 bg-gradient-to-r from-[#FFFFFF] via-[#FFFFFF]/90 to-transparent dark:from-[#131314] dark:via-[#131314]/90 dark:to-transparent md:hover:opacity-70 transition-opacity ${MENU_TEXT_MUTED}`}
+        className={`absolute left-1 top-1/2 -translate-y-1/2 size-7 rounded-full flex items-center justify-center bg-white/60 dark:bg-white/[0.08] border border-black/5 dark:border-white/10 backdrop-blur-md shadow-sm md:hover:opacity-70 transition-opacity ${MENU_TEXT_MUTED}`}
       >
         <ArrowLeft size={14} strokeWidth={2} />
       </button>
@@ -119,7 +119,7 @@ export function CategoryChips({
         tabIndex={-1}
         aria-hidden="true"
         onClick={() => scrollByStep(1)}
-        className={`absolute right-0 top-0 h-full w-10 flex items-center justify-end pr-1.5 bg-gradient-to-l from-[#FFFFFF] via-[#FFFFFF]/90 to-transparent dark:from-[#131314] dark:via-[#131314]/90 dark:to-transparent md:hover:opacity-70 transition-opacity ${MENU_TEXT_MUTED}`}
+        className={`absolute right-1 top-1/2 -translate-y-1/2 size-7 rounded-full flex items-center justify-center bg-white/60 dark:bg-white/[0.08] border border-black/5 dark:border-white/10 backdrop-blur-md shadow-sm md:hover:opacity-70 transition-opacity ${MENU_TEXT_MUTED}`}
       >
         <ArrowRight size={14} strokeWidth={2} />
       </button>
@@ -157,19 +157,23 @@ function Tab({
       <button
         onClick={onClick}
         data-active={isActive ? 'true' : 'false'}
-        className={`shrink-0 flex flex-col md:flex-row items-center gap-2 px-4 pt-2 pb-2 md:py-3 min-w-[76px] md:min-w-0 transition-colors active:bg-[#F9FAFB] md:hover:bg-[#F9FAFB] dark:active:bg-[#282A2C] dark:md:hover:bg-[#282A2C] rounded-t-xl ${colorClass}`}
+        className={`group relative shrink-0 flex flex-col md:flex-row items-center gap-2 px-4 pt-2 pb-2 md:py-3 min-w-[76px] md:min-w-0 transition-colors rounded-t-xl ${colorClass}`}
         style={{
           borderBottom: isActive ? `2.5px solid ${accent}` : '2.5px solid transparent',
         }}
       >
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 top-0 bottom-[2.5px] rounded-xl opacity-0 transition-opacity duration-150 bg-black/[0.04] ring-1 ring-inset ring-black/[0.06] backdrop-blur-md group-active:opacity-100 md:group-hover:opacity-100 dark:bg-white/[0.07] dark:ring-white/10"
+        />
         {Icon && (
-          <span className="h-6 md:h-5 flex items-center justify-center">
+          <span className="relative h-6 md:h-5 flex items-center justify-center">
             <Icon size={22} />
           </span>
         )}
         <span
           data-truncate
-          className="text-sm whitespace-nowrap max-w-[14rem] truncate"
+          className="relative text-sm whitespace-nowrap max-w-[14rem] truncate"
           style={{ fontWeight: isActive ? 700 : 500 }}
         >
           {label}

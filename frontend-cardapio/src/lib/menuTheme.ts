@@ -56,11 +56,12 @@ export const MENU_HEADER_SHELL = `md:rounded-3xl md:border md:shadow-[0_1px_3px_
 
 /** Base do banner (as alturas ficam em cada cabeçalho). Cantos de cima
  *  acompanham a casca no desktop. */
-export const MENU_BANNER_BASE = 'relative w-full overflow-hidden md:rounded-t-3xl';
+export const MENU_BANNER_BASE = 'hdr-banner relative w-full overflow-hidden md:rounded-t-3xl';
 
 /** "Sheet" do cabeçalho. No celular segue a cor da página (sem degrau no
  *  escuro); no desktop assume a cor de superfície do cartão. */
 export const MENU_HEADER_SHEET =
-  'relative z-10 -mt-6 md:mt-0 rounded-t-3xl md:rounded-t-none md:rounded-b-3xl ' +
-  'bg-[#FFFFFF] dark:bg-[#131314] md:bg-[#FFFFFF] dark:md:bg-[#1E1E20] ' +
-  'px-4 pt-3.5 pb-1 md:px-6 md:py-5';
+  'relative z-10 mt-0 rounded-3xl md:rounded-t-none md:rounded-b-3xl ' +
+  `border md:border-0 ${MENU_BORDER} ` +
+  'bg-transparent backdrop-blur-md ' +
+  'px-4 pt-2 pb-3 md:px-6 md:py-5';

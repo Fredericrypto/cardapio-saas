@@ -15,7 +15,6 @@ import { AnimatedGradientButton } from './AnimatedGradientButton';
 import { useAccentColor } from '../hooks/useAccentColor';
 import {
   MENU_BORDER,
-  MENU_SURFACE,
   MENU_SURFACE_SUBTLE,
   MENU_TEXT,
   MENU_TEXT_FAINT,
@@ -139,9 +138,9 @@ export function ProductCard({ product, primaryColor, onClick, storeClosed = fals
         hovered
           ? 'absolute inset-x-0 top-0 min-h-full scale-[1.04] motion-reduce:scale-100 shadow-[0_16px_36px_rgba(0,0,0,0.2)]'
           : 'h-full md:hover:shadow-[0_8px_22px_rgba(0,0,0,0.09)]'
-      } ${MENU_SURFACE} ${MENU_BORDER} ${isUnavailable ? 'opacity-90' : ''}`}
+      } ${MENU_BORDER} ${isUnavailable ? 'opacity-90' : ''}`}
     >
-      <div className={`relative w-full aspect-square md:aspect-[4/3] ${MENU_SURFACE_SUBTLE}`}>
+      <div className={`relative z-10 w-full aspect-square md:aspect-[4/3] ${MENU_SURFACE_SUBTLE}`}>
         {images.length > 0 ? (
           <ProductImageCarousel
             images={images}
@@ -236,7 +235,7 @@ export function ProductCard({ product, primaryColor, onClick, storeClosed = fals
         )}
       </div>
 
-      <div className="flex flex-col flex-1 px-2.5 pt-2.5 pb-3 md:px-3.5 md:pt-4 md:pb-4">
+      <div className="flex flex-col flex-1 px-2.5 pt-2.5 pb-3 md:px-3.5 md:pt-4 md:pb-4 bg-transparent md:backdrop-blur-md">
         {/* Nome e descrição de uma linha só: o balão com o texto completo abre
             apenas quando o texto está cortado (reticências). */}
         <Tooltip label={localizedField(product, 'name')} onlyIfTruncated className="block min-w-0">

@@ -1,24 +1,34 @@
-import { useI18n } from '../i18n/I18nContext';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import {
+  ArrowBigUpDash,
+  ArrowRight,
+  CircleAlert,
+  Eye,
+  EyeOff,
+  LoaderCircle,
+  Lock,
+  Mail,
+  Phone,
+  User,
+} from 'lucide-react';
+import { useI18n } from '../i18n/I18nContext';
 import { useTenant } from '../contexts/TenantContext';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
-import { PhoneInput } from '../components/PhoneInput';
 import { AppSplashScreen } from '../components/AppSplashScreen';
-import { isValidBrazilPhone } from '../lib/phone';
-import { Tooltip } from '../components/Tooltip';
-import { MENU_SURFACE, MENU_BORDER, MENU_TEXT, MENU_TEXT_BODY, MENU_TEXT_MUTED } from '../lib/menuTheme';
-import { PROFILE_INPUT } from '../lib/profileTheme';
+import { formatBrazilPhone, isValidBrazilPhone } from '../lib/phone';
+import { GlowCard } from '../components/login/GlowCard';
+import { LoginShell } from '../components/login/LoginShell';
+import { LoginTip } from '../components/login/LoginTip';
 
 // Cadastro/login do CLIENTE FINAL — única porta de entrada do app
 // (cardápio inteiro atrás de login, ver RequireCustomerAuth). Conta é
 // DESTE restaurante (:slug), nunca cruzando vários.
 //
-// Visual: claro e apetitoso, não uma tela de rede network escura — a
-// foto de capa do restaurante (se existir) desfocada ao fundo, cartão
-// de vidro branco por cima (glassmorphism de verdade, não um preto
-// genérico), botão principal com glow nas cores da marca. Cada
-// restaurante que usa o SaaS ganha uma tela com a cara dele.
+// Visual: o MESMO da tela de login do admin (components/login/*) — cartão de
+// vidro com glow que segue o mouse e vira dois pontos de luz na borda, campos
+// em pílula, botão com borda de luz, fundo escuro com ícones de comida.
+// A identidade do restaurante aparece na caixinha do logo e no nome acima do título.
 export function CustomerAuthPage() {
   const { t } = useI18n();
   const { slug } = useParams<{ slug: string }>();
@@ -32,6 +42,8 @@ export function CustomerAuthPage() {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [capsOn, setCapsOn] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showGoogleSoon, setShowGoogleSoon] = useState(false);
@@ -41,6 +53,12 @@ export function CustomerAuthPage() {
   // usa o redirect imediato do efeito logo ali embaixo, sem splash —
   // splash é só pra reforçar "acabei de entrar", não pra todo acesso).
   const [justAuthenticated, setJustAuthenticated] = useState(false);
+
+  // Foco automático no e-mail só com mouse/teclado — no celular abriria o teclado sozinho.
+  const autoFocusEmail = useMemo(
+    () => typeof window !== 'undefined' && window.matchMedia('(pointer: fine)').matches,
+    [],
+  );
 
   const redirectTo = searchParams.get('redirect') || `/${slug}`;
 
@@ -54,7 +72,8 @@ export function CustomerAuthPage() {
     }
   }, [isLoadingAuth, customer, redirectTo, navigate, justAuthenticated]);
 
-  async function handleSubmit() {
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
     setError(null);
     setIsSubmitting(true);
     try {
@@ -73,196 +92,210 @@ export function CustomerAuthPage() {
     }
   }
 
+  function handlePasswordKey(e: KeyboardEvent<HTMLInputElement>) {
+    setCapsOn(e.getModifierState('CapsLock'));
+  }
+
   if (justAuthenticated) {
     return <AppSplashScreen onFinish={() => navigate(redirectTo, { replace: true })} />;
   }
 
   if (tenantError) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen gap-3 px-6 text-center bg-[#F9FAFB] dark:bg-[#131314]">
-        <p className={`text-sm ${MENU_TEXT_BODY}`}>{tenantError}</p>
-        <Tooltip label={t('optionalCustomerAuth.tentar_de_novo')}>
-          <button onClick={retryTenant} className={`text-sm font-semibold ${MENU_TEXT} underline`}>
+      <LoginShell>
+        <div className="lg-state">
+          <p className="lg-sub">{tenantError}</p>
+          <button type="button" onClick={retryTenant} className="lg-link">
             {t('optionalCustomerAuth.tentar_de_novo')}
           </button>
-        </Tooltip>
-      </div>
+        </div>
+      </LoginShell>
     );
   }
 
   if (!tenant) {
     return (
-      <div className="flex items-center justify-center h-screen bg-[#F9FAFB] dark:bg-[#131314]">
-        <div className="w-8 h-8 border-2 border-gray-200 dark:border-white/10 border-t-gray-400 dark:border-t-gray-300 rounded-full animate-spin" />
-      </div>
+      <LoginShell>
+        <LoaderCircle className="lg-spin lg-state-spinner" size={28} strokeWidth={1.5} aria-hidden="true" />
+      </LoginShell>
     );
   }
 
-  const primary = tenant.primaryColor;
-  const secondary = tenant.secondaryColor;
+  const isRegister = mode === 'register';
+  const phoneInvalid = phone.length > 0 && !isValidBrazilPhone(phone);
 
   return (
-    <div className="relative min-h-screen overflow-hidden flex items-center justify-center px-5 py-10 bg-[#F9FAFB] dark:bg-[#131314]">
-      {/* Fundo: foto de capa do restaurante desfocada (se existir),
-          senão um gradiente claro nas cores da marca — nunca um preto
-          genérico. */}
-      {tenant.coverImageUrl ? (
-        <>
-          <div
-            className="absolute inset-0 bg-cover bg-center scale-110 blur-2xl opacity-40"
-            style={{ backgroundImage: `url(${tenant.coverImageUrl})` }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-white/60 via-white/70 to-white/90 dark:from-[#131314]/60 dark:via-[#131314]/70 dark:to-[#131314]/90" />
-        </>
-      ) : (
-        <div
-          className="absolute inset-0 opacity-[0.15]"
-          style={{ background: `radial-gradient(circle at 20% 10%, ${primary}, transparent 55%), radial-gradient(circle at 85% 90%, ${secondary}, transparent 55%)` }}
-        />
-      )}
-
-      <div className="relative w-full max-w-sm">
-        <div className="flex justify-center mb-6">
-          <div
-            className={`w-20 h-20 rounded-2xl flex items-center justify-center overflow-hidden ${MENU_SURFACE} border ${MENU_BORDER}`}
-            style={{ boxShadow: `0 12px 32px -8px ${primary}66` }}
-          >
-            {tenant.logoUrl ? (
-              <img src={tenant.logoUrl} alt={tenant.name} className="w-full h-full object-cover" />
-            ) : (
-              <span className="font-display text-2xl font-bold" style={{ color: primary }}>
-                {tenant.name.charAt(0)}
-              </span>
-            )}
-          </div>
+    <LoginShell>
+      <GlowCard>
+        <div className="lg-logo lg-logo--tenant">
+          {tenant.logoUrl ? (
+            <img src={tenant.logoUrl} alt={tenant.name} />
+          ) : (
+            <span className="lg-logo__letter">{tenant.name.charAt(0)}</span>
+          )}
         </div>
+        <p className="lg-eyebrow">{tenant.name}</p>
+        <h1 className="lg-title">{isRegister ? t('auth.createTitle') : t('auth.welcomeBack')}</h1>
+        <p className="lg-sub">{isRegister ? t('auth.registerSubtitle') : t('auth.loginSubtitle')}</p>
 
-        {/* Cartão de vidro CLARO — fundo branco translúcido com blur,
-            não um cartão preto opaco. */}
-        <div
-          className="rounded-3xl border border-white/60 dark:border-white/10 bg-white/75 dark:bg-[#1E1E20]/90 p-7 backdrop-blur-xl"
-          style={{ boxShadow: '0 8px 40px rgba(0,0,0,0.08)' }}
-        >
-          <p className={`text-center text-[11px] font-semibold tracking-widest ${MENU_TEXT_MUTED} uppercase`}>
-            {tenant.name}
-          </p>
-          <h1 className={`font-display text-2xl font-bold ${MENU_TEXT} text-center mt-1`}>
-            {mode === 'login' ? t('auth.welcomeBack') : t('auth.createTitle')}
-          </h1>
-          <p className={`text-sm ${MENU_TEXT_BODY} text-center mt-1.5`}>
-            {mode === 'login' ? t('auth.loginSubtitle') : t('auth.registerSubtitle')}
-          </p>
-
-          <div className="flex flex-col gap-3 mt-6">
-            {mode === 'register' && (
-              <GlassInput type="text" value={name} onChange={setName} placeholder={t('auth.namePlaceholder')} accent={primary} />
-            )}
-            <GlassInput type="email" value={email} onChange={setEmail} placeholder={t('auth.emailPlaceholder')} accent={primary} />
-            {mode === 'register' && (
-              <PhoneInput
-                value={phone}
-                onChange={setPhone}
-                className={`${PROFILE_INPUT} w-full transition-colors`}
+        <form onSubmit={handleSubmit} className="lg-form" noValidate>
+          {isRegister && (
+            <div className="lg-field">
+              <User className="lg-field__icon" size={18} strokeWidth={1.5} aria-hidden="true" />
+              <input
+                className="lg-input"
+                type="text"
+                name="name"
+                autoComplete="name"
+                aria-label={t('auth.namePlaceholder')}
+                placeholder={t('auth.namePlaceholder')}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
               />
-            )}
-            <GlassInput
-              type="password"
-              value={password}
-              onChange={setPassword}
-              placeholder={t('auth.passwordPlaceholder')}
-              accent={primary}
-            />
-
-            {error && <p className="text-xs text-red-500 dark:text-red-400 text-center">{error}</p>}
-
-            <Tooltip label={mode === 'login' ? t('common.enter') : t('auth.createAccount')} className="flex w-full mt-1">
-              <button
-                onClick={handleSubmit}
-                disabled={
-                  isSubmitting ||
-                  !email ||
-                  !password ||
-                  (mode === 'register' && (!name || !isValidBrazilPhone(phone)))
-                }
-                className="relative w-full py-3.5 rounded-xl text-sm font-bold text-white overflow-hidden disabled:opacity-40 disabled:grayscale transition-all active:scale-[0.98]"
-                style={{
-                  background: `linear-gradient(135deg, ${primary}, ${secondary})`,
-                  boxShadow: `0 8px 28px -6px ${primary}99`,
-                }}
-              >
-                {isSubmitting ? t('auth.wait') : mode === 'login' ? t('common.enter') : t('auth.createAccount')}
-              </button>
-            </Tooltip>
-
-            <div className="flex items-center gap-3 my-1">
-              <div className="flex-1 h-px bg-gray-200 dark:bg-white/10" />
-              <span className={`text-[11px] ${MENU_TEXT_MUTED} font-medium`}>{t('auth.or')}</span>
-              <div className="flex-1 h-px bg-gray-200 dark:bg-white/10" />
             </div>
+          )}
 
-            <Tooltip label={t('auth.google')} className="flex w-full">
-              <button
-                onClick={() => setShowGoogleSoon(true)}
-                className="w-full py-3 rounded-xl border border-[#E5E7EB] dark:border-white/10 bg-white dark:bg-white/[0.05] text-sm font-semibold text-[#374151] dark:text-gray-100 flex items-center justify-center gap-2.5 transition-colors hover:bg-gray-50 dark:hover:bg-white/10"
-              >
-                <GoogleIcon />
-                {t('auth.google')}
-              </button>
-            </Tooltip>
-            {showGoogleSoon && (
-              <p className={`text-[11px] ${MENU_TEXT_MUTED} text-center -mt-1`}>
-                {t('auth.googleSoon')}
-              </p>
-            )}
-
-            <Tooltip label={mode === 'login' ? t('auth.noAccount') : t('auth.haveAccount')} className="flex w-full justify-center mt-1">
-              <button
-                onClick={() => {
-                  setError(null);
-                  setShowGoogleSoon(false);
-                  setMode((m) => (m === 'login' ? 'register' : 'login'));
-                }}
-                className={`text-xs font-semibold ${MENU_TEXT_BODY} py-1`}
-              >
-                {mode === 'login' ? t('auth.noAccount') : t('auth.haveAccount')}
-              </button>
-            </Tooltip>
+          <div className="lg-field">
+            <Mail className="lg-field__icon" size={18} strokeWidth={1.5} aria-hidden="true" />
+            <input
+              className="lg-input"
+              type="email"
+              name="email"
+              autoComplete={isRegister ? 'email' : 'username'}
+              autoFocus={autoFocusEmail}
+              aria-label={t('auth.emailPlaceholder')}
+              placeholder={t('auth.emailPlaceholder')}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
           </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
-function GlassInput({
-  type,
-  value,
-  onChange,
-  placeholder,
-  accent,
-}: {
-  type: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder: string;
-  accent: string;
-}) {
-  return (
-    <input
-      type={type}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      className={`${PROFILE_INPUT} w-full transition-colors`}
-      onFocus={(e) => (e.currentTarget.style.borderColor = accent)}
-      onBlur={(e) => (e.currentTarget.style.borderColor = '')}
-    />
+          {isRegister && (
+            <>
+              <div className="lg-field">
+                <Phone className="lg-field__icon" size={18} strokeWidth={1.5} aria-hidden="true" />
+                <input
+                  className="lg-input"
+                  type="tel"
+                  name="phone"
+                  inputMode="numeric"
+                  autoComplete="tel"
+                  aria-label="(48) 99999-9999"
+                  aria-invalid={phoneInvalid || undefined}
+                  placeholder="(48) 99999-9999"
+                  value={phone}
+                  onChange={(e) => setPhone(formatBrazilPhone(e.target.value))}
+                />
+              </div>
+              {phoneInvalid && (
+                <p className="lg-hint lg-hint--error">{t('phoneInput.telefone_incompleto_confira_o')}</p>
+              )}
+            </>
+          )}
+
+          <div className="lg-field">
+            <Lock className="lg-field__icon" size={18} strokeWidth={1.5} aria-hidden="true" />
+            <input
+              className="lg-input"
+              type={showPassword ? 'text' : 'password'}
+              name="password"
+              autoComplete={isRegister ? 'new-password' : 'current-password'}
+              aria-label={t('auth.passwordPlaceholder')}
+              placeholder={t('auth.passwordPlaceholder')}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={handlePasswordKey}
+              onKeyUp={handlePasswordKey}
+              onBlur={() => setCapsOn(false)}
+            />
+            {capsOn && (
+              <LoginTip label={t('auth.capsOn')}>
+                <span className="lg-caps">
+                  <ArrowBigUpDash size={18} strokeWidth={1.5} aria-label={t('auth.capsOn')} />
+                </span>
+              </LoginTip>
+            )}
+            <LoginTip label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')} align="end">
+              <button
+                type="button"
+                className="lg-iconbtn"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
+                aria-pressed={showPassword}
+              >
+                {showPassword ? (
+                  <EyeOff size={18} strokeWidth={1.5} aria-hidden="true" />
+                ) : (
+                  <Eye size={18} strokeWidth={1.5} aria-hidden="true" />
+                )}
+              </button>
+            </LoginTip>
+          </div>
+
+          {error && (
+            <p className="lg-error" role="alert">
+              <CircleAlert size={16} strokeWidth={1.5} aria-hidden="true" />
+              {error}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={
+              isSubmitting ||
+              !email ||
+              !password ||
+              (isRegister && (!name || !isValidBrazilPhone(phone)))
+            }
+            className={isSubmitting ? 'lg-btn is-busy' : 'lg-btn'}
+          >
+            <span className="lg-btn__ring" aria-hidden="true" />
+            <span className="lg-btn__halo" aria-hidden="true" />
+            <span className="lg-btn__fill">
+              {isSubmitting ? (
+                <>
+                  <LoaderCircle className="lg-spin" size={18} strokeWidth={1.75} aria-hidden="true" />
+                  {t('auth.wait')}
+                </>
+              ) : (
+                <>
+                  {isRegister ? t('auth.createAccount') : t('common.enter')}
+                  <ArrowRight size={18} strokeWidth={1.75} aria-hidden="true" />
+                </>
+              )}
+            </span>
+          </button>
+
+          <div className="lg-or" aria-hidden="true">
+            {t('auth.or')}
+          </div>
+
+          <button type="button" className="lg-social" onClick={() => setShowGoogleSoon(true)}>
+            <GoogleIcon />
+            {t('auth.google')}
+          </button>
+          {showGoogleSoon && <p className="lg-hint">{t('auth.googleSoon')}</p>}
+
+          <button
+            type="button"
+            className="lg-link"
+            onClick={() => {
+              setError(null);
+              setShowGoogleSoon(false);
+              setMode((m) => (m === 'login' ? 'register' : 'login'));
+            }}
+          >
+            {isRegister ? t('auth.haveAccount') : t('auth.noAccount')}
+          </button>
+        </form>
+      </GlowCard>
+    </LoginShell>
   );
 }
 
 function GoogleIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 18 18">
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
       <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.9c1.7-1.56 2.7-3.87 2.7-6.62z" />
       <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.9-2.26c-.8.54-1.84.86-3.06.86-2.35 0-4.34-1.59-5.05-3.72H.96v2.33A9 9 0 0 0 9 18z" />
       <path fill="#FBBC05" d="M3.95 10.7A5.4 5.4 0 0 1 3.67 9c0-.59.1-1.17.28-1.7V4.97H.96A9 9 0 0 0 0 9c0 1.45.35 2.83.96 4.03l2.99-2.33z" />

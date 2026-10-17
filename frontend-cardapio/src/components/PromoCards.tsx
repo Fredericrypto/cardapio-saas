@@ -140,7 +140,7 @@ function PromoCard({
         {shareUrl && (
           <ShareButton
             variant="chip"
-            className="absolute top-2.5 left-2.5"
+            className="absolute top-2 right-2"
             url={shareUrl}
             title={localizedField(promo, 'title')}
             text={promo.description ?? undefined}
@@ -148,7 +148,7 @@ function PromoCard({
         )}
 
         {countdownLabel && !promo.alreadyUsedUp && (
-          <span className="absolute top-2.5 right-2.5 bg-white text-orange-600 text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-sm">
+          <span className="absolute top-2.5 left-2.5 bg-white text-orange-600 text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-sm">
             <Clock size={10} />
             {countdownLabel}
           </span>

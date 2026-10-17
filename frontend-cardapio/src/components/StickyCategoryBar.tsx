@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { MENU_PAGE_BG } from '../lib/menuTheme';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 
 // Altura da barra superior do desktop (h-16). Tem que ser igual ao `md:top-16`
 // da faixa abaixo: é a linha em que ela "gruda" ao rolar a página.
@@ -26,20 +25,58 @@ export function StickyCategoryBar({ children }: { children: ReactNode }) {
   useEffect(() => {
     const el = sentinelRef.current;
     if (!el || typeof IntersectionObserver === 'undefined') return;
-    const observer = new IntersectionObserver(
-      ([entry]) => setStuck(!entry.isIntersecting && entry.boundingClientRect.top < STICKY_TOP_PX),
-      { rootMargin: `-${STICKY_TOP_PX}px 0px 0px 0px`, threshold: 0 },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
+    // Linha em que a faixa gruda: abaixo da navbar no desktop (64px), no topo
+    // da tela no celular (0). Refaz o observador se a largura cruzar o breakpoint.
+    const mq = window.matchMedia('(min-width: 768px)');
+    let observer: IntersectionObserver | null = null;
+    const start = () => {
+      observer?.disconnect();
+      const top = mq.matches ? STICKY_TOP_PX : 0;
+      observer = new IntersectionObserver(
+        ([entry]) => setStuck(!entry.isIntersecting && entry.boundingClientRect.top < top),
+        { rootMargin: `-${top}px 0px 0px 0px`, threshold: 0 },
+      );
+      observer.observe(el);
+    };
+    start();
+    mq.addEventListener('change', start);
+    return () => {
+      mq.removeEventListener('change', start);
+      observer?.disconnect();
+    };
   }, []);
+
+  // Presa no topo, o vidro da faixa vai de uma borda à outra da PÁGINA (como a navbar),
+  // enquanto as abas continuam alinhadas ao conteúdo. Posição/largura medidas na hora.
+  const barRef = useRef<HTMLDivElement>(null);
+  const layerRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (!stuck) return;
+    const place = () => {
+      const bar = barRef.current;
+      const layer = layerRef.current;
+      if (!bar || !layer) return;
+      layer.style.left = `${-bar.getBoundingClientRect().left}px`;
+      layer.style.width = `${document.documentElement.clientWidth}px`;
+    };
+    place();
+    window.addEventListener('resize', place);
+    return () => window.removeEventListener('resize', place);
+  }, [stuck]);
 
   return (
     <>
       {/* h-px + -mb-px: ocupa 1px de altura mas devolve 1px de margem, então o
           layout não muda. */}
       <div ref={sentinelRef} aria-hidden="true" className="h-px -mb-px pointer-events-none" />
-      <div className={`md:sticky md:top-16 md:z-30 ${MENU_PAGE_BG} atm-glass ${stuck ? 'atm-stuck' : ''}`}>
+      <div ref={barRef} className="sticky top-0 md:top-16 z-30 bg-transparent atm-glass">
+        {stuck && (
+          <div
+            ref={layerRef}
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-y-0 -z-10 bg-transparent backdrop-blur-md"
+          />
+        )}
         {children}
       </div>
     </>

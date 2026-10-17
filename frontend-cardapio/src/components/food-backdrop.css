@@ -1,0 +1,71 @@
+/* Fundo de ícones de comida (prefixo .fb-). Fica ATRÁS de todo o conteúdo da página e
+   ABAIXO das navbars (que têm fundo próprio e z-40). Claro/escuro seguem a classe `.dark`.
+   Os ícones somem suavemente em direção às bordas da tela. */
+.fb-layer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  height: 100lvh; /* altura fixa: não acompanha a barra de endereço do celular */
+  z-index: -10;
+  overflow: hidden;
+  pointer-events: none;
+  contain: layout paint style;
+}
+/* TEMA ESCURO = cópia exata do fundo da tela de login do admin (.lg-ambient + .lg-pattern +
+   .lg-vignette): degradê base quente, fumacê terracota/creme, ícones e escurecimento das
+   bordas com os mesmos valores. TEMA CLARO: só o fumacê + ícones escuros que somem nas bordas. */
+.fb-ambient {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(60% 50% at 16% 10%, rgba(217, 119, 87, 0.16), transparent 70%),
+    radial-gradient(55% 45% at 88% 92%, rgba(240, 238, 230, 0.07), transparent 70%);
+}
+.dark .fb-ambient {
+  background:
+    radial-gradient(60% 50% at 16% 10%, rgba(217, 119, 87, 0.16), transparent 70%),
+    radial-gradient(55% 45% at 88% 92%, rgba(240, 238, 230, 0.07), transparent 70%),
+    radial-gradient(90% 80% at 50% 50%, #2a2927, #1b1a19);
+}
+.fb-pattern {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: grid;
+  transform: translate(-50%, -50%);
+  color: rgba(17, 24, 39, 0.11);
+  user-select: none;
+  -webkit-mask-image: radial-gradient(ellipse at center, #000 28%, rgba(0, 0, 0, 0.4) 68%, rgba(0, 0, 0, 0.06) 100%);
+  mask-image: radial-gradient(ellipse at center, #000 28%, rgba(0, 0, 0, 0.4) 68%, rgba(0, 0, 0, 0.06) 100%);
+}
+.dark .fb-pattern {
+  color: rgba(194, 192, 182, 0.12);
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+.fb-vignette {
+  display: none;
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, rgba(27, 26, 25, 0) 28%, rgba(27, 26, 25, 0.6) 68%, rgba(27, 26, 25, 0.94) 100%);
+}
+.dark .fb-vignette {
+  display: block;
+}
+.fb-cell {
+  display: grid;
+  place-items: center;
+}
+.fb-cell--up {
+  transform: translateY(-14px);
+}
+.fb-cell--down {
+  transform: translateY(14px);
+}
+@media print {
+  .fb-layer {
+    display: none;
+  }
+}

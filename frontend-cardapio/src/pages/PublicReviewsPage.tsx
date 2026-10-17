@@ -7,6 +7,9 @@ import type { PublicReview, ReviewSummary } from '../lib/customer-api';
 import { useSelectedLocation } from '../hooks/useSelectedLocation';
 import { useTenant } from '../contexts/TenantContext';
 import { ReviewsPageLayout } from '../components/ReviewsShared';
+import { ReviewsHero } from '../components/ReviewsHero';
+import type { RatingFilterValue } from '../components/ReviewFilter';
+import { MENU_PAGE_BG } from '../lib/menuTheme';
 
 // Página pública de avaliações — SEM login, qualquer visitante do
 // cardápio pode ver. Mostra TODA review publicada, sem filtro nenhum de
@@ -42,25 +45,59 @@ export function PublicReviewsPage() {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [ratingFilter, setRatingFilter] = useState<RatingFilterValue>(0);
+  // Sobe quando o cliente publica a avaliação: recarrega resumo + lista na hora, então ela
+  // já aparece aqui (e no painel/histórico, que leem a mesma tabela).
+  const [reloadTick, setReloadTick] = useState(0);
 
+  // Resumo (nota geral + distribuição): independe do filtro e da página.
   useEffect(() => {
     if (!tenant) return;
+    let cancelled = false;
+    fetchReviewsSummary(tenant.id, location?.id)
+      .then((s) => {
+        if (!cancelled) setSummary(s);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [tenant, location?.id, reloadTick]);
+
+  // Lista: filtro por nota feito no servidor (total e "Ver mais" continuam certos).
+  useEffect(() => {
+    if (!tenant) return;
+    let cancelled = false;
     setIsLoading(true);
-    Promise.all([
-      fetchReviewsSummary(tenant.id, location?.id),
-      fetchPublicReviews(tenant.id, location?.id, page),
-    ]).then(([s, r]) => {
-      setSummary(s);
-      setReviews((prev) => (page === 1 ? r.items : [...prev, ...r.items]));
-      setTotal(r.total);
-      setIsLoading(false);
-    });
-  }, [tenant, location?.id, page]);
+    fetchPublicReviews(tenant.id, location?.id, page, { token: customerToken, rating: ratingFilter || undefined })
+      .then((r) => {
+        if (cancelled) return;
+        setReviews((prev) => (page === 1 ? r.items : [...prev, ...r.items]));
+        setTotal(r.total);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [tenant, location?.id, page, ratingFilter, customerToken, reloadTick]);
+
+  function handleFilterChange(v: RatingFilterValue) {
+    setRatingFilter(v);
+    setPage(1);
+  }
+
+  function handleReviewPublished() {
+    setPage(1);
+    setReloadTick((n) => n + 1);
+  }
 
   if (!tenant) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="w-8 h-8 border-2 border-gray-200 border-t-gray-500 rounded-full animate-spin" />
+      <div className={`flex items-center justify-center h-screen ${MENU_PAGE_BG}`}>
+        <div className="w-8 h-8 border-2 border-gray-200 dark:border-white/10 border-t-gray-500 dark:border-t-gray-300 rounded-full animate-spin" />
       </div>
     );
   }
@@ -73,6 +110,9 @@ export function PublicReviewsPage() {
       total={total}
       isLoading={isLoading}
       onLoadMore={() => setPage((p) => p + 1)}
+      hero={<ReviewsHero onReviewPublished={handleReviewPublished} />}
+      ratingFilter={ratingFilter}
+      onRatingFilterChange={handleFilterChange}
     />
   );
 }

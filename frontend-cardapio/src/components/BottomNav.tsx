@@ -10,6 +10,7 @@ import type { Tenant } from '../types';
 import { SearchBar } from './SearchBar';
 import { Tooltip } from './Tooltip';
 import { ThemeToggle } from './ThemeToggle';
+import { VerifiedBadge } from './VerifiedBadge';
 
 interface BottomNavProps {
   slug: string;
@@ -34,6 +35,8 @@ function useNavModel(slug: string, qrCodeToken: string | undefined, primaryColor
   const { isDark } = useTheme();
   const inactive = isDark ? '#A3A6A4' : '#9CA3AF';
   const { t } = useI18n();
+  // Rótulo da aba de conta: primeiro nome do cliente logado; sem login, o texto padrão.
+  const accountLabel = customer?.name?.trim().split(/\s+/)[0] || t('nav.account');
 
   const base = qrCodeToken ? `/${slug}/mesa/${qrCodeToken}` : `/${slug}`;
   const menuHref = base;
@@ -63,6 +66,7 @@ function useNavModel(slug: string, qrCodeToken: string | undefined, primaryColor
     menuHref,
     cartHref,
     accountHref,
+    accountLabel,
     accountActive,
     isMenuRoute,
     menuActive: location.pathname === menuHref,
@@ -76,21 +80,29 @@ function useNavModel(slug: string, qrCodeToken: string | undefined, primaryColor
 // ícones.
 function AccountAvatar({ customer, active, accent }: { customer: NavCustomer; active: boolean; accent: string }) {
   return (
-    <div
-      className="w-6 h-6 rounded-full overflow-hidden shrink-0 flex items-center justify-center"
-      style={{
-        boxShadow: active ? `0 0 0 1.5px ${accent}` : undefined,
-        backgroundColor: customer?.avatarUrl ? undefined : '#D1D5DB',
-      }}
-    >
-      {customer?.avatarUrl ? (
-        <img src={customer.avatarUrl} alt="" className="w-full h-full object-cover" />
-      ) : customer?.name ? (
-        <span className="text-[10px] font-bold text-white">{customer.name[0].toUpperCase()}</span>
-      ) : (
-        <User size={13} className="text-white" />
+    <span className="relative inline-flex shrink-0">
+      <div
+        className="w-6 h-6 rounded-full overflow-hidden shrink-0 flex items-center justify-center"
+        style={{
+          boxShadow: active ? `0 0 0 1.5px ${accent}` : undefined,
+          backgroundColor: customer?.avatarUrl ? undefined : '#D1D5DB',
+        }}
+      >
+        {customer?.avatarUrl ? (
+          <img src={customer.avatarUrl} alt="" className="w-full h-full object-cover" />
+        ) : customer?.name ? (
+          <span className="text-[10px] font-bold text-white">{customer.name[0].toUpperCase()}</span>
+        ) : (
+          <User size={13} className="text-white" />
+        )}
+      </div>
+      {/* Cliente verificado: selo no canto da foto (só `isVerified` decide). */}
+      {customer?.isVerified && (
+        <span className="absolute -bottom-1 -right-1 rounded-full ring-2 ring-white dark:ring-[#1E1E20] inline-flex">
+          <VerifiedBadge size={12} />
+        </span>
       )}
-    </div>
+    </span>
   );
 }
 
@@ -105,7 +117,7 @@ export function BottomNav({ slug, qrCodeToken, primaryColor = '#111827', topSlot
   const nav = useNavModel(slug, qrCodeToken, primaryColor);
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t border-gray-100 z-40 md:hidden">
+    <div className="fixed bottom-0 inset-x-0 w-full bg-[#FFFFFF]/80 dark:bg-[#131314]/80 backdrop-blur-md rounded-t-3xl border border-b-0 border-[#F3F4F6] dark:border-white/10 z-40 md:hidden">
       {topSlot}
       <div className="flex">
       <NavItem
@@ -138,10 +150,10 @@ export function BottomNav({ slug, qrCodeToken, primaryColor = '#111827', topSlot
               <AccountAvatar customer={nav.customer} active={nav.accountActive} accent={nav.accent} />
             </div>
             <span
-              className="text-[10px] font-semibold"
+              className="text-[10px] font-semibold max-w-[5.5rem] truncate"
               style={{ color: nav.accountActive ? nav.accent : nav.inactive }}
             >
-              {nav.t('nav.account')}
+              {nav.accountLabel}
             </span>
           </div>
         </Link>
@@ -224,7 +236,7 @@ export function DesktopNav({
   const searchVisible = (showSearch ?? nav.isMenuRoute) && Boolean(onSearchChange);
 
   return (
-    <nav className="hidden md:block sticky top-0 z-40 bg-white border-b border-gray-100">
+    <nav className="hidden md:block sticky top-0 z-40 bg-transparent backdrop-blur-md border-b border-[#F3F4F6] dark:border-white/10">
       <div className="mx-auto w-full max-w-7xl md:px-8 h-16 flex items-center gap-4 lg:gap-6">
         {/* Marca (logo + nome) = botão "início do cardápio": leva à rota-base do
             restaurante (com a mesa, se houver). Tooltip no hover e no foco do
@@ -293,7 +305,7 @@ export function DesktopNav({
           />
           <DesktopNavItem
             to={nav.accountHref}
-            label={nav.t('nav.account')}
+            label={nav.accountLabel}
             tooltip={nav.t('tooltip.profile')}
             active={nav.accountActive}
             color={nav.accent}
@@ -344,7 +356,7 @@ function DesktopNavItem({ to, label, tooltip, active, color, inactiveColor, icon
         style={{ backgroundColor: active ? `${color}1a` : undefined }}
       >
         {icon}
-        <span className="text-xs font-semibold" style={{ color: active ? color : inactiveColor }}>
+        <span className="text-xs font-semibold max-w-[8rem] truncate" style={{ color: active ? color : inactiveColor }}>
           {label}
         </span>
       </Link>

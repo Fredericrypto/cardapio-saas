@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Review } from './review.entity';
 import { ReviewResponse } from './review-response.entity';
+import { ReviewLike } from './review-like.entity';
 import { Order } from '../orders/order.entity';
 import { OrderItem } from '../orders/order-item.entity';
 import { CustomersModule } from '../customers/customers.module';
@@ -15,7 +16,7 @@ import { ReviewsController } from './reviews.controller';
 // pelo CustomerVerificationService (checagem real de selo verificado —
 // nunca lê `customer.isVerified` cru, ver verification-signature.ts).
 @Module({
-  imports: [TypeOrmModule.forFeature([Review, ReviewResponse, Order, OrderItem]), CustomersModule],
+  imports: [TypeOrmModule.forFeature([Review, ReviewResponse, ReviewLike, Order, OrderItem]), CustomersModule],
   controllers: [ReviewsController],
   providers: [ReviewsService],
   exports: [ReviewsService],

@@ -15,7 +15,6 @@ import {
   MENU_DIVIDER,
   MENU_HEADER_SHEET,
   MENU_HEADER_SHELL,
-  MENU_SURFACE_SUBTLE,
   MENU_TEXT,
   MENU_TEXT_MUTED,
   MENU_TEXT_SOFT,
@@ -137,7 +136,7 @@ export function MenuHeader({ tenant, location, onBack }: MenuHeaderProps) {
 
               {deliveryAvailable && location && (
                 <div
-                  className={`rounded-2xl border px-3.5 py-2.5 flex items-center justify-between gap-3 ${MENU_SURFACE_SUBTLE} ${MENU_BORDER} ${!isOpenNow ? CLOSED_MUTED_CLASS : ''}`}
+                  className={`rounded-2xl border px-3.5 py-2.5 flex items-center justify-between gap-3 bg-transparent backdrop-blur-md ${MENU_BORDER} ${!isOpenNow ? CLOSED_MUTED_CLASS : ''}`}
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <span
@@ -154,7 +153,7 @@ export function MenuHeader({ tenant, location, onBack }: MenuHeaderProps) {
                     </div>
                   </div>
                   {location.minOrderValue > 0 && (
-                    <div className={`text-right shrink-0 pl-3 border-l ${MENU_DIVIDER}`}>
+                    <div className={`text-center shrink-0 pl-3 border-l ${MENU_DIVIDER}`}>
                       <p className={`text-[11px] ${MENU_TEXT_MUTED}`}>{t('menu.minimumOrder')}</p>
                       <p className={`text-xs font-bold ${MENU_TEXT_SOFT}`}>
                         R$ {location.minOrderValue.toFixed(2).replace('.', ',')}
@@ -179,7 +178,7 @@ export function MenuHeader({ tenant, location, onBack }: MenuHeaderProps) {
 // rota do botão Voltar. Com uma unidade só é um rótulo estático.
 function UnitIndicator({ name, onChange }: { name: string; onChange?: () => void }) {
   const { t } = useI18n();
-  const base = `hidden md:flex items-center gap-2 w-full rounded-xl border px-3 py-2 text-left ${MENU_SURFACE_SUBTLE} ${MENU_BORDER}`;
+  const base = `hidden md:flex items-center gap-2 w-full rounded-xl border px-3 py-2 text-left bg-transparent backdrop-blur-md ${MENU_BORDER}`;
   const content = (
     <>
       <MapPin size={15} strokeWidth={1.5} className={`shrink-0 ${MENU_TEXT_MUTED}`} />

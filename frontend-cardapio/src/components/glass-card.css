@@ -1,0 +1,342 @@
+/* Cartão de vidro com glow + botão com borda de luz (prefixo .gc-).
+   Mesma receita da tela de login do painel (.lg-card / .lg-btn): vidro com blur, brilho que
+   segue o mouse, pontos de luz circulando só pela borda e botão terracota com anel de luz.
+   Aqui funciona nos DOIS temas (classe `.dark`, como food-backdrop.css): no escuro os valores
+   são os do login; no claro o vidro é branco translúcido e a luz usa tons de terracota. */
+
+@property --gc-a {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+@property --gc-mx {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 0px;
+}
+@property --gc-my {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 0px;
+}
+
+.gc-card,
+.gc-btn {
+  --gc-clay: #d97757;
+  --gc-clay-soft: #e9a98f;
+  --gc-cream: #faf9f5;
+  --gc-glass-tint: rgba(255, 255, 255, 0.72);
+  --gc-glass-sheen: rgba(255, 255, 255, 0.6);
+  --gc-line: rgba(17, 24, 39, 0.08);
+  --gc-shadow: 0 18px 50px -26px rgba(17, 24, 39, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  --gc-spot: rgba(217, 119, 87, 0.13);
+  --gc-spot-soft: rgba(217, 119, 87, 0.04);
+  --gc-edge: rgba(217, 119, 87, 0.55);
+}
+.dark .gc-card,
+.dark .gc-btn {
+  --gc-clay-soft: #f6c9b3;
+  --gc-glass-tint: rgba(38, 38, 36, 0.58);
+  --gc-glass-sheen: rgba(250, 249, 245, 0.07);
+  --gc-line: rgba(222, 220, 209, 0.12);
+  --gc-shadow: 0 30px 80px -24px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(250, 249, 245, 0.06);
+  --gc-spot: rgba(217, 119, 87, 0.2);
+  --gc-spot-soft: rgba(217, 119, 87, 0.06);
+  --gc-edge: rgba(250, 249, 245, 0.6);
+}
+
+/* ---------- Cartão ---------- */
+.gc-card {
+  --gc-mx: 0px;
+  --gc-my: 0px;
+  --gc-r: 24px;
+  position: relative;
+  border-radius: var(--gc-r);
+  transition:
+    --gc-mx 0.16s ease-out,
+    --gc-my 0.16s ease-out;
+  animation: gc-in 0.55s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+}
+@keyframes gc-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.99);
+  }
+}
+
+.gc-card__glass {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    linear-gradient(180deg, var(--gc-glass-sheen), rgba(255, 255, 255, 0) 38%),
+    var(--gc-glass-tint);
+  border: 1px solid var(--gc-line);
+  -webkit-backdrop-filter: blur(22px) saturate(1.25);
+  backdrop-filter: blur(22px) saturate(1.25);
+  box-shadow: var(--gc-shadow);
+}
+
+.gc-card__fx {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+}
+.gc-spot {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    380px circle at var(--gc-mx) var(--gc-my),
+    var(--gc-spot),
+    var(--gc-spot-soft) 45%,
+    transparent 70%
+  );
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+.gc-edge {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: radial-gradient(200px circle at var(--gc-mx) var(--gc-my), var(--gc-edge), transparent 70%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+.gc-card.is-hover .gc-spot,
+.gc-card.is-hover .gc-edge {
+  opacity: 1;
+}
+
+/* Dois pontos de luz (terracota e claro) circulando SÓ pela borda — só nos cartões com `orbit`. */
+.gc-orbit-wrap {
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 1s ease 0.05s;
+}
+.gc-card.is-hover .gc-orbit-wrap {
+  opacity: 0;
+  transition-duration: 0.3s;
+  transition-delay: 0s;
+}
+.gc-orbit {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: conic-gradient(
+    from calc(var(--gc-a) + var(--gc-a0, 0deg)),
+    transparent 0deg,
+    var(--gc-clay) 36deg,
+    transparent 48deg,
+    transparent 180deg,
+    var(--gc-clay-soft) 216deg,
+    transparent 228deg,
+    transparent 360deg
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  animation: gc-orbit 18s linear infinite;
+}
+.gc-orbit-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  filter: blur(10px);
+  opacity: 0.42;
+}
+.dark .gc-orbit-glow {
+  opacity: 0.7;
+}
+.gc-orbit-glow .gc-orbit {
+  padding: 4px;
+}
+@keyframes gc-orbit {
+  to {
+    --gc-a: 360deg;
+  }
+}
+
+.gc-card__body {
+  position: relative;
+}
+
+/* ---------- Botão com borda de luz ---------- */
+.gc-btn {
+  position: relative;
+  isolation: isolate;
+  display: inline-block;
+  height: 46px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+.gc-btn:active:not(:disabled) {
+  transform: scale(0.985);
+}
+.gc-btn:focus-visible {
+  outline: 2px solid var(--gc-clay);
+  outline-offset: 3px;
+}
+.gc-btn__ring,
+.gc-btn__halo {
+  position: absolute;
+  inset: -1.5px;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+}
+.gc-btn__ring {
+  padding: 1.5px;
+  background: conic-gradient(
+    from var(--gc-a),
+    transparent 0deg,
+    var(--gc-clay-soft) 34deg,
+    transparent 46deg,
+    transparent 180deg,
+    var(--gc-cream) 214deg,
+    transparent 226deg,
+    transparent 360deg
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  animation: gc-orbit 7s linear infinite;
+  opacity: 0.55;
+  transition: opacity 0.3s ease;
+}
+.gc-btn__halo {
+  opacity: 0;
+  filter: blur(9px);
+  transition: opacity 0.3s ease;
+}
+.gc-btn__halo::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 3px;
+  background: conic-gradient(
+    from var(--gc-a),
+    transparent 0deg,
+    var(--gc-clay) 34deg,
+    transparent 46deg,
+    transparent 180deg,
+    var(--gc-clay-soft) 214deg,
+    transparent 226deg,
+    transparent 360deg
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  animation: gc-orbit 7s linear infinite;
+}
+.gc-btn:hover:not(:disabled) .gc-btn__ring,
+.gc-btn:focus-visible .gc-btn__ring {
+  opacity: 1;
+}
+.gc-btn:hover:not(:disabled) .gc-btn__halo,
+.gc-btn:focus-visible .gc-btn__halo {
+  opacity: 0.85;
+}
+.gc-btn__fill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 100%;
+  padding: 0 26px;
+  border-radius: inherit;
+  background: linear-gradient(180deg, #d4714e, #b85430);
+  color: var(--gc-cream);
+  font: 600 14px Inter, system-ui, sans-serif;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 10px 26px -12px rgba(217, 119, 87, 0.6);
+}
+.gc-btn:disabled {
+  cursor: progress;
+}
+.gc-btn:disabled .gc-btn__fill {
+  opacity: 0.78;
+}
+.gc-btn:disabled .gc-btn__ring,
+.gc-btn:disabled .gc-btn__halo::before {
+  animation-play-state: paused;
+}
+.gc-spin {
+  animation: gc-spin 0.9s linear infinite;
+}
+@keyframes gc-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Botão com `orbit`: mesmos dois pontos de luz (terracota + claro) da borda do painel, sempre
+   visíveis; no hover/foco o halo (glow) acende. */
+.gc-btn--orbit .gc-btn__ring,
+.gc-btn--orbit .gc-btn__halo::before {
+  background: conic-gradient(
+    from var(--gc-a),
+    transparent 0deg,
+    var(--gc-clay) 36deg,
+    transparent 48deg,
+    transparent 180deg,
+    var(--gc-clay-soft) 216deg,
+    transparent 228deg,
+    transparent 360deg
+  );
+  animation-duration: 9s;
+}
+.gc-btn--orbit .gc-btn__ring {
+  opacity: 1;
+}
+.gc-btn--orbit .gc-btn__halo {
+  opacity: 0.3;
+}
+
+@media (max-width: 640px) {
+  .gc-card__glass {
+    -webkit-backdrop-filter: blur(14px) saturate(1.2);
+    backdrop-filter: blur(14px) saturate(1.2);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gc-card,
+  .gc-orbit,
+  .gc-btn__ring,
+  .gc-btn__halo::before,
+  .gc-spin {
+    animation: none;
+  }
+  .gc-card {
+    transition: none;
+  }
+}
+
+@media print {
+  .gc-card__fx,
+  .gc-orbit-wrap {
+    display: none;
+  }
+  .gc-card__glass {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background: #fff;
+    box-shadow: none;
+  }
+}

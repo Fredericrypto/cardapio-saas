@@ -52,6 +52,27 @@ const AUTO_INFO: ReadonlyArray<{ code: string; icon: LucideIcon; description: st
   { code: 'trending', icon: TrendingUp, description: 'Vendas crescendo na última semana em relação à anterior.' },
 ];
 
+// Cor SÓ no traço de cada ícone (claro / escuro), igual à tela do cliente.
+const DECLARED_ICON_COLOR: Record<DeclaredBadgeCode, string> = {
+  illustrative_image: 'text-[#64748B] dark:text-[#94A3B8]',
+  selected_ingredients: 'text-[#65A30D] dark:text-[#A3E635]',
+  artisanal: 'text-[#C2410C] dark:text-[#FB923C]',
+  always_fresh: 'text-[#0284C7] dark:text-[#38BDF8]',
+  house_recipe: 'text-[#7C3AED] dark:text-[#A78BFA]',
+  chef_recommended: 'text-[#0D9488] dark:text-[#2DD4BF]',
+  limited_edition: 'text-[#C026D3] dark:text-[#E879F9]',
+  vegan: 'text-[#16A34A] dark:text-[#4ADE80]',
+  gluten_free: 'text-[#CA8A04] dark:text-[#FACC15]',
+  lactose_free: 'text-[#4F46E5] dark:text-[#818CF8]',
+  spicy: 'text-[#DC2626] dark:text-[#F87171]',
+  healthy_option: 'text-[#E11D48] dark:text-[#FB7185]',
+};
+const AUTO_ICON_COLOR: Record<string, string> = {
+  top_ordered: 'text-[#EA580C] dark:text-[#FB923C]',
+  customer_favorite: 'text-[#E11D48] dark:text-[#FB7185]',
+  trending: 'text-[#059669] dark:text-[#34D399]',
+};
+
 interface ProductBadgesEditorProps {
   value: readonly DeclaredBadgeCode[];
   onChange: (next: DeclaredBadgeCode[]) => void;
@@ -127,11 +148,11 @@ export function ProductBadgesEditor({ value, onChange, autoBadges = [] }: Produc
                   <span
                     className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${
                       checked
-                        ? 'bg-[#111827] text-white dark:bg-[#E3E2E6] dark:text-[#131314]'
-                        : 'bg-gray-100 text-gray-500'
+                        ? 'bg-white ring-1 ring-black/10 dark:bg-[#131314] dark:ring-white/15'
+                        : 'bg-gray-100'
                     }`}
                   >
-                    <Icon size={16} strokeWidth={1.5} aria-hidden="true" />
+                    <Icon size={16} strokeWidth={1.5} aria-hidden="true" className={DECLARED_ICON_COLOR[code]} />
                   </span>
                   <span className="min-w-0 flex-1 text-sm leading-tight text-gray-700">
                     {DECLARED_BADGE_LABEL[code]}
@@ -166,10 +187,10 @@ export function ProductBadgesEditor({ value, onChange, autoBadges = [] }: Produc
               <li key={code} className="flex items-center gap-3 rounded-lg border border-gray-100 bg-white px-3 py-2.5">
                 <span
                   className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
-                    active ? 'bg-[#111827] text-white dark:bg-[#E3E2E6] dark:text-[#131314]' : 'bg-gray-100 text-gray-400'
+                    active ? 'bg-white ring-1 ring-black/10 dark:bg-[#131314] dark:ring-white/15' : 'bg-gray-100'
                   }`}
                 >
-                  <Icon size={16} strokeWidth={1.5} aria-hidden="true" />
+                  <Icon size={16} strokeWidth={1.5} aria-hidden="true" className={active ? AUTO_ICON_COLOR[code] : 'text-gray-400'} />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-medium leading-tight text-gray-700">{AUTO_BADGE_LABEL[code]}</span>

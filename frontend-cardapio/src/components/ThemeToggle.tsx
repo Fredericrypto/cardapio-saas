@@ -22,7 +22,7 @@ export function ThemeToggle() {
         onClick={toggleTheme}
         aria-label={label}
         aria-pressed={isDark}
-        className="w-9 h-9 shrink-0 rounded-full bg-white/90 dark:bg-[#1E1E20]/90 backdrop-blur-sm ring-1 ring-black/5 dark:ring-white/10 flex items-center justify-center shadow-sm active:scale-90 transition-transform text-gray-700 dark:text-gray-200"
+        className="w-9 h-9 shrink-0 rounded-full bg-white/90 dark:bg-black/55 backdrop-blur-sm flex items-center justify-center shadow-sm active:scale-90 transition-transform text-[#374151] dark:text-white"
       >
         {isDark ? <Sun size={18} strokeWidth={1.5} /> : <Moon size={18} strokeWidth={1.5} />}
       </button>

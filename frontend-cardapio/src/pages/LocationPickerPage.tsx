@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { MapPin, Navigation, Store, ChevronRight, Star } from 'lucide-react';
 import { fetchLocations } from '../lib/menu-api';
@@ -6,12 +6,16 @@ import { fetchReviewsSummaryByLocation } from '../lib/customer-api';
 import type { ReviewSummary } from '../lib/customer-api';
 import { useSelectedLocation } from '../hooks/useSelectedLocation';
 import { useMinuteClock } from '../hooks/useMinuteClock';
+import { useAccentColor } from '../hooks/useAccentColor';
 import { useI18n } from '../i18n/I18nContext';
 import { getStoreStatus } from '../lib/storeStatus';
 import { formatNextOpening } from '../lib/openingHours';
 import { getActiveMesaToken } from '../lib/seat';
+import { MENU_BORDER, MENU_PAGE_BG, MENU_TEXT, MENU_TEXT_FAINT, MENU_TEXT_MUTED } from '../lib/menuTheme';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { useTenant } from '../contexts/TenantContext';
+import { FoodBackdrop } from '../components/FoodBackdrop';
+import { Tooltip } from '../components/Tooltip';
 import type { Location } from '../types';
 
 // Mesma distância "em linha reta" usada no backend (haversine) — só pra
@@ -31,6 +35,12 @@ function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): nu
 // pegar a localização do celular e já sugere a mais perto, mas sempre
 // deixa escolher manualmente na lista (o GPS pode estar desligado, ou o
 // cliente pode simplesmente preferir outra unidade).
+//
+// Visual: o mesmo do cardápio — wallpaper de ícones (FoodBackdrop) atrás de
+// tudo, superfícies de vidro (transparentes com desfoque) e borda fina, cores
+// pelo tema claro/escuro de lib/menuTheme.ts. A barra de navegação (DesktopNav
+// no topo, BottomNav no celular) vem do NavLayout que envolve esta rota.
+// Só apresentação: toda a lógica de dados/seleção abaixo é a de antes.
 export function LocationPickerPage() {
   const { t } = useI18n();
   const now = useMinuteClock();
@@ -42,6 +52,8 @@ export function LocationPickerPage() {
   const [gpsStatus, setGpsStatus] = useState<'idle' | 'locating' | 'done' | 'denied'>('idle');
   const { selectLocation } = useSelectedLocation(tenant?.id);
   const [reviewSummaries, setReviewSummaries] = useState<Record<string, ReviewSummary>>({});
+  // Cor do restaurante legível sobre o fundo escuro (mesmo hook do ProductCard).
+  const accent = useAccentColor(tenant?.primaryColor ?? '#3d3846');
 
   // BUG GRAVE CORRIGIDO: antes, dava pra escolher uma unidade DIFERENTE
   // aqui mesmo estando com uma mesa ativa em OUTRA unidade — e a
@@ -111,104 +123,105 @@ export function LocationPickerPage() {
 
   if (!tenant || !locations) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="w-8 h-8 border-2 border-gray-200 border-t-gray-500 rounded-full animate-spin" />
+      <div className={`min-h-screen ${MENU_PAGE_BG} relative isolate flex items-center justify-center`}>
+        <FoodBackdrop />
+        <div className="w-8 h-8 border-2 border-[#E5E7EB] dark:border-white/15 border-t-[#6B7280] dark:border-t-white/60 rounded-full animate-spin" />
       </div>
     );
   }
 
+  // `isolate`: contexto de empilhamento próprio, para o wallpaper (z-index
+  // negativo) ficar atrás do conteúdo sem sumir atrás do fundo da página.
   return (
-    <div className="min-h-screen bg-gray-50 max-w-md mx-auto">
-      <div className="px-5 pt-8 pb-5 text-center">
-        {tenant.logoUrl ? (
-          <img
-            src={tenant.logoUrl}
-            alt={tenant.name}
-            className="w-16 h-16 rounded-2xl object-cover mx-auto mb-3"
-          />
-        ) : (
-          <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center text-white text-xl font-bold mx-auto mb-3"
-            style={{ backgroundColor: tenant.primaryColor }}
-          >
-            {tenant.name.charAt(0).toUpperCase()}
-          </div>
-        )}
-        <h1 className="font-display text-lg font-bold text-gray-900">{tenant.name}</h1>
-        <p className="text-sm text-gray-400 mt-1">{t('location.title')}</p>
-      </div>
-
-      {gpsStatus === 'locating' && (
-        <p className="text-center text-xs text-gray-400 flex items-center justify-center gap-1.5 pb-3">
-          <Navigation size={13} className="animate-pulse" />
-          {t('location.searching')}
-        </p>
-      )}
-
-      <div className="px-4 flex flex-col gap-2.5 pb-8">
-        {locations.map((location) => {
-          const status = getStoreStatus(location, now);
-          const nextOpeningLabel = status.isOpen ? null : formatNextOpening(status.nextOpening, t);
-          return (
-          <button
-            key={location.id}
-            onClick={() => handleSelect(location)}
-            className={`w-full bg-white rounded-2xl p-4 flex items-center gap-3 text-left ${
-              !status.isOpen ? 'grayscale opacity-60' : ''
-            }`}
-          >
+    <div className={`min-h-screen ${MENU_PAGE_BG} relative isolate`}>
+      <FoodBackdrop />
+      <div className="mx-auto w-full max-w-3xl px-4 pt-6 pb-8 md:pt-10">
+        <header className={`rounded-3xl border bg-transparent backdrop-blur-md ${MENU_BORDER} px-5 pt-6 pb-5 text-center`}>
+          {tenant.logoUrl ? (
+            <img
+              src={tenant.logoUrl}
+              alt={tenant.name}
+              className="w-16 h-16 rounded-2xl object-cover mx-auto mb-3 border-4 border-white shadow-md bg-white"
+            />
+          ) : (
             <div
-              className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
-              style={{ backgroundColor: `${tenant.primaryColor}1A` }}
+              className="w-16 h-16 rounded-2xl flex items-center justify-center text-white text-xl font-bold mx-auto mb-3 border-4 border-white shadow-md"
+              style={{ backgroundColor: tenant.primaryColor }}
             >
-              <Store size={18} style={{ color: tenant.primaryColor }} />
+              {tenant.name.charAt(0).toUpperCase()}
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold text-gray-900 text-sm">{location.name}</p>
-              {location.address && (
-                <p className="text-xs text-gray-400 truncate flex items-center gap-1 mt-0.5">
-                  <MapPin size={11} className="shrink-0" />
-                  {location.address}
-                </p>
-              )}
-              <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                <span
-                  className={`text-[11px] font-semibold ${
-                    status.isOpen ? 'text-green-600' : 'text-red-500'
+          )}
+          <h1 className={`font-display text-lg font-bold ${MENU_TEXT}`}>{tenant.name}</h1>
+          <p className={`text-sm mt-1 ${MENU_TEXT_MUTED}`}>{t('location.title')}</p>
+          {gpsStatus === 'locating' && (
+            <p className={`mt-3 text-xs flex items-center justify-center gap-1.5 ${MENU_TEXT_MUTED}`}>
+              <Navigation size={13} strokeWidth={1.5} className="animate-pulse" />
+              {t('location.searching')}
+            </p>
+          )}
+        </header>
+
+        <div className="mt-4 grid gap-2.5 md:grid-cols-2 md:gap-3">
+          {locations.map((location) => {
+            const status = getStoreStatus(location, now);
+            const nextOpeningLabel = status.isOpen ? null : formatNextOpening(status.nextOpening, t);
+            const summary = reviewSummaries[location.id];
+            const reviewCount = summary?.count ?? 0;
+            return (
+              <Tooltip
+                key={location.id}
+                label={t('location.select', { name: location.name })}
+                className="block w-full h-full"
+              >
+                <button
+                  type="button"
+                  onClick={() => handleSelect(location)}
+                  style={{ '--glow': accent } as CSSProperties}
+                  className={`w-full h-full rounded-2xl border bg-transparent backdrop-blur-md ${MENU_BORDER} p-4 flex items-center gap-3 text-left transition-[transform,box-shadow] duration-200 active:scale-[0.985] md:hover:shadow-[0_0_22px_color-mix(in_srgb,var(--glow)_45%,transparent)] focus-visible:shadow-[0_0_22px_color-mix(in_srgb,var(--glow)_45%,transparent)] outline-none ${
+                    !status.isOpen ? 'grayscale opacity-60' : ''
                   }`}
                 >
-                  {status.isOpen ? t('store.openNow') : t('store.closed')}
-                </span>
-                {nextOpeningLabel && <span className="text-[11px] text-gray-400">· {nextOpeningLabel}</span>}
-                {location.distanceKm != null && (
-                  <span className="text-[11px] text-gray-400">
-                    · {location.distanceKm.toFixed(1)}km
-                  </span>
-                )}
-                {reviewSummaries && (
-                  <span className="text-[11px] text-gray-400 flex items-center gap-0.5">
-                    ·{' '}
-                    <Star
-                      size={10}
-                      fill={(reviewSummaries[location.id]?.count ?? 0) > 0 ? '#F59E0B' : 'transparent'}
-                      className={
-                        (reviewSummaries[location.id]?.count ?? 0) > 0
-                          ? 'text-amber-500'
-                          : 'text-gray-300'
-                      }
-                    />
-                    {(reviewSummaries[location.id]?.count ?? 0) > 0
-                      ? reviewSummaries[location.id].average.toFixed(1)
-                      : '—'}{' '}
-                    ({reviewSummaries[location.id]?.count ?? 0})
-                  </span>
-                )}
-              </div>
-            </div>
-            <ChevronRight size={16} className="text-gray-300 shrink-0" />
-          </button>
-          );
-        })}
+                  <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 bg-white/40 dark:bg-white/10 backdrop-blur-md border border-[#E5E7EB]/60 dark:border-white/15 shadow-sm">
+                    <Store size={18} strokeWidth={1.5} style={{ color: accent }} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={`font-display font-bold text-sm ${MENU_TEXT}`}>{location.name}</p>
+                    {location.address && (
+                      <p className={`text-xs flex items-start gap-1 mt-0.5 ${MENU_TEXT_MUTED}`}>
+                        <MapPin size={11} strokeWidth={1.5} className="shrink-0 mt-0.5" />
+                        <span className="line-clamp-2">{location.address}</span>
+                      </p>
+                    )}
+                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                      <span
+                        className={`text-[11px] font-semibold ${
+                          status.isOpen ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'
+                        }`}
+                      >
+                        {status.isOpen ? t('store.openNow') : t('store.closed')}
+                      </span>
+                      {nextOpeningLabel && <span className={`text-[11px] ${MENU_TEXT_MUTED}`}>· {nextOpeningLabel}</span>}
+                      {location.distanceKm != null && (
+                        <span className={`text-[11px] ${MENU_TEXT_MUTED}`}>· {location.distanceKm.toFixed(1)}km</span>
+                      )}
+                      <span className={`text-[11px] flex items-center gap-0.5 ${MENU_TEXT_MUTED}`}>
+                        ·{' '}
+                        <Star
+                          size={10}
+                          strokeWidth={1.5}
+                          fill={reviewCount > 0 ? '#F59E0B' : 'transparent'}
+                          className={reviewCount > 0 ? 'text-amber-500' : MENU_TEXT_FAINT}
+                        />
+                        {reviewCount > 0 && summary ? summary.average.toFixed(1) : '—'} ({reviewCount})
+                      </span>
+                    </div>
+                  </div>
+                  <ChevronRight size={16} strokeWidth={1.5} className={`shrink-0 ${MENU_TEXT_FAINT}`} />
+                </button>
+              </Tooltip>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

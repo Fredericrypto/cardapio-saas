@@ -41,7 +41,7 @@ export function ReviewBadge({ tenant, location }: { tenant: Tenant; location: Lo
       {summary.count > 0 && (
         <span className={`text-xs font-semibold ${MENU_TEXT_SOFT}`}>{summary.average.toFixed(1)}</span>
       )}
-      <span className={`text-xs underline ${MENU_TEXT_MUTED}`}>
+      <span className={`text-xs ${MENU_TEXT_MUTED}`}>
         {summary.count === 1
           ? t('store.reviewsCountOne', { count: summary.count })
           : t('store.reviewsCount', { count: summary.count })}

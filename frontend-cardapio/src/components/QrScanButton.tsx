@@ -31,7 +31,7 @@ export function QrScanButton({ variant = 'inline' }: QrScanButtonProps) {
         <button
           onClick={() => setShowScanner(true)}
           aria-label={label}
-          className={`rounded-full border border-[#F3F4F6] dark:border-white/10 bg-[#F9FAFB] dark:bg-[#1E1E20] hover:bg-[#F3F4F6] dark:hover:bg-white/10 flex items-center justify-center text-[#6B7280] dark:text-[#C4C7C5] shrink-0 transition-colors ${positionClass}`}
+          className={`rounded-full bg-white/90 dark:bg-black/55 backdrop-blur-sm shadow-sm text-[#374151] dark:text-white flex items-center justify-center shrink-0 active:scale-90 transition-transform ${positionClass}`}
         >
           <QrCode size={15} strokeWidth={1.5} />
         </button>

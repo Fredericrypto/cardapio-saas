@@ -9,6 +9,7 @@ import { CartIcon } from '../MenuIcons';
 import { AnimatedGradientButton } from '../AnimatedGradientButton';
 import { ImageLightbox } from '../ImageLightbox';
 import { ProductImageCarousel } from '../ProductImageCarousel';
+import { IllustrativeImageSeal, ProductBadgeRow } from '../ProductBadges';
 import { ProductOptionGroupList } from '../ProductOptionGroupList';
 import { ShareButton } from '../ShareButton';
 import { PromotionQuantityStepper } from './PromotionQuantityStepper';
@@ -16,6 +17,7 @@ import { Tooltip } from '../Tooltip';
 import { buildLineKey, findCartLine } from '../../lib/cartLines';
 import { MENU_SURFACE, MENU_TEXT, MENU_TEXT_BODY, MENU_TEXT_MUTED } from '../../lib/menuTheme';
 import { getProductImages } from '../../lib/productImages';
+import { resolveProductBadges } from '../../lib/productBadgeCatalog';
 import {
   buildSelectedOptions,
   findUnmetOptionGroup,
@@ -107,6 +109,7 @@ export function PromotionItemPanel({
   const description = localizedField(product, 'description');
   const images = getProductImages(product);
   const isUnavailable = product.isAvailable === false;
+  const badgeView = resolveProductBadges(product);
   const showDeal = preview.isEligible && preview.unitDiscount > 0 && !isUnavailable;
   const outOfPromotion = !preview.covered;
   // Item com promoPrice próprio e fora da promoção: mantém o preço de tabela riscado.
@@ -279,6 +282,7 @@ export function PromotionItemPanel({
               text={product.description ?? undefined}
             />
           )}
+          {badgeView.imageNotice && images.length > 0 && <IllustrativeImageSeal className="absolute bottom-3 left-3" />}
           {images.length > 0 && (
             <Tooltip label={t('promotionMode.zoomPhoto')} className="contents">
               <button
@@ -320,6 +324,8 @@ export function PromotionItemPanel({
             <h2 id={headingId} className={`mt-2 font-display text-xl font-extrabold leading-tight sm:text-2xl ${MENU_TEXT}`}>
               {name}
             </h2>
+
+            <ProductBadgeRow view={badgeView} className="mt-3" />
 
             <div className="mt-3 flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
               <span

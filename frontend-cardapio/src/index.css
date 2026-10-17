@@ -448,23 +448,13 @@ img, svg, video, a {
    página, para os produtos que rolam por baixo não atrapalharem a leitura.
    Setas das pontas: sem o gradiente colorido, só um desfoque que some em degradê
    (sem cor). Celular continua com a faixa de sempre. */
-@media (min-width: 768px) {
-  .atm-glass:not(.atm-stuck) {
+@media (min-width: 0px) {
+  .atm-glass {
     background-color: transparent;
   }
-  .atm-glass:not(.atm-stuck) button.left-0,
-  .atm-glass:not(.atm-stuck) button.right-0 {
-    background-image: none;
-    -webkit-backdrop-filter: blur(8px);
-    backdrop-filter: blur(8px);
-  }
-  .atm-glass:not(.atm-stuck) button.left-0 {
-    -webkit-mask-image: linear-gradient(to right, #000 55%, transparent);
-    mask-image: linear-gradient(to right, #000 55%, transparent);
-  }
-  .atm-glass:not(.atm-stuck) button.right-0 {
-    -webkit-mask-image: linear-gradient(to left, #000 55%, transparent);
-    mask-image: linear-gradient(to left, #000 55%, transparent);
+  .atm-glass.atm-stuck {
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
   }
 }
 
@@ -598,5 +588,31 @@ img, svg, video, a {
     .cta-border:active:not(.cta-border--off) {
       transform: none;
     }
+  }
+}
+
+/* Banner do header (celular): desce 1.5rem POR BAIXO do sheet (padding + margem
+   negativa, o layout não muda) e uma máscara deixa a foto aparecer só nos dois
+   cantos de fora da curva do sheet (raio 1.5rem = rounded-3xl). Dentro do sheet
+   transparente só se vê o wallpaper, com o contorno arredondado. Desktop não muda. */
+@media (max-width: 767px) {
+  .hdr-banner {
+    box-sizing: content-box;
+    padding-bottom: 1.5rem;
+    margin-bottom: -1.5rem;
+    -webkit-mask-image:
+      linear-gradient(#000, #000),
+      radial-gradient(circle 1.5rem at 100% 100%, transparent calc(1.5rem - 1px), #000 1.5rem),
+      radial-gradient(circle 1.5rem at 0 100%, transparent calc(1.5rem - 1px), #000 1.5rem);
+    mask-image:
+      linear-gradient(#000, #000),
+      radial-gradient(circle 1.5rem at 100% 100%, transparent calc(1.5rem - 1px), #000 1.5rem),
+      radial-gradient(circle 1.5rem at 0 100%, transparent calc(1.5rem - 1px), #000 1.5rem);
+    -webkit-mask-size: 100% calc(100% - 1.5rem), 1.5rem 1.5rem, 1.5rem 1.5rem;
+    mask-size: 100% calc(100% - 1.5rem), 1.5rem 1.5rem, 1.5rem 1.5rem;
+    -webkit-mask-position: 0 0, 0 100%, 100% 100%;
+    mask-position: 0 0, 0 100%, 100% 100%;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
   }
 }

@@ -49,7 +49,7 @@ export function CartBar({ primaryColor, onClick }: CartBarProps) {
             R$ {totalPrice.toFixed(2).replace('.', ',')}
           </span>
         </span>
-        <span className="shrink-0 w-8 h-8 rounded-full bg-white/15 flex items-center justify-center">
+        <span className="shrink-0 w-8 h-8 rounded-full bg-white/20 backdrop-blur-md shadow-sm text-white flex items-center justify-center">
           <ArrowRight size={16} strokeWidth={2} />
         </span>
       </AnimatedGradientButton>

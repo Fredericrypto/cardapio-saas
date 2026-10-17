@@ -23,7 +23,7 @@ import { SplashScreen } from '../components/SplashScreen';
 import { MenuHeader } from '../components/MenuHeader';
 import { TableMenuHeader } from '../components/TableMenuHeader';
 import { PromoCards } from '../components/PromoCards';
-import { HeaderAmbient } from '../components/AmbientGlow';
+import { FoodBackdrop } from '../components/FoodBackdrop';
 import { StickyCategoryBar } from '../components/StickyCategoryBar';
 import { SearchBar } from '../components/SearchBar';
 import { CategoryChips } from '../components/CategoryChips';
@@ -328,6 +328,7 @@ export function MenuPage() {
     // sobreposição (CartBar, BottomNav, DesktopNav) está dentro desta div; modais
     // usam portal.
     <div className={`min-h-screen ${MENU_PAGE_BG} pb-24 md:pb-28 relative isolate`}>
+      <FoodBackdrop />
       <DesktopNav
         slug={slug!}
         qrCodeToken={qrCodeToken}
@@ -340,9 +341,7 @@ export function MenuPage() {
       />
 
       <div className="w-full max-w-7xl mx-auto md:px-8 md:pt-4">
-        {/* Luz ambiente da foto do banner atrás do cabeçalho inteiro. No fluxo de
-            mesa o banner não é cinza com a loja fechada, então a luz também não. */}
-        <HeaderAmbient tenant={tenant} muted={!isOpenNow && !isTableFlow}>
+        <div className="relative">
         {isTableFlow ? (
           <TableMenuHeader
             tenant={tenant}
@@ -366,7 +365,7 @@ export function MenuPage() {
             }
           />
         )}
-        </HeaderAmbient>
+        </div>
 
         {/* Avisos do garçom: FloatingNotice (portal no body, fixo no topo) em
             vez de um bloco inline com margem negativa — esse era cortado pela

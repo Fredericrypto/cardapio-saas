@@ -1,14 +1,20 @@
-import { Controller, Get, Post, Delete, Body, Param, Query, UseGuards, ForbiddenException } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Body, Param, Query, UseGuards, ForbiddenException, Header } from '@nestjs/common';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 import { CurrentAdminUser } from '../../common/decorators/current-admin-user.decorator';
 import type { RequestAdminUser } from '../../common/decorators/current-admin-user.decorator';
 import { CustomerJwtAuthGuard } from '../customers/customer-jwt-auth.guard';
+import { OptionalCustomerJwtAuthGuard } from '../customers/optional-customer-jwt-auth.guard';
 import { CurrentCustomer } from '../../common/decorators/current-customer.decorator';
 import type { RequestCustomer } from '../../common/decorators/current-customer.decorator';
 import { ReviewsService } from './reviews.service';
 import { CreateReviewDto } from './dto/create-review.dto';
 import { RespondReviewDto } from './dto/respond-review.dto';
 import { RequirePermission } from '../auth/decorators/require-permission.decorator';
+
+function parseRating(value?: string): number | undefined {
+  const n = Number(value);
+  return Number.isInteger(n) && n >= 1 && n <= 5 ? n : undefined;
+}
 
 function parseTargetType(value?: string): 'restaurant' | 'item' | undefined {
   return value === 'restaurant' || value === 'item' ? value : undefined;
@@ -67,6 +73,18 @@ export class ReviewsController {
     return this.reviewsService.createReview(tenantId, customer.customerId, dto);
   }
 
+  // Curtir / descurtir (alterna). Só cliente logado, só avaliação do próprio restaurante.
+  @UseGuards(CustomerJwtAuthGuard)
+  @Post('reviews/public/:tenantId/:id/like')
+  async toggleLike(
+    @Param('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @CurrentCustomer() customer: RequestCustomer,
+  ) {
+    this.assertSameTenant(customer, tenantId);
+    return this.reviewsService.toggleLike(tenantId, customer.customerId, id);
+  }
+
   // Único endpoint de "mudança" numa review já criada — apagar. Não
   // existe PATCH nessa entidade de propósito (ver comentário na
   // entity): depois de publicada, é apagar ou nada.
@@ -82,6 +100,11 @@ export class ReviewsController {
     return { success: true };
   }
 
+  // Id do cliente só se o token for deste restaurante (token de outro restaurante = visitante).
+  private viewerId(customer: RequestCustomer | null, tenantId: string): string | null {
+    return customer && customer.tenantId === tenantId ? customer.customerId : null;
+  }
+
   private assertSameTenant(customer: RequestCustomer, tenantId: string): void {
     if (customer.tenantId !== tenantId) {
       throw new ForbiddenException('Essa conta não pertence a este restaurante.');
@@ -90,13 +113,27 @@ export class ReviewsController {
 
   // ---------- Público (cardápio, sem login) ----------
 
+  // Token OPCIONAL: visitante continua vendo tudo; logado também recebe `likedByMe`.
+  // no-store porque a resposta depende de quem pergunta.
+  @UseGuards(OptionalCustomerJwtAuthGuard)
+  @Header('Cache-Control', 'no-store')
   @Get('reviews/public/:tenantId')
   async findPublicReviews(
     @Param('tenantId') tenantId: string,
+    @CurrentCustomer() customer: RequestCustomer | null,
     @Query('locationId') locationId?: string,
     @Query('page') page?: string,
+    @Query('rating') rating?: string,
   ) {
-    return this.reviewsService.findPublicReviews(tenantId, locationId ?? null, Number(page) || 1, 20);
+    return this.reviewsService.findPublicReviews(
+      tenantId,
+      locationId ?? null,
+      Number(page) || 1,
+      20,
+      null,
+      this.viewerId(customer, tenantId),
+      parseRating(rating),
+    );
   }
 
   @Get('reviews/public/:tenantId/summary')
@@ -114,13 +151,25 @@ export class ReviewsController {
     return this.reviewsService.getSummary(tenantId, null, productId);
   }
 
+  @UseGuards(OptionalCustomerJwtAuthGuard)
+  @Header('Cache-Control', 'no-store')
   @Get('reviews/public/:tenantId/item/:productId')
   async findItemReviews(
     @Param('tenantId') tenantId: string,
     @Param('productId') productId: string,
+    @CurrentCustomer() customer: RequestCustomer | null,
     @Query('page') page?: string,
+    @Query('rating') rating?: string,
   ) {
-    return this.reviewsService.findPublicReviews(tenantId, null, Number(page) || 1, 20, productId);
+    return this.reviewsService.findPublicReviews(
+      tenantId,
+      null,
+      Number(page) || 1,
+      20,
+      productId,
+      this.viewerId(customer, tenantId),
+      parseRating(rating),
+    );
   }
 
   // Resumo de TODAS as lojas de uma vez — pra tela de "escolha a loja"

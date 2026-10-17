@@ -1,0 +1,551 @@
+/* Tela de login do painel — estilos ISOLADOS (prefixo .lg-). Não depende nem altera o index.css:
+   o login é sempre escuro, com a paleta do Claude (modo escuro), independente do tema salvo.
+   Fica fora de @layer de propósito: assim vence as regras de base do Tailwind e do tema escuro
+   do painel (ex.: `.dark input { background }`) sem precisar de !important. */
+
+@property --a {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+@property --mx {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 0px;
+}
+@property --my {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 0px;
+}
+
+.lg-root {
+  --lg-bg: #262624;
+  --lg-bg-deep: #1b1a19;
+  --lg-text: #faf9f5;
+  --lg-muted: #c2c0b6;
+  --lg-faint: #9c9a92;
+  --lg-line: rgba(222, 220, 209, 0.12);
+  --lg-clay: #d97757;
+  --lg-clay-soft: #f6c9b3;
+  --lg-cream: #faf9f5;
+
+  position: relative;
+  isolation: isolate;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  overflow: hidden;
+  background: var(--lg-bg-deep);
+  color: var(--lg-text);
+  color-scheme: dark;
+  font-family: Inter, system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+/* ---------- Fundo ---------- */
+.lg-ambient {
+  position: absolute;
+  inset: 0;
+  z-index: -4;
+  pointer-events: none;
+  background:
+    radial-gradient(60% 50% at 16% 10%, rgba(217, 119, 87, 0.16), transparent 70%),
+    radial-gradient(55% 45% at 88% 92%, rgba(240, 238, 230, 0.07), transparent 70%),
+    radial-gradient(90% 80% at 50% 50%, #2a2927, #1b1a19);
+}
+
+.lg-pattern {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: -3;
+  display: grid;
+  transform: translate(-50%, -50%);
+  color: rgba(194, 192, 182, 0.12);
+  pointer-events: none;
+  user-select: none;
+}
+.lg-cell {
+  display: grid;
+  place-items: center;
+}
+.lg-cell--up {
+  transform: translateY(-14px);
+}
+.lg-cell--down {
+  transform: translateY(14px);
+}
+
+/* Escurece as bordas (efeito "vinheta" estilo Netflix) e foca a vista no cartão. */
+.lg-vignette {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, rgba(27, 26, 25, 0) 28%, rgba(27, 26, 25, 0.6) 68%, rgba(27, 26, 25, 0.94) 100%);
+}
+
+/* ---------- Cartão de vidro ---------- */
+.lg-card {
+  --mx: 0px;
+  --my: 0px;
+  position: relative;
+  width: min(100%, 440px);
+  border-radius: 28px;
+  transition:
+    --mx 0.16s ease-out,
+    --my 0.16s ease-out;
+  animation: lg-in 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+}
+@keyframes lg-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+}
+
+.lg-card__glass {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    linear-gradient(180deg, rgba(250, 249, 245, 0.07), rgba(250, 249, 245, 0) 36%),
+    rgba(38, 38, 36, 0.58);
+  border: 1px solid var(--lg-line);
+  -webkit-backdrop-filter: blur(24px) saturate(1.25);
+  backdrop-filter: blur(24px) saturate(1.25);
+  box-shadow:
+    0 30px 80px -20px rgba(0, 0, 0, 0.65),
+    inset 0 1px 0 rgba(250, 249, 245, 0.06);
+}
+
+.lg-card__fx {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+}
+.lg-spot {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    380px circle at var(--mx) var(--my),
+    rgba(217, 119, 87, 0.2),
+    rgba(217, 119, 87, 0.06) 45%,
+    transparent 70%
+  );
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+.lg-edge {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: radial-gradient(200px circle at var(--mx) var(--my), rgba(250, 249, 245, 0.6), transparent 70%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+.lg-card.is-hover .lg-spot,
+.lg-card.is-hover .lg-edge {
+  opacity: 1;
+}
+
+/* Dois pontos de luz (um terracota, um creme) circulando SÓ pela borda. */
+.lg-orbit-wrap {
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 1s ease 0.05s;
+}
+.lg-card.is-hover .lg-orbit-wrap {
+  opacity: 0;
+  transition-duration: 0.3s;
+  transition-delay: 0s;
+}
+.lg-orbit {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: conic-gradient(
+    from calc(var(--a) + var(--a0, 0deg)),
+    transparent 0deg,
+    var(--lg-clay) 36deg,
+    transparent 48deg,
+    transparent 180deg,
+    var(--lg-clay-soft) 216deg,
+    transparent 228deg,
+    transparent 360deg
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  animation: lg-orbit 18s linear infinite;
+}
+.lg-orbit-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  filter: blur(10px);
+  opacity: 0.8;
+}
+.lg-orbit-glow .lg-orbit {
+  padding: 4px;
+}
+@keyframes lg-orbit {
+  to {
+    --a: 360deg;
+  }
+}
+
+.lg-card__body {
+  position: relative;
+  padding: 44px 36px 32px;
+}
+
+/* ---------- Cabeçalho ---------- */
+.lg-logo {
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  margin: 0 auto 22px;
+  border-radius: 20px;
+  color: var(--lg-clay);
+  background: linear-gradient(145deg, rgba(250, 249, 245, 0.1), rgba(250, 249, 245, 0.02));
+  border: 1px solid var(--lg-line);
+  box-shadow:
+    inset 0 1px 0 rgba(250, 249, 245, 0.08),
+    0 10px 30px -12px rgba(217, 119, 87, 0.5);
+}
+.lg-title {
+  margin: 0;
+  text-align: center;
+  font: 600 26px/1.15 Poppins, Inter, system-ui, sans-serif;
+  letter-spacing: -0.01em;
+  color: var(--lg-text);
+}
+.lg-sub {
+  margin: 8px 0 0;
+  text-align: center;
+  font: 400 14px/1.5 Inter, system-ui, sans-serif;
+  color: var(--lg-muted);
+}
+
+/* ---------- Formulário ---------- */
+.lg-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 30px;
+}
+.lg-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.lg-field {
+  display: flex;
+  align-items: center;
+  height: 54px;
+  padding: 0 14px 0 18px;
+  border-radius: 999px;
+  background: rgba(20, 20, 19, 0.62);
+  border: 1px solid var(--lg-line);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+.lg-field:focus-within {
+  border-color: rgba(217, 119, 87, 0.7);
+  box-shadow:
+    0 0 0 3px rgba(217, 119, 87, 0.13),
+    0 0 22px rgba(217, 119, 87, 0.16);
+}
+.lg-field__icon {
+  flex: none;
+  color: var(--lg-faint);
+  transition: color 0.2s ease;
+}
+.lg-field:focus-within .lg-field__icon {
+  color: var(--lg-clay);
+}
+.lg-input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0 12px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--lg-text);
+  font: 400 15px Inter, system-ui, sans-serif;
+  box-shadow: none;
+}
+.lg-input::placeholder {
+  color: #7d7b74;
+}
+/* O Chrome pinta o autofill de amarelo: adia essa pintura e força o texto claro. */
+.lg-input:-webkit-autofill,
+.lg-input:-webkit-autofill:hover,
+.lg-input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--lg-text);
+  caret-color: var(--lg-text);
+  transition: background-color 600000s 0s;
+}
+
+.lg-iconbtn {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--lg-faint);
+  cursor: pointer;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease;
+}
+.lg-iconbtn:hover {
+  color: var(--lg-text);
+  background: rgba(250, 249, 245, 0.07);
+}
+.lg-iconbtn:focus-visible {
+  outline: 2px solid var(--lg-clay);
+  outline-offset: 1px;
+}
+.lg-caps {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  color: #e9b872;
+}
+
+.lg-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: rgba(217, 87, 87, 0.1);
+  border: 1px solid rgba(217, 87, 87, 0.28);
+  color: #f2b0a8;
+  font: 500 13px/1.3 Inter, system-ui, sans-serif;
+  animation: lg-shake 0.4s ease;
+}
+@keyframes lg-shake {
+  20%,
+  60% {
+    transform: translateX(-4px);
+  }
+  40%,
+  80% {
+    transform: translateX(4px);
+  }
+}
+
+/* ---------- Botão com borda de luz ---------- */
+.lg-btn {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  height: 52px;
+  margin-top: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+.lg-btn:active:not(:disabled) {
+  transform: scale(0.985);
+}
+.lg-btn:focus-visible {
+  outline: 2px solid var(--lg-cream);
+  outline-offset: 3px;
+}
+.lg-btn__ring,
+.lg-btn__halo {
+  position: absolute;
+  inset: -1.5px;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+}
+.lg-btn__ring {
+  padding: 1.5px;
+  background: conic-gradient(
+    from var(--a),
+    transparent 0deg,
+    var(--lg-clay-soft) 34deg,
+    transparent 46deg,
+    transparent 180deg,
+    var(--lg-cream) 214deg,
+    transparent 226deg,
+    transparent 360deg
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  animation: lg-orbit 7s linear infinite;
+  opacity: 0.55;
+  transition: opacity 0.3s ease;
+}
+.lg-btn__halo {
+  opacity: 0;
+  filter: blur(9px);
+  transition: opacity 0.3s ease;
+}
+.lg-btn__halo::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 3px;
+  background: conic-gradient(
+    from var(--a),
+    transparent 0deg,
+    var(--lg-clay) 34deg,
+    transparent 46deg,
+    transparent 180deg,
+    var(--lg-clay-soft) 214deg,
+    transparent 226deg,
+    transparent 360deg
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  animation: lg-orbit 7s linear infinite;
+}
+.lg-btn:hover:not(:disabled) .lg-btn__ring,
+.lg-btn:focus-visible .lg-btn__ring {
+  opacity: 1;
+}
+.lg-btn:hover:not(:disabled) .lg-btn__halo,
+.lg-btn:focus-visible .lg-btn__halo {
+  opacity: 0.85;
+}
+.lg-btn__fill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(180deg, #d4714e, #b85430);
+  color: var(--lg-cream);
+  font: 600 15px Inter, system-ui, sans-serif;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 10px 26px -12px rgba(217, 119, 87, 0.6);
+}
+.lg-btn:disabled {
+  cursor: progress;
+}
+.lg-btn:disabled .lg-btn__fill {
+  opacity: 0.78;
+}
+.lg-btn:disabled .lg-btn__ring,
+.lg-btn:disabled .lg-btn__halo::before {
+  animation-play-state: paused;
+}
+.lg-spin {
+  animation: lg-spin 0.9s linear infinite;
+}
+@keyframes lg-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.lg-foot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 22px;
+  color: var(--lg-faint);
+  font: 400 12.5px/1.4 Inter, system-ui, sans-serif;
+}
+
+/* ---------- Tooltip (só CSS) ---------- */
+.lg-tip {
+  position: relative;
+  display: inline-flex;
+}
+.lg-tip::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  z-index: 5;
+  transform: translate(-50%, 4px);
+  padding: 6px 10px;
+  border-radius: 10px;
+  white-space: nowrap;
+  background: rgba(48, 48, 46, 0.94);
+  border: 1px solid var(--lg-line);
+  color: var(--lg-text);
+  font: 500 12px/1.2 Inter, system-ui, sans-serif;
+  box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.6);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
+}
+.lg-tip--end::after {
+  left: auto;
+  right: 0;
+  transform: translate(0, 4px);
+}
+.lg-tip:hover::after,
+.lg-tip:focus-within::after {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+.lg-tip--end:hover::after,
+.lg-tip--end:focus-within::after {
+  transform: translate(0, 0);
+}
+
+@media (max-width: 480px) {
+  .lg-card__body {
+    padding: 36px 22px 26px;
+  }
+  .lg-title {
+    font-size: 23px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lg-card,
+  .lg-error,
+  .lg-orbit,
+  .lg-btn__ring,
+  .lg-btn__halo::before {
+    animation: none;
+  }
+  .lg-card {
+    transition: none;
+  }
+}

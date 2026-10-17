@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, QueryFailedError, In } from 'typeorm';
 import { Review } from './review.entity';
 import { ReviewResponse } from './review-response.entity';
+import { ReviewLike } from './review-like.entity';
 import { Order } from '../orders/order.entity';
 import { OrderItem } from '../orders/order-item.entity';
 import { CreateReviewDto } from './dto/create-review.dto';
@@ -32,6 +33,9 @@ export interface PublicReviewDto {
   isAnonymous: boolean;
   createdAt: Date;
   response: { responseText: string; createdAt: Date } | null;
+  // Curtidas: total da avaliação e se o cliente logado que pediu já curtiu (false p/ visitante).
+  likeCount: number;
+  likedByMe: boolean;
 }
 
 export interface AdminReviewDto {
@@ -88,6 +92,7 @@ export class ReviewsService {
   constructor(
     @InjectRepository(Review) private readonly reviewRepo: Repository<Review>,
     @InjectRepository(ReviewResponse) private readonly responseRepo: Repository<ReviewResponse>,
+    @InjectRepository(ReviewLike) private readonly likeRepo: Repository<ReviewLike>,
     @InjectRepository(Order) private readonly orderRepo: Repository<Order>,
     @InjectRepository(OrderItem) private readonly orderItemRepo: Repository<OrderItem>,
     private readonly verificationService: CustomerVerificationService,
@@ -302,7 +307,8 @@ export class ReviewsService {
     let restaurant: PublicReviewDto | null = null;
     if (restaurantReview) {
       const response = await this.responseRepo.findOne({ where: { reviewId: restaurantReview.id } });
-      restaurant = this.toPublicDto(restaurantReview, response);
+      const likes = await this.loadLikeInfo([restaurantReview.id], customerId);
+      restaurant = this.toPublicDto(restaurantReview, response, likes.get(restaurantReview.id));
     }
 
     const items: MyItemReviewDto[] = [];
@@ -372,11 +378,15 @@ export class ReviewsService {
     page: number,
     pageSize: number,
     productId?: string | null,
+    viewerCustomerId?: string | null,
+    rating?: number | null,
   ): Promise<{ items: PublicReviewDto[]; total: number }> {
     const where: Record<string, unknown> = productId
       ? { tenantId, targetType: 'item', productId }
       : { tenantId, targetType: 'restaurant' };
     if (locationId) where.locationId = locationId;
+    // Filtro por nota feito NO SERVIDOR: assim `total` e a paginação continuam corretos.
+    if (rating && rating >= 1 && rating <= 5) where.rating = rating;
 
     const [items, total] = await this.reviewRepo.findAndCount({
       where,
@@ -387,18 +397,84 @@ export class ReviewsService {
     });
     const responses = await this.responseRepo.find({ where: { reviewId: In(items.map((r) => r.id)) } });
     const responseByReviewId = new Map(responses.map((r) => [r.reviewId, r]));
+    const likes = await this.loadLikeInfo(
+      items.map((r) => r.id),
+      viewerCustomerId ?? null,
+    );
 
     return {
-      items: items.map((review) => this.toPublicDto(review, responseByReviewId.get(review.id) ?? null)),
+      items: items.map((review) =>
+        this.toPublicDto(review, responseByReviewId.get(review.id) ?? null, likes.get(review.id)),
+      ),
       total,
     };
+  }
+
+  // ---------- Curtidas ----------
+
+  // Total de curtidas por avaliação (uma query agrupada) + quais o cliente logado já curtiu.
+  private async loadLikeInfo(
+    reviewIds: string[],
+    viewerCustomerId: string | null,
+  ): Promise<Map<string, { likeCount: number; likedByMe: boolean }>> {
+    const result = new Map<string, { likeCount: number; likedByMe: boolean }>();
+    if (reviewIds.length === 0) return result;
+    const rows = await this.likeRepo
+      .createQueryBuilder('l')
+      .select('l.review_id', 'reviewId')
+      .addSelect('COUNT(*)', 'cnt')
+      .where('l.review_id IN (:...reviewIds)', { reviewIds })
+      .groupBy('l.review_id')
+      .getRawMany<{ reviewId: string; cnt: string }>();
+    for (const row of rows) result.set(row.reviewId, { likeCount: Number(row.cnt), likedByMe: false });
+    if (viewerCustomerId) {
+      const mine = await this.likeRepo.find({
+        where: { customerId: viewerCustomerId, reviewId: In(reviewIds) },
+        select: { reviewId: true },
+      });
+      for (const like of mine) {
+        const cur = result.get(like.reviewId) ?? { likeCount: 0, likedByMe: false };
+        result.set(like.reviewId, { ...cur, likedByMe: true });
+      }
+    }
+    return result;
+  }
+
+  // Alterna a curtida do cliente numa avaliação do MESMO restaurante. Idempotente sob
+  // concorrência: o índice único (review_id, customer_id) + ON CONFLICT DO NOTHING impedem
+  // duplicata; devolve sempre o estado final real lido do banco.
+  async toggleLike(
+    tenantId: string,
+    customerId: string,
+    reviewId: string,
+  ): Promise<{ liked: boolean; likeCount: number }> {
+    const review = await this.reviewRepo.findOne({ where: { id: reviewId, tenantId } });
+    if (!review) throw new NotFoundException('Avaliação não encontrada.');
+
+    const removed = await this.likeRepo.delete({ reviewId, customerId });
+    let liked = false;
+    if (!removed.affected) {
+      await this.likeRepo
+        .createQueryBuilder()
+        .insert()
+        .values({ tenantId, reviewId, customerId })
+        .orIgnore()
+        .execute();
+      liked = true;
+    }
+    const likeCount = await this.likeRepo.count({ where: { reviewId } });
+    return { liked, likeCount };
   }
 
   // Nunca expõe o Customer completo (email, telefone...) pro público —
   // só o nome já formatado (ou "Anônimo"), e o avatar só quando a
   // review NÃO é anônima (avaliação de item nunca é anônima, por
   // enquanto essa opção só existe pra restaurante).
-  private toPublicDto(review: Review, response: ReviewResponse | null): PublicReviewDto {
+  private toPublicDto(
+    review: Review,
+    response: ReviewResponse | null,
+    likes?: { likeCount: number; likedByMe: boolean },
+  ): PublicReviewDto {
     return {
       id: review.id,
       rating: review.rating,
@@ -417,6 +493,8 @@ export class ReviewsService {
       response: response
         ? { responseText: response.responseText, createdAt: response.createdAt }
         : null,
+      likeCount: likes?.likeCount ?? 0,
+      likedByMe: likes?.likedByMe ?? false,
     };
   }
 
