@@ -1,6 +1,6 @@
 import { useI18n } from '../i18n/I18nContext';
 import { useState, type ComponentType, type CSSProperties, type ReactNode } from 'react';
-import { ChevronDown, MapPin, Clock, Phone, Info } from 'lucide-react';
+import { ChevronDown, MapPin, Clock, Phone, Info, Navigation } from 'lucide-react';
 import type { Tenant, Location } from '../types';
 import { getWeekScheduleLines } from '../lib/openingHours';
 import {
@@ -17,6 +17,7 @@ import {
 import { ACTION_BUTTON_BASE } from '../lib/uiClasses';
 import { Tooltip } from './Tooltip';
 import { useAccentColor } from '../hooks/useAccentColor';
+import { routeUrl, formatDistance } from '../lib/locationRoute';
 import {
   buildWhatsappLink,
   buildInstagramLink,
@@ -32,6 +33,7 @@ import {
 import {
   MENU_BORDER,
   MENU_TEXT_BODY,
+  MENU_TEXT,
   MENU_TEXT_MUTED,
 } from '../lib/menuTheme';
 
@@ -143,6 +145,8 @@ interface SocialLinkItem {
 // lib/menuTheme, com par claro/escuro explícito.
 export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelProps) {
   const [expanded, setExpanded] = useState(false);
+  // Pulso de brilho ao tocar na rota (mesma logica da tela de unidades; ver .loc-dist no index.css).
+  const [routeGlow, setRouteGlow] = useState(false);
   const { t } = useI18n();
   // Cor do restaurante legivel no tema atual: alimenta o brilho do botao de telefone (--glow).
   const accent = useAccentColor(tenant.primaryColor ?? '#3d3846');
@@ -203,6 +207,34 @@ export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelPro
   const showHours = Boolean(weekSchedule);
   const columnCount = [showAddress, showHours, hasContactBlock].filter(Boolean).length;
 
+  // Botao de rota: o MESMO da tela de escolher unidade (.loc-dist, link do Google Maps,
+  // distancia quando a localizacao do aparelho ja foi obtida).
+  const mapsHref = location ? routeUrl(location) : null;
+  const routeAction =
+    location && mapsHref ? (
+      <Tooltip label={t('location.route', { name: location.name })} className="contents">
+        <a
+          href={mapsHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={() => {
+            setRouteGlow(true);
+            window.setTimeout(() => setRouteGlow(false), 900);
+          }}
+          aria-label={
+            location.distanceKm != null
+              ? `${t('location.distanceAway', { distance: formatDistance(location.distanceKm) })} · ${t('location.route', { name: location.name })}`
+              : t('location.route', { name: location.name })
+          }
+          style={{ '--glow': accent } as CSSProperties}
+          className={`loc-dist ${routeGlow ? 'is-glow' : ''} shrink-0 inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold tabular-nums bg-white/40 dark:bg-white/10 backdrop-blur-md border border-[#E5E7EB]/60 dark:border-white/15 active:scale-95 ${MENU_TEXT}`}
+        >
+          <Navigation size={12} strokeWidth={1.5} aria-hidden="true" />
+          {location.distanceKm != null ? formatDistance(location.distanceKm) : null}
+        </a>
+      </Tooltip>
+    ) : null;
+
   return (
     <div className={`mt-3 md:mt-4 pt-4 border-t flex flex-col gap-4 ${MENU_BORDER}`}>
       <div>
@@ -221,7 +253,7 @@ export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelPro
             className={`mt-3 px-2 pb-1 flex flex-col items-center gap-4 text-xs text-center md:grid ${INFO_GRID_COLS[columnCount]} md:items-stretch md:gap-x-8 md:gap-y-6 md:px-1 ${MENU_TEXT_BODY}`}
           >
             {location?.address && (
-              <InfoColumn title={t('info.address')}>
+              <InfoColumn title={t('info.address')} action={routeAction}>
                 <div className="flex flex-col items-center gap-1 md:flex-row md:justify-center md:gap-2.5">
                   <MapPin size={13} strokeWidth={1.5} className={`shrink-0 ${MENU_TEXT_MUTED}`} />
                   {/* Endereço em duas linhas (rua e bairro / cidade - UF, CEP);
@@ -255,6 +287,20 @@ export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelPro
               <InfoColumn
                 title={hasSocialLinks ? t('info.social') : t('info.contact')}
                 divider={showAddress || showHours}
+                action={location?.contactPhoneNumber && (
+                  <Tooltip label={t('tooltip.call')} className="flex w-full justify-center">
+                    <a
+                      href={buildPhoneLink(location.contactPhoneNumber)}
+                      // Vidro do cabecalho (transparente + blur) com SO a borda MENU_BORDER: sem sombra interna.
+                      // Brilho no hover/foco identico ao dos cartoes de unidade (.loc-card, via --glow).
+                      className={`info-phone-btn w-[9.75rem] max-w-full border bg-transparent backdrop-blur-md text-[#374151] dark:text-white ${MENU_BORDER} ${ACTION_BUTTON_BASE}`}
+                      style={{ '--glow': accent } as CSSProperties}
+                    >
+                      <Phone size={14} strokeWidth={1.5} className="shrink-0" />
+                      <span>{formatPhoneBR(location.contactPhoneNumber)}</span>
+                    </a>
+                  </Tooltip>
+                )}
               >
                 {hasSocialLinks && (
                   <div className="flex flex-row flex-wrap items-center justify-center gap-x-1.5 gap-y-2 md:gap-x-2">
@@ -271,23 +317,6 @@ export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelPro
                       </Tooltip>
                     ))}
                   </div>
-                )}
-
-                {/* Telefone de contato "puro" (não WhatsApp), formatado; abre o
-                    discador com o número original. */}
-                {location?.contactPhoneNumber && (
-                  <Tooltip label={t('tooltip.call')} className="flex w-full justify-center">
-                    <a
-                      href={buildPhoneLink(location.contactPhoneNumber)}
-                      // Vidro do cabecalho (transparente + blur) com SO a borda MENU_BORDER: sem sombra interna.
-                      // Brilho no hover/foco identico ao dos cartoes de unidade (.loc-card, via --glow).
-                      className={`info-phone-btn w-[9.75rem] max-w-full border bg-transparent backdrop-blur-md text-[#374151] dark:text-white ${MENU_BORDER} ${ACTION_BUTTON_BASE}`}
-                      style={{ '--glow': accent } as CSSProperties}
-                    >
-                      <Phone size={14} strokeWidth={1.5} className="shrink-0" />
-                      <span>{formatPhoneBR(location.contactPhoneNumber)}</span>
-                    </a>
-                  </Tooltip>
                 )}
               </InfoColumn>
             )}
@@ -314,10 +343,12 @@ const INFO_GRID_COLS: Record<number, string> = {
 function InfoColumn({
   title,
   divider = false,
+  action,
   children,
 }: {
   title: string;
   divider?: boolean;
+  action?: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -336,6 +367,9 @@ function InfoColumn({
         )}
         {children}
       </div>
+      {/* Acao no rodape: as colunas esticam pela mais alta, entao o botao de rota (endereco) e o
+          de telefone (contato) ficam na mesma altura. */}
+      {action && <div className="flex w-full items-center justify-center md:min-h-10">{action}</div>}
     </div>
   );
 }
