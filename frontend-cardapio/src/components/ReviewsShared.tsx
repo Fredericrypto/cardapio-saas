@@ -9,6 +9,7 @@ import { PAGE_CONTAINER } from '../lib/profileTheme';
 import { FoodBackdrop } from './FoodBackdrop';
 import { GlassCard } from './GlassCard';
 import { GlowButton } from './GlowButton';
+import { FixedColumn } from './FixedColumn';
 import { LikeButton } from './LikeButton';
 import { ReviewFilter } from './ReviewFilter';
 import type { RatingFilterValue } from './ReviewFilter';
@@ -376,7 +377,9 @@ export function ReviewsPageLayout({
 
         {hero ? (
           <div className="lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-start lg:gap-10 xl:gap-14">
-            <div className="mb-8 lg:sticky lg:top-24 lg:mb-0 lg:py-6">{hero}</div>
+            <FixedColumn className="mb-8 lg:mb-0" top={104}>
+              {hero}
+            </FixedColumn>
             <GlassCard orbit cursorGlow={false} radius={28} bodyClassName="flex flex-col gap-4 p-4 md:p-6">
               {summary ? (
                 <SummaryBody summary={summary} row />

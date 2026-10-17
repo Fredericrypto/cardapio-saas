@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Ephesis&family=Tangerine:wght@400;700&display=swap');
+
 /* Extras da página de avaliações (prefixo .rv-): coração flutuante, pop do like, entrada
    escalonada da lista ao trocar o filtro. Só transform/opacity (60fps, sem layout). */
 
@@ -65,4 +67,12 @@
   .rv-stagger .gc-card {
     animation: none;
   }
+}
+
+/* Fontes da coluna esquerda: Tangerine (mensagem principal) e Ephesis (2ª e 3ª mensagens). */
+.rv-font-tangerine {
+  font-family: 'Tangerine', 'Brush Script MT', cursive;
+}
+.rv-font-ephesis {
+  font-family: 'Ephesis', 'Brush Script MT', cursive;
 }

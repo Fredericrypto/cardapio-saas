@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Heart } from 'lucide-react';
 import { useI18n } from '../i18n/I18nContext';
 import { useTenant } from '../contexts/TenantContext';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
@@ -7,6 +6,7 @@ import { useReviewEligibility } from '../hooks/useReviewEligibility';
 import { MENU_TEXT, MENU_TEXT_SOFT } from '../lib/menuTheme';
 import { GlowButton } from './GlowButton';
 import { ReviewModal } from './ReviewModal';
+import { ReviewHeart } from './ReviewHeart';
 import './review-extras.css';
 
 // Coluna esquerda da página de avaliações.
@@ -23,40 +23,37 @@ export function ReviewsHero({ onReviewPublished }: { onReviewPublished?: () => v
   const [modalOpen, setModalOpen] = useState(false);
 
   return (
-    <section aria-labelledby="reviews-hero-title" className="flex flex-col gap-6">
+    <section aria-labelledby="reviews-hero-title" className="flex flex-col gap-5">
       <h2
         id="reviews-hero-title"
-        className={`font-display text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl ${MENU_TEXT}`}
+        className={`rv-font-tangerine font-bold tracking-normal ${MENU_TEXT}`}
       >
-        {t('reviewsHero.titleStart')} <span className="text-[#d97757]">{t('reviewsHero.titleAccent')}</span>
+        <span className="block text-7xl leading-[0.9] sm:text-8xl lg:text-9xl">{t('reviewsHero.titleTop')}</span>
+        <span className="mt-1 block text-5xl leading-none sm:text-6xl lg:text-7xl">
+          {t('reviewsHero.titleStart')} <span className="text-[#d97757]">{t('reviewsHero.titleAccent')}</span>
+        </span>
       </h2>
-      <p className={`max-w-md text-base leading-relaxed sm:text-lg ${MENU_TEXT_SOFT}`}>{t('reviewsHero.subtitle')}</p>
+      <p className={`rv-font-tangerine max-w-md text-3xl font-bold leading-tight sm:text-4xl ${MENU_TEXT_SOFT}`}>
+        {t('reviewsHero.subtitle')}
+      </p>
 
       {eligibility.status === 'can_review' && (
-        <div className="rv-fade-up mt-2 flex items-center gap-5 sm:gap-6">
-          <Heart
-            className="rv-heart shrink-0 text-red-500"
-            size={84}
-            strokeWidth={1.5}
-            fill="currentColor"
-            aria-hidden="true"
-          />
-          <div className="flex flex-col items-start gap-4">
-            <p className={`max-w-xs font-serif text-base italic leading-relaxed sm:text-lg ${MENU_TEXT_SOFT}`}>
-              {t('reviewsHero.warm')}
-            </p>
-            <GlowButton orbit onClick={() => setModalOpen(true)} ariaLabel={t('reviewsHero.ctaAria')}>
-              {t('reviewsHero.cta')}
-            </GlowButton>
-          </div>
+        <div className="rv-fade-up mt-2 flex flex-col items-start gap-5">
+          <p className={`rv-font-ephesis max-w-lg text-2xl leading-snug sm:text-3xl ${MENU_TEXT_SOFT}`}>
+            {t('reviewsHero.warm')}
+            <ReviewHeart className="ml-1 inline-block h-20 w-20 align-middle sm:h-24 sm:w-24" />
+          </p>
+          <GlowButton orbit onClick={() => setModalOpen(true)} ariaLabel={t('reviewsHero.ctaAria')}>
+            {t('reviewsHero.cta')}
+          </GlowButton>
         </div>
       )}
 
       {eligibility.status === 'reviewed' && (
-        <div className="rv-fade-up mt-2 flex items-start gap-3" role="status">
-          <Heart className="mt-0.5 shrink-0 text-red-500" size={22} strokeWidth={1.5} fill="currentColor" aria-hidden="true" />
-          <p className={`max-w-md font-serif text-base italic leading-relaxed sm:text-lg ${MENU_TEXT_SOFT}`}>
+        <div className="rv-fade-up mt-2" role="status">
+          <p className={`rv-font-ephesis max-w-lg text-2xl leading-snug sm:text-3xl ${MENU_TEXT_SOFT}`}>
             {t('reviewsHero.thanks')}
+            <ReviewHeart className="ml-1 inline-block h-16 w-16 align-middle sm:h-20 sm:w-20" />
           </p>
         </div>
       )}
