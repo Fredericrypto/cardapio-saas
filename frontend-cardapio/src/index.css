@@ -726,24 +726,24 @@ img, svg, video, a {
 @media (hover: hover) {
   .info-phone-btn.info-phone-btn:hover {
     box-shadow:
-      0 0 22px color-mix(in srgb, var(--glow) 55%, transparent),
-      0 0 0 1px color-mix(in srgb, var(--glow) 45%, transparent);
+      0 0 10px color-mix(in srgb, var(--glow) 26%, transparent),
+      0 0 0 1px color-mix(in srgb, var(--glow) 28%, transparent);
   }
   .dark .info-phone-btn.info-phone-btn:hover {
     box-shadow:
-      0 0 24px color-mix(in srgb, color-mix(in srgb, var(--glow) 70%, white) 55%, transparent),
-      0 0 0 1px color-mix(in srgb, color-mix(in srgb, var(--glow) 70%, white) 45%, transparent);
+      0 0 12px color-mix(in srgb, color-mix(in srgb, var(--glow) 70%, white) 28%, transparent),
+      0 0 0 1px color-mix(in srgb, color-mix(in srgb, var(--glow) 70%, white) 30%, transparent);
   }
 }
 .info-phone-btn.info-phone-btn:focus-visible {
   box-shadow:
-    0 0 22px color-mix(in srgb, var(--glow) 55%, transparent),
-    0 0 0 1px color-mix(in srgb, var(--glow) 45%, transparent);
+    0 0 10px color-mix(in srgb, var(--glow) 26%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--glow) 28%, transparent);
 }
 .dark .info-phone-btn.info-phone-btn:focus-visible {
   box-shadow:
-    0 0 24px color-mix(in srgb, color-mix(in srgb, var(--glow) 70%, white) 55%, transparent),
-    0 0 0 1px color-mix(in srgb, color-mix(in srgb, var(--glow) 70%, white) 45%, transparent);
+    0 0 12px color-mix(in srgb, color-mix(in srgb, var(--glow) 70%, white) 28%, transparent),
+    0 0 0 1px color-mix(in srgb, color-mix(in srgb, var(--glow) 70%, white) 30%, transparent);
 }
 
 /* Icones de redes sociais: circulo que aparece (fade + escala) atras do icone ao passar
