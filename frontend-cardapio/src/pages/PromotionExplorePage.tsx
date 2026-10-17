@@ -12,6 +12,7 @@ import { PromotionExploreProductCard } from '../components/promotion/PromotionEx
 import { PromotionItemPanel } from '../components/promotion/PromotionItemPanel';
 import { PromotionItemSheet } from '../components/promotion/PromotionItemSheet';
 import { PromotionSkeleton, PromotionUnavailable } from '../components/promotion/PromotionStates';
+import { FoodBackdrop } from '../components/FoodBackdrop';
 import { Tooltip } from '../components/Tooltip';
 import { useCart } from '../contexts/CartContext';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
@@ -38,7 +39,7 @@ import {
   type EligibleProductGroup,
 } from '../lib/promotionMode';
 import { buildShareUrl } from '../lib/shareLinks';
-import { MENU_BORDER, MENU_PAGE_BG, MENU_SURFACE, MENU_TEXT, MENU_TEXT_BODY, MENU_TEXT_SOFT } from '../lib/menuTheme';
+import { MENU_BORDER, MENU_PAGE_BG, MENU_TEXT, MENU_TEXT_BODY, MENU_TEXT_SOFT } from '../lib/menuTheme';
 import { PROMO_FOCUS } from '../lib/promotionTheme';
 import type { Category, Product, Promotion } from '../types';
 
@@ -427,9 +428,10 @@ export function PromotionExplorePage() {
 
   return (
     <div
-      className={`relative min-h-screen ${MENU_PAGE_BG} pb-28 lg:pb-12`}
+      className={`relative isolate min-h-screen ${MENU_PAGE_BG} pb-28 lg:pb-12`}
       style={{ '--brand': tenant.primaryColor, '--accent': accent } as CSSProperties}
     >
+      <FoodBackdrop />
       <div className="mx-auto w-full max-w-[88rem]">
         {/* Mesmo botão das subpáginas do cardápio (ProfileSubpageShell). */}
         <div className="flex items-center px-4 pb-3 pt-4 md:px-8 lg:pb-0 lg:pt-8">
@@ -438,7 +440,7 @@ export function PromotionExplorePage() {
               type="button"
               onClick={goBack}
               aria-label={t('common.back')}
-              className={`flex h-10 w-10 items-center justify-center rounded-full border ${MENU_SURFACE} ${MENU_BORDER} ${MENU_TEXT} transition-colors hover:bg-black/[0.03] dark:hover:bg-white/5 ${PROMO_FOCUS}`}
+              className={`loc-dist [--glow:var(--accent)] flex h-10 w-10 items-center justify-center rounded-full border bg-transparent backdrop-blur-md ${MENU_BORDER} ${MENU_TEXT} active:scale-95 ${PROMO_FOCUS}`}
             >
               <ArrowLeft size={20} strokeWidth={1.5} aria-hidden="true" />
             </button>
@@ -497,7 +499,7 @@ export function PromotionExplorePage() {
                 key={selectedProduct?.id}
                 id={PANEL_ID}
                 aria-label={t('promotionMode.panelLabel')}
-                className={`promo-panel-in sticky top-24 flex max-h-[calc(100dvh-14rem)] flex-col overflow-hidden rounded-2xl border shadow-md ${MENU_SURFACE} ${MENU_BORDER}`}
+                className={`promo-panel-in sticky top-24 flex max-h-[calc(100dvh-14rem)] flex-col overflow-hidden rounded-2xl border bg-[#FFFFFF]/55 backdrop-blur-xl dark:bg-[#131314]/55 ${MENU_BORDER}`}
               >
                 {panel}
               </aside>

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent, ReactNode } from 'react';
 import { useScrollLock } from '../../hooks/useScrollLock';
-import { MENU_SURFACE } from '../../lib/menuTheme';
+import { MENU_BORDER } from '../../lib/menuTheme';
 
 // Arrastar o puxador mais que isto (px), ou soltar com velocidade, fecha.
 const DISMISS_DISTANCE = 110;
@@ -128,7 +128,7 @@ export function PromotionItemSheet({ labelledBy, onClose, children }: PromotionI
         tabIndex={-1}
         onKeyDown={trapTab}
         style={{ '--sheet-drag': `${dragY}px`, transform: dragY > 0 && !closing ? `translateY(${dragY}px)` : undefined } as React.CSSProperties}
-        className={`absolute bottom-0 left-0 right-0 mx-auto flex max-h-[90dvh] w-full max-w-xl flex-col overflow-hidden rounded-t-3xl border border-b-0 border-[#E5E7EB] shadow-[0_-12px_40px_rgba(0,0,0,0.25)] outline-none dark:border-white/10 ${MENU_SURFACE} ${
+        className={`absolute bottom-0 left-0 right-0 mx-auto flex max-h-[90dvh] w-full max-w-xl flex-col overflow-hidden rounded-t-3xl border border-b-0 ${MENU_BORDER} bg-[#FFFFFF]/75 shadow-[0_-12px_40px_rgba(0,0,0,0.25)] backdrop-blur-xl outline-none dark:bg-[#131314]/75 ${
           closing ? 'promo-sheet-out' : entered ? '' : 'promo-sheet-in'
         }`}
         onAnimationEnd={(event) => {

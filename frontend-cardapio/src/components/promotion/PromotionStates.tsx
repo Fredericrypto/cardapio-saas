@@ -1,8 +1,9 @@
 import { Ticket } from 'lucide-react';
 import { useI18n } from '../../i18n/I18nContext';
 import { withAlpha } from '../../lib/promotionPresentation';
-import { MENU_PAGE_BG, MENU_TEXT, MENU_TEXT_BODY } from '../../lib/menuTheme';
-import { PROMO_CARD, PROMO_PRIMARY_BTN } from '../../lib/promotionTheme';
+import { MENU_BORDER, MENU_PAGE_BG, MENU_TEXT, MENU_TEXT_BODY } from '../../lib/menuTheme';
+import { PROMO_PRIMARY_BTN } from '../../lib/promotionTheme';
+import { FoodBackdrop } from '../FoodBackdrop';
 import { PromotionAmbient } from './PromotionAmbient';
 
 // Promoção expirada, removida ou indisponível para a loja: o backend só
@@ -20,12 +21,13 @@ export function PromotionUnavailable({
   const { t } = useI18n();
   return (
     <div
-      className={`relative min-h-screen ${MENU_PAGE_BG} flex items-center justify-center px-4`}
+      className={`relative isolate min-h-screen ${MENU_PAGE_BG} flex items-center justify-center px-4`}
       style={{ '--brand': primaryColor, '--accent': accent } as React.CSSProperties}
     >
+      <FoodBackdrop />
       <div className="relative isolate z-10 w-full max-w-md">
         <PromotionAmbient color={primaryColor} />
-        <div className={`${PROMO_CARD} relative w-full p-7 text-center flex flex-col items-center gap-3`}>
+        <div className={`rounded-2xl border bg-transparent backdrop-blur-md ${MENU_BORDER} relative w-full p-7 text-center flex flex-col items-center gap-3`}>
         <span
           className="grid h-14 w-14 place-items-center rounded-2xl"
           style={{ backgroundColor: withAlpha(primaryColor, 0.12), color: accent }}
@@ -49,9 +51,10 @@ export function PromotionUnavailable({
 // Carregamento: esqueleto com o mesmo desenho da página (sem animação para
 // quem pede movimento reduzido).
 export function PromotionSkeleton() {
-  const bar = 'rounded-xl bg-[#F3F4F6] dark:bg-[#282A2C] motion-safe:animate-pulse';
+  const bar = 'rounded-xl bg-black/[0.05] dark:bg-white/[0.08] motion-safe:animate-pulse';
   return (
-    <div className={`min-h-screen ${MENU_PAGE_BG}`} role="status" aria-busy="true">
+    <div className={`relative isolate min-h-screen ${MENU_PAGE_BG}`} role="status" aria-busy="true">
+      <FoodBackdrop />
       <div className="w-full max-w-[88rem] mx-auto px-4 md:px-8 py-4 md:py-8 lg:py-10">
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:gap-10">
           <div className={`${bar} aspect-[16/9] rounded-2xl md:rounded-3xl`} />

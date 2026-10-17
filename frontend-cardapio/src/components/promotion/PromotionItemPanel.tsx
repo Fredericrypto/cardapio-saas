@@ -1,7 +1,7 @@
-import { useCallback, useId, useMemo, useRef, useState } from 'react';
+import { useCallback, useId, useMemo, useState } from 'react';
 import type { MouseEvent as ReactMouseEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { Ban, Check, ChevronRight, Info, Maximize2, Tag, X } from 'lucide-react';
+import { Ban, Check, ChevronRight, Info, Tag } from 'lucide-react';
 import { useCart } from '../../contexts/CartContext';
 import { localizedField } from '../../i18n/contentText';
 import { useI18n } from '../../i18n/I18nContext';
@@ -13,9 +13,8 @@ import { IllustrativeImageSeal, ProductBadgeRow } from '../ProductBadges';
 import { ProductOptionGroupList } from '../ProductOptionGroupList';
 import { ShareButton } from '../ShareButton';
 import { PromotionQuantityStepper } from './PromotionQuantityStepper';
-import { Tooltip } from '../Tooltip';
 import { buildLineKey, findCartLine } from '../../lib/cartLines';
-import { MENU_SURFACE, MENU_TEXT, MENU_TEXT_BODY, MENU_TEXT_MUTED } from '../../lib/menuTheme';
+import { MENU_TEXT, MENU_TEXT_BODY, MENU_TEXT_MUTED } from '../../lib/menuTheme';
 import { getProductImages } from '../../lib/productImages';
 import { resolveProductBadges } from '../../lib/productBadgeCatalog';
 import {
@@ -76,7 +75,6 @@ export function PromotionItemPanel({
   storeClosed,
   shareUrl,
   fullPageHref,
-  onClose,
   variant,
   titleId,
 }: PromotionItemPanelProps) {
@@ -92,7 +90,6 @@ export function PromotionItemPanel({
   // Foto ampliada (ImageLightbox): abre na foto que o carrossel estava mostrando.
   const [zoomOpen, setZoomOpen] = useState(false);
   const [photoIndex, setPhotoIndex] = useState(0);
-  const zoomButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const groups = useMemo(() => visibleOptionGroups(product), [product]);
   const selectedOptions = useMemo(() => buildSelectedOptions(groups, selections), [groups, selections]);
@@ -115,10 +112,7 @@ export function PromotionItemPanel({
   // Item com promoPrice próprio e fora da promoção: mantém o preço de tabela riscado.
   const showListStrike = !showDeal && product.promoPrice != null && preview.listUnitPrice > preview.unitPriceBeforePromo;
 
-  const closeZoom = useCallback(() => {
-    setZoomOpen(false);
-    requestAnimationFrame(() => zoomButtonRef.current?.focus({ preventScroll: true }));
-  }, []);
+  const closeZoom = useCallback(() => setZoomOpen(false), []);
 
   const handleToggle = useCallback(
     (group: ProductOptionGroup, valueId: string) => {
@@ -248,8 +242,7 @@ export function PromotionItemPanel({
         >
           {images.length > 0 ? (
             // Clicar na foto amplia (só aqui, no painel — os cards da grade não). Setas
-            // do carrossel e arrastar já interrompem o clique; o botão abaixo é o
-            // caminho para teclado/leitor de tela.
+            // do carrossel e arrastar já interrompem o clique.
             <div className="absolute inset-0 cursor-zoom-in" onClick={() => setZoomOpen(true)}>
               <ProductImageCarousel
                 images={images}
@@ -264,16 +257,6 @@ export function PromotionItemPanel({
               {t('productCard.sem_foto')}
             </div>
           )}
-          <Tooltip label={t('promotionMode.closePanel')} className="contents">
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label={t('promotionMode.closePanel')}
-              className={`absolute left-3 top-3 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-[#111827] shadow-md transition hover:scale-105 dark:bg-[#1E1E20]/90 dark:text-[#E3E2E6] ${PROMO_FOCUS}`}
-            >
-              <X size={18} strokeWidth={1.5} aria-hidden="true" />
-            </button>
-          </Tooltip>
           {shareUrl && (
             <ShareButton
               className="absolute right-3 top-3"
@@ -283,20 +266,6 @@ export function PromotionItemPanel({
             />
           )}
           {badgeView.imageNotice && images.length > 0 && <IllustrativeImageSeal className="absolute bottom-3 left-3" />}
-          {images.length > 0 && (
-            <Tooltip label={t('promotionMode.zoomPhoto')} className="contents">
-              <button
-                ref={zoomButtonRef}
-                type="button"
-                onClick={() => setZoomOpen(true)}
-                aria-label={t('promotionMode.zoomPhoto')}
-                aria-haspopup="dialog"
-                className={`absolute bottom-3 right-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-[#111827] shadow-md transition hover:scale-105 dark:bg-[#1E1E20]/90 dark:text-[#E3E2E6] ${PROMO_FOCUS}`}
-              >
-                <Maximize2 size={16} strokeWidth={1.5} aria-hidden="true" />
-              </button>
-            </Tooltip>
-          )}
           {zoomOpen && (
             // `contents` + stopPropagation: eventos de um portal sobem pela árvore do
             // React; sem isso um clique no visualizador chegaria ao sheet por baixo.
@@ -391,7 +360,7 @@ export function PromotionItemPanel({
         </div>
       </div>
 
-      <div className={`shrink-0 border-t border-[#E5E7EB] ${MENU_SURFACE} p-4 dark:border-white/10 sm:px-5`}>
+      <div className="shrink-0 border-t border-[#E5E7EB] bg-transparent p-4 dark:border-white/10 sm:px-5">
         {showDeal && preview.lineDiscount > 0 && (
           <p className={`mb-2 text-xs font-semibold ${PROMO_SUCCESS_TEXT}`}>
             {t('promotionMode.lineSaving', { value: formatBRL(preview.lineDiscount) })}

@@ -9,9 +9,8 @@ import { formatBRL } from '../../lib/promotionPresentation';
 import { getProductImages } from '../../lib/productImages';
 import type { ItemPromotionPreview } from '../../lib/promotionEligibility';
 import { promotionCardDomId } from '../../lib/promotionMode';
-import { PROFILE_CARD } from '../../lib/profileTheme';
 import { PROMO_FOCUS } from '../../lib/promotionTheme';
-import { MENU_TEXT, MENU_TEXT_MUTED, MENU_SURFACE_SUBTLE } from '../../lib/menuTheme';
+import { MENU_BORDER, MENU_TEXT, MENU_TEXT_MUTED, MENU_SURFACE_SUBTLE } from '../../lib/menuTheme';
 import type { Product } from '../../types';
 
 interface PromotionExploreProductCardProps {
@@ -81,8 +80,8 @@ function PromotionExploreProductCardImpl({
   return (
     <div
       id={promotionCardDomId(product.id)}
-      className={`relative flex h-full flex-col overflow-hidden transition-shadow ${PROFILE_CARD} ${
-        isSelected ? 'ring-2 ring-[color:var(--accent)] shadow-md' : ''
+      className={`group relative flex h-full flex-col overflow-hidden rounded-2xl border bg-transparent backdrop-blur-md transition-shadow ${MENU_BORDER} ${
+        isSelected ? 'ring-2 ring-[color:var(--accent)]' : 'loc-card [--glow:var(--accent)]'
       }`}
     >
       <button
@@ -100,7 +99,7 @@ function PromotionExploreProductCardImpl({
               alt=""
               loading="lazy"
               draggable={false}
-              className={`h-full w-full object-cover ${isUnavailable ? 'grayscale opacity-60' : outOfPromotion ? 'opacity-80 saturate-[0.85]' : ''}`}
+              className={`h-full w-full object-cover transition-transform duration-300 group-hover:scale-105 motion-reduce:transform-none ${isUnavailable ? 'grayscale opacity-60' : outOfPromotion ? 'opacity-80 saturate-[0.85]' : ''}`}
             />
           )}
           {showDeal && (

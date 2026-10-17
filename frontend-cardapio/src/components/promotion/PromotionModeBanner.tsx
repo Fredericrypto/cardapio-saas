@@ -1,11 +1,12 @@
 import { Compass, Wallet, X } from 'lucide-react';
 import { useI18n } from '../../i18n/I18nContext';
 import { AnimatedGradientButton } from '../AnimatedGradientButton';
+import { Tooltip } from '../Tooltip';
 import { localizedField } from '../../i18n/contentText';
 import { formatBRL, getPromotionHeroValue } from '../../lib/promotionPresentation';
 import type { MinOrderProgress } from '../../lib/promotionEligibility';
-import { MENU_BORDER, MENU_SURFACE, MENU_TEXT, MENU_TEXT_SOFT } from '../../lib/menuTheme';
-import { PROMO_LINK_BTN, PROMO_SUCCESS_TEXT } from '../../lib/promotionTheme';
+import { MENU_BORDER, MENU_TEXT, MENU_TEXT_SOFT } from '../../lib/menuTheme';
+import { PROMO_FOCUS, PROMO_SUCCESS_TEXT } from '../../lib/promotionTheme';
 import type { Promotion } from '../../types';
 
 interface PromotionModeBannerProps {
@@ -44,7 +45,7 @@ export function PromotionModeBanner({
   return (
     <aside
       aria-label={t('promotionMode.badge')}
-      className={`sticky top-0 md:top-16 z-30 border-b ${MENU_BORDER} ${MENU_SURFACE} shadow-sm px-4 py-3 lg:top-24 lg:self-start lg:rounded-2xl lg:border lg:p-5 lg:shadow-md`}
+      className={`sticky top-0 md:top-16 z-30 border-b ${MENU_BORDER} bg-[#FFFFFF]/60 px-4 py-3 backdrop-blur-xl dark:bg-[#131314]/60 lg:top-24 lg:self-start lg:rounded-2xl lg:border lg:p-5`}
     >
       <div className="flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
@@ -67,16 +68,17 @@ export function PromotionModeBanner({
             {isActive ? t('promotionMode.statusActive') : t('promotionMode.statusInactive')}
           </span>
         </div>
-        <button
-          type="button"
-          onClick={onExit}
-          aria-label={t('promotionMode.exit')}
-          title={t('promotionMode.exit')}
-          className={`${PROMO_LINK_BTN} ${MENU_TEXT_SOFT} shrink-0`}
-        >
-          <X size={14} strokeWidth={1.75} aria-hidden="true" />
-          <span>{t('promotionMode.exitShort')}</span>
-        </button>
+        <Tooltip label={t('promotionMode.exit')} className="inline-flex shrink-0">
+          <button
+            type="button"
+            onClick={onExit}
+            aria-label={t('promotionMode.exit')}
+            className={`loc-dist [--glow:var(--accent)] inline-flex items-center gap-1.5 rounded-full border bg-transparent px-2.5 py-1 text-[12px] font-semibold backdrop-blur-md active:scale-95 ${MENU_BORDER} ${MENU_TEXT_SOFT} ${PROMO_FOCUS}`}
+          >
+            <X size={14} strokeWidth={1.5} aria-hidden="true" />
+            <span>{t('promotionMode.exitShort')}</span>
+          </button>
+        </Tooltip>
       </div>
 
       <div className="mt-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 lg:mt-4 lg:block">
