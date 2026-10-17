@@ -7,6 +7,8 @@ import { MENU_TEXT, MENU_TEXT_SOFT } from '../lib/menuTheme';
 import { GlowButton } from './GlowButton';
 import { ReviewModal } from './ReviewModal';
 import { ReviewHeart } from './ReviewHeart';
+import { CalligraphyArt } from './CalligraphyArt';
+import { activeDateLocale } from '../i18n/languages';
 import './review-extras.css';
 
 // Coluna esquerda da página de avaliações.
@@ -22,24 +24,48 @@ export function ReviewsHero({ onReviewPublished }: { onReviewPublished?: () => v
   const { eligibility, markReviewed } = useReviewEligibility(tenant?.id, token);
   const [modalOpen, setModalOpen] = useState(false);
 
+  const isPt = activeDateLocale().toLowerCase().startsWith('pt');
+  const showAsk = eligibility.status === 'guest' || eligibility.status === 'none' || eligibility.status === 'can_review';
+
   return (
-    <section aria-labelledby="reviews-hero-title" className="flex flex-col gap-5">
-      <h2
-        id="reviews-hero-title"
-        className={`rv-font-tangerine font-bold tracking-normal ${MENU_TEXT}`}
-      >
-        <span className="block text-7xl leading-[0.9] sm:text-8xl lg:text-9xl">{t('reviewsHero.titleTop')}</span>
-        <span className="mt-1 block text-5xl leading-none sm:text-6xl lg:text-7xl">
-          {t('reviewsHero.titleStart')} <span className="text-[#d97757]">{t('reviewsHero.titleAccent')}</span>
-        </span>
+    <section
+      aria-labelledby="reviews-hero-title"
+      style={{ containerType: 'inline-size' }}
+      className="rv-font-callig flex flex-col items-center gap-0 text-center"
+    >
+      {/* Mensagem 1. Português: caligrafia em imagem (máscara colorida pelo tema). Outros idiomas:
+          o mesmo texto em fonte caligráfica, já que a imagem só existe em português. */}
+      <h2 id="reviews-hero-title" className={`w-full ${MENU_TEXT}`}>
+        {isPt ? (
+          <CalligraphyArt
+            src="/reviews/title-base.png"
+            accentSrc="/reviews/title-sabor.png"
+            width={1200}
+            height={420}
+            alt={`${t('reviewsHero.titleTop')} ${t('reviewsHero.titleStart')} ${t('reviewsHero.titleAccent')}`}
+            className="mx-auto max-w-[600px]"
+          />
+        ) : (
+          <>
+            <span className="block whitespace-nowrap font-medium leading-[0.95]" style={{ fontSize: '16.5cqw' }}>
+              {t('reviewsHero.titleTop')}
+            </span>
+            <span className="mt-1 block whitespace-nowrap font-medium leading-tight" style={{ fontSize: '9.4cqw' }}>
+              {t('reviewsHero.titleStart')} <span className="text-[#d97757]">{t('reviewsHero.titleAccent')}</span>
+            </span>
+          </>
+        )}
       </h2>
-      <p className={`rv-font-tangerine max-w-md text-3xl font-bold leading-tight sm:text-4xl ${MENU_TEXT_SOFT}`}>
-        {t('reviewsHero.subtitle')}
-      </p>
+
+      {showAsk && (
+        <p className={`mt-10 max-w-md text-3xl leading-snug sm:text-4xl ${MENU_TEXT_SOFT}`}>
+          {t('reviewsHero.subtitle')}
+        </p>
+      )}
 
       {eligibility.status === 'can_review' && (
-        <div className="rv-fade-up mt-2 flex flex-col items-start gap-5">
-          <p className={`rv-font-ephesis max-w-lg text-2xl leading-snug sm:text-3xl ${MENU_TEXT_SOFT}`}>
+        <div className="rv-fade-up mt-12 flex flex-col items-center gap-6">
+          <p className={`max-w-lg text-3xl leading-snug sm:text-4xl ${MENU_TEXT_SOFT}`}>
             {t('reviewsHero.warm')}
             <ReviewHeart className="ml-1 inline-block h-20 w-20 align-middle sm:h-24 sm:w-24" />
           </p>
@@ -50,11 +76,24 @@ export function ReviewsHero({ onReviewPublished }: { onReviewPublished?: () => v
       )}
 
       {eligibility.status === 'reviewed' && (
-        <div className="rv-fade-up mt-2" role="status">
-          <p className={`rv-font-ephesis max-w-lg text-2xl leading-snug sm:text-3xl ${MENU_TEXT_SOFT}`}>
-            {t('reviewsHero.thanks')}
-            <ReviewHeart className="ml-1 inline-block h-16 w-16 align-middle sm:h-20 sm:w-20" />
-          </p>
+        <div className={`rv-fade-up mt-14 w-full lg:mt-20 ${MENU_TEXT_SOFT}`} role="status">
+          {isPt ? (
+            <CalligraphyArt
+              src="/reviews/thanks.png"
+              width={1000}
+              height={1268}
+              alt={t('reviewsHero.thanks')}
+              className="mx-auto max-w-[400px] lg:max-w-[clamp(220px,40dvh,400px)]"
+            >
+              {/* Coração ao fim da frase, FORA do texto: à direita de "publicada." e abaixo de "está". */}
+              <ReviewHeart className="absolute left-[81%] top-[74%] h-auto w-[19%]" />
+            </CalligraphyArt>
+          ) : (
+            <p className="max-w-lg text-3xl leading-snug sm:text-4xl">
+              {t('reviewsHero.thanks')}
+              <ReviewHeart className="ml-1 inline-block h-16 w-16 align-middle sm:h-20 sm:w-20" />
+            </p>
+          )}
         </div>
       )}
 

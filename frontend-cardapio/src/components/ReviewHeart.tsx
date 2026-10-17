@@ -2,7 +2,7 @@ import './review-extras.css';
 
 // Coração só do app: traço único, solto, só contorno (oco por dentro), com a linha cruzando a
 // ponta de baixo como se tivesse sido desenhado à mão, um segundo traço pontilhado em "renda"
-// por fora e faíscas no lobo direito. Inclinado e flutuando devagar. Cor: vermelho vivo.
+// por fora e faíscas no lobo direito. Inclinado e flutuando devagar. Cor: terracota do app (a mesma laranja da página).
 export function ReviewHeart({ className = '' }: { className?: string }) {
   return (
     <svg
@@ -12,7 +12,7 @@ export function ReviewHeart({ className = '' }: { className?: string }) {
       overflow="visible"
       className={`rv-heart ${className}`}
       fill="none"
-      stroke="#ef4444"
+      stroke="#d97757"
       strokeLinecap="round"
       strokeLinejoin="round"
     >

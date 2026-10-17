@@ -1,5 +1,5 @@
 import { useI18n } from '../i18n/I18nContext';
-import { useState, type ComponentType, type ReactNode } from 'react';
+import { useState, type ComponentType, type CSSProperties, type ReactNode } from 'react';
 import { ChevronDown, MapPin, Clock, Phone, Info } from 'lucide-react';
 import type { Tenant, Location } from '../types';
 import { getWeekScheduleLines } from '../lib/openingHours';
@@ -16,6 +16,7 @@ import {
 } from './SocialOutlineIcons';
 import { ACTION_BUTTON_BASE } from '../lib/uiClasses';
 import { Tooltip } from './Tooltip';
+import { useAccentColor } from '../hooks/useAccentColor';
 import {
   buildWhatsappLink,
   buildInstagramLink,
@@ -143,6 +144,8 @@ interface SocialLinkItem {
 export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelProps) {
   const [expanded, setExpanded] = useState(false);
   const { t } = useI18n();
+  // Cor do restaurante legivel no tema atual: alimenta o brilho do botao de telefone (--glow).
+  const accent = useAccentColor(tenant.primaryColor ?? '#3d3846');
   const weekSchedule = getWeekScheduleLines(location?.openingHours ?? null, t);
   // O texto de dia fechado vem do dicionário ("Fechado" / "Closed" / "Cerrado"); comparar com o
   // literal em português deixava o dia fechado sem o vermelho em inglês e espanhol.
@@ -260,7 +263,7 @@ export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelPro
                         <a
                           href={href}
                           {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-                          className={`w-9 h-9 md:w-10 md:h-10 shrink-0 rounded-full flex items-center justify-center transition-colors active:opacity-70 md:hover:bg-[#F3F4F6] dark:md:hover:bg-white/10 ${MENU_TEXT_BODY} md:hover:text-[#111827] dark:md:hover:text-[#E3E2E6]`}
+                          className={`info-social-link w-9 h-9 md:w-10 md:h-10 shrink-0 rounded-full flex items-center justify-center transition-colors active:opacity-70 ${MENU_TEXT_BODY} md:hover:text-[#111827] dark:md:hover:text-[#E3E2E6]`}
                           aria-label={linkLabel}
                         >
                           <Icon size={24} />
@@ -273,11 +276,13 @@ export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelPro
                 {/* Telefone de contato "puro" (não WhatsApp), formatado; abre o
                     discador com o número original. */}
                 {location?.contactPhoneNumber && (
-                  <Tooltip label={t('tooltip.call')} className="flex w-full">
+                  <Tooltip label={t('tooltip.call')} className="flex w-full justify-center">
                     <a
                       href={buildPhoneLink(location.contactPhoneNumber)}
-                      className={`w-full text-white ${ACTION_BUTTON_BASE}`}
-                      style={{ backgroundColor: tenant.primaryColor }}
+                      // Vidro do cabecalho (transparente + blur) com SO a borda MENU_BORDER: sem sombra interna.
+                      // Brilho no hover/foco identico ao dos cartoes de unidade (.loc-card, via --glow).
+                      className={`info-phone-btn w-[9.75rem] max-w-full border bg-transparent backdrop-blur-md text-[#374151] dark:text-white ${MENU_BORDER} ${ACTION_BUTTON_BASE}`}
+                      style={{ '--glow': accent } as CSSProperties}
                     >
                       <Phone size={14} strokeWidth={1.5} className="shrink-0" />
                       <span>{formatPhoneBR(location.contactPhoneNumber)}</span>

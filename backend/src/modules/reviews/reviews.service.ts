@@ -454,9 +454,10 @@ export class ReviewsService {
     const removed = await this.likeRepo.delete({ reviewId, customerId });
     let liked = false;
     if (!removed.affected) {
-      await this.likeRepo
+      await this.likeRepo.manager
         .createQueryBuilder()
         .insert()
+        .into(ReviewLike)
         .values({ tenantId, reviewId, customerId })
         .orIgnore()
         .execute();

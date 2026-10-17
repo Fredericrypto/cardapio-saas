@@ -140,8 +140,7 @@ export function MenuHeader({ tenant, location, onBack }: MenuHeaderProps) {
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <span
-                      className="w-8 h-8 rounded-full flex items-center justify-center text-white shrink-0"
-                      style={{ backgroundColor: tenant.primaryColor }}
+                      className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 bg-white/90 dark:bg-black/55 backdrop-blur-sm shadow-sm text-[#374151] dark:text-white"
                     >
                       <Bike size={15} strokeWidth={1.5} />
                     </span>

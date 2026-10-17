@@ -308,6 +308,24 @@
   opacity: 0.3;
 }
 
+/* Sem blur de fundo: só o tom do vidro (barato). */
+.gc-card--flat .gc-card__glass {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* Painel alto (lista de avaliações) no celular/tablet: a borda de luz animada repinta o painel
+   inteiro a cada frame e o brilho borrado dobra o custo. Aqui os 2 pontos de luz ficam parados
+   e sem o halo borrado; no desktop continua girando. */
+@media (max-width: 1023px) {
+  .rv-panel .gc-orbit {
+    animation: none;
+  }
+  .rv-panel .gc-orbit-glow {
+    display: none;
+  }
+}
+
 @media (max-width: 640px) {
   .gc-card__glass {
     -webkit-backdrop-filter: blur(14px) saturate(1.2);

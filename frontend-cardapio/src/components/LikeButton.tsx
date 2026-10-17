@@ -80,7 +80,8 @@ export function LikeButton({ reviewId, initialCount, initialLiked }: LikeButtonP
       const res = await toggleReviewLike(tenant.id, token, reviewId);
       setLiked(res.liked);
       setCount(res.likeCount);
-    } catch {
+    } catch (err) {
+      console.error('[like] falhou', (err as any)?.response?.status, (err as any)?.response?.data ?? err);
       setLiked(prevLiked);
       setCount(prevCount);
       setFood(false);
@@ -99,10 +100,10 @@ export function LikeButton({ reviewId, initialCount, initialLiked }: LikeButtonP
         onClick={handleClick}
         aria-pressed={liked}
         aria-label={`${label}. ${count}`}
-        className={`inline-flex h-9 items-center gap-2 rounded-full border px-3.5 text-xs font-semibold tabular-nums backdrop-blur-md transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#d97757] ${
+        className={`inline-flex h-9 items-center gap-2 rounded-full border px-3.5 text-xs font-semibold tabular-nums md:backdrop-blur-md transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#d97757] ${
           liked
             ? 'border-[#d97757]/50 bg-[#d97757]/15 text-[#b85430] dark:text-[#f0a98d]'
-            : 'border-black/10 bg-white/50 text-gray-600 hover:bg-white/70 dark:border-white/15 dark:bg-white/[0.07] dark:text-gray-300 dark:hover:bg-white/[0.12]'
+            : 'border-black/10 bg-white/70 text-gray-600 hover:bg-white/80 md:bg-white/50 dark:border-white/15 dark:bg-white/[0.1] md:dark:bg-white/[0.07] dark:text-gray-300 dark:hover:bg-white/[0.12]'
         }`}
       >
         <span key={food ? 'food' : 'thumb'} className={animated ? 'rv-like-pop' : 'inline-flex'} aria-hidden="true">

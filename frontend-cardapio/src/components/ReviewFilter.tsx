@@ -44,7 +44,7 @@ export function ReviewFilter({
     <div
       role="group"
       aria-label={t('reviewsFilter.label')}
-      className="rv-no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 py-1"
+      className="flex flex-wrap gap-2 py-1"
     >
       {OPTIONS.map((v) => {
         const active = v === value;
@@ -55,7 +55,7 @@ export function ReviewFilter({
             type="button"
             onClick={() => onChange(v)}
             aria-pressed={active}
-            className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#d97757] ${
+            className={`inline-flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#d97757] ${
               active
                 ? 'border-[#d97757] bg-[#d97757] text-white shadow-sm'
                 : `border-black/10 bg-black/[0.03] hover:bg-black/[0.06] dark:border-white/15 dark:bg-white/[0.05] dark:hover:bg-white/10 ${MENU_TEXT_BODY}`

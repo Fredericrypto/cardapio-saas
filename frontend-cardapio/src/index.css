@@ -616,3 +616,167 @@ img, svg, video, a {
     mask-repeat: no-repeat;
   }
 }
+
+/* Página de escolher unidade: brilho suave na cor do restaurante (--glow vem do
+   estilo inline do botão) ao passar o mouse ou focar por teclado. No escuro a cor
+   é clareada para aparecer sobre o fundo. */
+.loc-card {
+  transition: box-shadow 0.2s ease;
+}
+@media (hover: hover) {
+  .loc-card:hover {
+    box-shadow:
+      0 0 22px color-mix(in srgb, var(--glow) 55%, transparent),
+      0 0 0 1px color-mix(in srgb, var(--glow) 45%, transparent);
+  }
+}
+.loc-card:has(:focus-visible) {
+  box-shadow:
+    0 0 22px color-mix(in srgb, var(--glow) 55%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--glow) 45%, transparent);
+}
+@media (hover: hover) {
+  .dark .loc-card:hover {
+    box-shadow:
+      0 0 24px color-mix(in srgb, color-mix(in srgb, var(--glow) 70%, white) 55%, transparent),
+      0 0 0 1px color-mix(in srgb, color-mix(in srgb, var(--glow) 70%, white) 45%, transparent);
+  }
+}
+.dark .loc-card:has(:focus-visible) {
+  box-shadow:
+    0 0 24px color-mix(in srgb, color-mix(in srgb, var(--glow) 70%, white) 55%, transparent),
+    0 0 0 1px color-mix(in srgb, color-mix(in srgb, var(--glow) 70%, white) 45%, transparent);
+}
+
+/* Botão de distância (vira link de rota): brilho na cor do restaurante ao passar o
+   mouse, ao focar e ao tocar/clicar (is-glow dispara um pulso que funciona também
+   no celular, onde não há hover). --glow vem do cartão. */
+.loc-dist {
+  transition: box-shadow 0.2s ease, transform 0.15s ease;
+}
+@media (hover: hover) {
+  .loc-dist:hover {
+    box-shadow:
+      0 0 14px color-mix(in srgb, var(--glow) 55%, transparent),
+      0 0 0 1px color-mix(in srgb, var(--glow) 45%, transparent);
+  }
+}
+.loc-dist:active,
+.loc-dist:focus-visible {
+  box-shadow:
+    0 0 18px color-mix(in srgb, var(--glow) 70%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--glow) 55%, transparent);
+}
+.loc-dist.is-glow {
+  animation: loc-dist-glow 0.9s ease-out;
+}
+@keyframes loc-dist-glow {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--glow) 0%, transparent);
+  }
+  25% {
+    box-shadow:
+      0 0 20px color-mix(in srgb, var(--glow) 75%, transparent),
+      0 0 0 1px color-mix(in srgb, var(--glow) 60%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--glow) 0%, transparent);
+  }
+}
+.dark .loc-dist:active,
+.dark .loc-dist:focus-visible {
+  box-shadow:
+    0 0 20px color-mix(in srgb, color-mix(in srgb, var(--glow) 70%, white) 70%, transparent),
+    0 0 0 1px color-mix(in srgb, color-mix(in srgb, var(--glow) 70%, white) 55%, transparent);
+}
+@media (hover: hover) {
+  .dark .loc-dist:hover {
+    box-shadow:
+      0 0 16px color-mix(in srgb, color-mix(in srgb, var(--glow) 70%, white) 55%, transparent),
+      0 0 0 1px color-mix(in srgb, color-mix(in srgb, var(--glow) 70%, white) 45%, transparent);
+  }
+}
+.dark .loc-dist.is-glow {
+  animation-name: loc-dist-glow-dark;
+}
+@keyframes loc-dist-glow-dark {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--glow) 0%, transparent);
+  }
+  25% {
+    box-shadow:
+      0 0 22px color-mix(in srgb, color-mix(in srgb, var(--glow) 70%, white) 75%, transparent),
+      0 0 0 1px color-mix(in srgb, color-mix(in srgb, var(--glow) 70%, white) 60%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--glow) 0%, transparent);
+  }
+}
+
+/* Painel "Informacoes" do cabecalho ---------------------------------------- */
+
+/* Botao de telefone: so a borda (sem sombra interna) e brilho na cor do restaurante
+   ao passar o mouse/focar, igual aos cartoes de unidade (.loc-card). Dobrar a classe
+   garante vencer qualquer shadow do ACTION_BUTTON_BASE. */
+.info-phone-btn.info-phone-btn {
+  box-shadow: none;
+  background-image: none;
+  transition: box-shadow 0.2s ease, transform 0.15s ease;
+}
+@media (hover: hover) {
+  .info-phone-btn.info-phone-btn:hover {
+    box-shadow:
+      0 0 22px color-mix(in srgb, var(--glow) 55%, transparent),
+      0 0 0 1px color-mix(in srgb, var(--glow) 45%, transparent);
+  }
+  .dark .info-phone-btn.info-phone-btn:hover {
+    box-shadow:
+      0 0 24px color-mix(in srgb, color-mix(in srgb, var(--glow) 70%, white) 55%, transparent),
+      0 0 0 1px color-mix(in srgb, color-mix(in srgb, var(--glow) 70%, white) 45%, transparent);
+  }
+}
+.info-phone-btn.info-phone-btn:focus-visible {
+  box-shadow:
+    0 0 22px color-mix(in srgb, var(--glow) 55%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--glow) 45%, transparent);
+}
+.dark .info-phone-btn.info-phone-btn:focus-visible {
+  box-shadow:
+    0 0 24px color-mix(in srgb, color-mix(in srgb, var(--glow) 70%, white) 55%, transparent),
+    0 0 0 1px color-mix(in srgb, color-mix(in srgb, var(--glow) 70%, white) 45%, transparent);
+}
+
+/* Icones de redes sociais: circulo que aparece (fade + escala) atras do icone ao passar
+   o mouse/focar. Claro: cinza-escuro translucido; escuro: branco translucido. */
+.info-social-link {
+  position: relative;
+  isolation: isolate;
+}
+.info-social-link::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: 9999px;
+  background: rgba(17, 24, 39, 0.09);
+  opacity: 0;
+  transform: scale(0.7);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  pointer-events: none;
+}
+.dark .info-social-link::before {
+  background: rgba(255, 255, 255, 0.14);
+}
+.info-social-link:focus-visible::before {
+  opacity: 1;
+  transform: scale(1);
+}
+@media (hover: hover) {
+  .info-social-link:hover::before {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .info-social-link::before { transition: none; }
+}

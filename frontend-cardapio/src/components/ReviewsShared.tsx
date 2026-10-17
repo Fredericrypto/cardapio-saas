@@ -1,5 +1,6 @@
 import { activeDateLocale } from '../i18n/languages';
 import { useI18n } from '../i18n/I18nContext';
+import { memo, useLayoutEffect, useRef, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { ArrowLeft, ChevronDown, Star, User } from 'lucide-react';
 import type { PublicReview, ReviewSummary } from '../lib/customer-api';
@@ -9,7 +10,6 @@ import { PAGE_CONTAINER } from '../lib/profileTheme';
 import { FoodBackdrop } from './FoodBackdrop';
 import { GlassCard } from './GlassCard';
 import { GlowButton } from './GlowButton';
-import { FixedColumn } from './FixedColumn';
 import { LikeButton } from './LikeButton';
 import { ReviewFilter } from './ReviewFilter';
 import type { RatingFilterValue } from './ReviewFilter';
@@ -148,9 +148,9 @@ export function RestaurantResponse({
   );
 }
 
-export function ReviewCard({ review }: { review: PublicReview }) {
+function ReviewCardImpl({ review }: { review: PublicReview }) {
   return (
-    <GlassCard radius={20} cursorGlow={false} bodyClassName="p-4 md:p-5">
+    <GlassCard radius={20} cursorGlow={false} flat bodyClassName="p-4 md:p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <ReviewerAvatar
@@ -187,6 +187,9 @@ export function ReviewCard({ review }: { review: PublicReview }) {
 
 // Cartão de destaque: nota geral + distribuição por estrelas. Em telas grandes fica
 // fixo na coluna da esquerda enquanto a lista rola ao lado.
+// memo: a lista não re-renderiza todos os cartões a cada mudança de carregando/filtro.
+export const ReviewCard = memo(ReviewCardImpl);
+
 function SummaryBody({ summary, row = false }: { summary: ReviewSummary; row?: boolean }) {
   const { t } = useI18n();
   const hasReviews = summary.count > 0;
@@ -194,7 +197,7 @@ function SummaryBody({ summary, row = false }: { summary: ReviewSummary; row?: b
     <div className={`flex items-center gap-5 ${row ? '' : 'lg:flex-col lg:items-stretch lg:gap-6'}`}>
       <div className={`shrink-0 text-center ${row ? '' : 'lg:pt-1'}`}>
         <p className={`font-display text-5xl font-bold leading-none ${MENU_TEXT}`}>
-          {hasReviews ? summary.average.toFixed(1) : '—'}
+          {hasReviews ? summary.average.toFixed(1) : '0.0'}
         </p>
         {hasReviews && (
           <div className="mt-2.5 flex justify-center">
@@ -254,7 +257,7 @@ function SummarySkeleton() {
 
 function ReviewSkeleton() {
   return (
-    <GlassCard radius={20} cursorGlow={false} bodyClassName="p-4 md:p-5">
+    <GlassCard radius={20} cursorGlow={false} flat bodyClassName="p-4 md:p-5">
       <div className="flex animate-pulse flex-col gap-3" aria-hidden="true">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-full bg-black/[0.06] dark:bg-white/10" />
@@ -267,6 +270,39 @@ function ReviewSkeleton() {
         <div className="h-3 w-2/3 rounded-full bg-black/[0.06] dark:bg-white/10" />
       </div>
     </GlassCard>
+  );
+}
+
+// Em telas largas ocupa exatamente o que sobra da janela (da posição onde começa até o rodapé),
+// então a PÁGINA não rola: só o que for `overflow-y-auto` lá dentro. Abaixo de 1024px não faz
+// nada (fluxo normal, a página rola). A altura é medida, não chutada, p/ não depender da navbar.
+function FillViewport({ children, className = '', bottom = 24 }: { children: ReactNode; className?: string; bottom?: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [height, setHeight] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const update = () => {
+      if (!mq.matches) {
+        setHeight(null);
+        return;
+      }
+      const top = el.getBoundingClientRect().top + window.scrollY;
+      setHeight(Math.max(440, Math.round(window.innerHeight - top - bottom)));
+    };
+    update();
+    window.addEventListener('resize', update);
+    mq.addEventListener('change', update);
+    return () => {
+      window.removeEventListener('resize', update);
+      mq.removeEventListener('change', update);
+    };
+  }, [bottom]);
+  return (
+    <div ref={ref} className={className} style={height ? { height } : undefined}>
+      {children}
+    </div>
   );
 }
 
@@ -324,7 +360,7 @@ export function ReviewsPageLayout({
 
       {!isLoading && reviews.length === 0 && (
         <div className={wide ? 'xl:col-span-2' : ''}>
-          <GlassCard radius={20} cursorGlow={false} bodyClassName="flex flex-col items-center gap-3 px-6 py-12 text-center">
+          <GlassCard radius={20} cursorGlow={false} flat bodyClassName="flex flex-col items-center gap-3 px-6 py-12 text-center">
             <Star size={28} strokeWidth={1.5} className={MENU_TEXT_MUTED} aria-hidden="true" />
             <p className={`text-sm ${MENU_TEXT_BODY}`}>
               {filtering ? t('reviewsFilter.empty') : t('reviewsShared.ainda_nao_ha_avaliacoes')}
@@ -353,53 +389,73 @@ export function ReviewsPageLayout({
     </div>
   );
 
+  const header = (
+    <div className="mb-5 flex items-center gap-3 md:mb-8 lg:mb-6 print:hidden">
+      <Tooltip label={t('common.back')}>
+        <button
+          onClick={onBack}
+          aria-label={t('common.back')}
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border ${MENU_SURFACE} ${MENU_BORDER} ${MENU_TEXT} transition-colors hover:bg-black/[0.03] dark:hover:bg-white/5`}
+        >
+          <ArrowLeft size={20} strokeWidth={1.5} />
+        </button>
+      </Tooltip>
+      <div className="min-w-0">
+        <h1 className={`font-display text-lg font-bold leading-tight md:text-2xl ${MENU_TEXT}`}>
+          {t('reviewsShared.avaliacoes')}
+        </h1>
+        {heading && <p className={`truncate text-xs md:text-sm ${MENU_TEXT_MUTED}`}>{heading}</p>}
+      </div>
+    </div>
+  );
+
   return (
-    <div className={`relative isolate min-h-screen ${MENU_PAGE_BG} pb-10 md:pb-16 print:bg-white`}>
+    <div
+      className={`relative isolate ${hero ? 'lg:min-h-0 lg:pb-6' : ''} min-h-screen ${MENU_PAGE_BG} pb-10 md:pb-16 print:bg-white`}
+    >
       <FoodBackdrop />
       <div className={PAGE_CONTAINER}>
-        <div className="mb-5 flex items-center gap-3 md:mb-8 print:hidden">
-          <Tooltip label={t('common.back')}>
-            <button
-              onClick={onBack}
-              aria-label={t('common.back')}
-              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border ${MENU_SURFACE} ${MENU_BORDER} ${MENU_TEXT} transition-colors hover:bg-black/[0.03] dark:hover:bg-white/5`}
-            >
-              <ArrowLeft size={20} strokeWidth={1.5} />
-            </button>
-          </Tooltip>
-          <div className="min-w-0">
-            <h1 className={`font-display text-lg font-bold leading-tight md:text-2xl ${MENU_TEXT}`}>
-              {t('reviewsShared.avaliacoes')}
-            </h1>
-            {heading && <p className={`truncate text-xs md:text-sm ${MENU_TEXT_MUTED}`}>{heading}</p>}
-          </div>
-        </div>
-
         {hero ? (
-          <div className="lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-start lg:gap-10 xl:gap-14">
-            <FixedColumn className="mb-8 lg:mb-0" top={104}>
+          // Desktop: a página não rola. Esquerda (voltar + título + mensagens) parada; só a lista
+          // de avaliações, dentro do painel, rola. Sem divisórias entre os lados.
+          <FillViewport className="lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-12 xl:gap-24">
+            <div className="mb-10 lg:mb-0 lg:min-h-0 xl:-ml-14 2xl:-ml-24">
+              {header}
               {hero}
-            </FixedColumn>
-            <GlassCard orbit cursorGlow={false} radius={28} bodyClassName="flex flex-col gap-4 p-4 md:p-6">
-              {summary ? (
-                <SummaryBody summary={summary} row />
-              ) : (
-                showSide && <div className="h-24 animate-pulse rounded-2xl bg-black/[0.06] dark:bg-white/10" aria-hidden="true" />
-              )}
-              {filterBar}
-              {list}
-            </GlassCard>
-          </div>
-        ) : (
-          <div className={showSide ? 'lg:grid lg:grid-cols-[21rem_minmax(0,1fr)] lg:items-start lg:gap-8' : ''}>
-            {showSide && (
-              <div className="mb-4 lg:mb-0">{summary ? <SummaryCard summary={summary} /> : <SummarySkeleton />}</div>
-            )}
-            <div className="flex flex-col gap-3">
-              {filterBar}
-              {list}
             </div>
-          </div>
+            <GlassCard
+              orbit
+              cursorGlow={false}
+              radius={28}
+              className="rv-panel lg:h-full"
+              bodyClassName="flex flex-col gap-4 p-4 md:p-6 lg:h-full lg:min-h-0"
+            >
+              <div className="flex flex-col gap-4 lg:shrink-0">
+                {summary ? (
+                  <SummaryBody summary={summary} row />
+                ) : (
+                  showSide && <div className="h-24 animate-pulse rounded-2xl bg-black/[0.06] dark:bg-white/10" aria-hidden="true" />
+                )}
+                {filterBar}
+              </div>
+              <div key={`s-${ratingFilter}`} className="rv-scroll lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
+                {list}
+              </div>
+            </GlassCard>
+          </FillViewport>
+        ) : (
+          <>
+            {header}
+            <div className={showSide ? 'lg:grid lg:grid-cols-[21rem_minmax(0,1fr)] lg:items-start lg:gap-8' : ''}>
+              {showSide && (
+                <div className="mb-4 lg:mb-0">{summary ? <SummaryCard summary={summary} /> : <SummarySkeleton />}</div>
+              )}
+              <div className="flex flex-col gap-3">
+                {filterBar}
+                {list}
+              </div>
+            </div>
+          </>
         )}
       </div>
     </div>

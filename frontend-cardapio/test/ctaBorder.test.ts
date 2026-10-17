@@ -56,7 +56,18 @@ assert.equal(ctaBorderColors('#7C3AED', 'lixo', false).b, '#7C3AED', 'secundári
 const css = readFileSync(new URL('../src/index.css', import.meta.url), 'utf8');
 const start = css.indexOf('AnimatedGradientButton (components/AnimatedGradientButton.tsx)');
 assert.ok(start > 0, 'bloco do botão encontrado');
-const block = css.slice(css.indexOf('@layer components', start));
+// O bloco do botão é SÓ o `@layer components` dele: fatia até a chave que o fecha (casando as chaves),
+// e não até o fim do arquivo — CSS de outras telas depois do layer (glows, sombras) não é do botão.
+const layerStart = css.indexOf('@layer components', start);
+const masked = css.slice(layerStart).replace(/\/\*[^]*?\*\//g, (m) => ' '.repeat(m.length)); // comentários não contam chaves
+let depth = 0;
+let layerEnd = -1;
+for (let i = masked.indexOf('{'); i >= 0 && i < masked.length; i++) {
+  if (masked[i] === '{') depth++;
+  else if (masked[i] === '}' && --depth === 0) { layerEnd = layerStart + i + 1; break; }
+}
+assert.ok(layerEnd > layerStart, 'fim do @layer components encontrado');
+const block = css.slice(layerStart, layerEnd);
 assert.ok(block.startsWith('@layer components'), 'bloco dentro de @layer components');
 
 // Em Tailwind v4, CSS fora de layer vence as utilitárias (absolute, flex...) e quebrava o layout.

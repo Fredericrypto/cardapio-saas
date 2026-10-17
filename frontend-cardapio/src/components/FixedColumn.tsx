@@ -18,6 +18,7 @@ export function FixedColumn({
 }) {
   const holder = useRef<HTMLDivElement>(null);
   const inner = useRef<HTMLDivElement>(null);
+  const PAD = 40; // folga p/ o brilho de elementos filhos não ser cortado
   const [box, setBox] = useState<{ left: number; width: number; height: number } | null>(null);
 
   useLayoutEffect(() => {
@@ -58,17 +59,18 @@ export function FixedColumn({
             ? {
                 position: 'fixed',
                 top,
-                left: box.left,
-                width: box.width,
-                maxHeight: `calc(100vh - ${top + 24}px)`,
-                overflowY: 'auto',
-                padding: 8,
-                margin: -8,
+                left: box.left - PAD,
+                width: box.width + PAD * 2,
+                padding: PAD,
+                // Só rola por dentro se o conteúdo não couber; senão fica visível (sem cortar o glow).
+                maxHeight: `calc(100vh - ${top}px)`,
+                overflowY: box.height + PAD * 2 > window.innerHeight - top ? 'auto' : 'visible',
+                pointerEvents: 'none',
               }
             : undefined
         }
       >
-        {children}
+        <div style={box ? { pointerEvents: 'auto' } : undefined}>{children}</div>
       </div>
     </div>
   );

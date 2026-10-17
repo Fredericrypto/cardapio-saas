@@ -12,6 +12,9 @@ interface GlassCardProps {
   // false = sem o brilho que segue o cursor (e sem acender a borda no hover); os pontos de luz
   // da órbita ficam sempre visíveis. Padrão true (comportamento original dos outros usos).
   cursorGlow?: boolean;
+  // true = sem blur de fundo (backdrop-filter). Use em cartões DENTRO de outro vidro e em listas:
+  // blur aninhado é o que mais pesa no celular.
+  flat?: boolean;
   // Classes do invólucro (posição, sticky, margens) e do corpo (padding, layout interno).
   className?: string;
   bodyClassName?: string;
@@ -26,6 +29,7 @@ export function GlassCard({
   orbit = false,
   radius = 24,
   cursorGlow = true,
+  flat = false,
   className = '',
   bodyClassName = '',
 }: GlassCardProps) {
@@ -70,7 +74,7 @@ export function GlassCard({
   return (
     <div
       ref={ref}
-      className={`gc-card ${hovering ? 'is-hover' : ''} ${className}`}
+      className={`gc-card ${hovering ? 'is-hover' : ''} ${flat ? 'gc-card--flat' : ''} ${className}`}
       style={{ '--gc-r': `${radius}px` } as CSSProperties}
       onPointerEnter={cursorGlow ? handleEnter : undefined}
       onPointerMove={cursorGlow ? handleMove : undefined}
