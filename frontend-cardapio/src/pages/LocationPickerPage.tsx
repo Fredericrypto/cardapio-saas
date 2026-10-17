@@ -8,7 +8,7 @@ import { useSelectedLocation } from '../hooks/useSelectedLocation';
 import { useMinuteClock } from '../hooks/useMinuteClock';
 import { useAccentColor } from '../hooks/useAccentColor';
 import { useI18n } from '../i18n/I18nContext';
-import { routeUrl, formatDistance } from '../lib/locationRoute';
+import { routeUrl, formatDistance, haversineKm } from '../lib/locationRoute';
 import { getStoreStatus } from '../lib/storeStatus';
 import { formatNextOpening } from '../lib/openingHours';
 import { getActiveMesaToken } from '../lib/seat';
@@ -18,19 +18,6 @@ import { useTenant } from '../contexts/TenantContext';
 import { FoodBackdrop } from '../components/FoodBackdrop';
 import { Tooltip } from '../components/Tooltip';
 import type { Location } from '../types';
-
-// Mesma distância "em linha reta" usada no backend (haversine) — só pra
-// ORDENAR a lista da mais perto pra mais longe, nada crítico o
-// suficiente pra exigir precisão de servidor aqui.
-function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
 
 // Tela de escolha de loja — mesma lógica do app do McDonald's: tenta
 // pegar a localização do celular e já sugere a mais perto, mas sempre

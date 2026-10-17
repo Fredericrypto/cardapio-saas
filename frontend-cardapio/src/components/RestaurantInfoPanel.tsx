@@ -18,6 +18,7 @@ import { ACTION_BUTTON_BASE } from '../lib/uiClasses';
 import { Tooltip } from './Tooltip';
 import { useAccentColor } from '../hooks/useAccentColor';
 import { routeUrl, formatDistance } from '../lib/locationRoute';
+import { useDistanceKm } from '../hooks/useDistanceKm';
 import {
   buildWhatsappLink,
   buildInstagramLink,
@@ -150,6 +151,9 @@ export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelPro
   const { t } = useI18n();
   // Cor do restaurante legivel no tema atual: alimenta o brilho do botao de telefone (--glow).
   const accent = useAccentColor(tenant.primaryColor ?? '#3d3846');
+  // Distancia: a que a unidade ja traz, ou a calculada pela localizacao do aparelho ao abrir o painel.
+  const liveDistanceKm = useDistanceKm(location, expanded);
+  const distanceKm = location?.distanceKm ?? liveDistanceKm;
   const weekSchedule = getWeekScheduleLines(location?.openingHours ?? null, t);
   // O texto de dia fechado vem do dicionário ("Fechado" / "Closed" / "Cerrado"); comparar com o
   // literal em português deixava o dia fechado sem o vermelho em inglês e espanhol.
@@ -222,15 +226,15 @@ export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelPro
             window.setTimeout(() => setRouteGlow(false), 900);
           }}
           aria-label={
-            location.distanceKm != null
-              ? `${t('location.distanceAway', { distance: formatDistance(location.distanceKm) })} · ${t('location.route', { name: location.name })}`
+            distanceKm != null
+              ? `${t('location.distanceAway', { distance: formatDistance(distanceKm) })} · ${t('location.route', { name: location.name })}`
               : t('location.route', { name: location.name })
           }
           style={{ '--glow': accent } as CSSProperties}
-          className={`loc-dist ${routeGlow ? 'is-glow' : ''} shrink-0 inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold tabular-nums bg-white/40 dark:bg-white/10 backdrop-blur-md border border-[#E5E7EB]/60 dark:border-white/15 active:scale-95 ${MENU_TEXT}`}
+          className={`loc-dist ${routeGlow ? 'is-glow' : ''} shrink-0 inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold tabular-nums border bg-transparent backdrop-blur-md ${MENU_BORDER} active:scale-95 ${MENU_TEXT}`}
         >
           <Navigation size={12} strokeWidth={1.5} aria-hidden="true" />
-          {location.distanceKm != null ? formatDistance(location.distanceKm) : null}
+          {distanceKm != null ? formatDistance(distanceKm) : null}
         </a>
       </Tooltip>
     ) : null;
@@ -369,7 +373,7 @@ function InfoColumn({
       </div>
       {/* Acao no rodape: as colunas esticam pela mais alta, entao o botao de rota (endereco) e o
           de telefone (contato) ficam na mesma altura. */}
-      {action && <div className="flex w-full items-center justify-center md:min-h-10">{action}</div>}
+      {action && <div className="flex w-full items-end justify-center">{action}</div>}
     </div>
   );
 }
