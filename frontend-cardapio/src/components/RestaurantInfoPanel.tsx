@@ -357,6 +357,10 @@ function InfoColumn({
 }) {
   return (
     <div className="flex flex-col items-center gap-2 w-full md:h-full">
+      {/* Celular: filete curto e sutil separando esta coluna da anterior (no desktop vale o divisor vertical). */}
+      {divider && (
+        <span aria-hidden="true" className="md:hidden -mt-1 mb-1 h-px w-16 bg-[#E5E7EB] dark:bg-white/10" />
+      )}
       <h3
         className={`hidden md:block w-full text-center text-[11px] font-semibold uppercase tracking-wider ${MENU_TEXT_MUTED}`}
       >
