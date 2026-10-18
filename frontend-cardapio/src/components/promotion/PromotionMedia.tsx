@@ -59,7 +59,7 @@ export function PromotionMedia({
       {/* A luz da imagem fica colada SOMENTE nela (mesmo raio nos 4 lados); o painel
           de baixo tem a luz dele (dentro do próprio painel). Os z-index negativos
           vivem neste contexto `isolate`: acima do fundo, abaixo de todo o conteúdo. */}
-      {topBar && <div className="mb-2 flex">{topBar}</div>}
+      {topBar && <div className="mb-2 flex items-center justify-between gap-2">{topBar}</div>}
       <div className="relative">
         <PromotionAmbient color={primaryColor} imageUrl={grayscale ? null : imageUrl} />
 

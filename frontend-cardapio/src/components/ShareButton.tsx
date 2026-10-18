@@ -3,13 +3,14 @@ import { useCallback, useState } from 'react';
 import { Share2 } from 'lucide-react';
 import { FloatingNotice } from './FloatingNotice';
 import { Tooltip } from './Tooltip';
+import { MENU_BORDER, MENU_TEXT } from '../lib/menuTheme';
 
 interface ShareButtonProps {
   url: string;
   title: string;
   text?: string;
   // 'overlay' = círculo branco sobre foto; 'chip' = ícone pequeno dentro de card.
-  variant?: 'overlay' | 'chip';
+  variant?: 'overlay' | 'chip' | 'glass';
   className?: string;
 }
 
@@ -66,10 +67,14 @@ export function ShareButton({ url, title, text, variant = 'overlay', className =
     setNotice((await copyToClipboard(url)) ? t('share.copied') : t('share.failed'));
   }
 
+  // 'glass' = mesmo vidro do header do cardápio (botão fora da foto, sobre o wallpaper).
   const look =
-    variant === 'overlay'
-      ? 'w-9 h-9 bg-white/90 dark:bg-black/55 backdrop-blur-sm shadow-sm'
-      : 'w-7 h-7 bg-white/90 dark:bg-black/55 backdrop-blur-sm shadow-sm';
+    variant === 'glass'
+      ? `h-10 w-10 border bg-transparent shadow-sm ring-1 ring-black/5 backdrop-blur-md ${MENU_BORDER}`
+      : variant === 'overlay'
+        ? 'w-9 h-9 bg-white/90 dark:bg-black/55 backdrop-blur-sm shadow-sm'
+        : 'w-7 h-7 bg-white/90 dark:bg-black/55 backdrop-blur-sm shadow-sm';
+  const tone = variant === 'glass' ? MENU_TEXT : 'text-[#374151] dark:text-white';
 
   return (
     <>
@@ -82,9 +87,9 @@ export function ShareButton({ url, title, text, variant = 'overlay', className =
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') void share(e);
           }}
-          className={`${look} rounded-full flex items-center justify-center text-[#374151] dark:text-white active:scale-90 transition-transform cursor-pointer ${className}`}
+          className={`${look} rounded-full flex items-center justify-center ${tone} active:scale-90 transition-transform cursor-pointer ${className}`}
         >
-          <Share2 size={variant === 'overlay' ? 17 : 14} strokeWidth={1.5} />
+          <Share2 size={variant === 'chip' ? 14 : 17} strokeWidth={1.5} />
         </span>
       </Tooltip>
       {notice && <FloatingNotice message={notice} onDone={clearNotice} durationMs={3000} />}

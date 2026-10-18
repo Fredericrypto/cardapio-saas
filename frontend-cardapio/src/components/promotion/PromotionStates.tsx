@@ -1,6 +1,5 @@
 import { Ticket } from 'lucide-react';
 import { useI18n } from '../../i18n/I18nContext';
-import { withAlpha } from '../../lib/promotionPresentation';
 import { MENU_BORDER, MENU_PAGE_BG, MENU_TEXT, MENU_TEXT_BODY } from '../../lib/menuTheme';
 import { PROMO_LINK_BTN, PROMO_PRIMARY_BTN } from '../../lib/promotionTheme';
 import { FoodBackdrop } from '../FoodBackdrop';
@@ -35,11 +34,11 @@ export function PromotionUnavailable({
         <PromotionAmbient color={primaryColor} />
         <div
           role={failed ? 'alert' : undefined}
-          className={`relative flex w-full flex-col items-center gap-3 rounded-2xl md:rounded-3xl border bg-[#FFFFFF]/55 p-7 text-center backdrop-blur-xl dark:bg-[#131314]/55 ${MENU_BORDER}`}
+          className={`relative flex w-full flex-col items-center gap-3 rounded-2xl md:rounded-3xl border bg-transparent p-7 text-center backdrop-blur-md ${MENU_BORDER}`}
         >
           <span
-            className="grid h-14 w-14 place-items-center rounded-2xl"
-            style={{ backgroundColor: withAlpha(primaryColor, 0.12), color: accent }}
+            className={`grid h-14 w-14 place-items-center rounded-2xl border bg-transparent backdrop-blur-md ${MENU_BORDER}`}
+            style={{ color: accent }}
             aria-hidden="true"
           >
             <Ticket size={26} strokeWidth={1.5} />

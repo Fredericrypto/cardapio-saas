@@ -3,7 +3,7 @@ import { useI18n } from '../../i18n/I18nContext';
 import { promotionReasonLabel } from '../../i18n/labels';
 import { formatBRL, getPromotionHeroValue } from '../../lib/promotionPresentation';
 import { MENU_BORDER, MENU_TEXT, MENU_TEXT_SOFT } from '../../lib/menuTheme';
-import { PROMO_LINK_BTN, PROMO_SUCCESS_CARD, PROMO_SUCCESS_TEXT } from '../../lib/promotionTheme';
+import { PROMO_LINK_BTN, PROMO_SUCCESS_TEXT } from '../../lib/promotionTheme';
 import type { Promotion } from '../../types';
 import type { PromotionEligibility } from '../../lib/promotionEligibility';
 
@@ -30,9 +30,9 @@ export function PromotionBenefitCard({
 
   if (eligibility.isEligible) {
     return (
-      <div className={`${PROMO_SUCCESS_CARD} md:rounded-3xl p-5 md:p-6 flex items-center gap-4`}>
+      <div className="rounded-2xl md:rounded-3xl border border-green-300/70 bg-green-500/10 backdrop-blur-md dark:border-green-400/20 p-5 md:p-6 flex items-center gap-4">
         <span
-          className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-green-600 text-[#FFFFFF] dark:bg-green-400 dark:text-[#052e16]"
+          className={`grid h-14 w-14 shrink-0 place-items-center rounded-2xl border border-green-300/70 bg-transparent backdrop-blur-md dark:border-green-400/30 ${PROMO_SUCCESS_TEXT}`}
           aria-hidden="true"
         >
           <Wallet size={26} strokeWidth={1.5} />
@@ -64,10 +64,10 @@ export function PromotionBenefitCard({
   const canSuggestItems = eligibility.reasonCode === 'no_eligible_items' && hasEligibleProducts;
 
   return (
-    <div className={`rounded-2xl md:rounded-3xl border bg-[#FFFFFF]/55 dark:bg-[#131314]/55 backdrop-blur-xl shadow-lg p-5 md:p-6 ${MENU_BORDER}`}>
+    <div className={`rounded-2xl md:rounded-3xl border bg-transparent backdrop-blur-md p-5 md:p-6 ${MENU_BORDER}`}>
       <div className="flex items-center gap-4">
         <span
-          className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-[#111827] text-[#FFFFFF] dark:bg-[#E3E2E6] dark:text-[#131314]"
+          className={`grid h-14 w-14 shrink-0 place-items-center rounded-2xl border bg-transparent backdrop-blur-md ${MENU_BORDER} ${MENU_TEXT}`}
           aria-hidden="true"
         >
           <Tag size={26} strokeWidth={1.5} />

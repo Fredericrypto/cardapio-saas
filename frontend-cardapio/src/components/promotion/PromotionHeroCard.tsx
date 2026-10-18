@@ -1,6 +1,6 @@
 import { useI18n } from '../../i18n/I18nContext';
 import { getHeroNumberScale, getPromotionHeroValue } from '../../lib/promotionPresentation';
-import { MENU_TEXT, MENU_TEXT_SOFT } from '../../lib/menuTheme';
+import { MENU_BORDER, MENU_TEXT, MENU_TEXT_SOFT } from '../../lib/menuTheme';
 import type { Promotion } from '../../types';
 
 // Painel do desconto, ABAIXO da imagem: vidro transparente, compacto (largura
@@ -46,7 +46,7 @@ export function PromotionHeroCard({
       <div
         role="group"
         aria-label={ariaLabel}
-        className={`rounded-2xl md:rounded-3xl border border-black/10 dark:border-white/15 bg-[#FFFFFF]/45 dark:bg-white/[0.05] backdrop-blur-xl shadow-lg px-4 py-3 md:px-7 md:py-5 ${muted ? 'opacity-80 grayscale' : ''}`}
+        className={`rounded-2xl md:rounded-3xl border bg-transparent backdrop-blur-md shadow-lg ${MENU_BORDER} px-4 py-3 md:px-7 md:py-5 ${muted ? 'opacity-80 grayscale' : ''}`}
       >
         <div className="flex flex-wrap items-end gap-x-2 md:gap-x-3 gap-y-1">
           <span className={`font-display font-extrabold leading-[0.9] tracking-tight tabular-nums ${numberSize} ${MENU_TEXT}`}>

@@ -40,10 +40,8 @@ import {
 } from '../lib/menuTheme';
 import type { Promotion, Category, Product } from '../types';
 
-// Vidro padrão do cardápio (superfícies pequenas) e véu leve para superfícies com
-// bastante texto (o wallpaper não pode competir com a leitura).
+// Vidro padrão: o MESMO do header do cardápio (MENU_HEADER_SHEET).
 const GLASS = `border bg-transparent backdrop-blur-md ${MENU_BORDER}`;
-const GLASS_VEIL = `border bg-[#FFFFFF]/55 dark:bg-[#131314]/55 backdrop-blur-xl ${MENU_BORDER}`;
 
 function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString(activeDateLocale(), {
@@ -312,23 +310,24 @@ export function PromotionDetailPage() {
               primaryColor={tenant.primaryColor}
               grayscale={isUsedUp}
               topBar={
-                <GlassBackButton
-                  // Link compartilhado abre direto aqui (sem histórico): voltar leva ao cardápio.
-                  onClick={() => (routerLocation.key === 'default' ? navigate(backHref, { replace: true }) : navigate(-1))}
-                  label={t('common.back')}
-                  tooltip={t('tooltip.back')}
-                  className="loc-dist [--glow:var(--accent)]"
-                />
-              }
-              overlay={
-                slug ? (
-                  <ShareButton
-                    className="absolute top-4 right-4"
-                    url={buildShareUrl('promocao', slug, promotion.id)}
-                    title={localizedField(promotion, 'title')}
-                    text={localizedField(promotion, 'description') || t('promotionDetailPage.promocao_de_name', { name: tenant.name })}
+                <>
+                  <GlassBackButton
+                    // Link compartilhado abre direto aqui (sem histórico): voltar leva ao cardápio.
+                    onClick={() => (routerLocation.key === 'default' ? navigate(backHref, { replace: true }) : navigate(-1))}
+                    label={t('common.back')}
+                    tooltip={t('tooltip.back')}
+                    className="loc-dist [--glow:var(--accent)]"
                   />
-                ) : null
+                  {slug && (
+                    <ShareButton
+                      variant="glass"
+                      className="loc-dist [--glow:var(--accent)]"
+                      url={buildShareUrl('promocao', slug, promotion.id)}
+                      title={localizedField(promotion, 'title')}
+                      text={localizedField(promotion, 'description') || t('promotionDetailPage.promocao_de_name', { name: tenant.name })}
+                    />
+                  )}
+                </>
               }
               panel={<PromotionHeroCard promotion={promotion} ariaLabel={discountLabel} muted={isUsedUp} />}
             />
@@ -336,7 +335,7 @@ export function PromotionDetailPage() {
 
           {/* Coluna direita: selo, título, benefício, ação e (por último) condições */}
           <div className="flex flex-col gap-5 lg:gap-6">
-            <div className={`flex flex-col items-start gap-3 rounded-2xl md:rounded-3xl p-5 md:p-6 ${GLASS_VEIL}`}>
+            <div className={`flex flex-col items-start gap-3 rounded-2xl md:rounded-3xl p-5 md:p-6 ${GLASS}`}>
               <PromotionBadge kind={badgeKind} muted={isUsedUp} />
               <h1 className={`font-display text-3xl md:text-4xl font-extrabold leading-tight ${MENU_TEXT}`}>
                 {localizedField(promotion, 'title')}
@@ -349,7 +348,7 @@ export function PromotionDetailPage() {
             </div>
 
             {isUsedUp ? (
-              <div className={`rounded-2xl md:rounded-3xl p-5 flex flex-wrap items-center gap-3 ${GLASS_VEIL}`}>
+              <div className={`rounded-2xl md:rounded-3xl p-5 flex flex-wrap items-center gap-3 ${GLASS}`}>
                 <CheckCircle2 size={22} strokeWidth={1.5} className={`${MENU_TEXT_SOFT} shrink-0`} aria-hidden="true" />
                 <p className={`text-sm ${MENU_TEXT_SOFT} flex-1 min-w-0`}>{t('promotionDetailPage.voce_ja_usou_essa')}</p>
                 <button
@@ -394,18 +393,23 @@ export function PromotionDetailPage() {
               >
                 {t('promotionDetailPage.detalhes_e_condicoes')}
               </h2>
-              <ul
-                className={`overflow-hidden rounded-2xl md:rounded-3xl divide-y divide-[#E5E7EB] dark:divide-white/10 ${GLASS_VEIL}`}
-              >
-                {conditionRows.map((row) => (
-                  <li key={row.key} className={`flex items-center gap-3 px-4 py-3 text-sm ${MENU_TEXT_SOFT}`}>
+              <ul className={`rounded-2xl md:rounded-3xl ${GLASS}`}>
+                {conditionRows.map((row, i) => (
+                  <li key={row.key} className={`relative flex items-center gap-3 px-4 py-3.5 text-sm ${MENU_TEXT_SOFT}`}>
                     <span
-                      className={`grid h-8 w-8 shrink-0 place-items-center rounded-full bg-black/[0.04] dark:bg-white/[0.06] ${MENU_TEXT}`}
+                      className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${GLASS} ${MENU_TEXT}`}
                       aria-hidden="true"
                     >
                       {row.icon}
                     </span>
                     <span className="min-w-0 break-words">{row.label}</span>
+                    {/* Filete interno: não encosta nas bordas; começa alinhado ao texto. */}
+                    {i < conditionRows.length - 1 && (
+                      <span
+                        aria-hidden="true"
+                        className="pointer-events-none absolute bottom-0 left-[3.75rem] right-4 h-px bg-[#E5E7EB] dark:bg-white/10"
+                      />
+                    )}
                   </li>
                 ))}
               </ul>
