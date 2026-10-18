@@ -87,7 +87,7 @@ export function ReceiptContent({ tenant, summary }: { tenant: Tenant; summary: S
   // (`dark:bg-[#FFFFFF]`) com respiro, com texto #1F2937 sobre ela.
   return (
     <div className="w-full dark:bg-[#FFFFFF] dark:rounded-xl dark:p-4 [color-scheme:light]">
-      <div className="font-mono text-xs text-[#1F2937] flex flex-col gap-2 w-full max-w-[280px] mx-auto">
+      <div className="font-mono text-xs md:text-[13px] text-[#1F2937] flex flex-col gap-2 w-full max-w-[280px] md:max-w-[340px] mx-auto">
         <div className="text-center flex flex-col gap-0.5">
           <p className="font-bold text-sm">{tenant.name}</p>
         </div>
