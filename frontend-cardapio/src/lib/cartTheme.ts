@@ -16,7 +16,7 @@ import {
 } from './menuTheme';
 
 /** Container do carrinho: o MESMO do Menu (largura, recuo lateral). */
-export const CART_CONTAINER = 'w-full max-w-7xl mx-auto px-4 md:px-8';
+export const CART_CONTAINER = 'w-full max-w-[88rem] mx-auto px-4 md:px-8';
 
 /** Cartão de um bloco do carrinho (cupom, formulário, pagamento, revisão). */
 export const CART_CARD = `rounded-2xl border p-4 md:p-6 bg-[#FFFFFF]/55 dark:bg-[#161617]/60 backdrop-blur-md ${MENU_DIVIDER}`;
