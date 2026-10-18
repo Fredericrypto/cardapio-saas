@@ -2,37 +2,48 @@ import { localizedField } from '../i18n/contentText';
 import { activeDateLocale } from '../i18n/languages';
 import { categoryLabel } from '../i18n/categoryLabel';
 import { useI18n } from '../i18n/I18nContext';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowRight, Ban, Clock, Coins, Compass, Users, Tag, Package, CheckCircle2 } from 'lucide-react';
 import { ShareButton } from '../components/ShareButton';
 import { GlassBackButton } from '../components/GlassBackButton';
 import { AnimatedGradientButton } from '../components/AnimatedGradientButton';
+import { FoodBackdrop } from '../components/FoodBackdrop';
 import { PromotionMedia } from '../components/promotion/PromotionMedia';
 import { PromotionBadge } from '../components/promotion/PromotionBadge';
 import { PromotionHeroCard } from '../components/promotion/PromotionHeroCard';
 import { PromotionBenefitCard } from '../components/promotion/PromotionBenefitCard';
 import { PromotionSkeleton, PromotionUnavailable } from '../components/promotion/PromotionStates';
 import { buildShareUrl } from '../lib/shareLinks';
-import { fetchActivePromotions, fetchCategories, fetchProducts, fetchLocationById } from '../lib/menu-api';
+import { fetchActivePromotions, fetchCategories, fetchProducts } from '../lib/menu-api';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { useTenant } from '../contexts/TenantContext';
 import { useCart } from '../contexts/CartContext';
 import { useAccentColor } from '../hooks/useAccentColor';
-import { useTableSessionContext } from '../contexts/TableSessionContext';
-import { useSelectedLocation } from '../hooks/useSelectedLocation';
-import { computePromotionEligibility } from '../lib/promotionEligibility';
+import { useActiveMenuLocation } from '../hooks/useActiveMenuLocation';
+import {
+  computePromotionEligibility,
+  previewItemPromotion,
+  type ItemPromotionPreview,
+} from '../lib/promotionEligibility';
 import { buildPromotionModePaths } from '../lib/promotionMode';
+import { getProductImages } from '../lib/productImages';
 import { formatBRL, getPromotionBadgeKind, getPromotionHeroValue } from '../lib/promotionPresentation';
 import { PROMO_FOCUS, PROMO_LINK_BTN } from '../lib/promotionTheme';
-import { PROFILE_CARD } from '../lib/profileTheme';
 import {
+  MENU_BORDER,
   MENU_PAGE_BG,
+  MENU_SURFACE_SUBTLE,
   MENU_TEXT,
   MENU_TEXT_SOFT,
   MENU_TEXT_MUTED,
 } from '../lib/menuTheme';
-import type { Promotion, Category, Product, Location } from '../types';
+import type { Promotion, Category, Product } from '../types';
+
+// Vidro padrão do cardápio (superfícies pequenas) e véu leve para superfícies com
+// bastante texto (o wallpaper não pode competir com a leitura).
+const GLASS = `border bg-transparent backdrop-blur-md ${MENU_BORDER}`;
+const GLASS_VEIL = `border bg-[#FFFFFF]/55 dark:bg-[#131314]/55 backdrop-blur-xl ${MENU_BORDER}`;
 
 function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString(activeDateLocale(), {
@@ -64,54 +75,71 @@ export function PromotionDetailPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [notFound, setNotFound] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   const { token: customerToken } = useCustomerAuth();
 
-  // Mesma resolução de loja do MenuPage: uma promoção pode ser restrita a
-  // lojas específicas (ver PromotionsService.isValidAtLocation), então
-  // sem mandar a locationId certa pro backend a promoção some da lista
-  // e essa tela mostra "não está mais disponível" mesmo ela existindo.
-  const tableSessionCtx = useTableSessionContext();
-  const tableSession = tableSessionCtx?.session ?? null;
-  const { location: selectedLocation, isLoading: isSelectedLocationLoading } = useSelectedLocation(
-    !isTableFlow ? tenant?.id : undefined,
-  );
-  const [tableLocation, setTableLocation] = useState<Location | null>(null);
-  useEffect(() => {
-    if (!isTableFlow || !tenant || !tableSession?.table?.locationId) return;
-    fetchLocationById(tenant.id, tableSession.table.locationId).then(setTableLocation);
-  }, [isTableFlow, tenant, tableSession?.table?.locationId]);
-  const activeLocation = isTableFlow ? tableLocation : selectedLocation;
-  // Só busca as promoções depois que a loja estiver resolvida (ou já der
-  // pra saber que não tem loja pra resolver) — senão o primeiro fetch sai
-  // sem locationId, filtra promoções restritas a loja e pisca "não está
-  // mais disponível" antes do segundo fetch (com a location certa) corrigir.
-  // Compara pelo id (em vez de um flag de loading separado) pra não ter
-  // uma renderização no meio do caminho em que o fetch da location já
-  // devia ter começado mas o estado "loading" ainda não foi setado.
-  const isLocationReady = isTableFlow
-    ? !tableSession?.table?.locationId || tableLocation?.id === tableSession.table.locationId
-    : Boolean(tenant) && !isSelectedLocationLoading;
+  // Mesma resolução de loja do MenuPage (hook compartilhado): uma promoção pode ser
+  // restrita a lojas específicas, então sem a locationId certa ela some da lista e
+  // esta tela mostraria "não está mais disponível" mesmo existindo. `isLocationReady`
+  // evita um primeiro fetch sem locationId (que piscaria "indisponível").
+  const { location: activeLocation, isReady: isLocationReady } = useActiveMenuLocation(isTableFlow);
+  const tenantId = tenant?.id;
+  const locationId = activeLocation?.id;
 
   useEffect(() => {
-    if (!slug || !promotionId || !tenant || !isLocationReady) return;
-    async function load() {
-      const [promos, cats, prods] = await Promise.all([
-        fetchActivePromotions(tenant!.id, customerToken, activeLocation?.id),
-        fetchCategories(tenant!.id),
-        fetchProducts(tenant!.id),
-      ]);
-      const found = promos.find((p) => p.id === promotionId) ?? null;
-      setPromotion(found);
-      setNotFound(!found);
-      setCategories(cats);
-      setProducts(prods);
-      setIsLoading(false);
-    }
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slug, promotionId, tenant, customerToken, isLocationReady, activeLocation?.id]);
+    if (!slug || !promotionId || !tenantId || !isLocationReady) return;
+    let stale = false;
+    Promise.all([
+      fetchActivePromotions(tenantId, customerToken, locationId),
+      fetchCategories(tenantId),
+      fetchProducts(tenantId),
+    ])
+      .then(([promos, cats, prods]) => {
+        if (stale) return;
+        setPromotion(promos.find((p) => p.id === promotionId) ?? null);
+        setCategories(cats);
+        setProducts(prods);
+        setLoadFailed(false);
+        setIsLoading(false);
+      })
+      .catch(() => {
+        // Falha de rede não é "promoção indisponível": mostra erro com nova tentativa.
+        if (stale) return;
+        setLoadFailed(true);
+        setIsLoading(false);
+      });
+    return () => {
+      stale = true;
+    };
+  }, [slug, promotionId, tenantId, customerToken, isLocationReady, locationId, reloadKey]);
+
+  function handleRetry() {
+    setIsLoading(true);
+    setLoadFailed(false);
+    setReloadKey((k) => k + 1);
+  }
+
+  // Produtos elegíveis (só quando a promoção é restrita a itens/categorias), com os
+  // indisponíveis por último.
+  const eligibleProducts = useMemo(() => {
+    if (!promotion) return [] as Product[];
+    const list =
+      promotion.scope === 'product'
+        ? products.filter((p) => promotion.productIds.includes(p.id))
+        : promotion.scope === 'category'
+          ? products.filter((p) => promotion.categoryIds.includes(p.categoryId))
+          : [];
+    return [...list].sort((a, b) => Number(a.isAvailable === false) - Number(b.isAvailable === false));
+  }, [promotion, products]);
+
+  // Preço de hoje x preço com a promoção: mesmo motor do Modo Promoção.
+  const previews = useMemo(() => {
+    const map = new Map<string, ItemPromotionPreview>();
+    if (promotion) for (const p of eligibleProducts) map.set(p.id, previewItemPromotion(promotion, p));
+    return map;
+  }, [promotion, eligibleProducts]);
 
   const backHref = qrCodeToken ? `/${slug}/mesa/${qrCodeToken}` : `/${slug}`;
   const cartHref = qrCodeToken ? `/${slug}/mesa/${qrCodeToken}/carrinho` : `/${slug}/carrinho`;
@@ -122,7 +150,19 @@ export function PromotionDetailPage() {
     return <PromotionSkeleton />;
   }
 
-  if (notFound || !promotion) {
+  if (loadFailed) {
+    return (
+      <PromotionUnavailable
+        primaryColor={tenant.primaryColor}
+        accent={accent}
+        onBack={() => navigate(backHref)}
+        failed
+        onRetry={handleRetry}
+      />
+    );
+  }
+
+  if (!promotion) {
     return (
       <PromotionUnavailable primaryColor={tenant.primaryColor} accent={accent} onBack={() => navigate(backHref)} />
     );
@@ -133,14 +173,6 @@ export function PromotionDetailPage() {
       ? categories.filter((c) => promotion.categoryIds.includes(c.id)).map((c) => categoryLabel(c, t))
       : promotion.scope === 'product'
         ? products.filter((p) => promotion.productIds.includes(p.id)).map((p) => localizedField(p, 'name'))
-        : [];
-
-  // Produtos elegíveis (só quando a promoção é restrita a itens/categorias).
-  const eligibleProducts =
-    promotion.scope === 'product'
-      ? products.filter((p) => promotion.productIds.includes(p.id))
-      : promotion.scope === 'category'
-        ? products.filter((p) => promotion.categoryIds.includes(p.categoryId))
         : [];
 
   // Loja fechada: dá para ler a promoção, mas não resgatar/aplicar.
@@ -198,7 +230,7 @@ export function PromotionDetailPage() {
   ) : isApplied ? (
     <button
       onClick={handleRemove}
-      className={`w-full py-3.5 md:py-4 rounded-xl text-[15px] font-semibold border-2 transition hover:bg-black/[0.03] dark:hover:bg-white/[0.06] ${PROMO_FOCUS}`}
+      className={`loc-dist [--glow:var(--accent)] w-full py-3.5 md:py-4 rounded-xl text-[15px] font-semibold border-2 bg-transparent backdrop-blur-md transition hover:bg-black/[0.03] dark:hover:bg-white/[0.06] ${PROMO_FOCUS}`}
       style={{ borderColor: accent, color: accent }}
     >
       {t('promotionDetailPage.remover_promocao')}
@@ -227,14 +259,14 @@ export function PromotionDetailPage() {
   if (promotion.minOrderValue > 0) {
     conditionRows.push({
       key: 'min',
-      icon: <Tag size={15} strokeWidth={1.5} />,
+      icon: <Tag size={16} strokeWidth={1.5} />,
       label: t('promotionDetailPage.pedido_minimo_de_r', { v0: Number(promotion.minOrderValue).toFixed(2).replace('.', ',') }),
     });
   }
   if (promotion.usageLimitPerCustomer != null) {
     conditionRows.push({
       key: 'usage',
-      icon: <Users size={15} strokeWidth={1.5} />,
+      icon: <Users size={16} strokeWidth={1.5} />,
       label:
         promotion.usageLimitPerCustomer === 1
           ? t('promotionDetailPage.limite_de_1_uso')
@@ -244,65 +276,67 @@ export function PromotionDetailPage() {
   if (promotion.endsAt) {
     conditionRows.push({
       key: 'ends',
-      icon: <Clock size={15} strokeWidth={1.5} />,
+      icon: <Clock size={16} strokeWidth={1.5} />,
       label: t('promotionDetailPage.valida_ate_v0', { v0: formatDateTime(promotion.endsAt) }),
     });
   }
   if (promotion.discountType === 'percentage' && promotion.maxDiscountAmount != null) {
     conditionRows.push({
       key: 'maxdiscount',
-      icon: <Coins size={15} strokeWidth={1.5} />,
+      icon: <Coins size={16} strokeWidth={1.5} />,
       label: t('promotionDetailPage.desconto_maximo_de_r', { v0: formatBRL(promotion.maxDiscountAmount) }),
     });
   }
   if (promotion.maxEligibleQuantity != null) {
     conditionRows.push({
       key: 'maxqty',
-      icon: <Package size={15} strokeWidth={1.5} />,
+      icon: <Package size={16} strokeWidth={1.5} />,
       label: t('promotionDetailPage.desconto_em_ate_n_unidades', { n: promotion.maxEligibleQuantity }),
     });
   }
 
   return (
     <div
-      className={`relative min-h-screen ${MENU_PAGE_BG} pb-28 lg:pb-12`}
+      className={`relative isolate min-h-screen ${MENU_PAGE_BG} pb-28 lg:pb-12`}
       style={{ '--brand': tenant.primaryColor, '--accent': accent } as React.CSSProperties}
     >
+      <FoodBackdrop />
       <div className="relative w-full max-w-[88rem] mx-auto px-4 md:px-8 py-4 md:py-8 lg:py-10">
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] gap-6 lg:gap-10 items-start">
           {/* Coluna esquerda: imagem INTEIRA que cabe na altura da tela, luz ambiente
               atrás de tudo e o painel do desconto (vidro) abaixo da imagem. */}
-          <PromotionMedia
-            imageUrl={promotion.imageUrl}
-            alt={localizedField(promotion, 'title')}
-            primaryColor={tenant.primaryColor}
-            grayscale={isUsedUp}
-            topBar={
-              <GlassBackButton
-                // Link compartilhado abre direto aqui (sem histórico): voltar leva ao cardápio.
-                onClick={() => (routerLocation.key === 'default' ? navigate(backHref, { replace: true }) : navigate(-1))}
-                label={t('common.back')}
-                tooltip={t('tooltip.back')}
-              />
-            }
-            overlay={
-              <>
-                {slug && (
+          <div className="lg:sticky lg:top-24">
+            <PromotionMedia
+              imageUrl={promotion.imageUrl}
+              alt={localizedField(promotion, 'title')}
+              primaryColor={tenant.primaryColor}
+              grayscale={isUsedUp}
+              topBar={
+                <GlassBackButton
+                  // Link compartilhado abre direto aqui (sem histórico): voltar leva ao cardápio.
+                  onClick={() => (routerLocation.key === 'default' ? navigate(backHref, { replace: true }) : navigate(-1))}
+                  label={t('common.back')}
+                  tooltip={t('tooltip.back')}
+                  className="loc-dist [--glow:var(--accent)]"
+                />
+              }
+              overlay={
+                slug ? (
                   <ShareButton
                     className="absolute top-4 right-4"
                     url={buildShareUrl('promocao', slug, promotion.id)}
                     title={localizedField(promotion, 'title')}
                     text={localizedField(promotion, 'description') || t('promotionDetailPage.promocao_de_name', { name: tenant.name })}
                   />
-                )}
-              </>
-            }
-            panel={<PromotionHeroCard promotion={promotion} ariaLabel={discountLabel} muted={isUsedUp} />}
-          />
+                ) : null
+              }
+              panel={<PromotionHeroCard promotion={promotion} ariaLabel={discountLabel} muted={isUsedUp} />}
+            />
+          </div>
 
           {/* Coluna direita: selo, título, benefício, ação e (por último) condições */}
-          <div className="flex flex-col gap-6">
-            <div className="flex flex-col items-start gap-3">
+          <div className="flex flex-col gap-5 lg:gap-6">
+            <div className={`flex flex-col items-start gap-3 rounded-2xl md:rounded-3xl p-5 md:p-6 ${GLASS_VEIL}`}>
               <PromotionBadge kind={badgeKind} muted={isUsedUp} />
               <h1 className={`font-display text-3xl md:text-4xl font-extrabold leading-tight ${MENU_TEXT}`}>
                 {localizedField(promotion, 'title')}
@@ -315,7 +349,7 @@ export function PromotionDetailPage() {
             </div>
 
             {isUsedUp ? (
-              <div className="rounded-2xl border border-black/10 dark:border-white/15 bg-[#FFFFFF]/50 dark:bg-white/[0.06] backdrop-blur-xl p-5 flex flex-wrap items-center gap-3">
+              <div className={`rounded-2xl md:rounded-3xl p-5 flex flex-wrap items-center gap-3 ${GLASS_VEIL}`}>
                 <CheckCircle2 size={22} strokeWidth={1.5} className={`${MENU_TEXT_SOFT} shrink-0`} aria-hidden="true" />
                 <p className={`text-sm ${MENU_TEXT_SOFT} flex-1 min-w-0`}>{t('promotionDetailPage.voce_ja_usou_essa')}</p>
                 <button
@@ -351,7 +385,8 @@ export function PromotionDetailPage() {
               </AnimatedGradientButton>
             )}
 
-            {/* Condições: depois do botão e mais leves que o benefício. */}
+            {/* Condições: depois do botão e mais leves que o benefício. Um único bloco de
+                vidro (um só backdrop-blur) com as linhas divididas. */}
             <section aria-labelledby="promo-conditions-title">
               <h2
                 id="promo-conditions-title"
@@ -359,13 +394,17 @@ export function PromotionDetailPage() {
               >
                 {t('promotionDetailPage.detalhes_e_condicoes')}
               </h2>
-              <ul className="flex flex-col gap-2">
+              <ul
+                className={`overflow-hidden rounded-2xl md:rounded-3xl divide-y divide-[#E5E7EB] dark:divide-white/10 ${GLASS_VEIL}`}
+              >
                 {conditionRows.map((row) => (
-                  <li
-                    key={row.key}
-                    className={`flex items-center gap-3 rounded-xl border border-black/10 dark:border-white/10 bg-[#FFFFFF]/40 dark:bg-white/[0.04] backdrop-blur-xl px-4 py-3 text-sm ${MENU_TEXT_SOFT}`}
-                  >
-                    <span className="shrink-0" aria-hidden="true">{row.icon}</span>
+                  <li key={row.key} className={`flex items-center gap-3 px-4 py-3 text-sm ${MENU_TEXT_SOFT}`}>
+                    <span
+                      className={`grid h-8 w-8 shrink-0 place-items-center rounded-full bg-black/[0.04] dark:bg-white/[0.06] ${MENU_TEXT}`}
+                      aria-hidden="true"
+                    >
+                      {row.icon}
+                    </span>
                     <span className="min-w-0 break-words">{row.label}</span>
                   </li>
                 ))}
@@ -376,62 +415,94 @@ export function PromotionDetailPage() {
 
         {/* Produtos elegíveis */}
         {eligibleProducts.length > 0 && (
-          <section id="promo-eligible-products" className="mt-10 lg:mt-14 scroll-mt-6">
-            <h2 className={`font-display text-lg md:text-xl font-bold ${MENU_TEXT} mb-4`}>
-              {t('promotionDetailPage.valida_para_itens_selecionados')}
+          <section
+            id="promo-eligible-products"
+            aria-labelledby="promo-eligible-title"
+            className="mt-10 lg:mt-14 scroll-mt-6"
+          >
+            <h2 id="promo-eligible-title" className={`font-display text-lg md:text-xl font-bold ${MENU_TEXT} mb-4`}>
+              {t('promotionMode.eligibleItemsTitle')}
             </h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+            <ul className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
               {eligibleProducts.map((product) => {
+                const preview = previews.get(product.id);
+                const name = localizedField(product, 'name');
+                const image = getProductImages(product)[0];
                 const unavailable = product.isAvailable === false;
-                const hasPromoPrice = product.promoPrice != null;
+                const showDeal = Boolean(preview?.isEligible && preview.unitDiscount > 0 && !unavailable);
+                const base = Number(product.promoPrice ?? product.price);
+                const from = formatBRL(preview?.unitPriceBeforePromo ?? base);
+                const to = formatBRL(preview?.unitPriceAfterPromo ?? base);
+                const listStrike =
+                  !showDeal && product.promoPrice != null
+                    ? formatBRL(preview?.listUnitPrice ?? Number(product.price))
+                    : null;
                 return (
-                  <button
-                    key={product.id}
-                    onClick={() => navigate(productHref(product.id))}
-                    className={`group text-left ${PROFILE_CARD} overflow-hidden cursor-pointer transition duration-200 hover:-translate-y-0.5 hover:shadow-md motion-reduce:transform-none motion-reduce:transition-none ${PROMO_FOCUS}`}
-                  >
-                    <div className="relative aspect-[4/3] bg-[#F3F4F6] dark:bg-[#282A2C] overflow-hidden flex items-center justify-center">
-                      {product.imageUrl ? (
-                        <img
-                          src={product.imageUrl}
-                          alt={localizedField(product, 'name')}
-                          loading="lazy"
-                          draggable={false}
-                          className={`w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 motion-reduce:transform-none ${unavailable ? 'grayscale opacity-60' : ''}`}
-                        />
-                      ) : (
-                        <Tag size={24} strokeWidth={1.5} className={MENU_TEXT_MUTED} />
-                      )}
-                      {hero.kind === 'percentage' && !isUsedUp && (
-                        <span className="absolute top-2 left-2 rounded-lg bg-black/70 backdrop-blur px-2 py-1 text-[11px] font-extrabold tracking-wide text-[#FFFFFF] shadow-sm">
-                          {hero.text} {t('promotionDetailPage.off')}
-                        </span>
-                      )}
+                  <li key={product.id} className="flex">
+                    <div
+                      className={`loc-card [--glow:var(--accent)] group relative flex w-full flex-col overflow-hidden rounded-2xl ${GLASS} transition-shadow`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => navigate(productHref(product.id))}
+                        aria-label={showDeal ? `${name}. ${t('promotionMode.priceFromTo', { from, to })}` : name}
+                        className={`flex flex-1 flex-col text-left cursor-pointer ${PROMO_FOCUS}`}
+                      >
+                        <div className={`relative aspect-[4/3] overflow-hidden ${MENU_SURFACE_SUBTLE} flex items-center justify-center`}>
+                          {image ? (
+                            <img
+                              src={image}
+                              alt=""
+                              loading="lazy"
+                              draggable={false}
+                              className={`h-full w-full object-cover transition-transform duration-300 group-hover:scale-105 motion-reduce:transform-none ${unavailable ? 'grayscale opacity-60' : ''}`}
+                            />
+                          ) : (
+                            <Tag size={24} strokeWidth={1.5} className={MENU_TEXT_MUTED} aria-hidden="true" />
+                          )}
+                          {showDeal && preview && (
+                            <span className="absolute left-2 top-2 rounded-lg bg-black/70 px-2 py-1 text-[11px] font-extrabold tracking-wide text-[#FFFFFF] shadow-sm backdrop-blur">
+                              {t('promotionMode.unitSaving', { value: formatBRL(preview.unitDiscount) })}
+                            </span>
+                          )}
+                          {unavailable && (
+                            <span className="absolute left-2 top-2 rounded-full bg-gray-800/85 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
+                              {t('productCard.indisponivel')}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex flex-1 flex-col p-3">
+                          <p
+                            className={`line-clamp-2 min-h-[2.5rem] text-sm font-semibold ${unavailable ? MENU_TEXT_MUTED : MENU_TEXT}`}
+                          >
+                            {name}
+                          </p>
+                          <div className="mt-auto flex items-baseline gap-2 pt-1.5">
+                            {showDeal && (
+                              <span className={`text-xs tabular-nums line-through ${MENU_TEXT_MUTED}`}>R$ {from}</span>
+                            )}
+                            {listStrike && (
+                              <span className={`text-xs tabular-nums line-through ${MENU_TEXT_MUTED}`}>R$ {listStrike}</span>
+                            )}
+                            <span
+                              className={`whitespace-nowrap text-sm font-bold tabular-nums ${showDeal ? '' : unavailable ? MENU_TEXT_MUTED : MENU_TEXT}`}
+                              style={showDeal ? { color: 'var(--accent)' } : undefined}
+                            >
+                              R$ {to}
+                            </span>
+                          </div>
+                        </div>
+                      </button>
                     </div>
-                    <div className="p-3">
-                      <p className={`text-sm font-semibold ${MENU_TEXT} line-clamp-2 min-h-[2.5rem]`}>
-                        {localizedField(product, 'name')}
-                      </p>
-                      <div className="flex items-baseline gap-2 mt-1.5">
-                        <span className={`text-sm font-bold tabular-nums ${MENU_TEXT}`}>
-                          R$ {Number(product.promoPrice ?? product.price).toFixed(2).replace('.', ',')}
-                        </span>
-                        {hasPromoPrice && (
-                          <span className={`text-xs line-through tabular-nums ${MENU_TEXT_MUTED}`}>
-                            R$ {Number(product.price).toFixed(2).replace('.', ',')}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </button>
+                  </li>
                 );
               })}
-            </div>
+            </ul>
           </section>
         )}
       </div>
 
-      {/* Barra fixa (celular/tablet) */}
+      {/* Barra fixa (celular/tablet): só o botão, sem fundo (decisão da sessão Z7). */}
       <div
         className={`lg:hidden fixed bottom-[var(--bottom-nav-h,0px)] left-0 right-0 z-20 px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] pointer-events-none transform-gpu will-change-transform`}
       >

@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { useI18n } from '../../i18n/I18nContext';
+import { ImageLightbox } from '../ImageLightbox';
+import { Tooltip } from '../Tooltip';
 import { PromotionAmbient } from './PromotionAmbient';
 
 // Bloco da imagem da promoção: mostra a imagem INTEIRA (proporção original, sem
@@ -32,7 +35,10 @@ export function PromotionMedia({
   /** Painel colocado abaixo da imagem, alinhado a ela. */
   panel?: ReactNode;
 }) {
+  const { t } = useI18n();
   const [ratio, setRatio] = useState(16 / 10);
+  // Clique na imagem amplia (ImageLightbox: fecha em Esc, fora ou voltar do aparelho).
+  const [zoomOpen, setZoomOpen] = useState(false);
   const imgRef = useRef<HTMLImageElement | null>(null);
 
   // Imagem já em cache: o onLoad pode ter disparado antes de a gente ouvir.
@@ -57,19 +63,35 @@ export function PromotionMedia({
       <div className="relative">
         <PromotionAmbient color={primaryColor} imageUrl={grayscale ? null : imageUrl} />
 
-        <div className="relative overflow-hidden rounded-2xl md:rounded-3xl bg-[#F3F4F6] dark:bg-[#282A2C] ring-1 ring-black/10 dark:ring-white/15 shadow-xl">
+        <div className="loc-card [--glow:var(--accent)] relative overflow-hidden rounded-2xl md:rounded-3xl bg-[#F3F4F6] dark:bg-[#282A2C] ring-1 ring-black/10 dark:ring-white/15 shadow-xl">
           {imageUrl ? (
-            <img
-              ref={imgRef}
-              src={imageUrl}
-              alt={alt}
-              draggable={false}
-              onLoad={(e: { currentTarget: HTMLImageElement }) => {
-                const { naturalWidth, naturalHeight } = e.currentTarget;
-                if (naturalWidth > 0 && naturalHeight > 0) setRatio(naturalWidth / naturalHeight);
-              }}
-              className={`block w-full h-auto ${grayscale ? 'grayscale' : ''}`}
-            />
+            <Tooltip label={t('promotionMode.zoomPhoto')} className="contents">
+              <div
+                role="button"
+                tabIndex={0}
+                aria-label={t('promotionMode.zoomPhoto')}
+                onClick={() => setZoomOpen(true)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setZoomOpen(true);
+                  }
+                }}
+                className="cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[color:var(--accent)]"
+              >
+                <img
+                  ref={imgRef}
+                  src={imageUrl}
+                  alt={alt}
+                  draggable={false}
+                  onLoad={(e: { currentTarget: HTMLImageElement }) => {
+                    const { naturalWidth, naturalHeight } = e.currentTarget;
+                    if (naturalWidth > 0 && naturalHeight > 0) setRatio(naturalWidth / naturalHeight);
+                  }}
+                  className={`block w-full h-auto ${grayscale ? 'grayscale' : ''}`}
+                />
+              </div>
+            </Tooltip>
           ) : (
             <div
               className="w-full aspect-[16/9]"
@@ -77,6 +99,9 @@ export function PromotionMedia({
             />
           )}
           {overlay}
+          {zoomOpen && imageUrl && (
+            <ImageLightbox images={[imageUrl]} alt={alt} initialIndex={0} onClose={() => setZoomOpen(false)} />
+          )}
         </div>
       </div>
 
