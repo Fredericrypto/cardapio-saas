@@ -15,8 +15,8 @@ export function ReceiptAuthenticityCode({ code }: { code: string }) {
   return (
     <div className="flex flex-col items-center gap-1.5 pt-1">
       <QRCodeSVG value={code} size={72} level="M" />
-      <p className="text-center text-[9px] text-gray-400 break-all leading-tight px-4">{code}</p>
-      <p className="text-center text-[9px] text-gray-400">{t('receiptAuthenticityCode.codigo_de_autenticidade')}</p>
+      <p className="text-center text-[9px] text-[#9CA3AF] break-all leading-tight px-4">{code}</p>
+      <p className="text-center text-[9px] text-[#9CA3AF]">{t('receiptAuthenticityCode.codigo_de_autenticidade')}</p>
     </div>
   );
 }

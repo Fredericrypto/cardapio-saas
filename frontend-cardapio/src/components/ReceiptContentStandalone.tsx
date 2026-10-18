@@ -19,17 +19,17 @@ export function ReceiptContentStandalone({
   const label = order.orderType === 'entrega' ? t('receiptContentStandalone.entrega') : t('receiptContentStandalone.balcao');
 
   return (
-    <div className="font-mono text-xs md:text-[13px] text-gray-800 flex flex-col gap-2 w-full max-w-[280px] md:max-w-[340px] mx-auto">
+    <div className="font-mono text-xs text-[#1F2937] flex flex-col gap-2 w-full max-w-[280px] mx-auto">
       <div className="text-center flex flex-col gap-0.5">
         <p className="font-bold text-sm">{tenant.name}</p>
       </div>
 
-      <div className="border-t border-dashed border-gray-300 my-1" />
+      <div className="border-t border-dashed border-[#D1D5DB] my-1" />
 
       <p className="text-center">{t('receiptContent.simples_conferencia_da_conta')}</p>
       <p className="text-center">{t('receiptContent.nao_e_documento_fiscal')}</p>
 
-      <div className="border-t border-dashed border-gray-300 my-1" />
+      <div className="border-t border-dashed border-[#D1D5DB] my-1" />
 
       <div className="flex justify-between">
         <span>{label}</span>
@@ -67,14 +67,14 @@ export function ReceiptContentStandalone({
         </span>
       </div>
 
-      <div className="border-t border-dashed border-gray-300 my-1" />
+      <div className="border-t border-dashed border-[#D1D5DB] my-1" />
 
       {order.items.map((item, idx) => (
         <div key={idx} className="flex justify-between">
           <span>
             {item.quantity}x {item.productName}
             {item.selectedOptions && item.selectedOptions.length > 0 && (
-              <span className="block text-[10px] text-gray-400">
+              <span className="block text-[10px] text-[#9CA3AF]">
                 {item.selectedOptions.map((o) => o.label).join(', ')}
               </span>
             )}
@@ -83,7 +83,7 @@ export function ReceiptContentStandalone({
         </div>
       ))}
 
-      <div className="border-t border-dashed border-gray-300 my-1" />
+      <div className="border-t border-dashed border-[#D1D5DB] my-1" />
 
       {(order.discountAmount ?? 0) > 0 && (
         <div className="flex justify-between text-red-600">
@@ -101,7 +101,7 @@ export function ReceiptContentStandalone({
                   : [];
               return titles.length > 0 ? ` (${titles.join(', ')})` : '';
             })()}
-            <span className="block text-[10px] text-gray-400">{t('receiptContentStandalone.ja_refletido_no_total')}</span>
+            <span className="block text-[10px] text-[#9CA3AF]">{t('receiptContentStandalone.ja_refletido_no_total')}</span>
           </span>
           <span>- R$ {Number(order.discountAmount).toFixed(2).replace('.', ',')}</span>
         </div>
@@ -111,7 +111,7 @@ export function ReceiptContentStandalone({
         <div className="flex justify-between text-red-600">
           <span>
             {t('receiptContent.cashback_usado')}
-            <span className="block text-[10px] text-gray-400">{t('receiptContentStandalone.ja_refletido_no_total')}</span>
+            <span className="block text-[10px] text-[#9CA3AF]">{t('receiptContentStandalone.ja_refletido_no_total')}</span>
           </span>
           <span>- R$ {Number(order.cashbackUsed).toFixed(2).replace('.', ',')}</span>
         </div>
@@ -140,7 +140,7 @@ export function ReceiptContentStandalone({
 
       {order.status === 'entregue' && order.paymentMethod && (
         <>
-          <div className="border-t border-dashed border-gray-300 my-1" />
+          <div className="border-t border-dashed border-[#D1D5DB] my-1" />
           <div className="flex justify-between">
             <span>{t('receiptContent.pagamento')}</span>
             <span className="capitalize">{order.paymentMethod}</span>
@@ -169,14 +169,14 @@ export function ReceiptContentStandalone({
         </>
       )}
 
-      <div className="border-t border-dashed border-gray-300 my-1" />
+      <div className="border-t border-dashed border-[#D1D5DB] my-1" />
 
       <p className="text-center pt-1">{t('receiptContent.obrigado_pela_preferencia')}</p>
       <p className="text-center">{t('receiptContent.volte_sempre')}</p>
 
       {order.receiptVerificationCode && (
         <>
-          <div className="border-t border-dashed border-gray-300 my-1" />
+          <div className="border-t border-dashed border-[#D1D5DB] my-1" />
           {/* Código de autenticidade — o estabelecimento consegue
               conferir que esse cupom é genuíno (e que o valor/data não
               foram adulterados) escaneando o QR ou digitando o código

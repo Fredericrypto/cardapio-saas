@@ -88,7 +88,7 @@ export function OrderReceiptAvulsoPage() {
           // O cupom é um "papel": fica branco nos dois temas de propósito
           // (é o que vira PNG/impressão). Texto escuro explícito para não
           // herdar a cor clara do tema escuro.
-          <div id="receipt-print-area" className="bg-white text-gray-900 rounded-2xl p-5 border border-gray-100 dark:border-white/10">
+          <div id="receipt-print-area" className="w-full max-w-sm mx-auto bg-[#F9FAFB] text-[#1F2937] rounded-lg p-4 border border-[#F3F4F6] [color-scheme:light]">
             <ReceiptContentStandalone tenant={tenant} order={order} />
           </div>
         )}

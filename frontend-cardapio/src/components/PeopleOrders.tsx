@@ -14,7 +14,7 @@ export function PersonAvatar({ person, size = 40 }: { person: SessionPerson; siz
   const color = AVATAR_COLORS[person.name.charCodeAt(0) % AVATAR_COLORS.length];
   return (
     <span
-      className="rounded-full overflow-hidden ring-2 ring-white shadow-sm bg-gray-100 flex items-center justify-center shrink-0"
+      className="rounded-full overflow-hidden ring-2 ring-white shadow-sm bg-[#F3F4F6] flex items-center justify-center shrink-0"
       style={{ width: size, height: size }}
     >
       {person.avatarUrl ? (
@@ -47,20 +47,20 @@ export function PersonHeader({
       <div className="min-w-0">
         <p
           className={`${compact ? 'text-xs' : 'text-sm'} font-semibold ${
-            dark ? 'text-white' : 'text-gray-900'
+            dark ? 'text-white' : 'text-[#111827]'
           } truncate flex items-center gap-1`}
         >
           <span className="truncate">{person.name}</span>
           {/* Cliente verificado leva o tick em TODOS os lugares. */}
           {person.isVerified && <VerifiedBadge size={compact ? 12 : 14} />}
           {person.isMe && (
-            <span className={`ml-0.5 text-[10px] font-medium ${dark ? 'text-gray-400' : 'text-gray-400'}`}>
+            <span className={`ml-0.5 text-[10px] font-medium ${dark ? 'text-gray-400' : 'text-[#9CA3AF]'}`}>
               {t('peopleOrders.voce')}
             </span>
           )}
         </p>
         {person.isOpener && (
-          <p className={`text-[10px] font-semibold ${dark ? 'text-gray-300' : 'text-gray-500'}`}>
+          <p className={`text-[10px] font-semibold ${dark ? 'text-gray-300' : 'text-[#6B7280]'}`}>
             {t('peopleOrders.abriu_a_mesa')}
           </p>
         )}
@@ -107,7 +107,7 @@ export function PeopleOrders<T extends { id: string }>({
               }`}
             >
               {personOrders.length === 0 ? (
-                <p className={`text-xs ${dark ? 'text-gray-400' : 'text-gray-400'}`}>{emptyLabel ?? t('peopleOrders.ainda_nao_pediu_nada')}</p>
+                <p className={`text-xs ${dark ? 'text-gray-400' : 'text-[#9CA3AF]'}`}>{emptyLabel ?? t('peopleOrders.ainda_nao_pediu_nada')}</p>
               ) : (
                 personOrders.map((o) => <div key={o.id}>{renderOrder(o)}</div>)
               )}
