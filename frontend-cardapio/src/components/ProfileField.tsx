@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { PROFILE_LABEL } from '../lib/profileTheme';
+import { PROMO_SERIF } from '../lib/promotionTheme';
 
 interface ProfileFieldProps {
   label: string;
@@ -41,12 +42,12 @@ export function ProfileSectionHeader({ icon: Icon, title, accent }: ProfileSecti
   return (
     <div className="flex items-center gap-3 mb-4 md:mb-5">
       <div
-        className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border border-black/5 dark:border-white/10"
-        style={{ backgroundColor: `${accent}1A` }}
+        className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 border"
+        style={{ backgroundColor: `${accent}14`, borderColor: `${accent}40` }}
       >
         <Icon size={18} strokeWidth={1.5} className="text-[#374151] dark:text-[#E3E2E6]" />
       </div>
-      <h2 className="font-display text-base font-bold text-[#111827] dark:text-[#E3E2E6]">{title}</h2>
+      <h2 className="text-xl font-light italic text-[#111827] dark:text-[#EDE6D6]" style={{ fontFamily: PROMO_SERIF }}>{title}</h2>
     </div>
   );
 }

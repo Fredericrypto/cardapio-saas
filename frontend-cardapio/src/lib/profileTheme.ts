@@ -5,17 +5,17 @@
 //
 // Cada constante é uma string COMPLETA de classes (o Tailwind só gera o que
 // encontra escrito por extenso no código-fonte).
-import { MENU_SURFACE, MENU_BORDER } from './menuTheme';
+
 
 /** Container largo — mesma margem/alinhamento do MenuPage. */
 export const PAGE_CONTAINER = 'w-full max-w-7xl mx-auto px-4 md:px-8 py-6 md:py-10';
 
 /** Card (nível 1). */
-export const PROFILE_CARD = `${MENU_SURFACE} border ${MENU_BORDER} rounded-2xl`;
+export const PROFILE_CARD = 'bg-[#FFFFFF]/70 dark:bg-[#161617]/70 border border-[#E5E7EB] dark:border-white/10 rounded-2xl';
 
 /** Input / select / textarea. */
 export const PROFILE_INPUT =
-  'bg-white dark:bg-white/[0.05] border border-[#E5E7EB] dark:border-white/10 rounded-xl px-4 py-3 text-sm ' +
+  'bg-transparent dark:bg-white/[0.03] border border-[#E5E7EB] dark:border-white/10 rounded-xl px-4 py-3 text-sm ' +
   'text-[#111827] dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none ' +
   'focus:border-gray-400 dark:focus:border-white/30 dark:[color-scheme:dark]';
 
@@ -33,7 +33,7 @@ export const PROFILE_BTN_DANGER =
 
 /** Cartão translúcido (vidro): avisos, painéis de apoio, pré-visualizações. */
 export const PROFILE_CARD_GLASS =
-  'bg-white/70 dark:bg-white/[0.04] backdrop-blur-xl border border-[#E5E7EB] dark:border-white/10 rounded-2xl shadow-sm';
+  'bg-[#FFFFFF]/70 dark:bg-[#161617]/70 border border-[#E5E7EB] dark:border-white/10 rounded-2xl';
 
 /** Rótulo de campo. */
 export const PROFILE_LABEL = 'text-xs font-semibold text-[#6B7280] dark:text-[#C4C7C5]';

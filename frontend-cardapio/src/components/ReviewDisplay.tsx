@@ -6,7 +6,6 @@ import { Star, Trash2, EyeOff } from 'lucide-react';
 import { deleteReview } from '../lib/customer-api';
 import type { MyReview } from '../lib/customer-api';
 import {
-  MENU_SURFACE,
   MENU_BORDER,
   MENU_TEXT,
   MENU_TEXT_MUTED,
@@ -63,7 +62,7 @@ export function ReviewDisplay({
   }
 
   return (
-    <div className={`${MENU_SURFACE} rounded-2xl p-5 border ${MENU_BORDER} flex flex-col gap-2`}>
+    <div className={`bg-[#FFFFFF]/70 dark:bg-[#161617]/70 rounded-2xl p-5 border ${MENU_BORDER} flex flex-col gap-2`}>
       <div className="flex items-center justify-between">
         <p className={`text-sm font-semibold ${MENU_TEXT}`}>{t('reviewDisplay.sua_avaliacao')}</p>
         {!isConfirmingDelete && (

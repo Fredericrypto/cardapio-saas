@@ -23,7 +23,7 @@ function StarPicker({ value, onChange, size = 32 }: { value: number; onChange: (
             <Star
               size={size}
               fill={filled ? '#F59E0B' : 'transparent'}
-              className={filled ? 'text-amber-500' : 'text-gray-300'}
+              className={filled ? 'text-amber-500' : 'text-[#D1D5DB] dark:text-white/20'}
             />
           </button>
         );
@@ -115,23 +115,23 @@ export function ReviewModal({ tenantId, token, orderId, target, stepLabel, onClo
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-t-3xl sm:rounded-3xl p-6 w-full max-w-sm flex flex-col gap-4 animate-in slide-in-from-bottom sm:zoom-in duration-200"
+        className="bg-[#FFFFFF] dark:bg-[#161617] border border-[#E5E7EB] dark:border-white/10 rounded-t-3xl sm:rounded-3xl p-6 w-full max-w-sm flex flex-col gap-4 animate-in slide-in-from-bottom sm:zoom-in duration-200"
       >
         {step === 'form' && (
           <>
             <div className="flex items-center justify-between">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+              <p className="text-xs font-semibold text-[#9CA3AF] dark:text-[#8E918F] uppercase tracking-wide">
                 {stepLabel ? `${stepLabel} · ` : ''}
                 {target.type === 'restaurant' ? target.orderLabel : t('reviewModal.avaliar_item')}
               </p>
-              <button onClick={handleCancelClick} className="text-gray-400 p-1 -mr-1">
+              <button onClick={handleCancelClick} className="text-[#9CA3AF] dark:text-[#8E918F] p-1 -mr-1">
                 <X size={18} />
               </button>
             </div>
 
             {target.type === 'item' ? (
               <div className="flex flex-col items-center gap-3">
-                <div className="w-20 h-20 rounded-xl overflow-hidden bg-gray-100 shrink-0">
+                <div className="w-20 h-20 rounded-xl overflow-hidden bg-[#F3F4F6] dark:bg-[#282A2C] shrink-0">
                   {target.productImageUrl ? (
                     <img
                       src={target.productImageUrl}
@@ -140,15 +140,15 @@ export function ReviewModal({ tenantId, token, orderId, target, stepLabel, onClo
                     />
                   ) : null}
                 </div>
-                <p className="text-lg font-display font-bold text-gray-900 text-center">
+                <p className="text-lg font-display font-bold text-[#111827] dark:text-[#E3E2E6] text-center">
                   {target.productName}
                 </p>
-                <p className="text-sm text-gray-400 -mt-2">{t('reviewModal.o_que_achou_desse')}</p>
+                <p className="text-sm text-[#9CA3AF] dark:text-[#8E918F] -mt-2">{t('reviewModal.o_que_achou_desse')}</p>
               </div>
             ) : (
               <div className="text-center">
-                <p className="text-lg font-display font-bold text-gray-900">{t('reviewModal.como_foi_o_seu')}</p>
-                <p className="text-sm text-gray-400 mt-0.5">{t('reviewModal.sua_opiniao_ajuda_todo')}</p>
+                <p className="text-lg font-display font-bold text-[#111827] dark:text-[#E3E2E6]">{t('reviewModal.como_foi_o_seu')}</p>
+                <p className="text-sm text-[#9CA3AF] dark:text-[#8E918F] mt-0.5">{t('reviewModal.sua_opiniao_ajuda_todo')}</p>
               </div>
             )}
 
@@ -162,16 +162,16 @@ export function ReviewModal({ tenantId, token, orderId, target, stepLabel, onClo
                   placeholder={t('reviewModal.conte_como_foi_opcional')}
                   maxLength={1000}
                   rows={3}
-                  className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none resize-none w-full"
+                  className="border border-[#E5E7EB] dark:border-white/10 rounded-xl px-3 py-2.5 text-sm outline-none resize-none w-full bg-transparent text-[#111827] dark:text-[#E3E2E6]"
                 />
-                <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                <label className="flex items-center gap-2 text-sm text-[#4B5563] dark:text-[#C4C7C5] cursor-pointer">
                   <input
                     type="checkbox"
                     checked={isAnonymous}
                     onChange={(e) => setIsAnonymous(e.target.checked)}
                     className="w-4 h-4"
                   />
-                  <EyeOff size={14} className="text-gray-400" />
+                  <EyeOff size={14} className="text-[#9CA3AF] dark:text-[#8E918F]" />
                   {t('reviewModal.publicar_como_anonimo')}
                 </label>
               </>
@@ -181,13 +181,13 @@ export function ReviewModal({ tenantId, token, orderId, target, stepLabel, onClo
             <div className="flex gap-2">
               <button
                 onClick={handleCancelClick}
-                className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600"
+                className="flex-1 py-3 rounded-xl border border-[#E5E7EB] dark:border-white/10 text-sm font-semibold text-[#4B5563] dark:text-[#C4C7C5]"
               >
                 {t('reviewModal.agora_nao')}
               </button>
               <button
                 onClick={handleSubmitClick}
-                className="flex-1 py-3 rounded-xl bg-gray-900 text-white text-sm font-semibold"
+                className="flex-1 py-3 rounded-xl bg-[#111827] text-[#FFFFFF] dark:bg-[#E3E2E6] dark:text-[#131314] text-sm font-semibold"
               >
                 {t('reviewModal.enviar')}
               </button>
@@ -197,22 +197,22 @@ export function ReviewModal({ tenantId, token, orderId, target, stepLabel, onClo
 
         {step === 'confirm-cancel' && (
           <>
-            <p className="text-lg font-display font-bold text-gray-900 text-center">
+            <p className="text-lg font-display font-bold text-[#111827] dark:text-[#E3E2E6] text-center">
               {t('reviewModal.nao_quer_avaliar_agora')}
             </p>
-            <p className="text-sm text-gray-500 text-center">
+            <p className="text-sm text-[#6B7280] dark:text-[#C4C7C5] text-center">
               {t('reviewModal.sem_problema_essa_avaliacao')}
             </p>
             <div className="flex gap-2 mt-1">
               <button
                 onClick={() => setStep('form')}
-                className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600"
+                className="flex-1 py-3 rounded-xl border border-[#E5E7EB] dark:border-white/10 text-sm font-semibold text-[#4B5563] dark:text-[#C4C7C5]"
               >
                 {t('common.back')}
               </button>
               <button
                 onClick={onClose}
-                className="flex-1 py-3 rounded-xl bg-gray-900 text-white text-sm font-semibold"
+                className="flex-1 py-3 rounded-xl bg-[#111827] text-[#FFFFFF] dark:bg-[#E3E2E6] dark:text-[#131314] text-sm font-semibold"
               >
                 {t('common.confirm')}
               </button>
@@ -225,23 +225,23 @@ export function ReviewModal({ tenantId, token, orderId, target, stepLabel, onClo
             <div className="flex justify-center">
               <StarPicker value={rating} onChange={() => {}} />
             </div>
-            <p className="text-lg font-display font-bold text-gray-900 text-center">{t('reviewModal.confirmar_envio')}</p>
-            <p className="text-sm text-gray-500 text-center">
+            <p className="text-lg font-display font-bold text-[#111827] dark:text-[#E3E2E6] text-center">{t('reviewModal.confirmar_envio')}</p>
+            <p className="text-sm text-[#6B7280] dark:text-[#C4C7C5] text-center">
               {t('reviewModal.depois_de_enviada_sua')}{' '}
-              <span className="font-semibold text-gray-700">{t('reviewModal.nao_pode_mais_ser')}</span> {t('reviewModal.so_apagada_se_voce')}
+              <span className="font-semibold text-[#374151] dark:text-[#E3E2E6]">{t('reviewModal.nao_pode_mais_ser')}</span> {t('reviewModal.so_apagada_se_voce')}
             </p>
             <div className="flex gap-2 mt-1">
               <button
                 onClick={() => setStep('form')}
                 disabled={isSaving}
-                className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 disabled:opacity-50"
+                className="flex-1 py-3 rounded-xl border border-[#E5E7EB] dark:border-white/10 text-sm font-semibold text-[#4B5563] dark:text-[#C4C7C5] disabled:opacity-50"
               >
                 {t('reviewModal.revisar')}
               </button>
               <button
                 onClick={handleConfirmSubmit}
                 disabled={isSaving}
-                className="flex-1 py-3 rounded-xl bg-gray-900 text-white text-sm font-semibold disabled:opacity-50"
+                className="flex-1 py-3 rounded-xl bg-[#111827] text-[#FFFFFF] dark:bg-[#E3E2E6] dark:text-[#131314] text-sm font-semibold disabled:opacity-50"
               >
                 {isSaving ? 'Enviando...' : t('common.confirm')}
               </button>

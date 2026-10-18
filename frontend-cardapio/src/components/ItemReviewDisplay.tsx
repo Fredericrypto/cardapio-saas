@@ -6,7 +6,6 @@ import { Star, Trash2 } from 'lucide-react';
 import { deleteReview } from '../lib/customer-api';
 import type { MyItemReview } from '../lib/customer-api';
 import {
-  MENU_SURFACE,
   MENU_SURFACE_SUBTLE,
   MENU_BORDER,
   MENU_TEXT,
@@ -60,7 +59,7 @@ export function ItemReviewDisplay({
   }
 
   return (
-    <div className={`${MENU_SURFACE} rounded-2xl p-4 border ${MENU_BORDER} flex flex-col gap-2`}>
+    <div className={`bg-[#FFFFFF]/70 dark:bg-[#161617]/70 rounded-2xl p-4 border ${MENU_BORDER} flex flex-col gap-2`}>
       <div className="flex items-center gap-3">
         <div className={`w-12 h-12 rounded-lg overflow-hidden ${MENU_SURFACE_SUBTLE} shrink-0`}>
           {review.productImageUrl && (
