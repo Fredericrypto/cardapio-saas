@@ -5,7 +5,7 @@ import { addonGroupHint } from '../i18n/labels';
 import { formatBRL } from '../lib/cartFormat';
 import type { OptionSelections } from '../lib/productOptions';
 import { PROFILE_CARD } from '../lib/profileTheme';
-import { MENU_TEXT, MENU_TEXT_BODY, MENU_TEXT_MUTED, MENU_TEXT_SOFT } from '../lib/menuTheme';
+import { MENU_BORDER, MENU_TEXT, MENU_TEXT_BODY, MENU_TEXT_MUTED, MENU_TEXT_SOFT } from '../lib/menuTheme';
 import type { ProductOptionGroup } from '../types';
 
 interface ProductOptionGroupListProps {
@@ -37,7 +37,14 @@ export function ProductOptionGroupList({
         const hint = addonGroupHint(group.minSelect, group.maxSelect, t);
         const isMulti = group.maxSelect > 1;
         return (
-          <div key={group.id} className={`${PROFILE_CARD} ${compact ? 'p-3.5' : 'p-4 md:p-5'}`}>
+          <div
+            key={group.id}
+            className={`${
+              compact
+                ? PROFILE_CARD
+                : `rounded-2xl border bg-[#FFFFFF]/55 backdrop-blur-xl dark:bg-[#131314]/55 ${MENU_BORDER}`
+            } ${compact ? 'p-3.5' : 'p-4 md:p-5'}`}
+          >
             <div className="flex items-baseline flex-wrap gap-x-1.5 mb-3">
               <p className={`text-sm font-bold ${MENU_TEXT}`}>{group.name}</p>
               {hint && <span className={`text-xs ${MENU_TEXT_MUTED}`}>· {hint}</span>}
@@ -54,10 +61,10 @@ export function ProductOptionGroupList({
                     aria-checked={isSelected}
                     onClick={() => onToggle(group, value.id)}
                     style={{ '--brand': brand } as CSSProperties}
-                    className={`w-full flex items-center justify-between gap-3 rounded-xl border px-3.5 py-3 text-left transition ${
+                    className={`loc-card [--glow:var(--brand)] w-full flex items-center justify-between gap-3 rounded-xl border px-3.5 py-3 text-left transition ${
                       isSelected
-                        ? 'border-[var(--brand)] dark:border-[#E3E2E6] bg-black/[0.03] dark:bg-white/[0.06]'
-                        : 'border-[#E5E7EB] dark:border-white/10 bg-[#F9FAFB] dark:bg-[#282A2C] hover:bg-black/[0.03] dark:hover:bg-white/[0.06]'
+                        ? 'border-[var(--brand)] dark:border-[#E3E2E6] bg-black/[0.05] dark:bg-white/[0.09]'
+                        : 'border-[#E5E7EB] dark:border-white/10 bg-transparent hover:bg-black/[0.03] dark:hover:bg-white/[0.06]'
                     }`}
                   >
                     <span className={`text-sm min-w-0 break-words ${MENU_TEXT_SOFT}`}>{value.label}</span>

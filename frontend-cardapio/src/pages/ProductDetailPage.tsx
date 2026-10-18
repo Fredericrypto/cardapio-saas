@@ -17,6 +17,9 @@ import { AnimatedGradientButton } from '../components/AnimatedGradientButton';
 import { useActiveLocation } from '../hooks/useActiveLocation';
 import { ShareButton } from '../components/ShareButton';
 import { Tooltip } from '../components/Tooltip';
+import { FoodBackdrop } from '../components/FoodBackdrop';
+import { GlassCard } from '../components/GlassCard';
+import { ImageLightbox } from '../components/ImageLightbox';
 import { GlassBackButton } from '../components/GlassBackButton';
 import { PromotionAmbient } from '../components/promotion/PromotionAmbient';
 import { IllustrativeImageSeal, ProductBadgeRow } from '../components/ProductBadges';
@@ -35,11 +38,9 @@ import {
 import { pickItemPromotion } from '../lib/promotionEligibility';
 import { formatBRL as formatBRLPlain } from '../lib/promotionPresentation';
 import { PROMO_SUCCESS_TEXT } from '../lib/promotionTheme';
-import { PROFILE_CARD } from '../lib/profileTheme';
+
 import {
-  MENU_PAGE_BG,
-  MENU_SURFACE,
-  MENU_BORDER,
+  MENU_PAGE_BG, MENU_BORDER,
   MENU_TEXT,
   MENU_TEXT_SOFT,
   MENU_TEXT_BODY,
@@ -81,6 +82,8 @@ export function ProductDetailPage() {
   const accent = useAccentColor(tenant?.primaryColor ?? '#111827');
   // Foto ativa do carrossel: a luz ambiente atrás do card acompanha a foto que está na tela.
   const [ambientIndex, setAmbientIndex] = useState(0);
+  // Foto ampliada (ImageLightbox, com slide automatico); o carrossel de fundo fica parado enquanto abre.
+  const [zoomOpen, setZoomOpen] = useState(false);
   // Loja fechada: a tela abre normalmente para ler o item, mas não deixa adicionar.
   const activeLocation = useActiveLocation(tenant?.id, Boolean(qrCodeToken));
   const storeStatus = useStoreStatus(activeLocation);
@@ -236,10 +239,10 @@ export function ProductDetailPage() {
   const qtyBtn =
     'w-9 h-9 rounded-full bg-[#FFFFFF] dark:bg-[#3A3C3E] text-[#374151] dark:text-[#E3E2E6] ' +
     'flex items-center justify-center shadow-sm border border-[#E5E7EB] dark:border-white/10 ' +
-    'hover:bg-[#F9FAFB] dark:hover:bg-[#46484A] disabled:opacity-40 disabled:cursor-not-allowed transition';
+    'hover:bg-[#F9FAFB] dark:hover:bg-[#46484A] disabled:opacity-40 disabled:cursor-not-allowed transition loc-dist [--glow:var(--accent)]';
 
   const quantityControl = (
-    <div className="inline-flex items-center gap-2 rounded-full bg-[#F3F4F6] dark:bg-[#1E1E20] border border-[#E5E7EB] dark:border-white/10 p-1">
+    <div className="inline-flex items-center gap-2 rounded-full border border-[#E5E7EB] bg-black/[0.04] p-1 backdrop-blur-md dark:border-white/10 dark:bg-white/[0.05]">
       <Tooltip label={t('tooltip.decrease')}>
         <button
           type="button"
@@ -315,7 +318,11 @@ export function ProductDetailPage() {
     );
 
   return (
-    <div className={`min-h-screen ${MENU_PAGE_BG} pb-28 lg:pb-12`}>
+    <div
+      className={`relative isolate min-h-screen ${MENU_PAGE_BG} pb-28 lg:pb-12`}
+      style={{ '--brand': tenant.primaryColor, '--accent': accent } as React.CSSProperties}
+    >
+      <FoodBackdrop />
       <div className="w-full max-w-6xl mx-auto md:px-8 md:py-8 lg:py-10">
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-10 items-start">
           {/* Coluna esquerda: botão voltar de vidro FORA do card + imagem em destaque com a
@@ -331,6 +338,7 @@ export function ProductDetailPage() {
                 }
                 label={t('common.back')}
                 tooltip={t('tooltip.back')}
+                className="loc-dist [--glow:var(--accent)]"
               />
             </div>
             <div className="relative">
@@ -338,19 +346,30 @@ export function ProductDetailPage() {
                 color={brand}
                 imageUrl={product.isAvailable === false ? null : (productImages[ambientIndex] ?? productImages[0] ?? null)}
               />
-              <div className="relative aspect-[4/3] md:aspect-[16/9] lg:aspect-square overflow-hidden rounded-2xl md:rounded-3xl bg-[#F3F4F6] dark:bg-[#282A2C] ring-1 ring-black/10 dark:ring-white/15 shadow-xl">
+              <div className="loc-card [--glow:var(--accent)] relative aspect-[4/3] md:aspect-[16/9] lg:aspect-square overflow-hidden rounded-2xl md:rounded-3xl bg-[#F3F4F6] dark:bg-[#282A2C] ring-1 ring-black/10 dark:ring-white/15 shadow-xl">
                 {productImages.length > 0 ? (
-                  <ProductImageCarousel
-                    images={productImages}
-                    alt={localizedField(product, 'name')}
-                    size="detail"
-                    imgClassName={product.isAvailable === false ? 'grayscale opacity-60' : ''}
-                    onIndexChange={setAmbientIndex}
-                  />
+                  <div className="absolute inset-0 cursor-zoom-in" onClick={() => setZoomOpen(true)}>
+                    <ProductImageCarousel
+                      images={productImages}
+                      alt={localizedField(product, 'name')}
+                      size="detail"
+                      imgClassName={product.isAvailable === false ? 'grayscale opacity-60' : ''}
+                      playing={!zoomOpen}
+                      onIndexChange={setAmbientIndex}
+                    />
+                  </div>
                 ) : (
                   <div className={`w-full h-full flex items-center justify-center ${MENU_TEXT_MUTED}`}>
                     {t('productCard.sem_foto')}
                   </div>
+                )}
+                {zoomOpen && productImages.length > 0 && (
+                  <ImageLightbox
+                    images={productImages}
+                    alt={localizedField(product, 'name')}
+                    initialIndex={ambientIndex}
+                    onClose={() => setZoomOpen(false)}
+                  />
                 )}
                 {badgeView.imageNotice && productImages.length > 0 && (
                   <IllustrativeImageSeal className="absolute bottom-3 left-3" />
@@ -369,17 +388,19 @@ export function ProductDetailPage() {
 
           {/* Coluna direita: título, nota, preço, descrição, opções e ação */}
           <div className="p-4 md:p-0 pt-5 lg:pt-1 flex flex-col gap-5">
+            <GlassCard orbit radius={28} bodyClassName="p-5 md:p-6">
             <div>
               <h1 className={`font-display text-2xl md:text-3xl font-extrabold leading-tight ${MENU_TEXT}`}>
                 {localizedField(product, 'name')}
               </h1>
 
               {itemReviewSummary && (
+                <Tooltip label={t('productDetailPage.ver_avaliacoes_desse_item')} className="mt-2.5 inline-flex">
                 <button
                   type="button"
                   onClick={() => navigate(`/${slug}/produto/${productId}/avaliacoes`)}
                   aria-label={t('productDetailPage.ver_avaliacoes_desse_item')}
-                  className="flex items-center gap-1.5 mt-2.5 rounded-md hover:opacity-80 transition"
+                  className="flex items-center gap-1.5 rounded-md hover:opacity-80 transition"
                 >
                   <span className="flex items-center gap-0.5">
                     {[1, 2, 3, 4, 5].map((n) => (
@@ -405,6 +426,7 @@ export function ProductDetailPage() {
                     <ChevronRight size={14} strokeWidth={1.5} className={MENU_TEXT_MUTED} />
                   )}
                 </button>
+                </Tooltip>
               )}
 
               {/* Selos: abaixo do título/nota e acima do preço. Automáticos na frente. */}
@@ -451,6 +473,7 @@ export function ProductDetailPage() {
                 </p>
               )}
             </div>
+            </GlassCard>
 
             {/* Quantidade (celular/tablet). No desktop fica junto da ação. */}
             <div className="lg:hidden">{quantityControl}</div>
@@ -471,7 +494,7 @@ export function ProductDetailPage() {
             )}
 
             {/* Ação principal inline no desktop; no celular fica fixa no rodapé. */}
-            <div className={`hidden lg:flex flex-col gap-4 ${PROFILE_CARD} p-5`}>
+            <div className={`hidden lg:flex flex-col gap-4 rounded-2xl border bg-[#FFFFFF]/55 p-5 backdrop-blur-xl dark:bg-[#131314]/55 ${MENU_BORDER}`}>
               <div>{quantityControl}</div>
               {cta}
             </div>
@@ -485,7 +508,7 @@ export function ProductDetailPage() {
           é pintada depois de QUALQUER interação na tela. `translateZ(0)` força
           esse bloco para a própria camada de composição. */}
       <div
-        className={`lg:hidden fixed bottom-[var(--bottom-nav-h,0px)] left-0 right-0 p-4 ${MENU_SURFACE} border-t ${MENU_BORDER}`}
+        className={`lg:hidden fixed bottom-[var(--bottom-nav-h,0px)] left-0 right-0 p-4 bg-[#FFFFFF]/60 backdrop-blur-xl dark:bg-[#131314]/60 border-t ${MENU_BORDER}`}
         style={{ transform: 'translateZ(0)' }}
       >
         <div className="max-w-xl mx-auto">{cta}</div>

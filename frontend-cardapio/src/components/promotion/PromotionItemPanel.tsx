@@ -249,6 +249,7 @@ export function PromotionItemPanel({
                 alt={name}
                 size="detail"
                 imgClassName={isUnavailable ? 'grayscale opacity-60' : ''}
+                playing={!zoomOpen}
                 onIndexChange={setPhotoIndex}
               />
             </div>

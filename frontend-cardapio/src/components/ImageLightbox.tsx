@@ -3,6 +3,7 @@ import type { PointerEvent as ReactPointerEvent } from 'react';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { useI18n } from '../i18n/I18nContext';
 import { swipeDirection, wrapIndex } from '../lib/productImages';
+import { CAROUSEL_AUTOPLAY_MS } from './ProductImageCarousel';
 import { FullscreenOverlay } from './LogoViewer';
 import { Tooltip } from './Tooltip';
 
@@ -37,6 +38,8 @@ export function ImageLightbox({ images, alt, initialIndex = 0, onClose }: ImageL
   const multi = count > 1;
   const [index, setIndex] = useState(() => wrapIndex(initialIndex, count));
   const startRef = useRef<{ x: number; y: number } | null>(null);
+  const [hold, setHold] = useState(false);
+  const [docVisible, setDocVisible] = useState(() => typeof document === 'undefined' || !document.hidden);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const onCloseRef = useRef(onClose);
   useEffect(() => {
@@ -75,13 +78,28 @@ export function ImageLightbox({ images, alt, initialIndex = 0, onClose }: ImageL
     }
   }, [index, images, count, multi]);
 
+  useEffect(() => {
+    const onChange = () => setDocVisible(!document.hidden);
+    document.addEventListener('visibilitychange', onChange);
+    return () => document.removeEventListener('visibilitychange', onChange);
+  }, []);
+
+  useEffect(() => {
+    if (!multi || hold || !docVisible) return;
+    if (typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const timer = window.setTimeout(() => go(1), CAROUSEL_AUTOPLAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [multi, hold, docVisible, index, go]);
+
   function onPointerDown(e: ReactPointerEvent<HTMLDivElement>) {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     startRef.current = { x: e.clientX, y: e.clientY };
+    setHold(true);
   }
   function onPointerUp(e: ReactPointerEvent<HTMLDivElement>) {
     const start = startRef.current;
     startRef.current = null;
+    setHold(false);
     if (!start || !multi) return;
     const direction = swipeDirection(e.clientX - start.x, e.clientY - start.y);
     if (direction !== 0) go(direction);
@@ -115,14 +133,16 @@ export function ImageLightbox({ images, alt, initialIndex = 0, onClose }: ImageL
           onPointerUp={onPointerUp}
           onPointerCancel={() => {
             startRef.current = null;
+            setHold(false);
           }}
         >
           <img
+            key={index}
             src={images[index]}
             alt={multi ? `${alt} — ${counter}` : alt}
             draggable={false}
             data-lightbox-image
-            className="block max-h-[78vh] max-w-[min(92vw,64rem)] rounded-2xl bg-black/20 object-contain shadow-2xl"
+            className="promo-fade-in block max-h-[78vh] max-w-[min(92vw,64rem)] rounded-2xl bg-black/20 object-contain shadow-2xl"
           />
           {multi && (
             <>
