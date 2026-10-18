@@ -523,6 +523,8 @@ export const ptBR = {
   'myReviewsPage.voce_ainda_nao_avaliou': 'Você ainda não avaliou nada. Depois que um pedido for concluído, você recebe uma notificação pra avaliar o restaurante e os itens que pediu.',
   'myReviewsPage.pedido': 'Pedido',
   'orderHistoryPage.historico_de_pedidos': 'Histórico de pedidos',
+  'orderHistoryPage.viewReceipt': 'Ver cupom fiscal',
+  'orderHistoryPage.viewReceiptHint': 'Visualize o documento fiscal deste pedido',
   'orderHistoryPage.voce_ainda_nao_fez': 'Você ainda não fez nenhum pedido aqui.',
   'orderHistoryPage.mostrar_pedidos_de_label': 'Mostrar pedidos de {label}',
   'orderHistoryPage.esconder_pedidos_de_label': 'Esconder pedidos de {label}',

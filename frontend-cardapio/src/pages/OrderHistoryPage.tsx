@@ -2,7 +2,7 @@ import { orderStatusLabel, sessionStatusLabel } from '../i18n/labels';
 import { useI18n } from '../i18n/I18nContext';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Table2, ShoppingBag, Bike, FolderClosed, Star, ChevronDown, ChevronRight, ReceiptText, CalendarClock, ArrowRight } from 'lucide-react';
+import { Table2, ShoppingBag, Bike, Star, ChevronDown, ChevronRight, ReceiptText, CalendarClock, ArrowRight, Calendar } from 'lucide-react';
 import { useDesktopLayout } from '../lib/useDesktopLayout';
 import type { Tenant } from '../types';
 import { identityOf } from '../lib/identity';
@@ -22,7 +22,7 @@ import {
 import { ProfileSubpageShell } from '../components/ProfileSubpageShell';
 import { Tooltip } from '../components/Tooltip';
 import { MENU_PAGE_BG, MENU_TEXT, MENU_TEXT_SOFT, MENU_TEXT_BODY, MENU_TEXT_MUTED } from '../lib/menuTheme';
-import { PROFILE_CARD, PROFILE_CARD_GLASS, PROFILE_BTN_PRIMARY } from '../lib/profileTheme';
+import { PROMO_SERIF, PROMO_INK, PROMO_SAGE, PROMO_EYEBROW } from '../lib/promotionTheme';
 
 const STATUS_STYLES: Record<string, { bg: string; color: string }> = {
   aguardando_pagamento: { bg: '#FFEDD5', color: '#C2410C' },
@@ -59,7 +59,7 @@ export function OrderHistoryPage() {
   return (
     <ProfileSubpageShell
       tenant={tenant}
-      title={t('orderHistoryPage.historico_de_pedidos')}
+      title={t('profile.myOrders')}
       // No desktop o histórico É a tela de pedidos (lista + detalhe lado a
       // lado): não existe mais o degrau intermediário, voltar vai ao perfil.
       backTo={isDesktop ? `/${slug}/conta-cliente/perfil` : `/${slug}/conta-cliente/pedidos`}
@@ -200,18 +200,33 @@ export function OrderHistoryWorkspace({
   );
 }
 
+
+// Superficies de vidro sobrias (mesmo padrao do perfil e do carrinho).
+const GLASS = 'bg-[#FFFFFF]/55 dark:bg-[#161617]/60 backdrop-blur-md border border-[#E5E7EB] dark:border-white/10';
+const ICON_GRAY = 'border-[#E5E7EB] bg-black/[0.03] text-[#9CA3AF] dark:border-white/10 dark:bg-white/[0.04] dark:text-[#8E918F]';
+
+function StatusPill({ statusKey, text }: { statusKey: string; text: string }) {
+  const st = STATUS_STYLES[statusKey] ?? { bg: '#F3F4F6', color: '#374151' };
+  return (
+    <span
+      className="text-[11px] font-semibold px-3 py-1 rounded-full shrink-0 border"
+      style={{ backgroundColor: `${st.color}1F`, color: st.color, borderColor: `${st.color}33` }}
+    >
+      {text}
+    </span>
+  );
+}
+
 type PaneSelection =
   | { kind: 'mesa'; mesa: MesaHistoryEntry }
   | { kind: 'avulso'; avulso: AvulsoHistoryEntry }
   | null;
 
-// Detalhe do pedido selecionado (desktop). Usa só o que o histórico já
-// carregou — nenhuma chamada nova. O cupom completo abre pelo botão de largura
-// total no rodapé do painel (a navegação é a mesma de sempre).
+// Detalhe do pedido selecionado (desktop). Usa so o que o historico ja carregou.
+// O cupom completo abre pela linha "Ver cupom fiscal" (mesma navegacao de sempre).
 function OrderDetailPane({
   selected,
   reviewsByOrderId,
-  accent,
   onOpenMesa,
   onOpenAvulso,
 }: {
@@ -222,11 +237,8 @@ function OrderDetailPane({
   onOpenAvulso: (orderId: string) => void;
 }) {
   const { t } = useI18n();
-
   const paneId = selected ? (selected.kind === 'mesa' ? selected.mesa.sessionId : selected.avulso.orderId) : null;
 
-  // Transição suave a cada troca de pedido: o conteúdo reentra com fade +
-  // deslize curto (dois quadros para o navegador pintar o estado inicial).
   const [shown, setShown] = useState(false);
   useEffect(() => {
     setShown(false);
@@ -242,10 +254,10 @@ function OrderDetailPane({
 
   if (!selected) {
     return (
-      <div className={`${PROFILE_CARD_GLASS} sticky top-24 py-16 px-6 flex flex-col items-center gap-3 text-center`}>
-        <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-black/5 dark:bg-white/10">
-          <ReceiptText size={22} strokeWidth={1.5} className={MENU_TEXT_MUTED} />
-        </div>
+      <div className={`${GLASS} sticky top-24 rounded-3xl py-16 px-6 flex flex-col items-center gap-3 text-center`}>
+        <span className={`flex h-12 w-12 items-center justify-center rounded-full border ${ICON_GRAY}`}>
+          <ReceiptText size={22} strokeWidth={1.5} />
+        </span>
         <p className={`text-sm ${MENU_TEXT_MUTED}`}>{t('profile.myOrders')}</p>
       </div>
     );
@@ -253,9 +265,7 @@ function OrderDetailPane({
 
   const mesa = selected.kind === 'mesa' ? selected.mesa : null;
   const avulso = selected.kind === 'avulso' ? selected.avulso : null;
-
   const statusKey = mesa ? mesa.sessionStatus : avulso!.status;
-  const statusStyle = STATUS_STYLES[statusKey] ?? { bg: '#F3F4F6', color: '#374151' };
   const statusText = mesa ? sessionStatusLabel(mesa.sessionStatus, t) : orderStatusLabel(avulso!.status, t);
   const typeLabel = mesa
     ? String(mesa.tableNumber ?? t('receiptContent.mesa'))
@@ -265,135 +275,121 @@ function OrderDetailPane({
   const Icon = mesa ? Table2 : avulso!.orderType === 'entrega' ? Bike : ShoppingBag;
   const when = mesa ? mesa.dateForGrouping : avulso!.createdAt;
   const tip = mesa ? mesa.tipAmount : avulso!.tipAmount;
-  const grand = mesa ? mesa.total + mesa.tipAmount : avulso!.total + avulso!.tipAmount;
+  const orders = mesa ? mesa.total : avulso!.total;
+  const grand = orders + tip;
   const review = avulso ? reviewsByOrderId[avulso.orderId] : undefined;
-  const refCode = String(paneId).replace(/-/g, '').slice(0, 6).toUpperCase();
   const openFull = () => (mesa ? onOpenMesa(mesa.sessionId) : onOpenAvulso(avulso!.orderId));
 
   return (
-    <div className={`${PROFILE_CARD} sticky top-24 overflow-hidden shadow-sm`}>
+    <div className={`${GLASS} sticky top-24 overflow-hidden rounded-3xl`}>
       <div
-        className={`max-h-[calc(100vh-8rem)] overflow-y-auto transition-[opacity,transform] duration-300 ease-out motion-reduce:transition-none ${
+        className={`max-h-[calc(100vh-8rem)] overflow-y-auto p-6 xl:p-8 flex flex-col gap-6 transition-[opacity,transform] duration-300 ease-out motion-reduce:transition-none ${
           shown ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
         }`}
       >
-        {/* Cabeçalho + total em destaque, com um véu da cor do restaurante. */}
-        <div
-          className="p-6 xl:p-8"
-          style={{ background: `linear-gradient(135deg, ${accent}26 0%, ${accent}0D 55%, transparent 100%)` }}
-        >
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-center gap-3.5 min-w-0">
-              <div
-                className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border border-black/5 dark:border-white/10"
-                style={{ backgroundColor: `${accent}26` }}
-              >
-                <Icon size={22} strokeWidth={1.5} className={MENU_TEXT} />
-              </div>
-              <div className="min-w-0">
-                <p className={`font-display text-xl font-bold ${MENU_TEXT} truncate capitalize`}>{typeLabel}</p>
-                <p className={`flex items-center gap-1.5 text-xs ${MENU_TEXT_MUTED} mt-1`}>
-                  <CalendarClock size={14} strokeWidth={1.5} />
-                  {formatDateTime(when)}
-                </p>
-              </div>
-            </div>
-            <span
-              className="text-[11px] font-semibold px-3 py-1.5 rounded-full shrink-0"
-              style={{ backgroundColor: statusStyle.bg, color: statusStyle.color }}
-            >
-              {statusText}
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center gap-4 min-w-0">
+            <span className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full border ${ICON_GRAY}`}>
+              <Icon size={24} strokeWidth={1.5} />
             </span>
-          </div>
-
-          <div className="mt-7">
-            <p className={`text-[11px] font-semibold uppercase tracking-wider ${MENU_TEXT_MUTED}`}>
-              {t('receiptContent.total')}
-            </p>
-            <p className={`font-display text-4xl xl:text-5xl font-bold tabular-nums ${MENU_TEXT} mt-1.5`}>
-              {formatMoney(grand)}
-            </p>
-          </div>
-        </div>
-
-        <div className="p-6 xl:p-8 flex flex-col gap-6">
-          {mesa && (
-            <div className="flex items-center gap-4 rounded-2xl border border-[#E5E7EB] dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.04] p-4">
-              <div
-                className={`w-12 h-12 rounded-xl flex items-center justify-center font-display text-xl font-bold tabular-nums shrink-0 ${MENU_TEXT}`}
-                style={{ backgroundColor: `${accent}1F` }}
-              >
-                {mesa.orderCount}
-              </div>
-              <p className={`text-sm font-medium ${MENU_TEXT_SOFT}`}>
-                {mesa.orderCount === 1 ? t('orderHistoryPage.pedido_feito') : t('orderHistoryPage.pedidos_feitos')}
+            <div className="min-w-0">
+              <p className={`text-3xl font-light leading-tight truncate capitalize ${PROMO_INK}`} style={{ fontFamily: PROMO_SERIF }}>
+                {typeLabel}
+              </p>
+              <p className={`mt-1 flex items-center gap-1.5 text-xs ${MENU_TEXT_MUTED}`}>
+                <CalendarClock size={13} strokeWidth={1.5} />
+                {formatDateTime(when)}
               </p>
             </div>
-          )}
+          </div>
+          <StatusPill statusKey={statusKey} text={statusText} />
+        </div>
 
-          {avulso && avulso.items.length > 0 && (
-            <ul className="flex flex-col divide-y divide-[#F3F4F6] dark:divide-white/10 rounded-2xl border border-[#E5E7EB] dark:border-white/10 overflow-hidden">
-              {avulso.items.map((i, idx) => (
-                <li key={idx} className="flex items-center gap-3.5 px-4 py-3">
-                  <span
-                    className={`min-w-9 h-9 px-2 rounded-lg flex items-center justify-center text-xs font-bold tabular-nums shrink-0 ${MENU_TEXT}`}
-                    style={{ backgroundColor: `${accent}1F` }}
-                  >
-                    {i.quantity}x
-                  </span>
-                  <span className={`text-sm font-medium min-w-0 break-words ${MENU_TEXT}`}>{i.productName}</span>
-                </li>
-              ))}
-            </ul>
-          )}
+        <div>
+          <p className={`${PROMO_EYEBROW} ${MENU_TEXT_MUTED}`}>{t('receiptContent.total')}</p>
+          <p className={`mt-2 text-5xl xl:text-6xl font-light tabular-nums ${PROMO_SAGE}`} style={{ fontFamily: PROMO_SERIF }}>
+            {formatMoney(grand)}
+          </p>
+        </div>
 
-          {/* Totais em formato de cupom. */}
-          <div className="rounded-2xl border border-dashed border-[#D1D5DB] dark:border-white/15 p-5 flex flex-col gap-3">
+        {mesa && (
+          <div className={`flex items-center gap-4 rounded-2xl p-4 ${GLASS}`}>
+            <span className={`min-w-10 h-10 px-2 rounded-lg flex items-center justify-center text-sm font-semibold tabular-nums border ${ICON_GRAY}`}>
+              {mesa.orderCount}
+            </span>
+            <p className={`text-sm font-medium ${MENU_TEXT_SOFT}`}>
+              {mesa.orderCount === 1 ? t('orderHistoryPage.pedido_feito') : t('orderHistoryPage.pedidos_feitos')}
+            </p>
+          </div>
+        )}
+
+        {avulso && avulso.items.length > 0 && (
+          <ul className={`flex flex-col divide-y divide-[#E5E7EB] dark:divide-white/10 rounded-2xl overflow-hidden ${GLASS}`}>
+            {avulso.items.map((i, idx) => (
+              <li key={idx} className="flex items-center gap-4 px-4 py-3.5">
+                <span className={`min-w-10 h-8 px-2 rounded-lg flex items-center justify-center text-xs font-semibold tabular-nums border ${ICON_GRAY}`}>
+                  {i.quantity}x
+                </span>
+                <span className={`text-sm min-w-0 break-words ${MENU_TEXT}`}>{i.productName}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <div className={`rounded-2xl p-5 ${GLASS}`}>
+          <p className={`text-xl font-light ${PROMO_INK}`} style={{ fontFamily: PROMO_SERIF }}>{t('cartUi.summary')}</p>
+          <div className="mt-4 flex flex-col gap-3 text-sm">
             {tip > 0 && (
-              <div className={`flex justify-between text-sm ${MENU_TEXT_BODY}`}>
-                <span>{t('closingPaymentSheet.gorjeta')}</span>
-                <span className="tabular-nums">{formatMoney(tip)}</span>
-              </div>
+              <>
+                <div className={`flex justify-between ${MENU_TEXT_BODY}`}>
+                  <span>{t('closingPaymentSheet.subtotal')}</span>
+                  <span className="tabular-nums">{formatMoney(orders)}</span>
+                </div>
+                <div className={`flex justify-between ${MENU_TEXT_BODY}`}>
+                  <span>{t('closingPaymentSheet.gorjeta')}</span>
+                  <span className="tabular-nums">{formatMoney(tip)}</span>
+                </div>
+              </>
             )}
-            <div className={`flex justify-between items-baseline font-display font-bold ${MENU_TEXT}`}>
-              <span>{t('receiptContent.total')}</span>
-              <span className="text-xl tabular-nums">{formatMoney(grand)}</span>
+            <div className="flex items-baseline justify-between border-t border-dashed border-[#D1D5DB] pt-3 dark:border-white/15">
+              <span className={`text-xs uppercase tracking-wider ${MENU_TEXT_SOFT}`}>{t('receiptContent.total')}</span>
+              <span className={`text-2xl font-light tabular-nums ${PROMO_SAGE}`} style={{ fontFamily: PROMO_SERIF }}>{formatMoney(grand)}</span>
             </div>
           </div>
-
-          {review && (
-            <div className="flex items-center gap-2" aria-label={String(review.rating)}>
-              <div className="flex items-center gap-0.5">
-                {Array.from({ length: 5 }).map((_, idx) => (
-                  <Star
-                    key={idx}
-                    size={18}
-                    strokeWidth={1.5}
-                    fill={idx < Math.round(review.rating) ? '#F59E0B' : 'none'}
-                    className={idx < Math.round(review.rating) ? 'text-amber-500' : MENU_TEXT_MUTED}
-                  />
-                ))}
-              </div>
-              <span className="text-sm font-semibold text-amber-600 dark:text-amber-300 tabular-nums">{review.rating}</span>
-            </div>
-          )}
-
-          <Tooltip label={typeLabel} className="flex w-full">
-            <button
-              onClick={openFull}
-              className={`w-full flex items-center justify-between gap-3 rounded-xl px-5 py-3.5 text-sm ${PROFILE_BTN_PRIMARY}`}
-              style={{ backgroundColor: accent }}
-            >
-              <span className="flex items-center gap-2.5 min-w-0">
-                <ReceiptText size={18} strokeWidth={1.5} className="shrink-0" />
-                <span className="truncate">
-                  {t('receiptContentStandalone.ref')} #{refCode}
-                </span>
-              </span>
-              <ArrowRight size={18} strokeWidth={1.5} className="shrink-0" />
-            </button>
-          </Tooltip>
         </div>
+
+        {review && (
+          <div className="flex items-center gap-2" aria-label={String(review.rating)}>
+            <div className="flex items-center gap-0.5">
+              {Array.from({ length: 5 }).map((_, idx) => (
+                <Star
+                  key={idx}
+                  size={18}
+                  strokeWidth={1.5}
+                  fill={idx < Math.round(review.rating) ? '#F59E0B' : 'none'}
+                  className={idx < Math.round(review.rating) ? 'text-amber-500' : MENU_TEXT_MUTED}
+                />
+              ))}
+            </div>
+            <span className="text-sm font-semibold text-amber-600 dark:text-amber-300 tabular-nums">{review.rating}</span>
+          </div>
+        )}
+
+        <Tooltip label={t('orderHistoryPage.viewReceipt')} className="flex w-full">
+          <button
+            onClick={openFull}
+            className={`glass-hover w-full flex items-center gap-4 rounded-2xl px-4 py-4 text-left ${GLASS}`}
+          >
+            <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border ${ICON_GRAY}`}>
+              <ReceiptText size={18} strokeWidth={1.5} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className={`block text-base ${PROMO_INK}`} style={{ fontFamily: PROMO_SERIF }}>{t('orderHistoryPage.viewReceipt')}</span>
+              <span className={`block text-xs ${MENU_TEXT_MUTED}`}>{t('orderHistoryPage.viewReceiptHint')}</span>
+            </span>
+            <ArrowRight size={18} strokeWidth={1.5} className={`shrink-0 ${MENU_TEXT_MUTED}`} />
+          </button>
+        </Tooltip>
       </div>
     </div>
   );
@@ -414,7 +410,6 @@ function DayFolder({
   onToggle: () => void;
   reviewsByOrderId: Record<string, MyReview>;
   accent: string;
-  // Id do pedido destacado (só no Master-Detail do desktop).
   selectedId: string | null;
   onOpenMesa: (sessionId: string) => void;
   onOpenAvulso: (orderId: string) => void;
@@ -426,178 +421,112 @@ function DayFolder({
     : t('orderHistoryPage.esconder_pedidos_de_label', { label: group.label });
 
   return (
-    <div className="flex flex-col gap-2.5">
-      {/* Mesmo cabeçalho das categorias do cardápio: ícone, nome e seta de
-          recolher/expandir. */}
+    <div className="flex flex-col gap-3">
       <Tooltip label={toggleLabel} className="flex w-full">
-        <button
-          onClick={onToggle}
-          aria-expanded={!collapsed}
-          aria-label={toggleLabel}
-          className={`w-full flex items-center gap-2 px-1 ${MENU_TEXT_SOFT}`}
-        >
-          <FolderClosed size={16} strokeWidth={1.5} />
-          <h2 className="text-sm font-semibold">{group.label}</h2>
-          <span className={`text-[11px] ${MENU_TEXT_MUTED} flex-1 text-left`}>
+        <button onClick={onToggle} aria-expanded={!collapsed} aria-label={toggleLabel} className="w-full flex items-center gap-2 px-1">
+          <Calendar size={14} strokeWidth={1.5} className={PROMO_SAGE} />
+          <h2 className={`text-xs font-semibold uppercase tracking-wider ${PROMO_SAGE}`}>{group.label}</h2>
+          <span className={`text-[11px] ${MENU_TEXT_MUTED} flex-1 text-right`}>
             {total} {total === 1 ? 'pedido' : 'pedidos'}
           </span>
-          <ChevronDown
-            size={16}
-            strokeWidth={1.5}
-            className={`${MENU_TEXT_MUTED} transition-transform ${collapsed ? '-rotate-90' : ''}`}
-          />
+          <ChevronDown size={14} strokeWidth={1.5} className={`${MENU_TEXT_MUTED} transition-transform ${collapsed ? '-rotate-90' : ''}`} />
         </button>
       </Tooltip>
 
       <div className={`flex flex-col gap-2.5 ${collapsed ? 'hidden' : ''}`}>
         {group.mesaItems.map((item) => (
-          <MesaCard
+          <OrderCard
             key={item.sessionId}
-            item={item}
             selected={selectedId === item.sessionId}
             accent={accent}
             onClick={() => onOpenMesa(item.sessionId)}
+            Icon={Table2}
+            title={String(item.tableNumber ?? t('receiptContent.mesa'))}
+            meta={`${formatDateTime(item.dateForGrouping)} · ${item.orderCount} ${
+              item.orderCount === 1 ? t('orderHistoryPage.pedido_feito') : t('orderHistoryPage.pedidos_feitos')
+            }`}
+            amount={formatMoney(item.total + item.tipAmount)}
+            statusKey={item.sessionStatus}
+            statusText={sessionStatusLabel(item.sessionStatus, t)}
           />
         ))}
-        {group.avulsoItems.map((item) => (
-          <AvulsoCard
-            key={item.orderId}
-            item={item}
-            review={reviewsByOrderId[item.orderId]}
-            selected={selectedId === item.orderId}
-            accent={accent}
-            onClick={() => onOpenAvulso(item.orderId)}
-          />
-        ))}
+        {group.avulsoItems.map((item) => {
+          const review = reviewsByOrderId[item.orderId];
+          const typeLabel = item.orderType === 'entrega' ? t('receiptContentStandalone.entrega') : t('receiptContentStandalone.balcao');
+          return (
+            <OrderCard
+              key={item.orderId}
+              selected={selectedId === item.orderId}
+              accent={accent}
+              onClick={() => onOpenAvulso(item.orderId)}
+              Icon={item.orderType === 'entrega' ? Bike : ShoppingBag}
+              title={typeLabel}
+              meta={`${formatDateTime(item.createdAt)} · ${item.items.map((i) => `${i.quantity}x ${i.productName}`).join(', ')}`}
+              amount={formatMoney(item.total + item.tipAmount)}
+              statusKey={item.status}
+              statusText={orderStatusLabel(item.status, t)}
+              rating={review?.rating}
+            />
+          );
+        })}
       </div>
     </div>
   );
 }
 
-function MesaCard({
-  item,
+// Cartao de pedido da lista (mesa ou avulso): vidro, icone cinza, valor em verde salvia.
+function OrderCard({
   selected,
   accent,
   onClick,
+  Icon,
+  title,
+  meta,
+  amount,
+  statusKey,
+  statusText,
+  rating,
 }: {
-  item: MesaHistoryEntry;
   selected: boolean;
   accent: string;
   onClick: () => void;
+  Icon: typeof Table2;
+  title: string;
+  meta: string;
+  amount: string;
+  statusKey: string;
+  statusText: string;
+  rating?: number;
 }) {
-  const { t } = useI18n();
-  const statusStyle = STATUS_STYLES[item.sessionStatus] ?? {
-    bg: '#F3F4F6',
-    color: '#374151',
-  };
-
   return (
-    <Tooltip label={String(item.tableNumber ?? t('receiptContent.mesa'))} className="flex w-full">
-    <button
-      onClick={onClick}
-      aria-pressed={selected}
-      className={`relative w-full ${PROFILE_CARD} p-4 text-left cursor-pointer overflow-hidden md:hover:bg-black/[0.02] dark:md:hover:bg-white/[0.03] md:transition-all md:duration-200`}
-      style={selected ? { borderColor: accent, backgroundColor: `${accent}12` } : undefined}
-    >
-      {selected && (
-        <span className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: accent }} aria-hidden="true" />
-      )}
-      <div className="flex justify-between items-start">
-        <div className="flex items-center gap-1.5">
-          <Table2 size={14} strokeWidth={1.5} className={MENU_TEXT_MUTED} />
-          <p className={`text-sm font-semibold ${MENU_TEXT}`}>{item.tableNumber ?? t('receiptContent.mesa')}</p>
+    <Tooltip label={title} className="flex w-full">
+      <button
+        onClick={onClick}
+        aria-pressed={selected}
+        className={`relative w-full ${GLASS} rounded-2xl p-4 text-left cursor-pointer md:transition-colors md:hover:bg-black/[0.02] dark:md:hover:bg-white/[0.03]`}
+        style={selected ? { borderColor: accent } : undefined}
+      >
+        <div className="flex items-center gap-4">
+          <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border ${ICON_GRAY}`}>
+            <Icon size={19} strokeWidth={1.5} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className={`text-lg leading-tight capitalize ${PROMO_INK}`} style={{ fontFamily: PROMO_SERIF }}>{title}</p>
+            <p className={`mt-0.5 text-xs break-words ${MENU_TEXT_MUTED}`}>{meta}</p>
+            <p className={`mt-1 text-sm font-semibold tabular-nums ${PROMO_SAGE}`}>{amount}</p>
+          </div>
+          <div className="flex shrink-0 items-center gap-3">
+            {rating != null && (
+              <span className="flex items-center gap-1 text-xs font-semibold text-amber-600 dark:text-amber-300">
+                <Star size={13} strokeWidth={1.5} fill="#F59E0B" className="text-amber-500" />
+                {rating}
+              </span>
+            )}
+            <StatusPill statusKey={statusKey} text={statusText} />
+            <ChevronRight size={16} strokeWidth={1.5} className={MENU_TEXT_MUTED} />
+          </div>
         </div>
-        <span
-          className="text-[11px] font-semibold px-2 py-1 rounded-full"
-          style={{ backgroundColor: statusStyle.bg, color: statusStyle.color }}
-        >
-          {sessionStatusLabel(item.sessionStatus, t)}
-        </span>
-      </div>
-      <p className={`text-xs ${MENU_TEXT_MUTED} mt-1.5`}>
-        {formatDateTime(item.dateForGrouping)} · {item.orderCount}{' '}
-        {item.orderCount === 1 ? t('orderHistoryPage.pedido_feito') : t('orderHistoryPage.pedidos_feitos')}
-      </p>
-      <div className="flex items-center justify-between mt-2">
-        <p className={`text-sm font-semibold ${MENU_TEXT_BODY}`}>{formatMoney(item.total + item.tipAmount)}</p>
-        <ChevronRight
-          size={16}
-          strokeWidth={1.5}
-          className={`${MENU_TEXT_MUTED} transition-transform ${selected ? 'translate-x-0.5' : ''}`}
-        />
-      </div>
-    </button>
-    </Tooltip>
-  );
-}
-
-function AvulsoCard({
-  item,
-  review,
-  selected,
-  accent,
-  onClick,
-}: {
-  item: AvulsoHistoryEntry;
-  review: MyReview | undefined;
-  selected: boolean;
-  accent: string;
-  onClick: () => void;
-}) {
-  const { t } = useI18n();
-  const statusStyle = STATUS_STYLES[item.status] ?? {
-    bg: '#F3F4F6',
-    color: '#374151',
-  };
-  const Icon = item.orderType === 'entrega' ? Bike : ShoppingBag;
-  const typeLabel = item.orderType === 'entrega' ? t('receiptContentStandalone.entrega') : t('receiptContentStandalone.balcao');
-
-  return (
-    <Tooltip label={typeLabel} className="flex w-full">
-    <button
-      onClick={onClick}
-      aria-pressed={selected}
-      className={`relative w-full ${PROFILE_CARD} p-4 text-left cursor-pointer overflow-hidden md:hover:bg-black/[0.02] dark:md:hover:bg-white/[0.03] md:transition-all md:duration-200`}
-      style={selected ? { borderColor: accent, backgroundColor: `${accent}12` } : undefined}
-    >
-      {selected && (
-        <span className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: accent }} aria-hidden="true" />
-      )}
-      <div className="flex justify-between items-start">
-        <div className="flex items-center gap-1.5">
-          <Icon size={14} strokeWidth={1.5} className={MENU_TEXT_MUTED} />
-          <p className={`text-sm font-semibold ${MENU_TEXT} capitalize`}>
-            {typeLabel}
-          </p>
-        </div>
-        <span
-          className="text-[11px] font-semibold px-2 py-1 rounded-full"
-          style={{ backgroundColor: statusStyle.bg, color: statusStyle.color }}
-        >
-          {orderStatusLabel(item.status, t)}
-        </span>
-      </div>
-      <p className={`text-xs ${MENU_TEXT_MUTED} mt-1.5`}>
-        {formatDateTime(item.createdAt)} ·{' '}
-        {item.items.map((i) => `${i.quantity}x ${i.productName}`).join(', ')}
-      </p>
-      <div className="flex items-center justify-between mt-2">
-        <p className={`text-sm font-semibold ${MENU_TEXT_BODY}`}>{formatMoney(item.total + item.tipAmount)}</p>
-        <div className="flex items-center gap-2">
-          {review && (
-            <span className="flex items-center gap-1 text-xs font-semibold text-amber-600 dark:text-amber-300">
-              <Star size={13} strokeWidth={1.5} fill="#F59E0B" className="text-amber-500" />
-              {review.rating}
-            </span>
-          )}
-          <ChevronRight
-            size={16}
-            strokeWidth={1.5}
-            className={`${MENU_TEXT_MUTED} transition-transform ${selected ? 'translate-x-0.5' : ''}`}
-          />
-        </div>
-      </div>
-    </button>
+      </button>
     </Tooltip>
   );
 }

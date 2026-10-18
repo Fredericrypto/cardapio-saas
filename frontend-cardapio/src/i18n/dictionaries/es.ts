@@ -512,6 +512,8 @@ export const es: Record<TranslationKey, string> = {
   'myReviewsPage.voce_ainda_nao_avaliou': 'Aún no has reseñado nada. Cuando un pedido se complete, recibes una notificación para reseñar el restaurante y los artículos que pediste.',
   'myReviewsPage.pedido': 'Pedido',
   'orderHistoryPage.historico_de_pedidos': 'Historial de pedidos',
+  'orderHistoryPage.viewReceipt': 'Ver cupón fiscal',
+  'orderHistoryPage.viewReceiptHint': 'Consulta el comprobante de este pedido',
   'orderHistoryPage.voce_ainda_nao_fez': 'Aún no has hecho ningún pedido aquí.',
   'orderHistoryPage.mostrar_pedidos_de_label': 'Mostrar pedidos de {label}',
   'orderHistoryPage.esconder_pedidos_de_label': 'Ocultar pedidos de {label}',

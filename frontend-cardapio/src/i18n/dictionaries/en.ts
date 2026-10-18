@@ -512,6 +512,8 @@ export const en: Record<TranslationKey, string> = {
   'myReviewsPage.voce_ainda_nao_avaliou': 'You have not reviewed anything yet. Once an order is completed, you get a notification to review the restaurant and the items you ordered.',
   'myReviewsPage.pedido': 'Order',
   'orderHistoryPage.historico_de_pedidos': 'Order history',
+  'orderHistoryPage.viewReceipt': 'View receipt',
+  'orderHistoryPage.viewReceiptHint': 'See the receipt for this order',
   'orderHistoryPage.voce_ainda_nao_fez': 'You have not placed any order here yet.',
   'orderHistoryPage.mostrar_pedidos_de_label': 'Show orders from {label}',
   'orderHistoryPage.esconder_pedidos_de_label': 'Hide orders from {label}',
