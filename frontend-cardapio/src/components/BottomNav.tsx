@@ -220,8 +220,8 @@ interface DesktopNavProps extends BottomNavProps {
   // Força mostrar/ocultar a busca. Sem isso vale a regra por rota: aparece
   // só na página principal do cardápio e só se `onSearchChange` existir.
   showSearch?: boolean;
-  // Borda inferior recuada das laterais, com esmaecimento nas pontas.
-  insetBorder?: boolean;
+  // Alinha a marca com conteúdo de páginas largas (max-w-[88rem]), como o perfil.
+  wide?: boolean;
 }
 
 export function DesktopNav({
@@ -233,21 +233,20 @@ export function DesktopNav({
   onSearchChange,
   contextLabel,
   showSearch,
-  insetBorder = false,
+  wide = false,
 }: DesktopNavProps) {
   const nav = useNavModel(slug, qrCodeToken, primaryColor);
   const searchVisible = (showSearch ?? nav.isMenuRoute) && Boolean(onSearchChange);
 
   return (
-    <nav className={`hidden md:block sticky top-0 z-40 bg-transparent backdrop-blur-md ${insetBorder ? '' : 'border-b border-[#F3F4F6] dark:border-white/10'}`}>
-      {insetBorder && (
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-x-10 bottom-0 h-px text-black/15 dark:text-white/15"
-          style={{ background: 'linear-gradient(90deg, transparent, currentColor 18%, currentColor 82%, transparent)' }}
-        />
-      )}
-      <div className="mx-auto w-full max-w-7xl md:px-8 h-16 flex items-center gap-4 lg:gap-6">
+    <nav className="hidden md:block sticky top-0 z-40 bg-transparent backdrop-blur-md">
+      {/* Borda inferior recuada das laterais, esmaecendo nas pontas (todas as telas). */}
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-10 bottom-0 h-px text-black/15 dark:text-white/15"
+        style={{ background: 'linear-gradient(90deg, transparent, currentColor 18%, currentColor 82%, transparent)' }}
+      />
+      <div className={`mx-auto w-full ${wide ? 'max-w-[88rem]' : 'max-w-7xl'} md:px-8 h-16 flex items-center gap-4 lg:gap-6`}>
         {/* Marca (logo + nome) = botão "início do cardápio": leva à rota-base do
             restaurante (com a mesa, se houver). Tooltip no hover e no foco do
             teclado. A logo aqui é só imagem; a do BANNER (LogoViewer) continua

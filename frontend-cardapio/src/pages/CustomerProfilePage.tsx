@@ -175,7 +175,7 @@ export function CustomerProfilePage() {
         primaryColor={tenant.primaryColor}
         tenant={tenant}
         showSearch={false}
-        insetBorder
+        wide
       />
     </div>
   );
