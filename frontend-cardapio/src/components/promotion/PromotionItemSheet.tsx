@@ -69,6 +69,86 @@ export function PromotionItemSheet({ labelledBy, onClose, children }: PromotionI
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [requestClose]);
 
+  // Deslizar para baixo em qualquer parte do card minimiza. Regras: so conta gesto
+  // VERTICAL para baixo; se o toque comecou numa area rolavel, so arrasta o card quando ela
+  // ja esta no topo (senao e rolagem normal); gesto horizontal (carrossel de fotos) e de
+  // quem o recebeu. Listener nativo nao-passivo: precisa de preventDefault para a pagina
+  // nao rolar junto durante o arraste.
+  useEffect(() => {
+    const el = sheetRef.current;
+    if (!el) return;
+    let startX = 0;
+    let startY = 0;
+    let startT = 0;
+    let tracking = false;
+    let dragging = false;
+    let scroller: HTMLElement | null = null;
+
+    function findScroller(start: EventTarget | null): HTMLElement | null {
+      let node = start instanceof HTMLElement ? start : null;
+      while (node && node !== el) {
+        const overflowY = getComputedStyle(node).overflowY;
+        if ((overflowY === 'auto' || overflowY === 'scroll') && node.scrollHeight > node.clientHeight) return node;
+        node = node.parentElement;
+      }
+      return null;
+    }
+    function onStart(event: TouchEvent) {
+      if (closeRequested.current || event.touches.length !== 1) {
+        tracking = false;
+        return;
+      }
+      const touch = event.touches[0];
+      startX = touch.clientX;
+      startY = touch.clientY;
+      startT = performance.now();
+      scroller = findScroller(event.target);
+      tracking = true;
+      dragging = false;
+    }
+    function onMove(event: TouchEvent) {
+      if (!tracking) return;
+      const touch = event.touches[0];
+      const dy = touch.clientY - startY;
+      const dx = touch.clientX - startX;
+      if (!dragging) {
+        if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+        if (Math.abs(dx) > Math.abs(dy) || dy <= 0 || (scroller && scroller.scrollTop > 0)) {
+          tracking = false;
+          return;
+        }
+        dragging = true;
+      }
+      if (event.cancelable) event.preventDefault();
+      setDragY(Math.max(0, dy));
+    }
+    function onEnd(event: TouchEvent) {
+      if (!tracking) return;
+      tracking = false;
+      if (!dragging) return;
+      dragging = false;
+      const dy = Math.max(0, event.changedTouches[0].clientY - startY);
+      const velocity = dy / Math.max(1, performance.now() - startT);
+      if (dy > DISMISS_DISTANCE || (dy > 30 && velocity > DISMISS_VELOCITY)) requestClose();
+      else setDragY(0);
+    }
+    function onCancel() {
+      if (dragging) setDragY(0);
+      tracking = false;
+      dragging = false;
+    }
+    el.addEventListener('touchstart', onStart, { passive: true });
+    el.addEventListener('touchmove', onMove, { passive: false });
+    el.addEventListener('touchend', onEnd);
+    el.addEventListener('touchcancel', onCancel);
+    return () => {
+      el.removeEventListener('touchstart', onStart);
+      el.removeEventListener('touchmove', onMove);
+      el.removeEventListener('touchend', onEnd);
+      el.removeEventListener('touchcancel', onCancel);
+    };
+  }, [requestClose]);
+
   function trapTab(event: ReactKeyboardEvent<HTMLDivElement>) {
     if (event.key !== 'Tab' || !sheetRef.current) return;
     const nodes = Array.from(sheetRef.current.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
@@ -91,14 +171,17 @@ export function PromotionItemSheet({ labelledBy, onClose, children }: PromotionI
   }
 
   function onHandleDown(event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.pointerType === 'touch') return;
     drag.current = { startY: event.clientY, startT: performance.now(), id: event.pointerId };
     event.currentTarget.setPointerCapture(event.pointerId);
   }
   function onHandleMove(event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.pointerType === 'touch') return;
     if (!drag.current || drag.current.id !== event.pointerId) return;
     setDragY(Math.max(0, event.clientY - drag.current.startY));
   }
   function onHandleUp(event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.pointerType === 'touch') return;
     const current = drag.current;
     if (!current || current.id !== event.pointerId) return;
     drag.current = null;
@@ -127,8 +210,14 @@ export function PromotionItemSheet({ labelledBy, onClose, children }: PromotionI
         aria-labelledby={labelledBy}
         tabIndex={-1}
         onKeyDown={trapTab}
-        style={{ '--sheet-drag': `${dragY}px`, transform: dragY > 0 && !closing ? `translateY(${dragY}px)` : undefined } as React.CSSProperties}
-        className={`absolute bottom-0 left-0 right-0 mx-auto flex max-h-[90dvh] w-full max-w-xl flex-col overflow-hidden rounded-t-3xl border border-b-0 ${MENU_BORDER} bg-[#FFFFFF]/75 shadow-[0_-12px_40px_rgba(0,0,0,0.25)] backdrop-blur-xl outline-none dark:bg-[#131314]/75 ${
+        style={{
+          bottom: 'calc(var(--bottom-nav-h, 0px) + 0.75rem)',
+          '--sheet-drag': `${dragY}px`,
+          transform: dragY > 0 && !closing ? `translateY(${dragY}px)` : undefined,
+          // Solta antes do limite: volta suave (durante o arraste nao ha transicao, senao o card "atrasa" no dedo).
+          transition: entered && !closing && dragY === 0 ? 'transform 180ms ease' : undefined,
+        } as React.CSSProperties}
+        className={`absolute left-0 right-0 mx-auto flex max-h-[calc(100dvh-var(--bottom-nav-h,0px)-3rem)] w-[calc(100%-1.5rem)] max-w-xl flex-col overflow-hidden rounded-3xl border ${MENU_BORDER} bg-[#FFFFFF]/75 shadow-[0_12px_40px_rgba(0,0,0,0.3)] backdrop-blur-xl outline-none dark:bg-[#131314]/75 ${
           closing ? 'promo-sheet-out' : entered ? '' : 'promo-sheet-in'
         }`}
         onAnimationEnd={(event) => {

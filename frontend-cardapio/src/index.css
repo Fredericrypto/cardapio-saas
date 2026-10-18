@@ -218,7 +218,7 @@ img, svg, video, a {
 }
 @keyframes promo-sheet-in {
   from {
-    transform: translateY(100%);
+    transform: translateY(calc(100% + var(--bottom-nav-h, 0px) + 1.5rem));
   }
   to {
     transform: none;
@@ -229,7 +229,7 @@ img, svg, video, a {
     transform: translateY(var(--sheet-drag, 0px));
   }
   to {
-    transform: translateY(100%);
+    transform: translateY(calc(100% + var(--bottom-nav-h, 0px) + 1.5rem));
   }
 }
 @keyframes promo-fade-in {
