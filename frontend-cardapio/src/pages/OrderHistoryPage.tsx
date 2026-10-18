@@ -2,7 +2,7 @@ import { orderStatusLabel, sessionStatusLabel } from '../i18n/labels';
 import { useI18n } from '../i18n/I18nContext';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Table2, ShoppingBag, Bike, Star, ChevronDown, ChevronRight, ReceiptText, CalendarClock, ArrowRight, Calendar } from 'lucide-react';
+import { Table2, ShoppingBag, Bike, Star, ChevronDown, ChevronRight, ReceiptText, CalendarClock, ArrowRight, Calendar, Info, Headset } from 'lucide-react';
 import { useDesktopLayout } from '../lib/useDesktopLayout';
 import type { Tenant } from '../types';
 import { identityOf } from '../lib/identity';
@@ -339,17 +339,25 @@ function OrderDetailPane({
         <div className={`rounded-2xl p-5 ${GLASS}`}>
           <p className={`text-xl font-light ${PROMO_INK}`} style={{ fontFamily: PROMO_SERIF }}>{t('cartUi.summary')}</p>
           <div className="mt-4 flex flex-col gap-3 text-sm">
+            <div className={`flex justify-between ${MENU_TEXT_BODY}`}>
+              <span>{t('closingPaymentSheet.subtotal')}</span>
+              <span className="tabular-nums">{formatMoney(orders)}</span>
+            </div>
+            {/* TODO: ligar as taxas de servico quando o historico passar a trazer esse valor. */}
+            <div className={`flex justify-between ${MENU_TEXT_BODY}`}>
+              <span>{t('orderHistoryPage.fees')}</span>
+              <span className="tabular-nums">{formatMoney(0)}</span>
+            </div>
+            {/* TODO: ligar os descontos (cupom/cashback) quando o historico trouxer esse valor. */}
+            <div className={`flex justify-between ${MENU_TEXT_MUTED}`}>
+              <span>{t('orderHistoryPage.discounts')}</span>
+              <span className="tabular-nums">{formatMoney(0)}</span>
+            </div>
             {tip > 0 && (
-              <>
-                <div className={`flex justify-between ${MENU_TEXT_BODY}`}>
-                  <span>{t('closingPaymentSheet.subtotal')}</span>
-                  <span className="tabular-nums">{formatMoney(orders)}</span>
-                </div>
-                <div className={`flex justify-between ${MENU_TEXT_BODY}`}>
-                  <span>{t('closingPaymentSheet.gorjeta')}</span>
-                  <span className="tabular-nums">{formatMoney(tip)}</span>
-                </div>
-              </>
+              <div className={`flex justify-between ${MENU_TEXT_BODY}`}>
+                <span>{t('closingPaymentSheet.gorjeta')}</span>
+                <span className="tabular-nums">{formatMoney(tip)}</span>
+              </div>
             )}
             <div className="flex items-baseline justify-between border-t border-dashed border-[#D1D5DB] pt-3 dark:border-white/15">
               <span className={`text-xs uppercase tracking-wider ${MENU_TEXT_SOFT}`}>{t('receiptContent.total')}</span>
@@ -390,6 +398,22 @@ function OrderDetailPane({
             <ArrowRight size={18} strokeWidth={1.5} className={`shrink-0 ${MENU_TEXT_MUTED}`} />
           </button>
         </Tooltip>
+
+        <div className={`flex flex-wrap items-center gap-4 rounded-2xl px-4 py-4 ${GLASS}`}>
+          <Info size={18} strokeWidth={1.5} className={`shrink-0 ${MENU_TEXT_MUTED}`} aria-hidden="true" />
+          <div className="min-w-0 flex-1">
+            <p className={`text-sm ${MENU_TEXT}`}>{t('orderHistoryPage.supportQuestion')}</p>
+            <p className={`text-xs ${MENU_TEXT_MUTED}`}>{t('orderHistoryPage.supportHint')}</p>
+          </div>
+          {/* TODO: ligar a acao de suporte (abrir contato/chat do restaurante). */}
+          <button
+            type="button"
+            className={`glass-hover inline-flex items-center gap-2 rounded-full border border-[#E5E7EB] px-4 py-2 text-xs font-medium dark:border-white/10 ${MENU_TEXT_SOFT}`}
+          >
+            <Headset size={15} strokeWidth={1.5} aria-hidden="true" />
+            {t('orderHistoryPage.supportAction')}
+          </button>
+        </div>
       </div>
     </div>
   );
