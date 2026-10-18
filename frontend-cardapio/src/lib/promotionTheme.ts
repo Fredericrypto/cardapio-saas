@@ -31,3 +31,16 @@ export const PROMO_SUCCESS_CARD =
   'rounded-2xl border bg-green-50 border-green-100 dark:bg-green-500/10 dark:border-green-400/20';
 
 export const PROMO_SUCCESS_TEXT = 'text-green-700 dark:text-green-300';
+
+// ---- Layout editorial da página de detalhe da promoção -----------------------
+// Serifada (Newsreader, carregada no index.css) vai por `style`, porque o
+// `h1, h2, h3 { font-family: Poppins }` global do index.css não é uma camada do
+// Tailwind e venceria qualquer classe utilitária.
+export const PROMO_SERIF = "'Newsreader', Georgia, 'Times New Roman', serif";
+/** Marfim no escuro, grafite no claro. */
+export const PROMO_INK = 'text-[#111827] dark:text-[#EDE6D6]';
+export const PROMO_MUTED = 'text-[#6B7280] dark:text-[#9A9A94]';
+/** Verde sálvia discreto (valor economizado). */
+export const PROMO_SAGE = 'text-[#4F7A56] dark:text-[#9DC59A]';
+/** Rótulo pequeno em caixa alta e com espaçamento largo. */
+export const PROMO_EYEBROW = 'text-[11px] font-medium uppercase tracking-[0.22em]';

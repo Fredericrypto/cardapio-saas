@@ -4,14 +4,14 @@ import { categoryLabel } from '../i18n/categoryLabel';
 import { useI18n } from '../i18n/I18nContext';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowRight, Ban, Clock, Coins, Compass, Users, Tag, Package, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, Ban, CheckCircle2, Clock, Coins, Compass, Package, Tag, Users } from 'lucide-react';
 import { ShareButton } from '../components/ShareButton';
 import { GlassBackButton } from '../components/GlassBackButton';
 import { AnimatedGradientButton } from '../components/AnimatedGradientButton';
 import { FoodBackdrop } from '../components/FoodBackdrop';
-import { PromotionMedia } from '../components/promotion/PromotionMedia';
+import { PromotionHero } from '../components/promotion/PromotionHero';
+import { PromotionEditorial } from '../components/promotion/PromotionEditorial';
 import { PromotionBadge } from '../components/promotion/PromotionBadge';
-import { PromotionHeroCard } from '../components/promotion/PromotionHeroCard';
 import { PromotionBenefitCard } from '../components/promotion/PromotionBenefitCard';
 import { PromotionSkeleton, PromotionUnavailable } from '../components/promotion/PromotionStates';
 import { buildShareUrl } from '../lib/shareLinks';
@@ -29,19 +29,21 @@ import {
 import { buildPromotionModePaths } from '../lib/promotionMode';
 import { getProductImages } from '../lib/productImages';
 import { formatBRL, getPromotionBadgeKind, getPromotionHeroValue } from '../lib/promotionPresentation';
-import { PROMO_FOCUS, PROMO_LINK_BTN } from '../lib/promotionTheme';
 import {
-  MENU_BORDER,
-  MENU_PAGE_BG,
-  MENU_SURFACE_SUBTLE,
-  MENU_TEXT,
-  MENU_TEXT_SOFT,
-  MENU_TEXT_MUTED,
-} from '../lib/menuTheme';
+  PROMO_EYEBROW,
+  PROMO_FOCUS,
+  PROMO_INK,
+  PROMO_LINK_BTN,
+  PROMO_MUTED,
+  PROMO_SERIF,
+} from '../lib/promotionTheme';
+import { MENU_BORDER, MENU_PAGE_BG, MENU_SURFACE_SUBTLE, MENU_TEXT, MENU_TEXT_MUTED } from '../lib/menuTheme';
 import type { Promotion, Category, Product } from '../types';
 
-// Vidro padrão: o MESMO do header do cardápio (MENU_HEADER_SHEET).
+// Vidro padrão do cardápio (só nos cards de itens; o resto da página é editorial,
+// sem caixas).
 const GLASS = `border bg-transparent backdrop-blur-md ${MENU_BORDER}`;
+const HAIRLINE = 'border-black/10 dark:border-white/10';
 
 function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString(activeDateLocale(), {
@@ -205,10 +207,12 @@ export function PromotionDetailPage() {
       ?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
   }
 
+  // Botão principal: o AnimatedGradientButton ORIGINAL (os dois pontos de luz na
+  // borda), sem nenhuma alteração de fundo.
   const cta = promotion.alreadyUsedUp ? (
     <button
       disabled
-      className="w-full py-3.5 md:py-4 rounded-xl text-[15px] font-semibold bg-[#E5E7EB] text-[#6B7280] dark:bg-white/10 dark:text-[#C4C7C5] cursor-not-allowed"
+      className={`w-full rounded-xl border py-3.5 text-[15px] font-medium text-[#9CA3AF] cursor-not-allowed dark:text-[#77777A] ${HAIRLINE}`}
     >
       {t('promotionDetailPage.promocao_ja_utilizada')}
     </button>
@@ -219,7 +223,7 @@ export function PromotionDetailPage() {
         type="button"
         disabled
         aria-disabled="true"
-        className="w-full py-3.5 md:py-4 rounded-xl text-[15px] bg-red-50 text-red-600 border border-red-100 dark:bg-red-500/10 dark:text-red-300 dark:border-red-400/20 font-semibold flex justify-center items-center gap-2 cursor-not-allowed"
+        className="w-full py-3.5 rounded-xl text-[15px] bg-red-50 text-red-600 border border-red-100 dark:bg-red-500/10 dark:text-red-300 dark:border-red-400/20 font-semibold flex justify-center items-center gap-2 cursor-not-allowed"
       >
         <Ban size={16} strokeWidth={1.5} />
         {t('store.closedEstablishment')}
@@ -228,7 +232,7 @@ export function PromotionDetailPage() {
   ) : isApplied ? (
     <button
       onClick={handleRemove}
-      className={`loc-dist [--glow:var(--accent)] w-full py-3.5 md:py-4 rounded-xl text-[15px] font-semibold border-2 bg-transparent backdrop-blur-md transition hover:bg-black/[0.03] dark:hover:bg-white/[0.06] ${PROMO_FOCUS}`}
+      className={`w-full rounded-xl border bg-transparent py-3.5 text-[15px] font-semibold transition hover:bg-black/[0.03] dark:hover:bg-white/[0.06] ${PROMO_FOCUS}`}
       style={{ borderColor: accent, color: accent }}
     >
       {t('promotionDetailPage.remover_promocao')}
@@ -236,7 +240,7 @@ export function PromotionDetailPage() {
   ) : (
     <AnimatedGradientButton
       onClick={handleApply}
-      contentClassName="py-4 text-base font-bold flex items-center justify-center gap-2"
+      contentClassName="py-3.5 text-[15px] font-semibold flex items-center justify-center gap-2"
     >
       {t('promotionDetailPage.usar_desconto_de_valor', { value: hero.text })}
       <ArrowRight size={18} strokeWidth={1.5} aria-hidden="true" />
@@ -246,7 +250,7 @@ export function PromotionDetailPage() {
   const conditionRows: { key: string; icon: React.ReactNode; label: string }[] = [];
   conditionRows.push({
     key: 'scope',
-    icon: <Tag size={16} strokeWidth={1.5} />,
+    icon: <Tag size={17} strokeWidth={1.5} />,
     label:
       promotion.scope === 'all'
         ? t('promotionDetailPage.valida_para_todos_os')
@@ -257,14 +261,14 @@ export function PromotionDetailPage() {
   if (promotion.minOrderValue > 0) {
     conditionRows.push({
       key: 'min',
-      icon: <Tag size={16} strokeWidth={1.5} />,
+      icon: <Tag size={17} strokeWidth={1.5} />,
       label: t('promotionDetailPage.pedido_minimo_de_r', { v0: Number(promotion.minOrderValue).toFixed(2).replace('.', ',') }),
     });
   }
   if (promotion.usageLimitPerCustomer != null) {
     conditionRows.push({
       key: 'usage',
-      icon: <Users size={16} strokeWidth={1.5} />,
+      icon: <Users size={17} strokeWidth={1.5} />,
       label:
         promotion.usageLimitPerCustomer === 1
           ? t('promotionDetailPage.limite_de_1_uso')
@@ -274,21 +278,21 @@ export function PromotionDetailPage() {
   if (promotion.endsAt) {
     conditionRows.push({
       key: 'ends',
-      icon: <Clock size={16} strokeWidth={1.5} />,
+      icon: <Clock size={17} strokeWidth={1.5} />,
       label: t('promotionDetailPage.valida_ate_v0', { v0: formatDateTime(promotion.endsAt) }),
     });
   }
   if (promotion.discountType === 'percentage' && promotion.maxDiscountAmount != null) {
     conditionRows.push({
       key: 'maxdiscount',
-      icon: <Coins size={16} strokeWidth={1.5} />,
+      icon: <Coins size={17} strokeWidth={1.5} />,
       label: t('promotionDetailPage.desconto_maximo_de_r', { v0: formatBRL(promotion.maxDiscountAmount) }),
     });
   }
   if (promotion.maxEligibleQuantity != null) {
     conditionRows.push({
       key: 'maxqty',
-      icon: <Package size={16} strokeWidth={1.5} />,
+      icon: <Package size={17} strokeWidth={1.5} />,
       label: t('promotionDetailPage.desconto_em_ate_n_unidades', { n: promotion.maxEligibleQuantity }),
     });
   }
@@ -299,16 +303,15 @@ export function PromotionDetailPage() {
       style={{ '--brand': tenant.primaryColor, '--accent': accent } as React.CSSProperties}
     >
       <FoodBackdrop />
-      <div className="relative w-full max-w-[88rem] mx-auto px-4 md:px-8 py-4 md:py-8 lg:py-10">
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] gap-6 lg:gap-10 items-start">
-          {/* Coluna esquerda: imagem INTEIRA que cabe na altura da tela, luz ambiente
-              atrás de tudo e o painel do desconto (vidro) abaixo da imagem. */}
-          <div className="lg:sticky lg:top-24">
-            <PromotionMedia
-              imageUrl={promotion.imageUrl}
-              alt={localizedField(promotion, 'title')}
+      <div className="relative mx-auto w-full max-w-[88rem] px-4 py-4 md:px-8 md:py-8 lg:px-12 lg:py-10">
+        {/* Duas colunas (65/35). No celular a ordem natural é: imagem, detalhes, mensagem. */}
+        <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[minmax(0,65fr)_minmax(0,35fr)] lg:gap-x-14 lg:gap-y-0">
+          <div className="lg:col-start-1 lg:row-start-1">
+            <PromotionHero
+              promotion={promotion}
+              ariaLabel={discountLabel}
               primaryColor={tenant.primaryColor}
-              grayscale={isUsedUp}
+              muted={isUsedUp}
               topBar={
                 <>
                   <GlassBackButton
@@ -329,33 +332,33 @@ export function PromotionDetailPage() {
                   )}
                 </>
               }
-              panel={<PromotionHeroCard promotion={promotion} ariaLabel={discountLabel} muted={isUsedUp} />}
             />
           </div>
 
-          {/* Coluna direita: selo, título, benefício, ação e (por último) condições */}
-          <div className="flex flex-col gap-5 lg:gap-6">
-            <div className={`flex flex-col items-start gap-3 rounded-2xl md:rounded-3xl p-5 md:p-6 ${GLASS}`}>
+          {/* Coluna direita: uma única composição, sem caixas. */}
+          <div className="flex flex-col lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:pt-[3.25rem]">
+            <div className="flex flex-col items-start gap-4">
               <PromotionBadge kind={badgeKind} muted={isUsedUp} />
-              <h1 className={`font-display text-3xl md:text-4xl font-extrabold leading-tight ${MENU_TEXT}`}>
+              <h1
+                className={`text-4xl font-medium leading-[1.05] md:text-5xl ${PROMO_INK}`}
+                style={{ fontFamily: PROMO_SERIF }}
+              >
                 {localizedField(promotion, 'title')}
               </h1>
               {promotion.description && (
-                <p className={`text-base md:text-lg ${MENU_TEXT_SOFT} leading-relaxed`}>
+                <p className={`text-base leading-relaxed md:text-lg ${PROMO_MUTED}`}>
                   {localizedField(promotion, 'description')}
                 </p>
               )}
             </div>
 
+            <hr className={`my-6 border-0 border-t ${HAIRLINE}`} />
+
             {isUsedUp ? (
-              <div className={`rounded-2xl md:rounded-3xl p-5 flex flex-wrap items-center gap-3 ${GLASS}`}>
-                <CheckCircle2 size={22} strokeWidth={1.5} className={`${MENU_TEXT_SOFT} shrink-0`} aria-hidden="true" />
-                <p className={`text-sm ${MENU_TEXT_SOFT} flex-1 min-w-0`}>{t('promotionDetailPage.voce_ja_usou_essa')}</p>
-                <button
-                  type="button"
-                  onClick={() => navigate(backHref)}
-                  className={`${PROMO_LINK_BTN} ${MENU_TEXT}`}
-                >
+              <div className="flex flex-wrap items-center gap-3">
+                <CheckCircle2 size={20} strokeWidth={1.5} className={`${PROMO_MUTED} shrink-0`} aria-hidden="true" />
+                <p className={`min-w-0 flex-1 text-sm ${PROMO_MUTED}`}>{t('promotionDetailPage.voce_ja_usou_essa')}</p>
+                <button type="button" onClick={() => navigate(backHref)} className={`${PROMO_LINK_BTN} ${PROMO_INK}`}>
                   {t('promotionDetailPage.voltar_pro_cardapio')}
                 </button>
               </div>
@@ -370,50 +373,47 @@ export function PromotionDetailPage() {
             )}
 
             {/* Ação principal inline no desktop; no celular fica fixa no rodapé. */}
-            <div className="hidden lg:block">{cta}</div>
+            <div className="mt-6 hidden lg:block">{cta}</div>
 
             {/* Entrada do Modo Promoção: navegar só pelos itens que a promoção cobre. */}
             {!isUsedUp && (
-              <AnimatedGradientButton
+              <button
+                type="button"
                 onClick={() => navigate(buildPromotionModePaths(slug ?? '', promotion.id, qrCodeToken).explore)}
-                fillClassName={`bg-[#FFFFFF] dark:bg-[#1E1E20] ${MENU_TEXT}`}
-                contentClassName="flex items-center justify-center gap-2 py-3 text-sm font-semibold"
+                className={`mt-6 flex w-full items-center justify-center gap-2 rounded-xl border bg-transparent py-3.5 text-sm font-medium transition hover:bg-black/[0.03] dark:hover:bg-white/[0.05] lg:mt-3 border-black/15 dark:border-white/15 ${PROMO_INK} ${PROMO_FOCUS}`}
               >
                 <Compass size={16} strokeWidth={1.5} aria-hidden="true" />
                 {t('promotionMode.exploreItems')}
-              </AnimatedGradientButton>
+              </button>
             )}
 
-            {/* Condições: depois do botão e mais leves que o benefício. Um único bloco de
-                vidro (um só backdrop-blur) com as linhas divididas. */}
-            <section aria-labelledby="promo-conditions-title">
+            {/* Condições: lista com filetes finos entre as linhas e ícones contornados. */}
+            <section aria-labelledby="promo-conditions-title" className="mt-10">
               <h2
                 id="promo-conditions-title"
-                className={`text-xs font-semibold uppercase tracking-wider ${MENU_TEXT_SOFT} mb-2`}
+                className={`mb-4 ${PROMO_EYEBROW} ${PROMO_MUTED}`}
+                style={{ fontFamily: 'inherit' }}
               >
                 {t('promotionDetailPage.detalhes_e_condicoes')}
               </h2>
-              <ul className={`rounded-2xl md:rounded-3xl ${GLASS}`}>
-                {conditionRows.map((row, i) => (
-                  <li key={row.key} className={`relative flex items-center gap-3 px-4 py-3.5 text-sm ${MENU_TEXT_SOFT}`}>
+              <ul className={`border-t ${HAIRLINE}`}>
+                {conditionRows.map((row) => (
+                  <li key={row.key} className={`flex items-center gap-4 border-b py-3.5 ${HAIRLINE}`}>
                     <span
-                      className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${GLASS} ${MENU_TEXT}`}
+                      className={`grid h-10 w-10 shrink-0 place-items-center rounded-full border border-black/15 dark:border-white/15 ${PROMO_INK}`}
                       aria-hidden="true"
                     >
                       {row.icon}
                     </span>
-                    <span className="min-w-0 break-words">{row.label}</span>
-                    {/* Filete interno: não encosta nas bordas; começa alinhado ao texto. */}
-                    {i < conditionRows.length - 1 && (
-                      <span
-                        aria-hidden="true"
-                        className="pointer-events-none absolute bottom-0 left-[3.75rem] right-4 h-px bg-[#E5E7EB] dark:bg-white/10"
-                      />
-                    )}
+                    <span className={`min-w-0 break-words text-sm ${PROMO_INK}`}>{row.label}</span>
                   </li>
                 ))}
               </ul>
             </section>
+          </div>
+
+          <div className="lg:col-start-1 lg:row-start-2 lg:mt-14">
+            <PromotionEditorial />
           </div>
         </div>
 
@@ -422,12 +422,16 @@ export function PromotionDetailPage() {
           <section
             id="promo-eligible-products"
             aria-labelledby="promo-eligible-title"
-            className="mt-10 lg:mt-14 scroll-mt-6"
+            className="mt-12 lg:mt-16 scroll-mt-6"
           >
-            <h2 id="promo-eligible-title" className={`font-display text-lg md:text-xl font-bold ${MENU_TEXT} mb-4`}>
+            <h2
+              id="promo-eligible-title"
+              className={`mb-5 text-2xl font-medium md:text-3xl ${PROMO_INK}`}
+              style={{ fontFamily: PROMO_SERIF }}
+            >
               {t('promotionMode.eligibleItemsTitle')}
             </h2>
-            <ul className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+            <ul className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 lg:grid-cols-4">
               {eligibleProducts.map((product) => {
                 const preview = previews.get(product.id);
                 const name = localizedField(product, 'name');
@@ -450,9 +454,9 @@ export function PromotionDetailPage() {
                         type="button"
                         onClick={() => navigate(productHref(product.id))}
                         aria-label={showDeal ? `${name}. ${t('promotionMode.priceFromTo', { from, to })}` : name}
-                        className={`flex flex-1 flex-col text-left cursor-pointer ${PROMO_FOCUS}`}
+                        className={`flex flex-1 cursor-pointer flex-col text-left ${PROMO_FOCUS}`}
                       >
-                        <div className={`relative aspect-[4/3] overflow-hidden ${MENU_SURFACE_SUBTLE} flex items-center justify-center`}>
+                        <div className={`relative flex aspect-[4/3] items-center justify-center overflow-hidden ${MENU_SURFACE_SUBTLE}`}>
                           {image ? (
                             <img
                               src={image}

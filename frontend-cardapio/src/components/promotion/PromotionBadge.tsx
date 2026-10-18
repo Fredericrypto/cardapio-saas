@@ -1,9 +1,9 @@
 import { Clock, Flame, Sparkles } from 'lucide-react';
 import { useI18n } from '../../i18n/I18nContext';
-import { MENU_BORDER } from '../../lib/menuTheme';
 import type { PromotionBadgeKind } from '../../lib/promotionPresentation';
+import { PROMO_INK } from '../../lib/promotionTheme';
 
-// Selo de destaque (só apresentação), nas cores do tema do app. O tipo vem de
+// Selo de destaque (só apresentação), só com contorno fino. O tipo vem de
 // getPromotionBadgeKind.
 export function PromotionBadge({ kind, muted = false }: { kind: PromotionBadgeKind; muted?: boolean }) {
   const { t } = useI18n();
@@ -17,9 +17,9 @@ export function PromotionBadge({ kind, muted = false }: { kind: PromotionBadgeKi
 
   return (
     <span
-      className={`inline-flex items-center gap-2 rounded-full border bg-transparent backdrop-blur-md ${MENU_BORDER} px-3.5 py-2 text-xs font-bold uppercase tracking-wider text-[#111827] dark:text-[#E3E2E6] ${muted ? 'opacity-70' : ''}`}
+      className={`inline-flex items-center gap-2 rounded-full border border-black/15 bg-transparent px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.14em] dark:border-white/15 ${PROMO_INK} ${muted ? 'opacity-70' : ''}`}
     >
-      <Icon size={15} strokeWidth={1.5} aria-hidden="true" />
+      <Icon size={13} strokeWidth={1.5} aria-hidden="true" />
       {label}
     </span>
   );

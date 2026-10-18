@@ -77,8 +77,8 @@ export function PromotionSkeleton() {
     <div className={`relative isolate min-h-screen ${MENU_PAGE_BG}`} role="status" aria-busy="true">
       <FoodBackdrop />
       <div className="w-full max-w-[88rem] mx-auto px-4 md:px-8 py-4 md:py-8 lg:py-10">
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] lg:gap-10">
-          <div className={`${bar} aspect-[16/9] rounded-2xl md:rounded-3xl`} />
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,65fr)_minmax(0,35fr)] lg:gap-10">
+          <div className={`${bar} aspect-[4/3] lg:aspect-[16/10] rounded-3xl`} />
           <div className="pt-2 flex flex-col gap-4">
             <div className={`${bar} h-7 w-40 rounded-full`} />
             <div className={`${bar} h-9 w-3/4`} />
