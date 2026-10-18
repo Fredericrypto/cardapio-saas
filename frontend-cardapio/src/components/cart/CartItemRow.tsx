@@ -91,7 +91,7 @@ export function CartItemRow({
 
   return (
     <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] md:grid-cols-[auto_minmax(0,1fr)_auto_6.5rem_auto] items-center gap-x-4 gap-y-3 md:gap-x-6 py-5 first:pt-1">
-      <div className="row-span-2 md:row-span-1 self-start md:self-center w-16 h-16 md:w-20 md:h-20 rounded-xl bg-black/5 dark:bg-white/5 overflow-hidden shrink-0">
+      <div className="row-span-2 md:row-span-1 self-start md:self-center w-16 h-16 md:w-20 md:h-20 rounded-xl border border-[#D1D5DB] dark:border-white/20 bg-black/5 dark:bg-white/5 overflow-hidden shrink-0">
         {item.product.imageUrl && (
           <img src={item.product.imageUrl} alt={name} className="w-full h-full object-cover" />
         )}

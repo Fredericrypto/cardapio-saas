@@ -966,7 +966,8 @@ export function CartPage() {
                 type="button"
                 onClick={handleBack}
                 aria-label={t('tooltip.back')}
-                className={`${CART_ICON_BUTTON} border ${MENU_DIVIDER}`}
+                className={`loc-dist flex h-10 w-10 shrink-0 items-center justify-center rounded-full border bg-transparent backdrop-blur-md active:scale-95 ${MENU_BORDER} ${CART_TEXT}`}
+                style={{ '--glow': accent } as React.CSSProperties}
               >
                 <ArrowLeft size={18} strokeWidth={1.5} />
               </button>
