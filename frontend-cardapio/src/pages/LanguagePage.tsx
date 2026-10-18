@@ -32,7 +32,7 @@ export function LanguagePage() {
       backTo={`/${slug}/conta-cliente/perfil`}
       bottomNav
     >
-      <div className="flex flex-col gap-4">
+      <div className="flex min-h-[calc(100dvh-14rem)] flex-col gap-4">
         {/* Grade de cartões: bandeira em destaque, nome nativo, código do
             idioma e o selo "Atual" no idioma em uso. */}
         <div
@@ -74,7 +74,7 @@ export function LanguagePage() {
           })}
         </div>
 
-        <p className={`flex items-center gap-2 px-1 pt-1 text-xs ${MENU_TEXT_MUTED}`}>
+        <p className={`mt-auto flex items-center justify-center gap-2 px-1 pt-8 pb-2 text-center text-xs ${MENU_TEXT_MUTED}`}>
           <Info size={13} strokeWidth={1.5} className="shrink-0" aria-hidden="true" />
           {t('language.notice')}
         </p>
