@@ -105,6 +105,8 @@ export function CustomerProfilePage() {
   // Estatísticas: mesmas fontes de "Meus pedidos" e "Minhas Avaliações". Sem dado = não aparece.
   const [orderCount, setOrderCount] = useState<number | null>(null);
   const [avgRating, setAvgRating] = useState<number | null>(null);
+  const [ordersDone, setOrdersDone] = useState(false);
+  const [reviewsDone, setReviewsDone] = useState(false);
   const tenantId = tenant?.id;
   useEffect(() => {
     if (!tenantId || !token) return;
@@ -113,14 +115,20 @@ export function CustomerProfilePage() {
       .then((orders) => {
         if (!cancelled) setOrderCount(groupCustomerOrders(orders).length);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setOrdersDone(true);
+      });
     fetchMyReviews(tenantId, token)
       .then(({ restaurant, items }) => {
         if (cancelled) return;
         const ratings = [...(restaurant ? [restaurant.rating] : []), ...items.map((i) => i.rating)];
         setAvgRating(ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : null);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setReviewsDone(true);
+      });
     return () => {
       cancelled = true;
     };
@@ -212,8 +220,12 @@ export function CustomerProfilePage() {
     avgRating !== null
       ? avgRating.toLocaleString(activeDateLocale(), { minimumFractionDigits: 1, maximumFractionDigits: 1 })
       : null;
-  const hasStats = orderCount !== null || avgRating !== null;
-  const bothStats = orderCount !== null && avgRating !== null;
+  const statsLoading = !ordersDone || !reviewsDone;
+  const showOrders = statsLoading || orderCount !== null;
+  const showRating = statsLoading || avgRating !== null;
+  const hasStats = showOrders || showRating;
+  const bothStats = showOrders && showRating;
+  const dash = <span aria-hidden="true" className="inline-block animate-pulse text-[#9CA3AF] dark:text-[#8E918F]">&mdash;</span>;
 
   const verifyRow = !customer.isVerified
     ? {
@@ -300,24 +312,24 @@ export function CustomerProfilePage() {
 
             {hasStats && (
               <div className={`grid border-t ${HAIRLINE} ${bothStats ? 'grid-cols-2 divide-x divide-[#E5E7EB] dark:divide-white/10' : 'grid-cols-1'}`}>
-                {orderCount !== null && (
+                {showOrders && (
                   <div className="flex items-center justify-center gap-3 px-4 py-5 sm:gap-4 sm:px-6">
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#16A34A]/40 bg-[#16A34A]/10 text-[#16A34A] dark:border-[#4ADE80]/40 dark:bg-[#4ADE80]/10 dark:text-[#4ADE80]">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#E5E7EB] bg-black/[0.03] text-[#9CA3AF] dark:border-white/10 dark:bg-white/[0.04] dark:text-[#8E918F]">
                       <ShoppingBag size={20} strokeWidth={1.25} aria-hidden="true" />
                     </span>
-                    <div className="min-w-0">
-                      <p className={`text-3xl font-light leading-none tabular-nums ${PROMO_INK}`}>{orderCount}</p>
+                    <div className="min-w-0 text-center">
+                      <p className={`text-3xl font-light leading-none tabular-nums ${PROMO_INK}`}>{statsLoading || orderCount === null ? dash : orderCount}</p>
                       <p className={`mt-1 text-sm ${PROMO_MUTED}`}>{t('profilePage.ordersDone')}</p>
                     </div>
                   </div>
                 )}
-                {ratingText !== null && (
+                {showRating && (
                   <div className="flex items-center justify-center gap-3 px-4 py-5 sm:gap-4 sm:px-6">
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#16A34A]/40 bg-[#16A34A]/10 text-[#16A34A] dark:border-[#4ADE80]/40 dark:bg-[#4ADE80]/10 dark:text-[#4ADE80]">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#E5E7EB] bg-black/[0.03] text-[#9CA3AF] dark:border-white/10 dark:bg-white/[0.04] dark:text-[#8E918F]">
                       <Star size={20} strokeWidth={1.25} aria-hidden="true" />
                     </span>
-                    <div className="min-w-0">
-                      <p className={`text-3xl font-light leading-none tabular-nums ${PROMO_INK}`}>{ratingText}</p>
+                    <div className="min-w-0 text-center">
+                      <p className={`text-3xl font-light leading-none tabular-nums ${PROMO_INK}`}>{statsLoading || ratingText === null ? dash : ratingText}</p>
                       <p className={`mt-1 text-sm ${PROMO_MUTED}`}>{t('profilePage.avgRating')}</p>
                     </div>
                   </div>
@@ -566,7 +578,7 @@ function MenuRow({ icon: Icon, color, label, description, labelColor, onClick, d
         className="flex w-full items-center gap-4 px-4 py-3.5 text-left transition-colors hover:bg-black/[0.03] disabled:opacity-50 dark:hover:bg-white/[0.04] md:px-5"
       >
         <span
-          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border ${labelColor ? '' : 'border-[#16A34A]/40 bg-[#16A34A]/10 text-[#16A34A] dark:border-[#4ADE80]/40 dark:bg-[#4ADE80]/10 dark:text-[#4ADE80]'}`} style={labelColor ? { color, backgroundColor: `${color}14`, borderColor: `${color}40` } : undefined}
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border ${labelColor ? '' : 'border-[#E5E7EB] bg-black/[0.03] text-[#9CA3AF] dark:border-white/10 dark:bg-white/[0.04] dark:text-[#8E918F]'}`} style={labelColor ? { color, backgroundColor: `${color}14`, borderColor: `${color}40` } : undefined}
         >
           <Icon size={18} strokeWidth={1.5} aria-hidden="true" />
         </span>

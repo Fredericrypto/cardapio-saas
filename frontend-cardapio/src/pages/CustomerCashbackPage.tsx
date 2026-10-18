@@ -168,7 +168,7 @@ export function CustomerCashbackPage() {
       {/* Desktop: saldo fixo à esquerda; abas e extrato à direita. */}
       <div className="flex flex-col gap-3 md:grid md:grid-cols-[320px_minmax(0,1fr)] lg:grid-cols-[360px_minmax(0,1fr)] md:gap-x-8 md:gap-y-4 md:items-start">
         <div className={`${PROFILE_CARD} flex flex-col p-6 md:col-start-1 md:row-span-3 md:sticky md:top-24 md:p-8`}>
-          <span className="flex h-11 w-11 items-center justify-center rounded-full border border-[#16A34A]/40 bg-[#16A34A]/10 text-[#16A34A] dark:border-[#4ADE80]/40 dark:bg-[#4ADE80]/10 dark:text-[#4ADE80]">
+          <span className="flex h-11 w-11 items-center justify-center rounded-full border border-[#E5E7EB] bg-black/[0.03] text-[#9CA3AF] dark:border-white/10 dark:bg-white/[0.04] dark:text-[#8E918F]">
             <CircleDollarSign size={20} strokeWidth={1.5} aria-hidden="true" />
           </span>
           <p className={`mt-6 ${PROMO_EYEBROW} ${PROMO_SAGE}`}>{t('customerCashbackPage.saldo_disponivel')}</p>
