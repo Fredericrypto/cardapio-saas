@@ -507,6 +507,8 @@ export const es: Record<TranslationKey, string> = {
   'productDetailPage.olha_esse_item_de': 'Mira este artículo de {name}',
   'productDetailPage.ver_avaliacoes_desse_item': 'Ver reseñas de este artículo',
   'productDetailPage.adicionar': 'Agregar',
+  'productDetailPage.addedOne': '1 artículo agregado al carrito',
+  'productDetailPage.addedMany': '{count} artículos agregados al carrito',
   'promotionDetailPage.essa_promocao_nao_esta': 'Esta promoción ya no está disponible.',
   'promotionDetailPage.voltar_pro_cardapio': 'Volver al menú',
   'promotionDetailPage.promocao_de_name': 'Promoción de {name}',

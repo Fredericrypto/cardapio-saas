@@ -3,7 +3,7 @@ import { useI18n } from '../i18n/I18nContext';
 import { useStoreStatus } from '../hooks/useStoreStatus';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { Ban, ChevronRight, Minus, Plus, Star, Tag } from 'lucide-react';
+import { Ban, Check, ChevronRight, Minus, Plus, ShoppingCart, Star, Tag } from 'lucide-react';
 import { fetchActivePromotions, fetchProducts } from '../lib/menu-api';
 import { fetchItemReviewsSummary } from '../lib/customer-api';
 import type { ReviewSummary } from '../lib/customer-api';
@@ -12,13 +12,14 @@ import { useCart } from '../contexts/CartContext';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { useAccentColor } from '../hooks/useAccentColor';
 import { useTenant } from '../contexts/TenantContext';
-import { CartIcon } from '../components/MenuIcons';
+
 import { AnimatedGradientButton } from '../components/AnimatedGradientButton';
 import { useActiveLocation } from '../hooks/useActiveLocation';
 import { ShareButton } from '../components/ShareButton';
 import { Tooltip } from '../components/Tooltip';
 import { FoodBackdrop } from '../components/FoodBackdrop';
 import { GlassCard } from '../components/GlassCard';
+import { CartBar } from '../components/CartBar';
 import { ImageLightbox } from '../components/ImageLightbox';
 import { GlassBackButton } from '../components/GlassBackButton';
 import { PromotionAmbient } from '../components/promotion/PromotionAmbient';
@@ -95,6 +96,13 @@ export function ProductDetailPage() {
   const [selections, setSelections] = useState<OptionSelections>({});
   const [validationError, setValidationError] = useState<string | null>(null);
   const itemReviewSummary = useItemReviewSummary(tenant?.id ?? '', productId);
+  // Confirmacao de "adicionado": acumula enquanto visivel (2 cliques de +1 = 2 itens) e some sozinha.
+  const [added, setAdded] = useState<{ n: number; k: number } | null>(null);
+  useEffect(() => {
+    if (!added) return;
+    const id = window.setTimeout(() => setAdded(null), 3500);
+    return () => window.clearTimeout(id);
+  }, [added]);
 
   useEffect(() => {
     if (!tenant || !productId) return;
@@ -172,6 +180,7 @@ export function ProductDetailPage() {
   const productImages = getProductImages(product);
   const badgeView = resolveProductBadges(product);
   const backHref = qrCodeToken ? `/${slug}/mesa/${qrCodeToken}` : `/${slug}`;
+  const cartHref = qrCodeToken ? `/${slug}/mesa/${qrCodeToken}/carrinho` : `/${slug}/carrinho`;
 
   // Grupo sem nenhuma opção cadastrada não aparece pro cliente — ficaria
   // um título "morto" sem nada clicável embaixo (bug visto em produção:
@@ -230,7 +239,9 @@ export function ProductDetailPage() {
     }
 
     addItem(product, selectedOptionsList, quantity);
-    navigate(backHref);
+    setValidationError(null);
+    setAdded((a) => ({ n: (a?.n ?? 0) + quantity, k: (a?.k ?? 0) + 1 }));
+    setQuantity(1);
   }
 
   const ratingStars =
@@ -270,6 +281,18 @@ export function ProductDetailPage() {
     </div>
   );
 
+  const addedNotice = added ? (
+    <span
+      key={added.k}
+      role="status"
+      aria-live="polite"
+      className="promo-added-pop inline-flex items-center gap-1.5 rounded-full bg-green-50 px-3 py-1.5 text-xs font-bold text-green-700 dark:bg-green-500/10 dark:text-green-300"
+    >
+      <Check size={14} strokeWidth={2} aria-hidden="true" />
+      {added.n === 1 ? t('productDetailPage.addedOne') : t('productDetailPage.addedMany', { count: added.n })}
+    </span>
+  ) : null;
+
   const cta =
     isStoreClosed && product.isAvailable !== false ? (
       <div className="flex flex-col gap-1.5">
@@ -303,7 +326,7 @@ export function ProductDetailPage() {
         contentClassName="py-3.5 text-sm font-semibold flex justify-between items-center px-5"
       >
         <span className="flex items-center gap-2">
-          <CartIcon size={16} />
+          <ShoppingCart size={16} strokeWidth={1.5} aria-hidden="true" />
           {t('productDetailPage.adicionar')}
         </span>
         <span className="flex items-baseline gap-2 tabular-nums">
@@ -323,6 +346,7 @@ export function ProductDetailPage() {
       style={{ '--brand': tenant.primaryColor, '--accent': accent } as React.CSSProperties}
     >
       <FoodBackdrop />
+      {!isStoreClosed && <CartBar primaryColor={tenant.primaryColor} onClick={() => navigate(cartHref)} />}
       <div className="w-full max-w-6xl mx-auto md:px-8 md:py-8 lg:py-10">
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-10 items-start">
           {/* Coluna esquerda: botão voltar de vidro FORA do card + imagem em destaque com a
@@ -388,7 +412,7 @@ export function ProductDetailPage() {
 
           {/* Coluna direita: título, nota, preço, descrição, opções e ação */}
           <div className="p-4 md:p-0 pt-5 lg:pt-1 flex flex-col gap-5">
-            <GlassCard orbit radius={28} bodyClassName="p-5 md:p-6">
+            <GlassCard cursorGlow={false} radius={28} bodyClassName="p-5 md:p-6">
             <div>
               <h1 className={`font-display text-2xl md:text-3xl font-extrabold leading-tight ${MENU_TEXT}`}>
                 {localizedField(product, 'name')}
@@ -494,9 +518,14 @@ export function ProductDetailPage() {
             )}
 
             {/* Ação principal inline no desktop; no celular fica fixa no rodapé. */}
-            <div className={`hidden lg:flex flex-col gap-4 rounded-2xl border bg-[#FFFFFF]/55 p-5 backdrop-blur-xl dark:bg-[#131314]/55 ${MENU_BORDER}`}>
-              <div>{quantityControl}</div>
+            <div className="hidden lg:block">
+              <GlassCard cursorGlow={false} radius={28} bodyClassName="flex flex-col gap-4 p-5 md:p-6">
+              <div className="flex flex-wrap items-center gap-3">
+                {quantityControl}
+                {addedNotice}
+              </div>
               {cta}
+              </GlassCard>
             </div>
           </div>
         </div>
@@ -511,7 +540,10 @@ export function ProductDetailPage() {
         className={`lg:hidden fixed bottom-[var(--bottom-nav-h,0px)] left-0 right-0 p-4 bg-[#FFFFFF]/60 backdrop-blur-xl dark:bg-[#131314]/60 border-t ${MENU_BORDER}`}
         style={{ transform: 'translateZ(0)' }}
       >
-        <div className="max-w-xl mx-auto">{cta}</div>
+        <div className="max-w-xl mx-auto">
+          {addedNotice && <div className="mb-2 flex justify-center">{addedNotice}</div>}
+          {cta}
+        </div>
       </div>
     </div>
   );

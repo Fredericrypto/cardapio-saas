@@ -518,6 +518,8 @@ export const ptBR = {
   'productDetailPage.olha_esse_item_de': 'Olha esse item de {name}',
   'productDetailPage.ver_avaliacoes_desse_item': 'Ver avaliações desse item',
   'productDetailPage.adicionar': 'Adicionar',
+  'productDetailPage.addedOne': '1 item adicionado ao carrinho',
+  'productDetailPage.addedMany': '{count} itens adicionados ao carrinho',
   'promotionDetailPage.essa_promocao_nao_esta': 'Essa promoção não está mais disponível.',
   'promotionDetailPage.voltar_pro_cardapio': 'Voltar pro cardápio',
   'promotionDetailPage.promocao_de_name': 'Promoção de {name}',
