@@ -45,7 +45,7 @@ export function CartSegmented<V extends string | number>({
               aria-label={option.tooltip ?? option.label}
               onClick={() => onChange(option.value)}
               className={`${CART_SEGMENT_BASE} ${isActive ? CART_SEGMENT_ACTIVE : CART_SEGMENT_INACTIVE}`}
-              style={isActive ? { backgroundColor: primaryColor } : undefined}
+              style={isActive ? ({ '--seg': primaryColor } as React.CSSProperties) : undefined}
             >
               {option.label}
             </button>

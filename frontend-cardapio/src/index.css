@@ -800,27 +800,22 @@ img, svg, video, a {
   }
 }
 
-
-/* Vidro no hover dos segmentos (Balcao/Entrega, gorjeta): camada por cima do botao,
-   visivel tambem no segmento selecionado (que tem fundo inline). Mesmo vidro da faixa de categorias. */
-.glass-seg::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  opacity: 0;
-  background: rgba(17, 24, 39, 0.08);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
-  box-shadow: inset 0 0 0 1px rgba(17, 24, 39, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.5);
-  transition: opacity 0.2s ease;
+/* Segmento ativo (Balcao/Entrega, gorjeta): botao de VIDRO, sem cor solida.
+   Fundo translucido + blur + filete de luz; a cor do restaurante (--seg) so tinge a borda. */
+.glass-seg-on {
+  position: relative;
+  background-color: rgba(17, 24, 39, 0.06);
+  -webkit-backdrop-filter: blur(12px) saturate(1.3);
+  backdrop-filter: blur(12px) saturate(1.3);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--seg, #6b7280) 45%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    0 4px 14px -8px rgba(17, 24, 39, 0.25);
 }
-.dark .glass-seg::after {
-  background: rgba(255, 255, 255, 0.1);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+.dark .glass-seg-on {
+  background-color: rgba(255, 255, 255, 0.09);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, color-mix(in srgb, var(--seg, #9ca3af) 70%, white) 40%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 4px 14px -8px rgba(0, 0, 0, 0.6);
 }
-@media (hover: hover) {
-  .glass-seg:hover::after { opacity: 1; }
-}
-.glass-seg:focus-visible::after { opacity: 1; }

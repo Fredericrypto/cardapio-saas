@@ -69,9 +69,9 @@ export const CART_SEGMENT_TRACK =
   'flex gap-1 p-1 rounded-xl border bg-[#F3F4F6] dark:bg-white/5 border-[#E5E7EB] dark:border-white/10';
 
 export const CART_SEGMENT_BASE =
-  'w-full flex-1 min-w-0 py-2 px-1.5 rounded-lg text-xs font-semibold leading-tight text-center break-words relative glass-seg';
+  'w-full flex-1 min-w-0 py-2 px-1.5 rounded-lg text-xs font-semibold leading-tight text-center break-words';
 
-export const CART_SEGMENT_ACTIVE = 'text-white ring-1 ring-black/5 dark:ring-white/15';
+export const CART_SEGMENT_ACTIVE = 'glass-seg-on text-[#111827] dark:text-[#E3E2E6]';
 
 export const CART_SEGMENT_INACTIVE =
   'text-[#6B7280] hover:bg-black/5 hover:text-[#111827] dark:text-[#C4C7C5] dark:hover:bg-white/10 dark:hover:text-white';
