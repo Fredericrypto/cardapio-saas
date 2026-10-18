@@ -43,11 +43,10 @@ import {
   CART_TEXT_ERROR,
   CART_TEXT_MUTED,
   CART_TEXT_SOFT,
-  CART_TEXT_SUCCESS,
-  CART_TITLE,
+    CART_TEXT_SUCCESS,
 } from '../lib/cartTheme';
 import { CartShell } from '../components/cart/CartShell';
-import { PROMO_SUCCESS_TEXT } from '../lib/promotionTheme';
+import { PROMO_SUCCESS_TEXT, PROMO_SERIF, PROMO_INK, PROMO_SAGE } from '../lib/promotionTheme';
 import { CartItemRow, type CartLinePromotionTag } from '../components/cart/CartItemRow';
 import { CartReviewItems } from '../components/cart/CartReviewItems';
 import { CartOrderSummary } from '../components/cart/CartOrderSummary';
@@ -972,7 +971,7 @@ export function CartPage() {
                 <ArrowLeft size={18} strokeWidth={1.5} />
               </button>
             </Tooltip>
-            <h1 className={`text-xl md:text-2xl ${CART_TITLE}`}>{stepTitle}</h1>
+            <h1 className={`text-3xl md:text-4xl font-light italic leading-tight ${PROMO_INK}`} style={{ fontFamily: PROMO_SERIF }}>{stepTitle}</h1>
           </div>
 
           {showFormStep && (
@@ -995,7 +994,7 @@ export function CartPage() {
                 {/* Subtotal grande no rodapé da lista: rótulo pequeno + valor leve. */}
                 <div className={`flex items-baseline justify-end gap-4 pt-5 ${CART_RULE}`}>
                   <span className={`text-sm ${CART_TEXT_BODY}`}>{t('closingPaymentSheet.subtotal')}</span>
-                  <span className={`text-3xl md:text-4xl font-light tabular-nums ${CART_TEXT}`}>{formatBRL(totalPrice)}</span>
+                  <span className={`text-4xl md:text-5xl font-light tabular-nums ${PROMO_SAGE}`} style={{ fontFamily: PROMO_SERIF }}>{formatBRL(totalPrice)}</span>
                 </div>
                 {appliedDiscountAmount > 0 && (
                   <p className={`flex items-center justify-end gap-1.5 pt-2 text-sm font-semibold ${PROMO_SUCCESS_TEXT}`}>

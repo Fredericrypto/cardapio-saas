@@ -1,6 +1,7 @@
 import { useI18n } from '../../i18n/I18nContext';
 import { formatBRL } from '../../lib/cartFormat';
 import { CART_TEXT, CART_TEXT_BODY, CART_TEXT_ERROR } from '../../lib/cartTheme';
+import { PROMO_SERIF, PROMO_SAGE } from '../../lib/promotionTheme';
 
 export interface CartOrderSummaryProps {
   totalPrice: number;
@@ -53,7 +54,7 @@ export function CartOrderSummary({ totalPrice, coupons, deliveryFee, cashbackUse
       )}
       <div className={`flex justify-between items-baseline gap-3 pt-2 ${CART_TEXT}`}>
         <span className="text-sm font-semibold">{t('closingPaymentSheet.total')}</span>
-        <span className="text-2xl font-light tabular-nums">{formatBRL(total)}</span>
+        <span className={`text-4xl font-light tabular-nums ${PROMO_SAGE}`} style={{ fontFamily: PROMO_SERIF }}>{formatBRL(total)}</span>
       </div>
     </div>
   );

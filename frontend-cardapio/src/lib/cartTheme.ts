@@ -8,7 +8,7 @@
 import {
   MENU_BORDER,
   MENU_DIVIDER,
-  MENU_SURFACE,
+  
   MENU_TEXT,
   MENU_TEXT_BODY,
   MENU_TEXT_MUTED,
@@ -19,11 +19,11 @@ import {
 export const CART_CONTAINER = 'w-full max-w-7xl mx-auto px-4 md:px-8';
 
 /** Cartão de um bloco do carrinho (cupom, formulário, pagamento, revisão). */
-export const CART_CARD = `rounded-2xl border p-4 md:p-6 ${MENU_SURFACE} ${MENU_DIVIDER}`;
+export const CART_CARD = `rounded-2xl border p-4 md:p-6 bg-[#FFFFFF]/55 dark:bg-[#161617]/60 backdrop-blur-md ${MENU_DIVIDER}`;
 
 /** Painel lateral (resumo/pagamento): tinta diferente do fundo e dos cartões. */
 export const CART_PANEL =
-  'rounded-3xl border p-5 md:p-6 bg-[#F3F4F6] dark:bg-[#282A2C] border-[#E5E7EB] dark:border-white/10';
+  'rounded-3xl border p-5 md:p-6 bg-[#FFFFFF]/60 dark:bg-[#161617]/65 backdrop-blur-xl border-[#E5E7EB] dark:border-white/10';
 
 /** Divisor fino entre as linhas de item (aplicado em `divide-y`). */
 export const CART_DIVIDE = 'divide-y divide-[#E5E7EB] dark:divide-white/10';

@@ -3,6 +3,7 @@ import { MENU_DIVIDER, MENU_PAGE_BG } from '../../lib/menuTheme';
 import { CART_CONTAINER, CART_TEXT } from '../../lib/cartTheme';
 import type { Tenant } from '../../types';
 import { BottomNav, DesktopNav } from '../BottomNav';
+import { FoodBackdrop } from '../FoodBackdrop';
 
 interface CartShellProps {
   tenant: Tenant;
@@ -32,7 +33,8 @@ export function CartShell({ tenant, slug, qrCodeToken, contextLabel, actionBar, 
   const bottomPadding = actionBar ? 'pb-48 md:pb-40 lg:pb-12' : 'pb-28 md:pb-12';
 
   return (
-    <div className={`min-h-screen ${MENU_PAGE_BG} ${CART_TEXT} relative`}>
+    <div className={`min-h-screen ${MENU_PAGE_BG} ${CART_TEXT} relative isolate`}>
+      <FoodBackdrop />
       <DesktopNav
         slug={slug}
         qrCodeToken={qrCodeToken}
@@ -40,6 +42,7 @@ export function CartShell({ tenant, slug, qrCodeToken, contextLabel, actionBar, 
         primaryColor={tenant.primaryColor}
         tenant={tenant}
         contextLabel={contextLabel}
+        wide
       />
 
       {/* overflow-x-clip (não `hidden`): o cartão ilustrativo pode passar um
