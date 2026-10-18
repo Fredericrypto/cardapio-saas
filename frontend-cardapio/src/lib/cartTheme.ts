@@ -69,7 +69,7 @@ export const CART_SEGMENT_TRACK =
   'flex gap-1 p-1 rounded-xl border bg-[#F3F4F6] dark:bg-white/5 border-[#E5E7EB] dark:border-white/10';
 
 export const CART_SEGMENT_BASE =
-  'w-full flex-1 min-w-0 py-2 px-1.5 rounded-lg text-xs font-semibold leading-tight text-center break-words glass-hover';
+  'w-full flex-1 min-w-0 py-2 px-1.5 rounded-lg text-xs font-semibold leading-tight text-center break-words relative glass-seg';
 
 export const CART_SEGMENT_ACTIVE = 'text-white ring-1 ring-black/5 dark:ring-white/15';
 
