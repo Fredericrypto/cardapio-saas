@@ -1,6 +1,7 @@
 import { activeDateLocale } from '../i18n/languages';
 import { useI18n } from '../i18n/I18nContext';
 import { PersonHeader } from './PeopleOrders';
+import { VerifiedBadge } from './VerifiedBadge';
 import type { Tenant, SessionSummary } from '../types';
 import { ReceiptAuthenticityCode } from './ReceiptAuthenticityCode';
 
@@ -120,7 +121,7 @@ export function ReceiptContent({ tenant, summary }: { tenant: Tenant; summary: S
             <span>{t('receiptContent.mesa_compartilhada_por')}</span>
             {participants.map((p, idx) => (
               <div key={idx} className="flex justify-between pl-2">
-                <span>{p.name}</span>
+                <ReceiptPerson name={p.name} avatarUrl={p.avatarUrl} verified={Boolean((p as { isVerified?: boolean }).isVerified)} />
                 <span className="text-[10px] text-[#9CA3AF]">{p.isOpener ? t('receiptContent.abriu_a_mesa') : ''}</span>
               </div>
             ))}
@@ -251,5 +252,24 @@ export function ReceiptContent({ tenant, summary }: { tenant: Tenant; summary: S
         )}
       </div>
     </div>
+  );
+}
+
+// Pessoa na lista simples do cupom: foto (ou inicial) + nome, com o selo se for verificada.
+function ReceiptPerson({ name, avatarUrl, verified }: { name: string; avatarUrl: string | null; verified: boolean }) {
+  return (
+    <span className="flex min-w-0 items-center gap-1.5">
+      <span className="relative inline-flex shrink-0">
+        <span className="flex h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-[#E5E7EB] text-[10px] font-bold text-[#6B7280]">
+          {avatarUrl ? <img src={avatarUrl} alt="" className="h-full w-full object-cover" /> : name.trim().charAt(0).toUpperCase()}
+        </span>
+        {verified && (
+          <span className="absolute -bottom-0.5 -right-0.5 inline-flex">
+            <VerifiedBadge size={9} />
+          </span>
+        )}
+      </span>
+      <span className="truncate">{name}</span>
+    </span>
   );
 }

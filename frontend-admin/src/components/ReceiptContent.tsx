@@ -1,3 +1,4 @@
+import { Check } from 'lucide-react';
 import type { Tenant, SessionSummary } from '../types';
 
 interface ReceiptContentProps {
@@ -68,7 +69,7 @@ export function ReceiptContent({ tenant, summary }: ReceiptContentProps) {
           <span>Mesa compartilhada por:</span>
           {participants.map((p, idx) => (
             <div key={idx} className="flex justify-between pl-2">
-              <span>{p.name}</span>
+              <ReceiptPerson name={p.name} avatarUrl={(p as { avatarUrl?: string | null }).avatarUrl ?? null} verified={Boolean((p as { isVerified?: boolean }).isVerified)} />
               <span className="text-[10px] text-gray-400">{p.isOpener ? 'abriu a mesa' : ''}</span>
             </div>
           ))}
@@ -217,5 +218,27 @@ export function ReceiptContent({ tenant, summary }: ReceiptContentProps) {
       <p className="text-center pt-1">Obrigado pela preferência!</p>
       <p className="text-center">Volte sempre</p>
     </div>
+  );
+}
+
+// Pessoa na lista do cupom: foto (ou inicial) + nome, com o selo se for verificada.
+function ReceiptPerson({ name, avatarUrl, verified }: { name: string; avatarUrl: string | null; verified: boolean }) {
+  return (
+    <span className="flex min-w-0 items-center gap-1.5">
+      <span className="relative inline-flex shrink-0">
+        <span className="flex h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-gray-200 text-[10px] font-bold text-gray-500">
+          {avatarUrl ? <img src={avatarUrl} alt="" className="h-full w-full object-cover" /> : name.trim().charAt(0).toUpperCase()}
+        </span>
+        {verified && (
+          <span
+            className="absolute -bottom-0.5 -right-0.5 flex h-2.5 w-2.5 items-center justify-center rounded-full"
+            style={{ backgroundColor: '#1D9BF0' }}
+          >
+            <Check size={7} strokeWidth={4} color="#FFFFFF" />
+          </span>
+        )}
+      </span>
+      <span className="truncate">{name}</span>
+    </span>
   );
 }
