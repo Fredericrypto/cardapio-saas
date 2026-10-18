@@ -78,22 +78,38 @@
   font-feature-settings: 'liga', 'dlig', 'swsh', 'calt';
 }
 
-/* Área rolável da lista (desktop): barra fina, sem divisórias; as pontas esmaecem no vidro. */
+/* Área rolável, ligada só quando há estouro. Com `fade` (lista do painel) as pontas esmaecem no
+   vidro. No celular o gesto ao fim da lista passa para a página (overscroll normal); no desktop a
+   rolagem fica contida e a barra é fina e terracota. */
+.rv-scroll {
+  padding: 14px 4px 18px 0;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 22px), transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 22px), transparent 100%);
+}
 @media (min-width: 1024px) {
-  .rv-scroll {
+  .rv-scroll,
+  .rv-scroll-plain {
     scrollbar-width: thin;
     scrollbar-color: rgba(217, 119, 87, 0.35) transparent;
-    padding: 14px 6px 18px 0;
-    margin-top: -6px;
     overscroll-behavior: contain;
-    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 22px), transparent 100%);
-    mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 22px), transparent 100%);
   }
-  .rv-scroll::-webkit-scrollbar {
+  .rv-scroll {
+    padding-right: 6px;
+  }
+  .rv-scroll::-webkit-scrollbar,
+  .rv-scroll-plain::-webkit-scrollbar {
     width: 6px;
   }
-  .rv-scroll::-webkit-scrollbar-thumb {
+  .rv-scroll::-webkit-scrollbar-thumb,
+  .rv-scroll-plain::-webkit-scrollbar-thumb {
     background: rgba(217, 119, 87, 0.35);
     border-radius: 999px;
+  }
+  /* coluna esquerda rolando (janela muito baixa): sem barra visível para não "dividir" a página */
+  .rv-scroll-plain {
+    scrollbar-width: none;
+  }
+  .rv-scroll-plain::-webkit-scrollbar {
+    display: none;
   }
 }

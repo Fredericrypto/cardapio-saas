@@ -55,7 +55,7 @@ export function ReviewFilter({
             type="button"
             onClick={() => onChange(v)}
             aria-pressed={active}
-            className={`inline-flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#d97757] ${
+            className={`inline-flex h-8 items-center gap-1.5 rounded-full border px-3 lg:h-9 lg:px-3.5 text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#d97757] ${
               active
                 ? 'border-[#d97757] bg-[#d97757] text-white shadow-sm'
                 : `border-black/10 bg-black/[0.03] hover:bg-black/[0.06] dark:border-white/15 dark:bg-white/[0.05] dark:hover:bg-white/10 ${MENU_TEXT_BODY}`

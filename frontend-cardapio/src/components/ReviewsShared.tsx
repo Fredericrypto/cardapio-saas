@@ -1,6 +1,6 @@
 import { activeDateLocale } from '../i18n/languages';
 import { useI18n } from '../i18n/I18nContext';
-import { memo, useLayoutEffect, useRef, useState } from 'react';
+import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { ArrowLeft, ChevronDown, Star, User } from 'lucide-react';
 import type { PublicReview, ReviewSummary } from '../lib/customer-api';
@@ -273,6 +273,74 @@ function ReviewSkeleton() {
   );
 }
 
+// Trava a rolagem da PÁGINA em telas largas enquanto o componente estiver montado (restaura ao sair).
+function useLockPageScroll(enabled: boolean) {
+  useEffect(() => {
+    if (!enabled) return;
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const html = document.documentElement;
+    const body = document.body;
+    const prev = { html: html.style.overflow, body: body.style.overflow };
+    const apply = () => {
+      const lock = mq.matches;
+      html.style.overflow = lock ? 'hidden' : prev.html;
+      body.style.overflow = lock ? 'hidden' : prev.body;
+      if (lock) window.scrollTo(0, 0);
+    };
+    apply();
+    mq.addEventListener('change', apply);
+    return () => {
+      mq.removeEventListener('change', apply);
+      html.style.overflow = prev.html;
+      body.style.overflow = prev.body;
+    };
+  }, [enabled]);
+}
+
+// Área que só ganha rolagem QUANDO PRECISA (conteúdo maior que o espaço) e só em telas largas.
+// Sem estouro: overflow visível (nada de brilho/sombra cortado, sem barra, sem esmaecer).
+// Com estouro: rola por dentro; com `fade`, as pontas esmaecem. `watch` re-mede quando o conteúdo muda.
+function SmartScroll({
+  children,
+  className = '',
+  fade = false,
+  watch,
+  fromWidth = 1024,
+}: {
+  children: ReactNode;
+  className?: string;
+  fade?: boolean;
+  watch?: unknown;
+  fromWidth?: number; // largura mínima da tela p/ a rolagem interna valer (0 = sempre)
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [scrollable, setScrollable] = useState(false);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const mq = window.matchMedia(`(min-width: ${fromWidth}px)`);
+    const measure = () => setScrollable(mq.matches && el.scrollHeight > el.clientHeight + 1);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    Array.from(el.children).forEach((child) => ro.observe(child));
+    mq.addEventListener('change', measure);
+    return () => {
+      ro.disconnect();
+      mq.removeEventListener('change', measure);
+    };
+  }, [watch, fromWidth]);
+  return (
+    <div
+      ref={ref}
+      className={`${className} ${scrollable ? (fade ? 'rv-scroll' : 'rv-scroll-plain') : ''}`}
+      style={scrollable ? { overflowY: 'auto' } : undefined}
+    >
+      {children}
+    </div>
+  );
+}
+
 // Em telas largas ocupa exatamente o que sobra da janela (da posição onde começa até o rodapé),
 // então a PÁGINA não rola: só o que for `overflow-y-auto` lá dentro. Abaixo de 1024px não faz
 // nada (fluxo normal, a página rola). A altura é medida, não chutada, p/ não depender da navbar.
@@ -300,7 +368,11 @@ function FillViewport({ children, className = '', bottom = 24 }: { children: Rea
     };
   }, [bottom]);
   return (
-    <div ref={ref} className={className} style={height ? { height } : undefined}>
+    <div
+      ref={ref}
+      className={className}
+      style={height ? ({ height, ['--rv-fill-h' as string]: `${height}px` } as CSSProperties) : undefined}
+    >
       {children}
     </div>
   );
@@ -337,6 +409,8 @@ export function ReviewsPageLayout({
 }) {
   const { t } = useI18n();
   const { tenant } = useTenant();
+  useLockPageScroll(Boolean(hero));
+  const eligibilityKey = hero ? 'hero' : 'none';
   const heading = subtitle ?? tenant?.name;
   const showSide = summary !== null || isLoading;
   const firstLoad = isLoading && reviews.length === 0;
@@ -418,29 +492,52 @@ export function ReviewsPageLayout({
         {hero ? (
           // Desktop: a página não rola. Esquerda (voltar + título + mensagens) parada; só a lista
           // de avaliações, dentro do painel, rola. Sem divisórias entre os lados.
-          <FillViewport className="lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-12 xl:gap-24">
-            <div className="mb-10 lg:mb-0 lg:min-h-0 xl:-ml-14 2xl:-ml-24">
+          <FillViewport className="lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-start lg:gap-12 xl:gap-24">
+            <SmartScroll
+              watch={eligibilityKey}
+              className="mb-10 lg:mb-0 lg:max-h-[var(--rv-fill-h)] lg:min-h-0 xl:-ml-14 2xl:-ml-24"
+            >
               {header}
               {hero}
-            </div>
+            </SmartScroll>
             <GlassCard
               orbit
               cursorGlow={false}
               radius={28}
-              className="rv-panel lg:h-full"
-              bodyClassName="flex flex-col gap-4 p-4 md:p-6 lg:h-full lg:min-h-0"
+              className="rv-panel max-h-[calc(100dvh-6rem)] lg:max-h-[var(--rv-fill-h)]"
+              bodyClassName="flex max-h-[calc(100dvh-6rem)] min-h-0 flex-col gap-3 p-4 md:p-6 lg:max-h-[var(--rv-fill-h)] lg:gap-4"
             >
-              <div className="flex flex-col gap-4 lg:shrink-0">
-                {summary ? (
-                  <SummaryBody summary={summary} row />
-                ) : (
-                  showSide && <div className="h-24 animate-pulse rounded-2xl bg-black/[0.06] dark:bg-white/10" aria-hidden="true" />
-                )}
+              {/* Fixo no topo do painel: no desktop resumo + filtro; no celular só o filtro. */}
+              <div className="flex flex-col gap-3 lg:shrink-0 lg:gap-4">
+                <div className="hidden lg:block">
+                  {summary ? (
+                    <SummaryBody summary={summary} row />
+                  ) : (
+                    showSide && <div className="h-24 animate-pulse rounded-2xl bg-black/[0.06] dark:bg-white/10" aria-hidden="true" />
+                  )}
+                </div>
                 {filterBar}
               </div>
-              <div key={`s-${ratingFilter}`} className="rv-scroll lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
-                {list}
-              </div>
+              {/* Só ESTA área rola (no celular e no desktop), e só quando a lista não cabe. Fora dela,
+                  o dedo rola a página normalmente; ao chegar no fim da lista o gesto passa pra página. */}
+              <SmartScroll
+                key={`s-${ratingFilter}`}
+                fade
+                fromWidth={0}
+                watch={`${reviews.length}-${isLoading}-${ratingFilter}-${summary?.count ?? 'x'}`}
+                className="min-h-0 flex-1"
+              >
+                <div className="flex flex-col gap-4">
+                  <div className="lg:hidden">
+                    {summary ? (
+                      <SummaryBody summary={summary} row />
+                    ) : (
+                      showSide && <div className="h-24 animate-pulse rounded-2xl bg-black/[0.06] dark:bg-white/10" aria-hidden="true" />
+                    )}
+                  </div>
+                  {list}
+                </div>
+              </SmartScroll>
             </GlassCard>
           </FillViewport>
         ) : (
