@@ -255,7 +255,7 @@ export function DesktopNav({
           <Link
             to={nav.menuHref}
             aria-label={nav.t('nav.goHome')}
-            className="flex items-center gap-2.5 min-w-0 rounded-2xl px-2 py-1.5 -mx-2 transition-colors hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-400"
+            className="flex items-center gap-2.5 min-w-0 rounded-2xl px-2 py-1.5 -mx-2 glass-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-400"
           >
             <NavBrandLogo tenant={tenant} />
             <span className="font-display text-sm font-bold text-gray-900 truncate">{tenant.name}</span>
@@ -361,7 +361,7 @@ function DesktopNavItem({ to, label, tooltip, active, color, inactiveColor, icon
     <Tooltip label={tooltip}>
       <Link
         to={to}
-        className="flex items-center gap-2 px-3.5 py-2 rounded-2xl transition-colors hover:bg-gray-50"
+        className="flex items-center gap-2 px-3.5 py-2 rounded-2xl glass-hover"
         style={{ backgroundColor: active ? `${color}1a` : undefined }}
       >
         {icon}

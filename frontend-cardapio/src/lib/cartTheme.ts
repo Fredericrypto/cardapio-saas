@@ -69,7 +69,7 @@ export const CART_SEGMENT_TRACK =
   'flex gap-1 p-1 rounded-xl border bg-[#F3F4F6] dark:bg-white/5 border-[#E5E7EB] dark:border-white/10';
 
 export const CART_SEGMENT_BASE =
-  'w-full flex-1 min-w-0 py-2 px-1.5 rounded-lg text-xs font-semibold leading-tight text-center break-words transition-colors';
+  'w-full flex-1 min-w-0 py-2 px-1.5 rounded-lg text-xs font-semibold leading-tight text-center break-words glass-hover';
 
 export const CART_SEGMENT_ACTIVE = 'text-white ring-1 ring-black/5 dark:ring-white/15';
 
@@ -83,21 +83,21 @@ export const CART_QTY_PILL =
   'inline-flex items-center rounded-full border px-1 border-[#D1D5DB] dark:border-white/25';
 
 export const CART_QTY_BUTTON =
-  'w-8 h-8 rounded-full flex items-center justify-center transition-colors ' +
+  'w-8 h-8 rounded-full flex items-center justify-center glass-hover ' +
   'text-[#374151] hover:bg-black/5 dark:text-[#C4C7C5] dark:hover:bg-white/10 dark:hover:text-white';
 
 /** Botão de ícone discreto (remover, voltar). Cantos arredondados, nunca círculo. */
 export const CART_ICON_BUTTON =
-  'w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors ' +
+  'w-9 h-9 rounded-xl flex items-center justify-center shrink-0 glass-hover ' +
   'text-[#6B7280] hover:bg-black/5 hover:text-[#111827] dark:text-[#C4C7C5] dark:hover:bg-white/10 dark:hover:text-white';
 
 export const CART_ICON_BUTTON_DANGER =
-  'w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors ' +
+  'w-9 h-9 rounded-xl flex items-center justify-center shrink-0 glass-hover ' +
   'text-[#9CA3AF] hover:bg-red-50 hover:text-red-600 dark:text-[#8E918F] dark:hover:bg-red-500/10 dark:hover:text-red-300';
 
 /** Botão secundário com contorno (cancelar, chamar garçom...). */
 export const CART_OUTLINE_BUTTON =
-  'w-full py-2.5 rounded-xl text-sm font-semibold border transition-colors disabled:opacity-50 ' +
+  'w-full py-2.5 rounded-xl text-sm font-semibold border glass-hover disabled:opacity-50 ' +
   'border-[#D1D5DB] text-[#374151] hover:bg-black/5 dark:border-white/20 dark:text-[#C4C7C5] dark:hover:bg-white/10';
 
 // ---- Textos -----------------------------------------------------------------

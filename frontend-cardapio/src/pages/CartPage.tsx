@@ -1057,7 +1057,7 @@ export function CartPage() {
                         .catch(() => {});
                     }
                   }}
-                  className="w-full flex items-center justify-between gap-3 text-sm"
+                  className="w-full flex items-center justify-between gap-3 text-sm rounded-xl px-2 py-2 -mx-2 -my-2 glass-hover"
                 >
                   <span className={`flex items-center gap-2 font-semibold ${CART_TEXT_SOFT}`}>
                     <Tag size={15} strokeWidth={1.5} className={CART_TEXT_MUTED} aria-hidden="true" />
