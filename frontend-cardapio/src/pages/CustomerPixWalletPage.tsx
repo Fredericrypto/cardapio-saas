@@ -3,7 +3,7 @@ import { useI18n } from '../i18n/I18nContext';
 import { Tooltip } from '../components/Tooltip';
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Wallet, Trash2, ShieldCheck, Lock, Mail, Smartphone, Fingerprint, KeyRound, Pencil, Check, X, type LucideIcon } from 'lucide-react';
+import { Wallet, Trash2, ShieldCheck, Mail, Smartphone, Fingerprint, KeyRound, Pencil, Check, X, type LucideIcon } from 'lucide-react';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { useTenant } from '../contexts/TenantContext';
 import { setMyCustomerPixKey, removeMyCustomerPixKey } from '../lib/customer-api';
@@ -154,15 +154,11 @@ export function CustomerPixWalletPage() {
       <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_400px] lg:gap-8 lg:items-start">
         {/* Aviso de segurança: bloco translúcido com ícones dedicados. No
             desktop vai para a coluna da direita e acompanha a rolagem. */}
-        <div className="relative overflow-hidden rounded-2xl p-5 md:p-6 border border-emerald-500/25 bg-emerald-500/[0.07] dark:bg-emerald-400/[0.06] backdrop-blur-xl shadow-sm flex gap-4 lg:order-2 lg:sticky lg:top-24">
-          <div className="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-emerald-500/10" aria-hidden="true" />
-          <div className="relative w-11 h-11 rounded-xl flex items-center justify-center shrink-0 bg-emerald-500/15 border border-emerald-500/25">
-            <ShieldCheck size={22} strokeWidth={1.5} className="text-emerald-600 dark:text-emerald-400" />
-            <span className="absolute -bottom-1.5 -right-1.5 w-5 h-5 rounded-full bg-white dark:bg-[#1E1E20] border border-emerald-500/25 flex items-center justify-center">
-              <Lock size={10} strokeWidth={1.5} className="text-emerald-600 dark:text-emerald-400" />
-            </span>
-          </div>
-          <p className={`relative text-sm leading-relaxed ${MENU_TEXT_BODY}`}>
+        <div className={`${PROFILE_CARD} flex gap-4 p-5 md:p-6 lg:order-2 lg:sticky lg:top-24`}>
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#16A34A]/40 bg-[#16A34A]/10 text-[#16A34A] dark:border-[#4ADE80]/40 dark:bg-[#4ADE80]/10 dark:text-[#4ADE80]">
+            <ShieldCheck size={20} strokeWidth={1.5} aria-hidden="true" />
+          </span>
+          <p className={`text-sm leading-relaxed ${MENU_TEXT_BODY}`}>
             {t('customerPixWalletPage.guardamos_so_a_sua')}{' '}
             {tenant.name} {t('customerPixWalletPage.devolver_dinheiro_direto_pra')}
           </p>

@@ -27,10 +27,7 @@ export function VerificationExplainerModal({
     <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-50 p-4">
       <div className={`${MENU_SURFACE} border ${MENU_BORDER} rounded-2xl w-full max-w-sm p-6 shadow-xl`}>
         <div
-          className="w-12 h-12 rounded-full flex items-center justify-center mb-4"
-          style={{ backgroundColor: `${primaryColor}1A` }}
-        >
-          <ShieldCheck size={22} strokeWidth={1.5} style={{ color: primaryColor }} />
+          className="w-12 h-12 rounded-full border flex items-center justify-center mb-4 border-[#16A34A]/40 bg-[#16A34A]/10 text-[#16A34A] dark:border-[#4ADE80]/40 dark:bg-[#4ADE80]/10 dark:text-[#4ADE80]" > <ShieldCheck size={22} strokeWidth={1.5} />
         </div>
         <h2 className={`font-display font-bold text-lg ${MENU_TEXT} mb-2`}>
           {t('verificationExplainerModal.como_funciona_a_verificacao')}
@@ -58,8 +55,7 @@ export function VerificationExplainerModal({
           <Tooltip label={t('verificationExplainerModal.entendi_continuar')} className="flex flex-1">
             <button
               onClick={onContinue}
-              className="w-full py-3 rounded-xl text-white text-sm font-semibold"
-              style={{ backgroundColor: primaryColor }}
+              className="glass-btn w-full py-3 rounded-xl text-sm font-semibold" style={{ '--seg': primaryColor } as React.CSSProperties}
             >
               {t('verificationExplainerModal.entendi_continuar')}
             </button>

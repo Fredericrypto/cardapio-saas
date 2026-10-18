@@ -16,7 +16,7 @@ import { MENU_SURFACE, MENU_DIVIDER, MENU_TEXT_SOFT } from '../lib/menuTheme';
 // - escuro: fundo #E3E2E6, texto #131314
 // - destrutivo: vermelho sólido com texto branco, igual nos dois modos
 const CONFIRM_CLASS =
-  'bg-[#111827] hover:bg-[#1F2937] text-white dark:bg-[#E3E2E6] dark:hover:bg-white dark:text-[#131314]';
+  'glass-btn';
 const CONFIRM_DESTRUCTIVE_CLASS = 'bg-[#DC2626] hover:bg-[#B91C1C] text-white';
 const CANCEL_CLASS =
   'border border-[#E5E7EB] dark:border-white/10 text-[#4B5563] dark:text-[#C4C7C5] hover:bg-[#F9FAFB] dark:hover:bg-white/10';

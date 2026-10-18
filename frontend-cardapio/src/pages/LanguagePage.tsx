@@ -9,8 +9,8 @@ import { ConfirmModal } from '../components/ConfirmModal';
 import { LanguageFlag } from '../components/LanguageFlags';
 import { ProfileSubpageShell } from '../components/ProfileSubpageShell';
 import { Tooltip } from '../components/Tooltip';
-import { MENU_TEXT, MENU_TEXT_BODY, MENU_TEXT_MUTED } from '../lib/menuTheme';
-import { PROFILE_CARD, PROFILE_CARD_GLASS, PROFILE_OPTION_CARD, PROFILE_SELECTED_RING } from '../lib/profileTheme';
+import { MENU_TEXT, MENU_TEXT_MUTED } from '../lib/menuTheme';
+import { PROFILE_CARD, PROFILE_OPTION_CARD, PROFILE_SELECTED_RING } from '../lib/profileTheme';
 
 // Perfil do cliente -> Idiomas. Escolher uma opção abre a confirmação; ao
 // confirmar, o LanguageSwitchProvider cuida da splash, da persistência
@@ -74,12 +74,10 @@ export function LanguagePage() {
           })}
         </div>
 
-        <div className={`${PROFILE_CARD_GLASS} flex items-start gap-3 p-4 md:p-5`}>
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-black/5 dark:bg-white/10">
-            <Info size={17} strokeWidth={1.5} className={MENU_TEXT} />
-          </div>
-          <p className={`text-xs md:text-sm leading-relaxed ${MENU_TEXT_BODY} pt-1`}>{t('language.notice')}</p>
-        </div>
+        <p className={`flex items-center gap-2 px-1 pt-1 text-xs ${MENU_TEXT_MUTED}`}>
+          <Info size={13} strokeWidth={1.5} className="shrink-0" aria-hidden="true" />
+          {t('language.notice')}
+        </p>
       </div>
 
       {candidate && (

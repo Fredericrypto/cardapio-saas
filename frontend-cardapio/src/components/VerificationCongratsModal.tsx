@@ -31,8 +31,7 @@ export function VerificationCongratsModal({ primaryColor, onClose }: Verificatio
         <Tooltip label={t('verificationCongratsModal.legal')} className="flex w-full">
           <button
             onClick={onClose}
-            className="w-full py-3 rounded-xl text-white text-sm font-semibold"
-            style={{ backgroundColor: primaryColor }}
+            className="glass-btn w-full py-3 rounded-xl text-sm font-semibold" style={{ '--seg': primaryColor } as React.CSSProperties}
           >
             {t('verificationCongratsModal.legal')}
           </button>

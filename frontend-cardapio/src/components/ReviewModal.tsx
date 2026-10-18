@@ -187,7 +187,7 @@ export function ReviewModal({ tenantId, token, orderId, target, stepLabel, onClo
               </button>
               <button
                 onClick={handleSubmitClick}
-                className="flex-1 py-3 rounded-xl bg-[#111827] text-[#FFFFFF] dark:bg-[#E3E2E6] dark:text-[#131314] text-sm font-semibold"
+                className="flex-1 py-3 rounded-xl glass-btn text-sm font-semibold"
               >
                 {t('reviewModal.enviar')}
               </button>
@@ -212,7 +212,7 @@ export function ReviewModal({ tenantId, token, orderId, target, stepLabel, onClo
               </button>
               <button
                 onClick={onClose}
-                className="flex-1 py-3 rounded-xl bg-[#111827] text-[#FFFFFF] dark:bg-[#E3E2E6] dark:text-[#131314] text-sm font-semibold"
+                className="flex-1 py-3 rounded-xl glass-btn text-sm font-semibold"
               >
                 {t('common.confirm')}
               </button>
@@ -241,7 +241,7 @@ export function ReviewModal({ tenantId, token, orderId, target, stepLabel, onClo
               <button
                 onClick={handleConfirmSubmit}
                 disabled={isSaving}
-                className="flex-1 py-3 rounded-xl bg-[#111827] text-[#FFFFFF] dark:bg-[#E3E2E6] dark:text-[#131314] text-sm font-semibold disabled:opacity-50"
+                className="flex-1 py-3 rounded-xl glass-btn text-sm font-semibold disabled:opacity-50"
               >
                 {isSaving ? 'Enviando...' : t('common.confirm')}
               </button>

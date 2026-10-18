@@ -40,9 +40,7 @@ export const PROFILE_LABEL = 'text-xs font-semibold text-[#6B7280] dark:text-[#C
 
 /** Botão principal (a cor vem inline do restaurante). O anel garante contraste
  *  mesmo quando a cor da marca é escura sobre o fundo escuro. */
-export const PROFILE_BTN_PRIMARY =
-  'text-white font-semibold shadow-sm ring-1 ring-black/5 dark:ring-white/20 hover:brightness-110 active:brightness-95 ' +
-  'transition disabled:opacity-60 disabled:hover:brightness-100';
+export const PROFILE_BTN_PRIMARY = 'glass-btn font-semibold transition';
 
 /** Cartão selecionável (opção de grade): base + estado de hover. */
 export const PROFILE_OPTION_CARD =
@@ -54,6 +52,4 @@ export const PROFILE_SELECTED_RING = 'ring-2 ring-black/10 dark:ring-white/25';
 /** Botão sólido de alto contraste (ex.: Salvar cupom): escuro no claro; no
  *  escuro vira claro (#E3E2E6) com texto escuro (#131314). Hex fixo, imune ao
  *  remapeamento de `bg-gray-*` do tema global. */
-export const PROFILE_BTN_SOLID =
-  'bg-[#111827] text-[#FFFFFF] dark:bg-[#E3E2E6] dark:text-[#131314] font-semibold shadow-sm ' +
-  'hover:brightness-110 dark:hover:brightness-95 active:brightness-95 transition disabled:opacity-60';
+export const PROFILE_BTN_SOLID = 'glass-btn font-semibold transition';

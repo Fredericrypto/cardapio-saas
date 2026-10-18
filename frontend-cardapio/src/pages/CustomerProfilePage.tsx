@@ -301,8 +301,8 @@ export function CustomerProfilePage() {
             {hasStats && (
               <div className={`grid border-t ${HAIRLINE} ${bothStats ? 'grid-cols-2 divide-x divide-[#E5E7EB] dark:divide-white/10' : 'grid-cols-1'}`}>
                 {orderCount !== null && (
-                  <div className="flex items-center gap-3 px-4 py-5 sm:gap-4 sm:px-6">
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#4F7A56]/30 bg-[#4F7A56]/10 text-[#4F7A56] dark:border-[#9DC59A]/25 dark:bg-[#9DC59A]/10 dark:text-[#9DC59A]">
+                  <div className="flex items-center justify-center gap-3 px-4 py-5 sm:gap-4 sm:px-6">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#16A34A]/40 bg-[#16A34A]/10 text-[#16A34A] dark:border-[#4ADE80]/40 dark:bg-[#4ADE80]/10 dark:text-[#4ADE80]">
                       <ShoppingBag size={20} strokeWidth={1.25} aria-hidden="true" />
                     </span>
                     <div className="min-w-0">
@@ -312,8 +312,8 @@ export function CustomerProfilePage() {
                   </div>
                 )}
                 {ratingText !== null && (
-                  <div className="flex items-center gap-3 px-4 py-5 sm:gap-4 sm:px-6">
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#B8892B]/30 bg-[#B8892B]/10 text-[#B8892B] dark:border-[#D9B25F]/25 dark:bg-[#D9B25F]/10 dark:text-[#D9B25F]">
+                  <div className="flex items-center justify-center gap-3 px-4 py-5 sm:gap-4 sm:px-6">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#16A34A]/40 bg-[#16A34A]/10 text-[#16A34A] dark:border-[#4ADE80]/40 dark:bg-[#4ADE80]/10 dark:text-[#4ADE80]">
                       <Star size={20} strokeWidth={1.25} aria-hidden="true" />
                     </span>
                     <div className="min-w-0">
@@ -566,8 +566,7 @@ function MenuRow({ icon: Icon, color, label, description, labelColor, onClick, d
         className="flex w-full items-center gap-4 px-4 py-3.5 text-left transition-colors hover:bg-black/[0.03] disabled:opacity-50 dark:hover:bg-white/[0.04] md:px-5"
       >
         <span
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border"
-          style={{ color, backgroundColor: `${color}14`, borderColor: `${color}40` }}
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border ${labelColor ? '' : 'border-[#16A34A]/40 bg-[#16A34A]/10 text-[#16A34A] dark:border-[#4ADE80]/40 dark:bg-[#4ADE80]/10 dark:text-[#4ADE80]'}`} style={labelColor ? { color, backgroundColor: `${color}14`, borderColor: `${color}40` } : undefined}
         >
           <Icon size={18} strokeWidth={1.5} aria-hidden="true" />
         </span>

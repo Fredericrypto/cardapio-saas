@@ -819,3 +819,30 @@ img, svg, video, a {
     inset 0 1px 0 rgba(255, 255, 255, 0.14),
     0 4px 14px -8px rgba(0, 0, 0, 0.6);
 }
+
+
+/* Botao de VIDRO (primarios de subpaginas e modais): translucido + blur + filete de luz.
+   --seg (opcional) tinge a borda com a cor do restaurante. Nao usa cor solida. */
+.glass-btn {
+  position: relative;
+  color: #111827;
+  border-color: transparent;
+  background-color: rgba(17, 24, 39, 0.06) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(1.3);
+  backdrop-filter: blur(12px) saturate(1.3);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--seg, #6b7280) 45%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+.dark .glass-btn {
+  color: #E3E2E6;
+  background-color: rgba(255, 255, 255, 0.09) !important;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, color-mix(in srgb, var(--seg, #9ca3af) 70%, white) 40%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+@media (hover: hover) {
+  .glass-btn:hover:not(:disabled) { background-color: rgba(17, 24, 39, 0.1) !important; }
+  .dark .glass-btn:hover:not(:disabled) { background-color: rgba(255, 255, 255, 0.14) !important; }
+}
+.glass-btn:disabled { opacity: 0.6; }

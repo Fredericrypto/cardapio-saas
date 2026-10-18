@@ -85,8 +85,7 @@ export function AvatarPickerModal({
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={isSaving}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-white font-semibold text-sm disabled:opacity-60"
-            style={{ backgroundColor: accentColor }}
+            className="glass-btn w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm" style={{ '--seg': accentColor } as React.CSSProperties}
           >
             <Camera size={16} strokeWidth={1.5} />
             {t('avatarPickerModal.tirar_ou_escolher_foto')}

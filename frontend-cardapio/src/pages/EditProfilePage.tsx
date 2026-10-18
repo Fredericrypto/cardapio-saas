@@ -264,10 +264,10 @@ export function EditProfilePage() {
                                   prev.includes(option) ? prev.filter((p) => p !== option) : [...prev, option],
                                 )
                               }
-                              className={`${OPTION_BASE} ${on ? 'ring-1 ring-black/5 dark:ring-white/20' : OPTION_OFF}`}
+                              className={`${OPTION_BASE} ${on ? 'glass-btn' : OPTION_OFF}`}
                               style={
                                 on
-                                  ? { backgroundColor: accent, color: 'white', borderColor: accent }
+                                  ? { '--seg': accent } as React.CSSProperties
                                   : undefined
                               }
                             >
@@ -289,10 +289,10 @@ export function EditProfilePage() {
                   <Tooltip key={option.value} label={genderLabel(option.value, t)} className="flex w-full">
                     <button
                       onClick={() => setGender(option.value)}
-                      className={`${OPTION_BASE} ${gender === option.value ? 'ring-1 ring-black/5 dark:ring-white/20' : OPTION_OFF}`}
+                      className={`${OPTION_BASE} ${gender === option.value ? 'glass-btn' : OPTION_OFF}`}
                       style={
                         gender === option.value
-                          ? { backgroundColor: accent, color: 'white', borderColor: accent }
+                          ? { '--seg': accent } as React.CSSProperties
                           : undefined
                       }
                     >

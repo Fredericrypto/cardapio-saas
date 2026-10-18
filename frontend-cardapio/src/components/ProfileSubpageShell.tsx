@@ -8,6 +8,7 @@ import { MENU_PAGE_BG, MENU_BORDER, MENU_TEXT } from '../lib/menuTheme';
 import { PROMO_SERIF, PROMO_INK } from '../lib/promotionTheme';
 import type { Tenant } from '../types';
 import { BottomNav, DesktopNav } from './BottomNav';
+import { useAccentColor } from '../hooks/useAccentColor';
 import { FoodBackdrop } from './FoodBackdrop';
 import { Tooltip } from './Tooltip';
 
@@ -29,6 +30,7 @@ export function ProfileSubpageShell({ tenant, title, backTo, bottomNav = false, 
   const navigate = useNavigate();
   const { t } = useI18n();
   const { token } = useCustomerAuth();
+  const accent = useAccentColor(tenant.primaryColor);
   const activeMesaToken = slug ? getActiveMesaToken(token, slug) ?? undefined : undefined;
 
   return (
@@ -52,7 +54,8 @@ export function ProfileSubpageShell({ tenant, title, backTo, bottomNav = false, 
             <button
               onClick={() => navigate(backTo)}
               aria-label={t('common.back')}
-              className={`w-10 h-10 rounded-full border bg-transparent ${MENU_BORDER} ${MENU_TEXT} flex items-center justify-center hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors`}
+              className={`w-10 h-10 rounded-full border bg-transparent ${MENU_BORDER} ${MENU_TEXT} flex items-center justify-center loc-dist backdrop-blur-md active:scale-95`}
+              style={{ '--glow': accent } as React.CSSProperties}
             >
               <ArrowLeft size={20} strokeWidth={1.5} />
             </button>

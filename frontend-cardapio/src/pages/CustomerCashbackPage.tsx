@@ -18,6 +18,7 @@ import {
   type CashbackTab,
 } from '../lib/cashbackFormat';
 import { ProfileSubpageShell } from '../components/ProfileSubpageShell';
+import { PROMO_SERIF, PROMO_SAGE, PROMO_EYEBROW } from '../lib/promotionTheme';
 import { Tooltip } from '../components/Tooltip';
 import { MENU_PAGE_BG, MENU_TEXT, MENU_TEXT_BODY, MENU_TEXT_MUTED } from '../lib/menuTheme';
 import { PROFILE_CARD, PROFILE_BTN_PRIMARY } from '../lib/profileTheme';
@@ -166,28 +167,20 @@ export function CustomerCashbackPage() {
     <ProfileSubpageShell tenant={tenant} title={t('profile.cashback')} backTo={`/${slug}/conta-cliente/perfil`}>
       {/* Desktop: saldo fixo à esquerda; abas e extrato à direita. */}
       <div className="flex flex-col gap-3 md:grid md:grid-cols-[320px_minmax(0,1fr)] lg:grid-cols-[360px_minmax(0,1fr)] md:gap-x-8 md:gap-y-4 md:items-start">
-        <div
-          className="relative overflow-hidden rounded-2xl p-5 md:p-6 text-white flex flex-col gap-1 md:col-start-1 md:row-span-3 md:sticky md:top-24 shadow-sm ring-1 ring-black/5 dark:ring-white/15"
-          style={{ backgroundColor: tenant.primaryColor }}
-        >
-          <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-white/10" aria-hidden="true" />
-          <div className="absolute -left-8 -bottom-12 w-32 h-32 rounded-full bg-white/[0.07]" aria-hidden="true" />
-          <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" aria-hidden="true" />
-          <div className="relative flex flex-col gap-1">
-            <div className="w-10 h-10 rounded-xl bg-white/15 border border-white/20 flex items-center justify-center mb-2">
-              <CircleDollarSign size={20} strokeWidth={1.5} />
-            </div>
-            <p className="text-xs opacity-80">{t('customerCashbackPage.saldo_disponivel')}</p>
-            <p className="text-3xl md:text-4xl font-bold font-display">{balance == null ? '...' : formatBRL(balance)}</p>
-            {wallet?.nextExpiresAt && wallet.balance > 0 && (
-              <p className="text-xs font-semibold bg-white/20 rounded-lg px-2.5 py-1.5 mt-2 inline-block self-start">
-                {formatBRL(wallet.expiringAmount)} · {formatCashbackExpiry(wallet.nextExpiresAt, now)}
-              </p>
-            )}
-            <p className="text-xs opacity-80 mt-2 leading-relaxed">
-              {t('customerCashbackPage.use_no_carrinho_quando')}
+        <div className={`${PROFILE_CARD} flex flex-col p-6 md:col-start-1 md:row-span-3 md:sticky md:top-24 md:p-8`}>
+          <span className="flex h-11 w-11 items-center justify-center rounded-full border border-[#16A34A]/40 bg-[#16A34A]/10 text-[#16A34A] dark:border-[#4ADE80]/40 dark:bg-[#4ADE80]/10 dark:text-[#4ADE80]">
+            <CircleDollarSign size={20} strokeWidth={1.5} aria-hidden="true" />
+          </span>
+          <p className={`mt-6 ${PROMO_EYEBROW} ${PROMO_SAGE}`}>{t('customerCashbackPage.saldo_disponivel')}</p>
+          <p className={`mt-2 text-5xl font-light italic tabular-nums leading-none ${PROMO_SAGE}`} style={{ fontFamily: PROMO_SERIF }}>
+            {balance == null ? '...' : formatBRL(balance)}
+          </p>
+          {wallet?.nextExpiresAt && wallet.balance > 0 && (
+            <p className={`mt-5 border-t border-[#E5E7EB] pt-4 text-xs tabular-nums dark:border-white/10 ${MENU_TEXT_BODY}`}>
+              {formatBRL(wallet.expiringAmount)} · {formatCashbackExpiry(wallet.nextExpiresAt, now)}
             </p>
-          </div>
+          )}
+          <p className={`mt-4 text-xs leading-relaxed ${MENU_TEXT_MUTED}`}>{t('customerCashbackPage.use_no_carrinho_quando')}</p>
         </div>
 
         <div role="tablist" aria-label={t('customerCashbackPage.categorias_de_cashback')} className={`grid grid-cols-3 gap-1 ${PROFILE_CARD} rounded-xl p-1 md:col-start-2`}>
