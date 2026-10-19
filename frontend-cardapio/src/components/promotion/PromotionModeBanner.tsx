@@ -6,7 +6,7 @@ import { localizedField } from '../../i18n/contentText';
 import { formatBRL, getPromotionHeroValue } from '../../lib/promotionPresentation';
 import type { MinOrderProgress } from '../../lib/promotionEligibility';
 import { MENU_BORDER, MENU_TEXT, MENU_TEXT_SOFT } from '../../lib/menuTheme';
-import { PROMO_FOCUS, PROMO_SUCCESS_TEXT } from '../../lib/promotionTheme';
+import { PROMO_FOCUS, PROMO_SERIF, PROMO_SUCCESS_TEXT } from '../../lib/promotionTheme';
 import type { Promotion } from '../../types';
 
 interface PromotionModeBannerProps {
@@ -45,12 +45,12 @@ export function PromotionModeBanner({
   return (
     <aside
       aria-label={t('promotionMode.badge')}
-      className={`sticky top-2 md:top-[4.5rem] z-30 mx-4 lg:mx-0 rounded-2xl border bg-transparent backdrop-blur-md ${MENU_BORDER} px-4 py-3 lg:top-24 lg:self-start lg:p-5`}
+      className={`sticky top-2 md:top-[4.5rem] z-30 mx-4 lg:mx-0 rounded-2xl lg:rounded-3xl border bg-transparent backdrop-blur-md ${MENU_BORDER} px-4 py-3 lg:top-24 lg:self-start lg:p-5`}
     >
       <div className="flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
           <span
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[var(--brand)] text-[#FFFFFF] dark:bg-[#E3E2E6] dark:text-[#131314]"
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[var(--brand)] text-[#FFFFFF] dark:bg-[#E3E2E6] dark:text-[#131314]"
             aria-hidden="true"
           >
             <Compass size={16} strokeWidth={1.75} />
@@ -82,7 +82,7 @@ export function PromotionModeBanner({
       </div>
 
       <div className="mt-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 lg:mt-4 lg:block">
-        <p className={`min-w-0 truncate font-display text-base font-extrabold leading-tight lg:text-xl lg:whitespace-normal ${MENU_TEXT}`}>
+        <p className={`min-w-0 truncate text-base font-normal leading-tight lg:text-[1.65rem] lg:whitespace-normal ${MENU_TEXT}`} style={{ fontFamily: PROMO_SERIF }}>
           {localizedField(promotion, 'title')}
         </p>
         <p className={`text-sm font-semibold tabular-nums ${MENU_TEXT_SOFT} lg:mt-1`}>
@@ -98,7 +98,7 @@ export function PromotionModeBanner({
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={minOrder.percent}
-            className="h-2 w-full overflow-hidden rounded-full bg-[#E5E7EB] dark:bg-white/10"
+            className="h-1.5 w-full overflow-hidden rounded-full bg-[#E5E7EB] dark:bg-white/10"
           >
             <div
               className={`h-full rounded-full transition-[width] duration-300 motion-reduce:transition-none ${

@@ -14,7 +14,7 @@ import { ProductOptionGroupList } from '../ProductOptionGroupList';
 import { ShareButton } from '../ShareButton';
 import { PromotionQuantityStepper } from './PromotionQuantityStepper';
 import { buildLineKey, findCartLine } from '../../lib/cartLines';
-import { MENU_TEXT, MENU_TEXT_BODY, MENU_TEXT_MUTED } from '../../lib/menuTheme';
+import { MENU_DIVIDER, MENU_TEXT, MENU_TEXT_BODY, MENU_TEXT_MUTED } from '../../lib/menuTheme';
 import { getProductImages } from '../../lib/productImages';
 import { resolveProductBadges } from '../../lib/productBadgeCatalog';
 import {
@@ -26,7 +26,7 @@ import {
 } from '../../lib/productOptions';
 import { previewItemPromotion } from '../../lib/promotionEligibility';
 import { formatBRL } from '../../lib/promotionPresentation';
-import { PROMO_FOCUS, PROMO_SUCCESS_TEXT } from '../../lib/promotionTheme';
+import { PROMO_FOCUS, PROMO_INK, PROMO_SERIF, PROMO_SUCCESS_TEXT } from '../../lib/promotionTheme';
 import type { Product, ProductOptionGroup, Promotion } from '../../types';
 
 // Layout interno do CTA; a moldura e a borda animada vêm do AnimatedGradientButton.
@@ -237,7 +237,7 @@ export function PromotionItemPanel({
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         <div
           className={`relative w-full overflow-hidden bg-[#F3F4F6] dark:bg-[#282A2C] ${
-            variant === 'aside' ? 'aspect-[4/3]' : 'aspect-[16/10]'
+            variant === 'aside' ? 'aspect-[5/4]' : 'aspect-[16/10]'
           }`}
         >
           {images.length > 0 ? (
@@ -258,6 +258,12 @@ export function PromotionItemPanel({
               {t('productCard.sem_foto')}
             </div>
           )}
+          {variant === 'aside' && images.length > 0 && (
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#FFFFFF]/90 to-transparent dark:from-[#131314]/90"
+            />
+          )}
           {shareUrl && (
             <ShareButton
               className="absolute right-3 top-3"
@@ -276,11 +282,11 @@ export function PromotionItemPanel({
           )}
         </div>
 
-        <div className="flex flex-col gap-4 p-4 sm:p-5">
+        <div className={`relative flex flex-col gap-4 p-4 sm:p-5 ${variant === 'aside' && images.length > 0 ? '-mt-8' : ''}`}>
           <div>
             <div className="flex flex-wrap items-center gap-2">
               {showDeal && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2.5 py-1 text-[11px] font-bold text-green-700 dark:bg-green-500/10 dark:text-green-300">
+                <span className="inline-flex items-center gap-1 rounded-full border border-green-600/15 bg-green-50 px-2.5 py-1 text-[11px] font-bold text-green-700 dark:border-green-400/15 dark:bg-green-500/10 dark:text-green-300">
                   <Tag size={11} strokeWidth={1.75} aria-hidden="true" />
                   {t('promotionMode.unitSaving', { value: formatBRL(preview.unitDiscount) })}
                 </span>
@@ -291,7 +297,7 @@ export function PromotionItemPanel({
                 </span>
               )}
             </div>
-            <h2 id={headingId} className={`mt-2 font-display text-xl font-extrabold leading-tight sm:text-2xl ${MENU_TEXT}`}>
+            <h2 id={headingId} className={`mt-2 text-[1.75rem] font-normal leading-tight sm:text-[2rem] ${PROMO_INK}`} style={{ fontFamily: PROMO_SERIF }}>
               {name}
             </h2>
 
@@ -299,7 +305,7 @@ export function PromotionItemPanel({
 
             <div className="mt-3 flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
               <span
-                className={`text-2xl font-extrabold tabular-nums ${showDeal ? '' : MENU_TEXT}`}
+                className={`text-[1.7rem] font-semibold tabular-nums ${showDeal ? '' : MENU_TEXT}`}
                 style={showDeal ? { color: 'var(--accent)' } : undefined}
                 aria-label={showDeal ? t('promotionMode.priceFromTo', { from, to }) : undefined}
               >
@@ -317,7 +323,7 @@ export function PromotionItemPanel({
           </div>
 
           {(minOrderNote || limitNote) && (
-            <div className={`flex flex-col gap-1.5 text-xs ${MENU_TEXT_BODY}`}>
+            <div className={`flex flex-col gap-1.5 border-t pt-4 text-xs ${MENU_DIVIDER} ${MENU_TEXT_BODY}`}>
               {minOrderNote && (
                 <p className="flex items-start gap-1.5">
                   <Info size={14} strokeWidth={1.5} className="mt-px shrink-0" aria-hidden="true" />

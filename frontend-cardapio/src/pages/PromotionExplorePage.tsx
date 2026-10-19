@@ -9,10 +9,12 @@ import { getCategoryIcon, PromocoesIcon } from '../components/CategoryIcon';
 import { TodosIcon } from '../components/MenuIcons';
 import { PromotionModeBanner } from '../components/promotion/PromotionModeBanner';
 import { PromotionExploreProductCard } from '../components/promotion/PromotionExploreProductCard';
+import { PromotionCategoryHeading } from '../components/promotion/PromotionCategoryHeading';
 import { PromotionItemPanel } from '../components/promotion/PromotionItemPanel';
 import { PromotionItemSheet } from '../components/promotion/PromotionItemSheet';
 import { PromotionSkeleton, PromotionUnavailable } from '../components/promotion/PromotionStates';
 import { FoodBackdrop } from '../components/FoodBackdrop';
+import { MenuBotanical } from '../components/MenuBotanical';
 import { Tooltip } from '../components/Tooltip';
 import { useCart } from '../contexts/CartContext';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
@@ -40,7 +42,7 @@ import {
 } from '../lib/promotionMode';
 import { buildShareUrl } from '../lib/shareLinks';
 import { MENU_BORDER, MENU_PAGE_BG, MENU_TEXT, MENU_TEXT_BODY, MENU_TEXT_SOFT } from '../lib/menuTheme';
-import { PROMO_FOCUS } from '../lib/promotionTheme';
+import { PROMO_FOCUS, PROMO_INK, PROMO_SERIF } from '../lib/promotionTheme';
 import type { Category, Product, Promotion } from '../types';
 
 const PRODUCT_REFRESH_MS = 15000;
@@ -53,7 +55,7 @@ const PANEL_ID = 'promo-item-panel';
 const PANEL_TITLE_ID = 'promo-item-panel-title';
 const ANCHOR_TTL_MS = 1000;
 
-const GRID_FULL = 'grid grid-cols-2 gap-3 sm:grid-cols-3 md:gap-4 xl:grid-cols-4';
+const GRID_FULL = 'grid grid-cols-2 gap-3 sm:grid-cols-3 md:gap-4 xl:grid-cols-3';
 const GRID_WITH_PANEL = 'grid grid-cols-2 gap-3 md:gap-4';
 
 // A lista é recarregada a cada 15s; se nada mudou, mantém a MESMA referência
@@ -381,18 +383,22 @@ export function PromotionExplorePage() {
       const headingId = `promo-${scope}-cat-${category.id}`;
       // Mesmo ícone da seção da categoria no cardápio (MenuPage).
       const CategoryGlyph = getCategoryIcon(category.key, category.name);
+      // Categoria com UM item vira cartão largo horizontal; com vários, grade.
+      const isSingle = groupProducts.length === 1;
       return (
         <section key={category.id} className="mb-8 last:mb-0" aria-labelledby={headingId}>
-          <h3 id={headingId} className={`mb-3 flex items-center gap-2 font-display text-lg font-bold ${MENU_TEXT}`}>
-            {CategoryGlyph && <CategoryGlyph size={18} />}
-            {categoryLabel(category, t)}
-          </h3>
-          <div className={gridClass}>
+          <PromotionCategoryHeading
+            id={headingId}
+            icon={CategoryGlyph ? <CategoryGlyph size={18} /> : null}
+            title={categoryLabel(category, t)}
+          />
+          <div className={isSingle ? 'grid grid-cols-1' : gridClass}>
             {groupProducts.map((product) => (
               <PromotionExploreProductCard
                 key={product.id}
                 product={product}
                 preview={previews.get(product.id) as ItemPromotionPreview}
+                layout={isSingle ? 'wide' : 'compact'}
                 primaryColor={tenant.primaryColor}
                 storeClosed={isStoreClosed}
                 isSelected={product.id === selectedId}
@@ -432,7 +438,8 @@ export function PromotionExplorePage() {
       style={{ '--brand': tenant.primaryColor, '--accent': accent } as CSSProperties}
     >
       <FoodBackdrop />
-      <div className="mx-auto w-full max-w-[88rem]">
+      <MenuBotanical className="pointer-events-none fixed bottom-0 left-0 z-0 hidden w-[22rem] -scale-x-100 text-[#111827]/[0.07] dark:text-[#EDE6D6]/[0.09] xl:block" />
+      <div className="relative z-10 mx-auto w-full max-w-[88rem]">
         {/* Mesmo botão das subpáginas do cardápio (ProfileSubpageShell). */}
         <div className="flex items-center px-4 pb-3 pt-4 md:px-8 lg:pb-0 lg:pt-8">
           <Tooltip label={t('tooltip.back')}>
@@ -471,7 +478,7 @@ export function PromotionExplorePage() {
               )}
 
               <section aria-labelledby="promo-eligible-title">
-                <h2 id="promo-eligible-title" className={`mb-4 flex items-center gap-2 font-display text-xl font-extrabold ${MENU_TEXT}`}>
+                <h2 id="promo-eligible-title" className={`mb-5 flex items-center gap-2.5 text-[2rem] font-normal leading-tight ${PROMO_INK}`} style={{ fontFamily: PROMO_SERIF }}>
                   <PromocoesIcon size={20} />
                   {t('promotionMode.eligibleItemsTitle')}
                 </h2>
@@ -484,7 +491,7 @@ export function PromotionExplorePage() {
 
               {catalog.otherCount > 0 && (
                 <section aria-labelledby="promo-other-title" className={`mt-10 border-t pt-8 ${MENU_BORDER}`}>
-                  <h2 id="promo-other-title" className={`flex items-center gap-2 font-display text-xl font-extrabold ${MENU_TEXT_SOFT}`}>
+                  <h2 id="promo-other-title" className={`flex items-center gap-2 text-[1.6rem] font-normal leading-tight ${MENU_TEXT_SOFT}`} style={{ fontFamily: PROMO_SERIF }}>
                     <TodosIcon size={20} />
                     {t('promotionMode.otherItemsTitle')}
                   </h2>
@@ -499,7 +506,7 @@ export function PromotionExplorePage() {
                 key={selectedProduct?.id}
                 id={PANEL_ID}
                 aria-label={t('promotionMode.panelLabel')}
-                className={`promo-panel-in sticky top-24 flex max-h-[calc(100dvh-14rem)] flex-col overflow-hidden rounded-2xl border bg-[#FFFFFF]/55 backdrop-blur-xl dark:bg-[#131314]/55 ${MENU_BORDER}`}
+                className={`promo-panel-in sticky top-24 flex max-h-[calc(100dvh-14rem)] flex-col overflow-hidden rounded-3xl border bg-[#FFFFFF]/55 backdrop-blur-xl dark:bg-[#131314]/55 ${MENU_BORDER}`}
               >
                 {panel}
               </aside>
