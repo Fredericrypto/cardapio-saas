@@ -36,11 +36,9 @@ export function RequireCustomerAuth({ children }: { children: ReactNode }) {
   }
 
   if (!tenant || isLoadingTenant || isLoadingAuth) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="w-8 h-8 border-2 border-gray-200 border-t-gray-500 rounded-full animate-spin" />
-      </div>
-    );
+    // Mesmo fundo do primeiro quadro da splash (#131314, z-50): quando o MenuPage monta a
+    // splash logo em seguida a troca e invisivel (sem spinner claro piscando antes).
+    return <div role="status" aria-label={t('common.loading')} className="fixed inset-0 z-50 bg-[#131314]" />;
   }
 
   // CRÍTICO — bug real que isso corrige: antes, `!customer` sozinho já
