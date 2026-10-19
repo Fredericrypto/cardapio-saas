@@ -242,8 +242,8 @@ export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelPro
 
   return (
     <div className="relative mt-3 md:mt-4 pt-4 flex flex-col gap-4">
-      {/* Desktop: o vidro nasce NO filete (topo do painel) e se estende às laterais e à base da faixa. */}
-      <GlassFade className="hidden md:block md:top-0 md:-inset-x-8 md:-bottom-4" fadeRem={1.25} />
+      {/* Desktop: o vidro nasce na MESMA altura do original (1rem acima do filete) e chega ao desfoque total exatamente no filete; o filete (abaixo) não é desfocado. */}
+      <GlassFade className="hidden md:block md:-top-4 md:-inset-x-8 md:-bottom-4" fadeRem={1} />
       <FadeRule className="absolute inset-x-0 top-0" />
       <div>
         <button
