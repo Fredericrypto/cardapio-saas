@@ -7,6 +7,7 @@ import { CLOSED_MUTED_CLASS } from '../lib/storeStatus';
 import { ShareButton } from './ShareButton';
 import { useWheelHorizontalScroll } from '../hooks/useWheelHorizontalScroll';
 import { Tooltip } from './Tooltip';
+import { PROMO_SERIF } from '../lib/promotionTheme';
 
 interface PromoCardsProps {
   promotions: Promotion[];
@@ -73,7 +74,7 @@ export function PromoCards({ promotions, primaryColor, onSelect, muted = false, 
   // Desktop (md+): carrossel vira grade (sem rolagem lateral, que não é
   // natural com mouse) com 2/3/4 colunas.
   return (
-    <div ref={scrollRef} className="flex gap-3 px-4 pt-1 pb-4 -mb-3 overflow-x-auto no-scrollbar snap-x snap-mandatory md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 md:items-start md:gap-4 md:px-0 md:overflow-visible md:snap-none">
+    <div ref={scrollRef} className="flex gap-3 px-4 pt-1 pb-4 -mb-3 overflow-x-auto no-scrollbar snap-x snap-mandatory md:grid md:grid-cols-2 lg:grid-cols-3 md:items-start md:gap-4 md:px-0 md:overflow-visible md:snap-none">
       {promotions.map((promo) => (
         <PromoCard key={promo.id} promo={promo} primaryColor={primaryColor} onSelect={onSelect} muted={muted} shareUrl={buildShareUrl?.(promo.id)} />
       ))}
@@ -105,7 +106,7 @@ function PromoCard({
     // dele e só acende ao passar o mouse (ver .promo-ambient no index.css).
     // Cards em cinza (loja fechada / promoção já usada) não têm luz.
     <div
-      className={`promo-item relative shrink-0 w-[270px] md:w-auto h-36 md:h-40 snap-start ${muted || promo.alreadyUsedUp ? 'promo-item-quiet' : ''}`}
+      className={`promo-item relative shrink-0 w-[290px] md:w-auto h-40 md:h-44 snap-start ${muted || promo.alreadyUsedUp ? 'promo-item-quiet' : ''}`}
     >
       {promo.imageUrl ? (
         <img src={promo.imageUrl} alt="" aria-hidden="true" decoding="async" draggable={false} className="promo-ambient" />
@@ -114,14 +115,14 @@ function PromoCard({
       )}
     <button
       onClick={() => onSelect(promo.id)}
-      className={`atm-card w-full h-full rounded-2xl transition-[transform,box-shadow] overflow-hidden relative text-left active:scale-[0.98] ${muted ? CLOSED_MUTED_CLASS : ''}`}
+      className={`group atm-card w-full h-full rounded-2xl border border-black/5 dark:border-white/10 transition-[transform,box-shadow] overflow-hidden relative text-left active:scale-[0.98] ${muted ? CLOSED_MUTED_CLASS : ''}`}
     >
       <div className="relative h-full w-full">
         {promo.imageUrl ? (
           <img
             src={promo.imageUrl}
             alt={localizedField(promo, 'title')}
-            className={`w-full h-full object-cover ${promo.alreadyUsedUp ? 'grayscale' : ''}`}
+            className={`w-full h-full object-cover transition-transform duration-500 motion-reduce:transition-none md:group-hover:scale-[1.03] ${promo.alreadyUsedUp ? 'grayscale' : ''}`}
           />
         ) : (
           <div
@@ -135,7 +136,10 @@ function PromoCard({
         )}
 
         {/* Gradiente pra legibilidade do texto sobre a foto */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/15 to-transparent" />
+        <div
+          className="absolute inset-0"
+          style={{ background: 'linear-gradient(90deg, rgba(0,0,0,.72), rgba(0,0,0,.28) 58%, transparent), linear-gradient(0deg, rgba(0,0,0,.5), transparent 55%)' }}
+        />
 
         {shareUrl && (
           <ShareButton
@@ -154,16 +158,16 @@ function PromoCard({
           </span>
         )}
 
-        <div className="absolute bottom-0 left-0 right-0 p-3.5">
+        <div className="absolute inset-y-0 left-0 flex max-w-[78%] items-center p-4 md:p-5">
           <div className="min-w-0">
-            <p className="font-display font-extrabold text-white text-lg leading-tight drop-shadow-sm">
+            <p className="text-[1.6rem] font-light italic leading-[1.05] text-white drop-shadow-sm md:text-[1.9rem]" style={{ fontFamily: PROMO_SERIF }}>
               {localizedField(promo, 'title')}
             </p>
             {promo.description && (
               // Descrição de uma linha: o balão com o texto completo só abre
               // quando ela está de fato cortada (reticências).
               <Tooltip label={localizedField(promo, 'description')} onlyIfTruncated className="block min-w-0">
-                <p data-truncate className="text-white/90 text-[11px] mt-0.5 truncate leading-snug">
+                <p data-truncate className="mt-1.5 truncate text-[13px] leading-snug text-white/85">
                   {localizedField(promo, 'description')}
                 </p>
               </Tooltip>

@@ -22,11 +22,12 @@ import { MenuHeader } from '../components/MenuHeader';
 import { TableMenuHeader } from '../components/TableMenuHeader';
 import { PromoCards } from '../components/PromoCards';
 import { FoodBackdrop } from '../components/FoodBackdrop';
+import { MenuBotanical } from '../components/MenuBotanical';
 import { StickyCategoryBar } from '../components/StickyCategoryBar';
 import { SearchBar } from '../components/SearchBar';
 import { CategoryChips } from '../components/CategoryChips';
 import { getCategoryIcon, PromocoesIcon } from '../components/CategoryIcon';
-import { ProductCard } from '../components/ProductCard';
+import { ProductCard, PRODUCT_GRID_CLASS as CARD_GRID_CLASS } from '../components/ProductCard';
 import { CartBar } from '../components/CartBar';
 import { BottomNav, DesktopNav } from '../components/BottomNav';
 import { buildShareUrl } from '../lib/shareLinks';
@@ -39,10 +40,8 @@ import {
   MENU_TEXT_MUTED,
 } from '../lib/menuTheme';
 
-// Grade de produtos adaptativa: 2 colunas no celular (desenho atual do
-// ProductCard), 3 no tablet (sm), 4 no desktop (lg) e 5 em monitores largos (xl).
-const PRODUCT_GRID_CLASS =
-  'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4 px-4 md:px-0';
+// Grade de produtos (definida no ProductCard): recuo lateral só no celular.
+const PRODUCT_GRID_CLASS = `${CARD_GRID_CLASS} px-4 md:px-0`;
 
 // Cardápio único pro cliente — atende tanto quem escaneou o QR de uma
 // mesa (`/:slug/mesa/:qrCodeToken`) quanto quem chegou por um link geral
@@ -376,7 +375,9 @@ export function MenuPage() {
             item/promoção para ler). Só o VISUAL dos cards fica atenuado e os
             botões de adicionar/pedir ficam travados (ver ProductCard e telas de
             detalhe). */}
-        <div>
+        <div className="relative">
+          {/* Ramo botânico decorativo ao lado da grade (só em telas largas; não intercepta toque e fica atrás dos cards). */}
+          <MenuBotanical className="pointer-events-none absolute right-0 top-[44rem] z-0 hidden w-44 text-[#111827]/20 xl:-right-10 xl:block 2xl:w-52 dark:text-[#C2C0B6]/25" />
           <div className="pt-1 pb-5">
             {/* Mesmo cabeçalho das categorias da aba "Todos": ícone à
                 esquerda + nome + seta de recolher (decisão do Felipe, 30/09). */}

@@ -7,7 +7,7 @@ import { CartBar } from '../components/CartBar';
 import { getCategoryIcon } from '../components/CategoryIcon';
 import { FoodBackdrop } from '../components/FoodBackdrop';
 import { GlassBackButton } from '../components/GlassBackButton';
-import { ProductCard } from '../components/ProductCard';
+import { PRODUCT_GRID_CLASS, ProductCard } from '../components/ProductCard';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { useTenant } from '../contexts/TenantContext';
 import { useAccentColor } from '../hooks/useAccentColor';
@@ -21,8 +21,6 @@ import { PROMO_INK, PROMO_LINK_BTN, PROMO_PRIMARY_BTN, PROMO_SERIF } from '../li
 import type { Category, Product, Promotion } from '../types';
 
 const PRODUCT_REFRESH_MS = 15000;
-// Mesma grade do cardápio (2 colunas no celular até 5 em monitores largos).
-const PRODUCT_GRID_CLASS = 'grid grid-cols-2 gap-3 sm:grid-cols-3 md:gap-4 lg:grid-cols-4 xl:grid-cols-5';
 
 function sameProducts(a: Product[], b: Product[]): boolean {
   return a.length === b.length && JSON.stringify(a) === JSON.stringify(b);

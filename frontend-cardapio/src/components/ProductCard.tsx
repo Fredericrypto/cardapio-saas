@@ -1,7 +1,7 @@
 import { localizedField } from '../i18n/contentText';
 import { useI18n } from '../i18n/I18nContext';
 import { useEffect, useRef, useState } from 'react';
-import type { PointerEvent as ReactPointerEvent } from 'react';
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react';
 import { Ban, Plus, Sparkles, Star } from 'lucide-react';
 import type { ItemPromotionPreview } from '../lib/promotionEligibility';
 import { formatBRL } from '../lib/promotionPresentation';
@@ -13,6 +13,8 @@ import { ShareButton } from './ShareButton';
 import { Tooltip } from './Tooltip';
 import { AnimatedGradientButton } from './AnimatedGradientButton';
 import { useAccentColor } from '../hooks/useAccentColor';
+import { useMediaQuery } from '../hooks/useMediaQuery';
+import { PROMO_SERIF } from '../lib/promotionTheme';
 import {
   MENU_BORDER,
   MENU_SURFACE_SUBTLE,
@@ -32,6 +34,11 @@ import type { ItemRating } from '../lib/itemRatings';
 const HOVER_INTENT_MS = 140;
 // Com o mouse no card, a foto troca a cada 3 s (na tela do item continua 5 s).
 const HOVER_AUTOPLAY_MS = 3000;
+
+// Grade dos cards: 2 colunas no celular, 3 em telas pequenas (cartão vertical) e, a
+// partir de md, cartões HORIZONTAIS (foto à esquerda): 2, 3 e 4 colunas.
+export const PRODUCT_GRID_CLASS =
+  'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4';
 
 interface ProductCardProps {
   product: Product;
@@ -66,6 +73,8 @@ export function ProductCard({ product, primaryColor, onClick, storeClosed = fals
   const hasRequiredOptions = (product.options ?? []).some((g) => g.minSelect > 0);
   // Galeria do item (até 5). Com 2+ fotos vira carrossel; com 1 é a imagem de sempre.
   const images = getProductImages(product);
+  // md+: cartão horizontal editorial (foto à esquerda, nome serifado, "+" sálvia). Abaixo disso, o vertical de sempre.
+  const horizontal = useMediaQuery('(min-width: 768px)');
 
   // ---- Destaque ao parar o mouse no card (só mouse; toque não tem "hover") ----
   // O card cresce um pouco, mostra mais da descrição, passa as fotos sozinho e
@@ -114,7 +123,7 @@ export function ProductCard({ product, primaryColor, onClick, storeClosed = fals
   // NÃO tem avaliações e foi adicionado há menos de uma semana.
   const detail: 'rating' | 'new' | null =
     rating && rating.count > 0 ? 'rating' : rating && isNewProduct(product.createdAt) ? 'new' : null;
-  const showChip = hovered && detail !== null;
+  const showChip = hovered && !horizontal && detail !== null;
   useEffect(() => {
     if (!showChip) {
       setChipOn(false);
@@ -123,6 +132,58 @@ export function ProductCard({ product, primaryColor, onClick, storeClosed = fals
     const frame = requestAnimationFrame(() => setChipOn(true));
     return () => cancelAnimationFrame(frame);
   }, [showChip]);
+
+  // Posição do botão redondo: vertical = sobre o canto da foto; horizontal = canto do cartão.
+  const ctlPos = horizontal ? 'absolute bottom-3 right-3' : 'absolute -bottom-3 right-2.5 md:-bottom-4 md:right-3';
+  const addPos = horizontal ? 'absolute bottom-3 right-3' : 'absolute -bottom-[14px] right-2 md:-bottom-[18px] md:right-[10px]';
+  const expanded = hovered && !horizontal; // o destaque flutuante só existe no cartão vertical
+  const actionControl = (
+    <>
+        {storeClosed && !isUnavailable ? (
+          <Tooltip label={t('store.closedEstablishment')} className="contents">
+            <span
+              aria-label={`${localizedField(product, 'name')}: ${t('store.closedEstablishment')}`}
+              className={`${ctlPos} w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center text-white shadow-md border-2 border-white dark:border-[#1E1E20] bg-gray-400 cursor-not-allowed`}
+            >
+              <Ban size={15} strokeWidth={1.5} />
+            </span>
+          </Tooltip>
+        ) : isUnavailable ? (
+          <Tooltip label={t('productCard.indisponivel')} className="contents">
+            <span
+              aria-label={t('product.unavailable', { name: localizedField(product, 'name') })}
+              className={`${ctlPos} w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center text-white shadow-md border-2 border-white dark:border-[#1E1E20] bg-gray-400 cursor-not-allowed`}
+            >
+              <Ban size={15} strokeWidth={1.5} />
+            </span>
+          </Tooltip>
+        ) : (
+          <Tooltip label={t('product.add', { name: localizedField(product, 'name') })} className="contents">
+            <AnimatedGradientButton
+              as="span"
+              aria-label={t('product.add', { name: localizedField(product, 'name') })}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (hasRequiredOptions) {
+                  onClick(); // tem escolha obrigatória — precisa passar pela tela de detalhe
+                } else {
+                  addItem(product);
+                }
+              }}
+              // Grade com muitos cards: a borda só aparece/gira com mouse ou foco.
+              // Moldura 4px maior (borda branca 2px + folga 2px) com o encosto recuado 2px:
+              // mesmo centro e mesmo tamanho do "+" de antes.
+              animation="hover"
+              className={`${addPos} w-9 h-9 md:w-10 md:h-10 rounded-full ${horizontal ? 'border border-white/15 shadow-sm' : 'border-2 border-white shadow-md dark:border-[#1E1E20]'}`}
+              fillClassName={horizontal ? 'bg-[#4F7A56] text-white dark:bg-[#4C6F52] dark:text-[#E6F0E3]' : 'bg-[var(--brand)] text-white'}
+              contentClassName="flex h-full w-full items-center justify-center"
+            >
+              <Plus size={16} strokeWidth={2.75} />
+            </AnimatedGradientButton>
+          </Tooltip>
+        )}
+    </>
+  );
 
   return (
     <div
@@ -134,13 +195,14 @@ export function ProductCard({ product, primaryColor, onClick, storeClosed = fals
     >
     <button
       onClick={onClick}
-      className={`flex flex-col w-full text-left rounded-2xl overflow-hidden border shadow-[0_2px_10px_rgba(0,0,0,0.04)] active:scale-[0.985] transition-[transform,scale,box-shadow] duration-200 ease-out motion-reduce:transition-none ${
-        hovered
+      style={horizontal ? ({ '--glow': accent } as CSSProperties) : undefined}
+      className={`flex ${horizontal ? 'flex-row loc-card bg-transparent backdrop-blur-md' : 'flex-col'} w-full text-left rounded-2xl overflow-hidden border shadow-[0_2px_10px_rgba(0,0,0,0.04)] active:scale-[0.985] transition-[transform,scale,box-shadow] duration-200 ease-out motion-reduce:transition-none ${
+        expanded
           ? 'absolute inset-x-0 top-0 min-h-full scale-[1.04] motion-reduce:scale-100 shadow-[0_16px_36px_rgba(0,0,0,0.2)]'
           : 'h-full md:hover:shadow-[0_8px_22px_rgba(0,0,0,0.09)]'
       } ${MENU_BORDER} ${isUnavailable ? 'opacity-90' : ''}`}
     >
-      <div className={`relative z-10 w-full aspect-square md:aspect-[4/3] ${MENU_SURFACE_SUBTLE}`}>
+      <div className={`relative z-10 ${horizontal ? 'w-[44%] shrink-0 self-stretch min-h-[10.5rem]' : 'w-full aspect-square md:aspect-[4/3]'} ${MENU_SURFACE_SUBTLE}`}>
         {images.length > 0 ? (
           <ProductImageCarousel
             images={images}
@@ -186,62 +248,17 @@ export function ProductCard({ product, primaryColor, onClick, storeClosed = fals
           )
         )}
 
-        {/* Os três estados do botão redondo (loja fechada, item indisponível,
-            adicionar) usam o `Tooltip` com invólucro `contents`: o botão segue
-            posicionado (absolute) em relação à foto, como antes. Sem `title`
-            nativo (seria um segundo balão). */}
-        {storeClosed && !isUnavailable ? (
-          <Tooltip label={t('store.closedEstablishment')} className="contents">
-            <span
-              aria-label={`${localizedField(product, 'name')}: ${t('store.closedEstablishment')}`}
-              className="absolute -bottom-3 right-2.5 md:-bottom-4 md:right-3 w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center text-white shadow-md border-2 border-white dark:border-[#1E1E20] bg-gray-400 cursor-not-allowed"
-            >
-              <Ban size={15} strokeWidth={1.5} />
-            </span>
-          </Tooltip>
-        ) : isUnavailable ? (
-          <Tooltip label={t('productCard.indisponivel')} className="contents">
-            <span
-              aria-label={t('product.unavailable', { name: localizedField(product, 'name') })}
-              className="absolute -bottom-3 right-2.5 md:-bottom-4 md:right-3 w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center text-white shadow-md border-2 border-white dark:border-[#1E1E20] bg-gray-400 cursor-not-allowed"
-            >
-              <Ban size={15} strokeWidth={1.5} />
-            </span>
-          </Tooltip>
-        ) : (
-          <Tooltip label={t('product.add', { name: localizedField(product, 'name') })} className="contents">
-            <AnimatedGradientButton
-              as="span"
-              aria-label={t('product.add', { name: localizedField(product, 'name') })}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (hasRequiredOptions) {
-                  onClick(); // tem escolha obrigatória — precisa passar pela tela de detalhe
-                } else {
-                  addItem(product);
-                }
-              }}
-              // Grade com muitos cards: a borda só aparece/gira com mouse ou foco.
-              // Moldura 4px maior (borda branca 2px + folga 2px) com o encosto recuado 2px:
-              // mesmo centro e mesmo tamanho do "+" de antes.
-              animation="hover"
-              className="absolute -bottom-[14px] right-2 md:-bottom-[18px] md:right-[10px] w-9 h-9 md:w-10 md:h-10 rounded-full shadow-md border-2 border-white dark:border-[#1E1E20]"
-              fillClassName="bg-[var(--brand)] text-white"
-              contentClassName="flex h-full w-full items-center justify-center"
-            >
-              <Plus size={16} strokeWidth={2.75} />
-            </AnimatedGradientButton>
-          </Tooltip>
-        )}
+        {!horizontal && actionControl}
       </div>
 
-      <div className="flex flex-col flex-1 px-2.5 pt-2.5 pb-3 md:px-3.5 md:pt-4 md:pb-4 bg-transparent md:backdrop-blur-md">
+      <div className={`relative flex min-w-0 flex-1 flex-col ${horizontal ? 'py-4 pl-4 pr-3' : 'px-2.5 pt-2.5 pb-3 md:px-3.5 md:pt-4 md:pb-4'} bg-transparent md:backdrop-blur-md`}>
         {/* Nome e descrição de uma linha só: o balão com o texto completo abre
             apenas quando o texto está cortado (reticências). */}
         <Tooltip label={localizedField(product, 'name')} onlyIfTruncated className="block min-w-0">
           <p
             data-truncate
-            className={`font-display font-bold text-[13px] md:text-sm leading-tight truncate ${isUnavailable ? MENU_TEXT_MUTED : MENU_TEXT}`}
+            className={`${horizontal ? 'text-[1.05rem] font-medium' : 'font-display font-bold text-[13px] md:text-sm'} leading-tight truncate ${isUnavailable ? MENU_TEXT_MUTED : MENU_TEXT}`}
+            style={horizontal ? { fontFamily: PROMO_SERIF } : undefined}
           >
             {localizedField(product, 'name')}
           </p>
@@ -251,14 +268,14 @@ export function ProductCard({ product, primaryColor, onClick, storeClosed = fals
             <p
               data-truncate
               className={`text-[11px] md:text-xs mt-0.5 leading-snug transition-[max-height] duration-200 ease-out ${
-                hovered ? 'whitespace-normal line-clamp-3 max-h-[4.125em]' : 'truncate max-h-[1.375em]'
+                hovered || horizontal ? 'whitespace-normal line-clamp-3 max-h-[4.125em]' : 'truncate max-h-[1.375em]'
               } ${MENU_TEXT_MUTED}`}
             >
               {localizedField(product, 'description')}
             </p>
           </Tooltip>
         )}
-        <div className="flex items-baseline gap-1.5 mt-auto pt-1.5">
+        <div className={`flex items-baseline gap-1.5 mt-auto pt-1.5 ${horizontal ? 'flex-wrap pr-11' : ''}`}>
           {strikePrice != null && (
             <span className={`text-[11px] line-through ${MENU_TEXT_FAINT}`}>
               R$ {Number(strikePrice).toFixed(2).replace('.', ',')}
@@ -291,6 +308,7 @@ export function ProductCard({ product, primaryColor, onClick, storeClosed = fals
             </span>
           )}
         </div>
+        {horizontal && actionControl}
       </div>
     </button>
     </div>

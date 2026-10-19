@@ -4,9 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import type { Category } from '../types';
 import { getCategoryIcon } from './CategoryIcon';
-import { useAccentColor } from '../hooks/useAccentColor';
 import { useWheelHorizontalScroll } from '../hooks/useWheelHorizontalScroll';
-import { MENU_TEXT_MUTED } from '../lib/menuTheme';
+import { MENU_BORDER, MENU_TEXT_MUTED } from '../lib/menuTheme';
 import { Tooltip } from './Tooltip';
 
 interface CategoryChipsProps {
@@ -25,7 +24,6 @@ export function CategoryChips({
   categories,
   activeCategoryId,
   onSelect,
-  primaryColor,
 }: CategoryChipsProps) {
   const { t } = useI18n();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -76,7 +74,7 @@ export function CategoryChips({
   };
 
   return (
-    <div className="relative">
+    <div className={`relative md:rounded-2xl md:border md:px-2 md:backdrop-blur-md ${MENU_BORDER}`}>
     <div ref={scrollRef} className="overflow-x-auto no-scrollbar">
       {/* `w-max min-w-full justify-center` centraliza quando cabe na tela e, quando não
           cabe, continua rolando normal pra esquerda (justify-center
@@ -86,7 +84,6 @@ export function CategoryChips({
         label={t('categoryChips.todos')}
         isActive={activeCategoryId === null}
         onClick={() => onSelect(null)}
-        primaryColor={primaryColor}
       />
       {categories.map((category) => (
         <Tab
@@ -95,7 +92,6 @@ export function CategoryChips({
           categoryKey={category.key}
           isActive={activeCategoryId === category.id}
           onClick={() => onSelect(category.id)}
-          primaryColor={primaryColor}
         />
       ))}
       </div>
@@ -133,19 +129,13 @@ function Tab({
   categoryKey,
   isActive,
   onClick,
-  primaryColor,
 }: {
   label: string;
   categoryKey?: string | null;
   isActive: boolean;
   onClick: () => void;
-  primaryColor: string;
 }) {
   const Icon = getCategoryIcon(categoryKey ?? (label === 'Todos' ? 'todos' : null), label);
-  // Friso da aba ativa: a cor principal do restaurante pode ser escura demais
-  // sobre o fundo escuro (o padrão é #3d3846) — o hook devolve uma variante
-  // legível, a mesma usada no preço promocional do ProductCard.
-  const accent = useAccentColor(primaryColor);
   const colorClass = isActive
     ? 'text-[#111827] dark:text-white'
     : 'text-[#9CA3AF] dark:text-[#8E918F]';
@@ -157,10 +147,7 @@ function Tab({
       <button
         onClick={onClick}
         data-active={isActive ? 'true' : 'false'}
-        className={`group relative shrink-0 flex flex-col md:flex-row items-center gap-2 px-4 pt-2 pb-2 md:py-3 min-w-[76px] md:min-w-0 transition-colors rounded-t-xl ${colorClass}`}
-        style={{
-          borderBottom: isActive ? `2.5px solid ${accent}` : '2.5px solid transparent',
-        }}
+        className={`group relative shrink-0 flex flex-col md:flex-row items-center gap-2 px-4 pt-2 pb-2 md:py-3 min-w-[76px] md:min-w-0 transition-colors rounded-t-xl border-b-[2.5px] ${isActive ? 'border-[#4F7A56] dark:border-[#9DC59A]' : 'border-transparent'} ${colorClass}`}
       >
         <span
           aria-hidden="true"
