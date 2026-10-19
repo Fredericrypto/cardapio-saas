@@ -115,6 +115,14 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     // tenant ainda não é conhecido — fica genuinamente "carregando" até
     // então.
     if (isTenantLoading) return;
+    // Reload: o tenant acabou de chegar e o estado `token` ainda nao leu o localStorage
+    // (o resync roda no mesmo commit, mas este efeito ve o token antigo = null). Se existe
+    // token salvo, NAO declarar "deslogado": manter carregando ate o token ser lido, senao
+    // o RequireCustomerAuth manda pro login por ~1s antes de confirmar a sessao.
+    if (tenantId && !token && localStorage.getItem(storageKeyFor(tenantId))) {
+      setIsLoading(true);
+      return;
+    }
     if (!tenantId || !token) {
       setCustomer(null);
       setIsLoading(false);
