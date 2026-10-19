@@ -109,7 +109,7 @@ export function MenuHeader({ tenant, location, onBack, locations, onSelectLocati
       <div
         className={`relative z-10 mt-0 rounded-3xl border ${MENU_BORDER} bg-transparent px-4 pb-3 pt-2 md:border-0 md:px-8 md:pb-0 md:pt-10 md:pointer-events-none ${wide ? 'dark' : ''}`}
       >
-        <GlassFade className="rounded-3xl md:hidden" fadeRem={2} />
+        <GlassFade className="inset-0 rounded-3xl md:hidden" fadeRem={2} />
         <div className="md:flex md:items-end md:justify-between md:gap-8">
           <div className="flex flex-col items-center text-center md:min-w-0 md:flex-1 md:flex-row md:items-start md:gap-6 md:text-left">
             {/* Logo: no desktop, tile 80x80 no topo do bloco de texto, sem margem herdada do
@@ -185,8 +185,7 @@ export function MenuHeader({ tenant, location, onBack, locations, onSelectLocati
         </div>
 
         {/* Desktop: a faixa "Informações" fecha o hero em vidro escuro, de borda a borda. */}
-        <div className="relative md:pointer-events-auto md:-mx-8 md:px-8 md:pb-4">
-          <GlassFade className="hidden md:block" topRem={1} fadeRem={2} />
+        <div className="md:pointer-events-auto md:-mx-8 md:px-8 md:pb-4">
           <RestaurantInfoPanel tenant={tenant} location={location} />
         </div>
       </div>

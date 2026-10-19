@@ -6,6 +6,16 @@ function storageKey(tenantId: string): string {
   return `cardapio_selected_location_${tenantId}`;
 }
 
+// Id da unidade gravado no aparelho (a MESMA fonte lida por carrinho, detalhe de item/promoção
+// e pedido ao montarem). Serve para conferir que a troca de unidade foi de fato persistida.
+export function readSelectedLocationId(tenantId: string): string | null {
+  try {
+    return localStorage.getItem(storageKey(tenantId));
+  } catch {
+    return null;
+  }
+}
+
 // Standalone, fora do hook — usado por telas que precisam corrigir
 // qual loja está selecionada ANTES de navegar pro cardápio genérico
 // (ex: TableSessionGate, quando não consegue abrir uma mesa e manda o

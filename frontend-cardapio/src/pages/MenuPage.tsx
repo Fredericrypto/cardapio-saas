@@ -14,7 +14,7 @@ import {
 } from '../lib/menu-api';
 import type { Location, Category, Product, Promotion } from '../types';
 import { useTableSessionContext } from '../contexts/TableSessionContext';
-import { useSelectedLocation } from '../hooks/useSelectedLocation';
+import { useSelectedLocation, readSelectedLocationId } from '../hooks/useSelectedLocation';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { useTenant } from '../contexts/TenantContext';
 import { SplashScreen } from '../components/SplashScreen';
@@ -244,6 +244,23 @@ export function MenuPage() {
     return () => clearInterval(interval);
   }, [isTableFlow, isWaiterCallPending, tenant, session]);
 
+  // Troca de unidade pelo dropdown do header: grava a unidade (mesma chave que carrinho, item,
+  // promoção e pedido leem ao montar), CONFERE a gravação, limpa o que era da unidade anterior
+  // (promoções restritas, categoria, busca) e roda a splash antes de entrar na nova unidade.
+  function handleSelectLocation(next: Location) {
+    if (!tenant || next.id === activeLocation?.id) return;
+    selectLocation(next);
+    if (readSelectedLocationId(tenant.id) !== next.id) {
+      console.error('Troca de unidade: a escolha não foi gravada no aparelho', next.id);
+    }
+    setPromotions([]);
+    setActiveCategoryId(null);
+    setSearchTerm('');
+    setCollapsedCategoryIds(new Set());
+    window.scrollTo(0, 0);
+    setShowSplash(true);
+  }
+
   const productHref = (productId: string) =>
     isTableFlow ? `/${slug}/mesa/${qrCodeToken}/produto/${productId}` : `/${slug}/produto/${productId}`;
   const promotionHref = (promotionId: string) =>
@@ -341,7 +358,7 @@ export function MenuPage() {
             tenant={tenant}
             location={activeLocation}
             locations={locations}
-            onSelectLocation={selectLocation}
+            onSelectLocation={handleSelectLocation}
           />
         )}
         </div>

@@ -22,25 +22,17 @@ export function FadeRule({
   );
 }
 
-// Camada de desfoque (backdrop-blur) que começa transparente no topo e chega ao desfoque
-// total em `fadeRem` — sem a linha reta onde o vidro começava. Fica ATRÁS do conteúdo do pai
-// (-z-10): o pai precisa criar contexto de empilhamento (ex.: `relative z-10`).
-export function GlassFade({
-  className = '',
-  fadeRem = 2,
-  topRem = 0,
-}: {
-  className?: string;
-  fadeRem?: number;
-  /** Onde o vidro COMEÇA, medido do topo do pai (ex.: a altura do filete). */
-  topRem?: number;
-}) {
+// Camada de desfoque (backdrop-blur) que começa transparente na borda de cima e chega ao
+// desfoque total em `fadeRem` — sem a linha reta onde o vidro começava. Fica ATRÁS do conteúdo
+// do pai (-z-10): o pai precisa criar contexto de empilhamento (ex.: `relative z-10`).
+// Quem usa define a posição pelas classes (`inset-0`, `top-0 inset-x-0 -bottom-4`...).
+export function GlassFade({ className = '', fadeRem = 2 }: { className?: string; fadeRem?: number }) {
   const mask = `linear-gradient(to bottom, transparent, #000 ${fadeRem}rem)`;
   return (
     <span
       aria-hidden="true"
-      className={`pointer-events-none absolute inset-0 -z-10 backdrop-blur-md ${className}`}
-      style={{ top: `${topRem}rem`, WebkitMaskImage: mask, maskImage: mask }}
+      className={`pointer-events-none absolute -z-10 backdrop-blur-md ${className}`}
+      style={{ WebkitMaskImage: mask, maskImage: mask }}
     />
   );
 }

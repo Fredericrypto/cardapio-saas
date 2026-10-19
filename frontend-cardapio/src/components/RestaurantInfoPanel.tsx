@@ -16,7 +16,7 @@ import {
 } from './SocialOutlineIcons';
 import { ACTION_BUTTON_BASE } from '../lib/uiClasses';
 import { Tooltip } from './Tooltip';
-import { FadeRule } from './FadeRule';
+import { FadeRule, GlassFade } from './FadeRule';
 import { useAccentColor } from '../hooks/useAccentColor';
 import { routeUrl, formatDistance } from '../lib/locationRoute';
 import { useDistanceKm } from '../hooks/useDistanceKm';
@@ -242,6 +242,8 @@ export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelPro
 
   return (
     <div className="relative mt-3 md:mt-4 pt-4 flex flex-col gap-4">
+      {/* Desktop: o vidro nasce NO filete (topo do painel) e se estende às laterais e à base da faixa. */}
+      <GlassFade className="hidden md:block md:top-0 md:-inset-x-8 md:-bottom-4" fadeRem={1.25} />
       <FadeRule className="absolute inset-x-0 top-0" />
       <div>
         <button
