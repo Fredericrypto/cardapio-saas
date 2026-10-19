@@ -143,10 +143,7 @@ export function BottomNav({ slug, qrCodeToken, primaryColor = '#111827', topSlot
       <Tooltip label={nav.t('tooltip.profile')} className="flex flex-1">
         <Link to={nav.accountHref} className="flex-1 flex">
           <div className="flex flex-col items-center gap-1 py-2.5 flex-1 relative">
-            <div
-              className="relative w-9 h-9 rounded-2xl flex items-center justify-center transition-colors"
-              style={{ backgroundColor: nav.accountActive ? `${nav.accent}1a` : 'transparent' }}
-            >
+            <div className="relative w-9 h-9 flex items-center justify-center">
               <AccountAvatar customer={nav.customer} active={nav.accountActive} accent={nav.accent} />
             </div>
             <span
@@ -155,11 +152,23 @@ export function BottomNav({ slug, qrCodeToken, primaryColor = '#111827', topSlot
             >
               {nav.accountLabel}
             </span>
+            <ActiveIndicator active={nav.accountActive} color={nav.accent} className="absolute bottom-1 left-1/2 w-7 -translate-x-1/2" />
           </div>
         </Link>
       </Tooltip>
       </div>
     </div>
+  );
+}
+
+// Indicador do item ativo: traço fino sob o item (substitui o fundo em volta do ícone).
+function ActiveIndicator({ active, color, className }: { active: boolean; color: string; className: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`pointer-events-none h-0.5 rounded-full transition-all duration-200 motion-reduce:transition-none ${active ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-50'} ${className}`}
+      style={{ backgroundColor: color, boxShadow: `0 0 8px ${color}99` }}
+    />
   );
 }
 
@@ -181,10 +190,7 @@ function NavItem({ to, icon: Icon, label, tooltip, active, color, inactiveColor,
     <Tooltip label={tooltip} className="flex flex-1">
       <Link to={to} className="flex-1 flex">
         <div className="flex flex-col items-center gap-1 py-2.5 flex-1 relative">
-          <div
-            className="relative w-9 h-9 rounded-2xl flex items-center justify-center transition-colors"
-            style={{ backgroundColor: active ? `${color}1a` : 'transparent' }}
-          >
+          <div className="relative w-9 h-9 flex items-center justify-center">
             <Icon size={19} color={active ? color : inactiveColor} />
             {Boolean(badge) && (
               <span
@@ -198,6 +204,7 @@ function NavItem({ to, icon: Icon, label, tooltip, active, color, inactiveColor,
           <span className="text-[10px] font-semibold" style={{ color: active ? color : inactiveColor }}>
             {label}
           </span>
+          <ActiveIndicator active={active} color={color} className="absolute bottom-1 left-1/2 w-7 -translate-x-1/2" />
         </div>
       </Link>
     </Tooltip>
@@ -361,13 +368,13 @@ function DesktopNavItem({ to, label, tooltip, active, color, inactiveColor, icon
     <Tooltip label={tooltip}>
       <Link
         to={to}
-        className="flex items-center gap-2 px-3.5 py-2 rounded-2xl glass-hover"
-        style={{ backgroundColor: active ? `${color}1a` : undefined }}
+        className="relative flex items-center gap-2 px-3.5 py-2 rounded-2xl glass-hover"
       >
         {icon}
         <span className="text-xs font-semibold max-w-[8rem] truncate" style={{ color: active ? color : inactiveColor }}>
           {label}
         </span>
+        <ActiveIndicator active={active} color={color} className="absolute inset-x-3.5 -bottom-2" />
       </Link>
     </Tooltip>
   );

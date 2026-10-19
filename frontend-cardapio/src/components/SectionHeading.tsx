@@ -26,7 +26,7 @@ export function SectionHeading({
   action?: { to: string; label: string; aria: string };
 }) {
   return (
-    <div className="flex w-full items-center gap-3 px-4 pb-1.5 pt-4 md:px-0 md:pt-6">
+    <div className="relative z-[1] flex w-full items-center gap-3 px-4 pb-1.5 pt-4 md:px-0 md:pt-6">
       <h2 className="m-0 shrink-0">
         <button
           type="button"

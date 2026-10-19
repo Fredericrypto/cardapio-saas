@@ -48,7 +48,7 @@ const PRODUCT_GRID_CLASS = `${CARD_GRID_CLASS} px-4 md:px-0`;
 // (`/:slug`, ex: WhatsApp/Instagram/bio). No fluxo de mesa, a LOJA já é
 // resolvida sozinha pela mesa escaneada (ela pertence a uma loja física
 // específica); no fluxo geral, o cliente escolhe a loja antes (ver
-// LocationPickerPage — mesma lógica do McDonald's), e essa escolha fica
+// tela de unidades — mesma lógica do McDonald's), e essa escolha fica
 // guardada pra próxima visita.
 export function MenuPage() {
   const { t } = useI18n();
@@ -80,6 +80,7 @@ export function MenuPage() {
     location: selectedLocation,
     locations,
     isLoading: isLoadingLocations,
+    selectLocation,
   } = useSelectedLocation(!isTableFlow ? tenant?.id : undefined);
 
   // Fluxo de mesa: a loja é a da própria mesa escaneada, sem escolha
@@ -155,14 +156,14 @@ export function MenuPage() {
     loadMenu();
   }, [tenant]);
 
-  // Sem loja escolhida ainda (fluxo geral, mais de uma loja) — manda pra
-  // tela de escolha antes de mostrar qualquer cardápio.
+  // Mais de uma unidade e nenhuma escolhida ainda (fluxo geral): seleciona a primeira.
+  // A troca depois é feita pelo dropdown de unidades do header.
   useEffect(() => {
     if (isTableFlow || isLoadingLocations || !locations) return;
     if (locations.length > 1 && !selectedLocation) {
-      navigate(`/${slug}/escolher-loja`, { replace: true });
+      selectLocation(locations[0]);
     }
-  }, [isTableFlow, isLoadingLocations, locations, selectedLocation, slug, navigate]);
+  }, [isTableFlow, isLoadingLocations, locations, selectedLocation, selectLocation]);
 
   // Atualização "em tempo real": refaz a busca de produtos a cada 15s,
   // silenciosamente (sem mostrar o spinner de novo) — assim, se o admin
@@ -339,11 +340,8 @@ export function MenuPage() {
           <MenuHeader
             tenant={tenant}
             location={activeLocation}
-            onBack={
-              locations && locations.length > 1
-                ? () => navigate(`/${slug}/escolher-loja`)
-                : undefined
-            }
+            locations={locations}
+            onSelectLocation={selectLocation}
           />
         )}
         </div>

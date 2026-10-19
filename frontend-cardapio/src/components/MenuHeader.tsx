@@ -2,7 +2,7 @@ import { useI18n } from '../i18n/I18nContext';
 import { useStoreStatus } from '../hooks/useStoreStatus';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { BannerViewer, LogoViewer } from './LogoViewer';
-import { Bike, ChevronDown, ChevronLeft, MapPin } from 'lucide-react';
+import { Bike, ChevronLeft } from 'lucide-react';
 import { CLOSED_MUTED_CLASS } from '../lib/storeStatus';
 import type { Tenant, Location } from '../types';
 import { RestaurantInfoPanel } from './RestaurantInfoPanel';
@@ -10,9 +10,10 @@ import { QrScanButton } from './QrScanButton';
 import { ReviewBadge, OpenStatusRow } from './HeaderStatus';
 import { ThemeToggle } from './ThemeToggle';
 import { Tooltip } from './Tooltip';
+import { FadeRule, GlassFade } from './FadeRule';
+import { UnitSelector } from './UnitSelector';
 import {
   MENU_BORDER,
-  MENU_DIVIDER,
   MENU_HEADER_SHELL,
   MENU_TEXT,
   MENU_TEXT_MUTED,
@@ -23,8 +24,15 @@ import { PROMO_SERIF } from '../lib/promotionTheme';
 interface MenuHeaderProps {
   tenant: Tenant;
   location: Location | null;
+  // Voltar do header: OCULTO por ora (SHOW_BACK_BUTTON). Fica no codigo para a futura Home
+  // multi-restaurantes (estilo iFood), onde ele volta para a lista de restaurantes.
   onBack?: () => void;
+  // Unidades do restaurante; com mais de uma o header mostra o dropdown de troca.
+  locations?: Location[] | null;
+  onSelectLocation?: (location: Location) => void;
 }
+
+const SHOW_BACK_BUTTON = false;
 
 // Header do cardápio.
 //
@@ -40,7 +48,7 @@ interface MenuHeaderProps {
 //
 // Cliques: o sheet não captura ponteiro no desktop (a foto continua clicável pelo BannerViewer);
 // só os blocos de conteúdo (logo, textos, entrega, informações) recebem ponteiro.
-export function MenuHeader({ tenant, location, onBack }: MenuHeaderProps) {
+export function MenuHeader({ tenant, location, onBack, locations, onSelectLocation }: MenuHeaderProps) {
   const { t } = useI18n();
   const deliveryAvailable = location?.latitude != null && location?.longitude != null;
   const isOpenNow = useStoreStatus(location).isOpen;
@@ -79,7 +87,7 @@ export function MenuHeader({ tenant, location, onBack }: MenuHeaderProps) {
 
         {/* Voltar (só existe quando há mais de uma unidade): círculo no celular; no desktop fica
             oculto (a troca de unidade é feita pelo seletor da unidade). */}
-        {onBack && (
+        {SHOW_BACK_BUTTON && onBack && (
           <Tooltip label={t('tooltip.back')} className="contents">
             <button
               onClick={onBack}
@@ -99,8 +107,9 @@ export function MenuHeader({ tenant, location, onBack }: MenuHeaderProps) {
 
       {/* Sheet (celular) / camada de conteúdo do hero (desktop) */}
       <div
-        className={`relative z-10 mt-0 rounded-3xl border ${MENU_BORDER} bg-transparent px-4 pb-3 pt-2 backdrop-blur-md md:border-0 md:px-8 md:pb-0 md:pt-10 md:backdrop-blur-none md:pointer-events-none ${wide ? 'dark' : ''}`}
+        className={`relative z-10 mt-0 rounded-3xl border ${MENU_BORDER} bg-transparent px-4 pb-3 pt-2 md:border-0 md:px-8 md:pb-0 md:pt-10 md:pointer-events-none ${wide ? 'dark' : ''}`}
       >
+        <GlassFade className="rounded-3xl md:hidden" fadeRem={2} />
         <div className="md:flex md:items-end md:justify-between md:gap-8">
           <div className="flex flex-col items-center text-center md:min-w-0 md:flex-1 md:flex-row md:items-start md:gap-6 md:text-left">
             {/* Logo: no desktop, tile 80x80 no topo do bloco de texto, sem margem herdada do
@@ -128,18 +137,18 @@ export function MenuHeader({ tenant, location, onBack }: MenuHeaderProps) {
                   </Tooltip>
                 </div>
               </div>
-              {/* No celular o nome da unidade fica sob o nome do restaurante; no desktop ele vira o
-                  seletor de unidade, abaixo do status. */}
-              {location && <p className={`mt-0.5 text-xs md:hidden ${MENU_TEXT_MUTED}`}>{location.name}</p>}
-              <ReviewBadge tenant={tenant} location={location} />
+                            <ReviewBadge tenant={tenant} location={location} />
               <OpenStatusRow location={location} />
               {location && (
                 <>
-                  <span
-                    aria-hidden="true"
-                    className="mt-3 hidden h-px w-72 max-w-full bg-gradient-to-r from-white/25 to-transparent md:block"
+                  <FadeRule className="mt-3 w-72 max-w-full self-center md:self-start" />
+                  <UnitSelector
+                    current={location}
+                    locations={locations ?? null}
+                    onSelect={onSelectLocation}
+                    primaryColor={tenant.primaryColor}
+                    className="mt-3 self-center md:mt-4 md:self-start"
                   />
-                  <UnitIndicator name={location.name} onChange={onBack} />
                 </>
               )}
             </div>
@@ -162,7 +171,8 @@ export function MenuHeader({ tenant, location, onBack }: MenuHeaderProps) {
                   </div>
                 </div>
                 {location.minOrderValue > 0 && (
-                  <div className={`shrink-0 border-l pl-3 text-center ${MENU_DIVIDER}`}>
+                  <div className="relative shrink-0 pl-3 text-center">
+                    <FadeRule orientation="vertical" className="absolute inset-y-0 left-0" />
                     <p className={`text-[11px] ${MENU_TEXT_MUTED}`}>{t('menu.minimumOrder')}</p>
                     <p className={`text-xs font-bold ${MENU_TEXT_SOFT}`}>
                       R$ {location.minOrderValue.toFixed(2).replace('.', ',')}
@@ -175,49 +185,11 @@ export function MenuHeader({ tenant, location, onBack }: MenuHeaderProps) {
         </div>
 
         {/* Desktop: a faixa "Informações" fecha o hero em vidro escuro, de borda a borda. */}
-        <div className="md:pointer-events-auto md:-mx-8 md:mt-5 md:bg-transparent md:px-8 md:pb-4 md:backdrop-blur-md">
+        <div className="relative md:pointer-events-auto md:-mx-8 md:px-8 md:pb-4">
+          <GlassFade className="hidden md:block" fadeRem={2.5} />
           <RestaurantInfoPanel tenant={tenant} location={location} />
         </div>
       </div>
     </div>
-  );
-}
-
-// Seletor de unidade — só no desktop (no celular o nome da unidade já aparece sob o nome do
-// restaurante). Com mais de uma unidade (`onChange` presente) vira um botão: tocar leva à tela de
-// escolha de loja, a mesma rota do botão Voltar. Com uma unidade só é um rótulo estático.
-function UnitIndicator({ name, onChange }: { name: string; onChange?: () => void }) {
-  const { t } = useI18n();
-  const base = 'hidden md:flex items-center gap-2 w-fit max-w-full rounded-lg py-1.5 text-left';
-  const content = (
-    <>
-      <MapPin size={15} strokeWidth={1.5} className={`shrink-0 ${MENU_TEXT_MUTED}`} />
-      <span data-truncate className={`min-w-0 flex-1 truncate text-sm font-medium ${MENU_TEXT_SOFT}`}>
-        {name}
-      </span>
-      {onChange && <ChevronDown size={15} strokeWidth={1.5} className={`shrink-0 ${MENU_TEXT_MUTED}`} />}
-    </>
-  );
-
-  // Uma unidade só: rótulo estático; o balão (nome completo) só aparece se o nome estiver cortado.
-  // Várias unidades: botão que troca de unidade — o balão sempre aparece ("Trocar de unidade: <nome>").
-  if (!onChange) {
-    return (
-      <Tooltip label={name} onlyIfTruncated className="hidden md:flex w-fit max-w-full">
-        <div className={base}>{content}</div>
-      </Tooltip>
-    );
-  }
-  return (
-    <Tooltip label={`${t('tooltip.changeUnit')}: ${name}`} className="hidden md:flex w-fit max-w-full">
-      <button
-        type="button"
-        onClick={onChange}
-        aria-label={name}
-        className={`${base} -ml-1 px-1 transition-colors md:hover:bg-white/[0.06]`}
-      >
-        {content}
-      </button>
-    </Tooltip>
   );
 }

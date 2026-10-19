@@ -1,8 +1,7 @@
 import { LanguagePage } from './pages/LanguagePage';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { CartProvider } from './contexts/CartContext';
 import { MenuPage } from './pages/MenuPage';
-import { LocationPickerPage } from './pages/LocationPickerPage';
 import { ProductDetailPage } from './pages/ProductDetailPage';
 import { PromotionDetailPage } from './pages/PromotionDetailPage';
 import { PromotionExplorePage } from './pages/PromotionExplorePage';
@@ -28,6 +27,11 @@ import { OptionalCustomerAuth } from './components/OptionalCustomerAuth';
 import { CustomerAppShell } from './components/CustomerAppShell';
 import { NavLayout } from './components/NavLayout';
 import { TableSessionGate } from './components/TableSessionGate';
+
+function RedirectToMenu() {
+  const { slug } = useParams<{ slug: string }>();
+  return <Navigate to={`/${slug}`} replace />;
+}
 
 function App() {
   return (
@@ -240,14 +244,8 @@ function App() {
               {/* Avaliações de um item — pública como a do restaurante; serve os
                   dois fluxos (geral e mesa), o voltar usa o histórico. */}
               <Route path="produto/:productId/avaliacoes" element={<ItemReviewsPage />} />
-              <Route
-                path="escolher-loja"
-                element={
-                  <RequireCustomerAuth>
-                    <LocationPickerPage />
-                  </RequireCustomerAuth>
-                }
-              />
+              {/* Pagina de unidades removida: links antigos caem no cardapio (a troca e feita no dropdown do header). */}
+              <Route path="escolher-loja" element={<RedirectToMenu />} />
               <Route
                 path="produto/:productId"
                 element={

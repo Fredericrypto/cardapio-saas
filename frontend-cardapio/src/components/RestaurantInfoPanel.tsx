@@ -16,6 +16,7 @@ import {
 } from './SocialOutlineIcons';
 import { ACTION_BUTTON_BASE } from '../lib/uiClasses';
 import { Tooltip } from './Tooltip';
+import { FadeRule } from './FadeRule';
 import { useAccentColor } from '../hooks/useAccentColor';
 import { routeUrl, formatDistance } from '../lib/locationRoute';
 import { useDistanceKm } from '../hooks/useDistanceKm';
@@ -240,7 +241,8 @@ export function RestaurantInfoPanel({ tenant, location }: RestaurantInfoPanelPro
     ) : null;
 
   return (
-    <div className={`mt-3 md:mt-4 pt-4 border-t flex flex-col gap-4 ${MENU_BORDER}`}>
+    <div className="relative mt-3 md:mt-4 pt-4 flex flex-col gap-4">
+      <FadeRule className="absolute inset-x-0 top-0" />
       <div>
         <button
           onClick={() => setExpanded((v) => !v)}
@@ -359,7 +361,7 @@ function InfoColumn({
     <div className="flex flex-col items-center gap-2 w-full md:h-full">
       {/* Celular: filete curto e sutil separando esta coluna da anterior (no desktop vale o divisor vertical). */}
       {divider && (
-        <span aria-hidden="true" className="md:hidden -mt-1 mb-1 h-px w-16 bg-[#E5E7EB] dark:bg-white/10" />
+        <FadeRule className="md:hidden -mt-1 mb-1 w-16" />
       )}
       <h3
         className={`hidden md:block w-full text-center text-[11px] font-semibold uppercase tracking-wider ${MENU_TEXT_MUTED}`}
@@ -371,10 +373,7 @@ function InfoColumn({
           rodape (rota / telefone) muda a altura do conteudo. */}
       <div className="relative flex flex-col items-center gap-2 w-full md:flex-1">
         {divider && (
-          <span
-            aria-hidden="true"
-            className="hidden md:block absolute -left-4 top-[12%] bottom-[12%] w-px bg-[#E5E7EB] dark:bg-white/10"
-          />
+          <FadeRule orientation="vertical" className="max-md:hidden absolute -left-4 top-[12%] bottom-[12%]" />
         )}
         <div className="flex flex-col items-center justify-center gap-4 w-full text-center md:flex-1">
           {children}

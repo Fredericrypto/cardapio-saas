@@ -7,6 +7,7 @@ import { CLOSED_MUTED_CLASS } from '../lib/storeStatus';
 import { ShareButton } from './ShareButton';
 import { useWheelHorizontalScroll } from '../hooks/useWheelHorizontalScroll';
 import { Tooltip } from './Tooltip';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 import { PROMO_SERIF } from '../lib/promotionTheme';
 
 interface PromoCardsProps {
@@ -60,23 +61,76 @@ function useCountdownLabel(endsAt: string | null): string | null {
 // própria ou herdada do produto vinculado (ver
 // PromotionsService.attachDisplayImage). Só mostra promoções cadastradas
 // de verdade, nunca inventa desconto.
+// Slide automático: a cada 5 s o carrossel avança UM card; no fim volta ao começo. Só roda com
+// 2+ promoções E quando elas não cabem de uma vez na tela (senão não há para onde deslizar).
+// Pausa com o mouse/foco sobre um card, com toque/roda do usuário (8 s), com a aba escondida e
+// com "reduzir movimento". Desktop e celular usam o mesmo carrossel horizontal.
+const PROMO_SLIDE_MS = 5000;
+const PROMO_MANUAL_HOLD_MS = 8000;
+
 export function PromoCards({ promotions, primaryColor, onSelect, muted = false, buildShareUrl }: PromoCardsProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  // Roda do mouse sobre o carrossel rola na horizontal (celular/janela estreita;
-  // no desktop o container vira grade e o hook não faz nada).
-  useWheelHorizontalScroll(scrollRef, promotions.length > 0);
+  const hoverRef = useRef(false);
+  const holdUntilRef = useRef(0);
+  const wide = useMediaQuery('(min-width: 768px)');
+  // Roda do mouse sobre o carrossel rola na horizontal só na janela estreita
+  // (no desktop a roda continua rolando a página).
+  useWheelHorizontalScroll(scrollRef, promotions.length > 0 && !wide);
 
-  if (promotions.length === 0) return null;
+  const count = promotions.length;
+  useEffect(() => {
+    if (count < 2) return;
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    const id = window.setInterval(() => {
+      const el = scrollRef.current;
+      if (!el || hoverRef.current || document.hidden || Date.now() < holdUntilRef.current) return;
+      const max = el.scrollWidth - el.clientWidth;
+      if (max <= 2) return; // tudo cabe na tela: nada a deslizar
+      if (el.scrollLeft >= max - 4) {
+        el.scrollTo({ left: 0, behavior: 'smooth' });
+        return;
+      }
+      const base = el.getBoundingClientRect().left;
+      const pad = parseFloat(getComputedStyle(el).paddingLeft) || 0;
+      const lefts = Array.from(el.children).map(
+        (child) => (child as HTMLElement).getBoundingClientRect().left - base + el.scrollLeft,
+      );
+      const next = lefts.find((left) => left - pad > el.scrollLeft + 4);
+      if (next === undefined) el.scrollTo({ left: 0, behavior: 'smooth' });
+      else el.scrollTo({ left: Math.min(next - pad, max), behavior: 'smooth' });
+    }, PROMO_SLIDE_MS);
+    return () => window.clearInterval(id);
+  }, [count]);
 
-  // pb-4 + -mb-3: o container rola na horizontal, o que corta a sombra no
-  // fundo; o respiro embaixo (compensado pela margem negativa, pra o
-  // layout não mudar) deixa a sombra inteira aparecer.
-  // Desktop (md+): carrossel vira grade (sem rolagem lateral, que não é
-  // natural com mouse) com 2/3/4 colunas.
+  if (count === 0) return null;
+
+  const holdAutoSlide = () => {
+    holdUntilRef.current = Date.now() + PROMO_MANUAL_HOLD_MS;
+  };
+
+  // pb-4 + -mb-3: o container rola na horizontal, o que corta a sombra no fundo; o respiro
+  // embaixo (compensado pela margem negativa) deixa a sombra inteira aparecer.
+  // Desktop (md+): também é carrossel (2/3 cards visíveis); o respiro de 2rem nas laterais e
+  // embaixo (e 1,25rem em cima), compensado por margem negativa, deixa a luz ambiente aparecer.
   return (
-    <div ref={scrollRef} className="flex gap-3 px-4 pt-1 pb-4 -mb-3 overflow-x-auto no-scrollbar snap-x snap-mandatory md:grid md:grid-cols-2 lg:grid-cols-3 md:items-start md:gap-4 md:px-0 md:overflow-visible md:snap-none">
+    <div
+      ref={scrollRef}
+      onTouchStart={holdAutoSlide}
+      onWheel={holdAutoSlide}
+      className="flex gap-3 px-4 pt-1 pb-4 -mb-3 overflow-x-auto no-scrollbar snap-x snap-mandatory scroll-pl-4 md:gap-4 md:-mx-8 md:px-8 md:-mt-5 md:pt-5 md:-mb-8 md:pb-8 md:scroll-pl-8"
+    >
       {promotions.map((promo) => (
-        <PromoCard key={promo.id} promo={promo} primaryColor={primaryColor} onSelect={onSelect} muted={muted} shareUrl={buildShareUrl?.(promo.id)} />
+        <PromoCard
+          key={promo.id}
+          promo={promo}
+          primaryColor={primaryColor}
+          onSelect={onSelect}
+          muted={muted}
+          shareUrl={buildShareUrl?.(promo.id)}
+          onHoverChange={(hovering) => {
+            hoverRef.current = hovering;
+          }}
+        />
       ))}
     </div>
   );
@@ -88,12 +142,14 @@ function PromoCard({
   onSelect,
   muted,
   shareUrl,
+  onHoverChange,
 }: {
   promo: Promotion;
   primaryColor: string;
   onSelect: (id: string) => void;
   muted: boolean;
   shareUrl?: string;
+  onHoverChange: (hovering: boolean) => void;
 }) {
   const { t } = useI18n();
   const countdownLabel = useCountdownLabel(promo.endsAt);
@@ -106,7 +162,15 @@ function PromoCard({
     // dele e só acende ao passar o mouse (ver .promo-ambient no index.css).
     // Cards em cinza (loja fechada / promoção já usada) não têm luz.
     <div
-      className={`promo-item relative shrink-0 w-[290px] md:w-auto h-40 md:h-44 snap-start ${muted || promo.alreadyUsedUp ? 'promo-item-quiet' : ''}`}
+      onPointerEnter={(e) => {
+        if (e.pointerType === 'mouse') onHoverChange(true);
+      }}
+      onPointerLeave={(e) => {
+        if (e.pointerType === 'mouse') onHoverChange(false);
+      }}
+      onFocus={() => onHoverChange(true)}
+      onBlur={() => onHoverChange(false)}
+      className={`promo-item relative shrink-0 w-[290px] md:w-[calc((100%_-_1rem)/2)] lg:w-[calc((100%_-_2rem)/3)] h-40 md:h-44 snap-start ${muted || promo.alreadyUsedUp ? 'promo-item-quiet' : ''}`}
     >
       {promo.imageUrl ? (
         <img src={promo.imageUrl} alt="" aria-hidden="true" decoding="async" draggable={false} className="promo-ambient" />
