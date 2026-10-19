@@ -4,7 +4,6 @@ import { useI18n } from '../i18n/I18nContext';
 import { FloatingNotice } from '../components/FloatingNotice';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronDown } from 'lucide-react';
 import {
   fetchCategories,
   fetchProducts,
@@ -17,7 +16,6 @@ import type { Location, Category, Product, Promotion } from '../types';
 import { useTableSessionContext } from '../contexts/TableSessionContext';
 import { useSelectedLocation } from '../hooks/useSelectedLocation';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
-import { useCart } from '../contexts/CartContext';
 import { useTenant } from '../contexts/TenantContext';
 import { SplashScreen } from '../components/SplashScreen';
 import { MenuHeader } from '../components/MenuHeader';
@@ -32,23 +30,19 @@ import { ProductCard } from '../components/ProductCard';
 import { CartBar } from '../components/CartBar';
 import { BottomNav, DesktopNav } from '../components/BottomNav';
 import { buildShareUrl } from '../lib/shareLinks';
-import { pickItemPromotion, type ItemPromotionPreview } from '../lib/promotionEligibility';
+import { useItemPromotions } from '../hooks/useItemPromotions';
+import { SectionHeading } from '../components/SectionHeading';
+import { buildCategoryPath } from '../lib/categoryRoutes';
 import {
   MENU_PAGE_BG,
   MENU_TEXT_BODY,
   MENU_TEXT_MUTED,
-  MENU_TEXT_SOFT,
 } from '../lib/menuTheme';
 
 // Grade de produtos adaptativa: 2 colunas no celular (desenho atual do
 // ProductCard), 3 no tablet (sm), 4 no desktop (lg) e 5 em monitores largos (xl).
 const PRODUCT_GRID_CLASS =
   'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4 px-4 md:px-0';
-
-// Cabeçalho de seção (Promoções e cada categoria da aba "Todos"). No desktop
-// o recuo lateral some (`md:px-0`) pra o título alinhar com a borda do cartão
-// do cabeçalho e dos cards.
-const SECTION_HEADER_CLASS = `w-full flex items-center gap-2 px-4 md:px-0 pt-4 md:pt-6 pb-1.5 ${MENU_TEXT_SOFT}`;
 
 // Cardápio único pro cliente — atende tanto quem escaneou o QR de uma
 // mesa (`/:slug/mesa/:qrCodeToken`) quanto quem chegou por um link geral
@@ -123,22 +117,9 @@ export function MenuPage() {
     };
   }, [tenant?.id, customerToken, activeLocation?.id]);
 
-  // Preço promocional também FORA do Modo Promoção: só para promoções que o
-  // cliente ativou (selectedPromotionIds), na ordem da seleção — a mesma em que
-  // o carrinho as aplica. Item sem promoção ativa e elegível: sem entrada no mapa.
-  const { selectedPromotionIds } = useCart();
-  const itemPromotions = useMemo(() => {
-    const map = new Map<string, ItemPromotionPreview>();
-    const selected = selectedPromotionIds
-      .map((id) => promotions.find((p) => p.id === id))
-      .filter((p): p is Promotion => p != null);
-    if (selected.length === 0) return map;
-    for (const product of products) {
-      const applied = pickItemPromotion(selected, product);
-      if (applied) map.set(product.id, applied.preview);
-    }
-    return map;
-  }, [selectedPromotionIds, promotions, products]);
+  // Preço promocional também FORA do Modo Promoção (fonte única compartilhada com a
+  // subpágina de categoria): só promoções ativadas pelo cliente, ordem da seleção.
+  const itemPromotions = useItemPromotions(promotions, products);
 
   // Só usados no fluxo de mesa — chamar garçom não existe sem uma sessão.
   const [isCallingWaiter, setIsCallingWaiter] = useState(false);
@@ -268,6 +249,7 @@ export function MenuPage() {
   const promotionHref = (promotionId: string) =>
     isTableFlow ? `/${slug}/mesa/${qrCodeToken}/promocao/${promotionId}` : `/${slug}/promocao/${promotionId}`;
   const cartHref = isTableFlow ? `/${slug}/mesa/${qrCodeToken}/carrinho` : `/${slug}/carrinho`;
+  const categoryHref = (categoryId: string) => buildCategoryPath(slug!, categoryId, qrCodeToken);
 
   // Segurança extra: a mesa escaneada (pelo token) precisa pertencer ao
   // MESMO tenant identificado pela URL (pelo slug). Isso nunca deveria
@@ -398,20 +380,13 @@ export function MenuPage() {
           <div className="pt-1 pb-5">
             {/* Mesmo cabeçalho das categorias da aba "Todos": ícone à
                 esquerda + nome + seta de recolher (decisão do Felipe, 30/09). */}
-            <button
-              onClick={() => setShowPromotions((v) => !v)}
-              aria-label={showPromotions ? t('menuPage.ocultar_promocoes') : t('menuPage.mostrar_promocoes')}
-              aria-expanded={showPromotions}
-              className={SECTION_HEADER_CLASS}
-            >
-              <PromocoesIcon size={16} />
-              <span className="text-sm font-semibold flex-1 text-left">{t('notifications.type.promotion.label')}</span>
-              <ChevronDown
-                size={16}
-                strokeWidth={1.5}
-                className={`transition-transform ${MENU_TEXT_MUTED} ${showPromotions ? '' : '-rotate-90'}`}
-              />
-            </button>
+            <SectionHeading
+              icon={<PromocoesIcon size={16} />}
+              title={t('notifications.type.promotion.label')}
+              expanded={showPromotions}
+              onToggle={() => setShowPromotions((v) => !v)}
+              toggleLabel={showPromotions ? t('menuPage.ocultar_promocoes') : t('menuPage.mostrar_promocoes')}
+            />
 
             {showPromotions &&
               (promotions.length > 0 ? (
@@ -473,8 +448,11 @@ export function MenuPage() {
                   searchTerm.trim() === '' && collapsedCategoryIds.has(category.id);
                 return (
                   <section key={category.id}>
-                    <button
-                      onClick={() =>
+                    <SectionHeading
+                      icon={Icon ? <Icon size={16} /> : null}
+                      title={categoryLabel(category, t)}
+                      expanded={!isCollapsed}
+                      onToggle={() =>
                         setCollapsedCategoryIds((prev) => {
                           const next = new Set(prev);
                           if (next.has(category.id)) next.delete(category.id);
@@ -482,17 +460,12 @@ export function MenuPage() {
                           return next;
                         })
                       }
-                      className={SECTION_HEADER_CLASS}
-                      aria-expanded={!isCollapsed}
-                    >
-                      {Icon && <Icon size={16} />}
-                      <span className="text-sm font-semibold flex-1 text-left">{categoryLabel(category, t)}</span>
-                      <ChevronDown
-                        size={16}
-                        strokeWidth={1.5}
-                        className={`transition-transform ${MENU_TEXT_MUTED} ${isCollapsed ? '-rotate-90' : ''}`}
-                      />
-                    </button>
+                      action={{
+                        to: categoryHref(category.id),
+                        label: t('categoryPage.viewAll'),
+                        aria: t('categoryPage.viewAllAria', { name: categoryLabel(category, t) }),
+                      }}
+                    />
                     {!isCollapsed && (
                       <div className={`${PRODUCT_GRID_CLASS} pt-1.5`}>
                         {items.map((product) => (

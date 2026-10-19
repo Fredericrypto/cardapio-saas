@@ -6,6 +6,7 @@ import { LocationPickerPage } from './pages/LocationPickerPage';
 import { ProductDetailPage } from './pages/ProductDetailPage';
 import { PromotionDetailPage } from './pages/PromotionDetailPage';
 import { PromotionExplorePage } from './pages/PromotionExplorePage';
+import { CategoryProductsPage } from './pages/CategoryProductsPage';
 import { CartPage } from './pages/CartPage';
 import { MyAccountPage } from './pages/MyAccountPage';
 import { CustomerAuthPage } from './pages/CustomerAuthPage';
@@ -224,6 +225,17 @@ function App() {
                   </OptionalCustomerAuth>
                 }
               />
+              {/* Subpágina "Ver todos" de uma categoria — versão de mesa (token do QR na URL). */}
+              <Route
+                path="mesa/:qrCodeToken/categoria/:categoryId"
+                element={
+                  <OptionalCustomerAuth>
+                    <TableSessionGate>
+                      <CategoryProductsPage />
+                    </TableSessionGate>
+                  </OptionalCustomerAuth>
+                }
+              />
               <Route path="avaliacoes" element={<PublicReviewsPage />} />
               {/* Avaliações de um item — pública como a do restaurante; serve os
                   dois fluxos (geral e mesa), o voltar usa o histórico. */}
@@ -258,6 +270,15 @@ function App() {
                 element={
                   <RequireCustomerAuth>
                     <PromotionExplorePage />
+                  </RequireCustomerAuth>
+                }
+              />
+              {/* Subpágina "Ver todos" de uma categoria — versão padrão (mesmas regras de login do item). */}
+              <Route
+                path="categoria/:categoryId"
+                element={
+                  <RequireCustomerAuth>
+                    <CategoryProductsPage />
                   </RequireCustomerAuth>
                 }
               />

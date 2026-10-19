@@ -866,6 +866,18 @@ export const ptBR = {
   'cartPayment.chooseMethod': 'Escolha como prefere pagar. Cada forma mostra como o pagamento funciona.',
   'cartUi.phone': 'Telefone',
   'tooltip.removeCoupon': 'Remover cupom',
+  'categoryPage.viewAll': 'Ver todos',
+  'categoryPage.viewAllAria': 'Ver todos os itens de {name}',
+  'categoryPage.back': 'Voltar ao cardápio',
+  'categoryPage.backToMenu': 'Voltar pro cardápio',
+  'categoryPage.itemCountOne': '1 item',
+  'categoryPage.itemCountMany': '{count} itens',
+  'categoryPage.empty': 'Nenhum item disponível nesta categoria no momento.',
+  'categoryPage.notFoundTitle': 'Categoria indisponível',
+  'categoryPage.notFoundHint': 'Esta categoria não está mais disponível. Confira o cardápio completo.',
+  'categoryPage.loadErrorTitle': 'Não foi possível carregar os itens',
+  'categoryPage.loadErrorHint': 'Verifique sua conexão e tente de novo.',
+  'categoryPage.retry': 'Tentar de novo',
 } as const;
 
 export type TranslationKey = keyof typeof ptBR;
