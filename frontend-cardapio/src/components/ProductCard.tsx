@@ -175,7 +175,7 @@ export function ProductCard({ product, primaryColor, onClick, storeClosed = fals
               // mesmo centro e mesmo tamanho do "+" de antes.
               animation="hover"
               className={`${addPos} w-9 h-9 md:w-10 md:h-10 rounded-full ${horizontal ? 'border border-white/15 shadow-sm' : 'border-2 border-white shadow-md dark:border-[#1E1E20]'}`}
-              fillClassName={horizontal ? 'bg-[#4F7A56] text-white dark:bg-[#4C6F52] dark:text-[#E6F0E3]' : 'bg-[var(--brand)] text-white'}
+              fillClassName="bg-[var(--brand)] text-white"
               contentClassName="flex h-full w-full items-center justify-center"
             >
               <Plus size={16} strokeWidth={2.75} />

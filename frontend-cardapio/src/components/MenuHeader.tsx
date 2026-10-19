@@ -69,10 +69,12 @@ export function MenuHeader({ tenant, location, onBack }: MenuHeaderProps) {
         <span
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 hidden md:block"
-          style={{
-            background:
-              'linear-gradient(90deg, rgba(8,8,9,.88) 0%, rgba(8,8,9,.6) 38%, rgba(8,8,9,.1) 72%), linear-gradient(0deg, rgba(8,8,9,.85) 0%, transparent 40%)',
-          }}
+          style={{ backgroundImage: 'linear-gradient(90deg, rgba(8,8,9,0.82), rgba(8,8,9,0) 78%)' }}
+        />
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 bottom-0 hidden h-3/5 md:block"
+          style={{ backgroundImage: 'linear-gradient(0deg, rgba(8,8,9,0.55), rgba(8,8,9,0))' }}
         />
 
         {/* Voltar (só existe quando há mais de uma unidade): círculo no celular; no desktop fica
@@ -173,7 +175,7 @@ export function MenuHeader({ tenant, location, onBack }: MenuHeaderProps) {
         </div>
 
         {/* Desktop: a faixa "Informações" fecha o hero em vidro escuro, de borda a borda. */}
-        <div className="md:pointer-events-auto md:-mx-8 md:mt-5 md:bg-black/45 md:px-8 md:pb-4 md:backdrop-blur-md">
+        <div className="md:pointer-events-auto md:-mx-8 md:mt-5 md:bg-transparent md:px-8 md:pb-4 md:backdrop-blur-md">
           <RestaurantInfoPanel tenant={tenant} location={location} />
         </div>
       </div>
