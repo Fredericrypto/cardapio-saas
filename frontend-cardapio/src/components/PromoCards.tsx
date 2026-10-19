@@ -117,7 +117,7 @@ export function PromoCards({ promotions, primaryColor, onSelect, muted = false, 
       ref={scrollRef}
       onTouchStart={holdAutoSlide}
       onWheel={holdAutoSlide}
-      className="flex gap-3 px-4 pt-1 pb-4 -mb-3 overflow-x-auto no-scrollbar snap-x snap-mandatory scroll-pl-4 md:gap-4 md:-mx-8 md:px-8 md:-mt-5 md:pt-5 md:-mb-8 md:pb-8 md:scroll-pl-8"
+      className="flex gap-3 px-4 pt-1 pb-4 -mb-3 overflow-x-auto no-scrollbar snap-x snap-mandatory scroll-pl-4 md:gap-4 md:-mx-8 md:px-8 md:-mt-12 md:pt-12 md:-mb-12 md:pb-12 md:scroll-pl-8"
     >
       {promotions.map((promo) => (
         <PromoCard

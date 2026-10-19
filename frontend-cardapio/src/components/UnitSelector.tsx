@@ -56,7 +56,7 @@ function UnitRow({
   const status = getStoreStatus(unit, now);
   return (
     <div
-      className={`flex items-center gap-2 rounded-xl px-2 py-2 ${
+      className={`flex items-center gap-2 rounded-xl px-2.5 py-2.5 ${
         selected ? 'bg-black/[0.04] dark:bg-white/[0.07]' : 'hover:bg-black/[0.03] dark:hover:bg-white/[0.05]'
       }`}
     >
@@ -146,19 +146,27 @@ export function UnitSelector({
         triggerRef.current?.focus();
       }
     };
+    // Só a rolagem da PÁGINA fecha o menu: o slide automático das promoções (e qualquer outro
+    // elemento que role sozinho) dispara 'scroll' em captura e fechava o dropdown sozinho.
     const onScroll = (e: Event) => {
-      if (panelRef.current?.contains(e.target as Node)) return;
+      const target = e.target;
+      if (target !== document && target !== document.documentElement && target !== document.body) return;
       close();
+    };
+    // Barra de endereço do celular redimensiona só a altura ao rolar: só fecha se a LARGURA mudar.
+    const startWidth = window.innerWidth;
+    const onResize = () => {
+      if (window.innerWidth !== startWidth) close();
     };
     document.addEventListener('pointerdown', onDown);
     window.addEventListener('keydown', onKey);
     window.addEventListener('scroll', onScroll, true);
-    window.addEventListener('resize', close);
+    window.addEventListener('resize', onResize);
     return () => {
       document.removeEventListener('pointerdown', onDown);
       window.removeEventListener('keydown', onKey);
       window.removeEventListener('scroll', onScroll, true);
-      window.removeEventListener('resize', close);
+      window.removeEventListener('resize', onResize);
     };
   }, [open, close]);
 
@@ -212,7 +220,7 @@ export function UnitSelector({
               width: 'min(22rem, calc(100vw - 1rem))',
               visibility: coords ? 'visible' : 'hidden',
             }}
-            className={`z-[999] max-h-[60vh] overflow-y-auto rounded-2xl border bg-[#FFFFFF]/90 p-1.5 shadow-xl backdrop-blur-xl dark:bg-[#1E1E20]/90 ${MENU_BORDER}`}
+            className={`z-[999] flex max-h-[60vh] flex-col gap-1.5 overflow-y-auto rounded-2xl border bg-[#FFFFFF]/90 p-2 shadow-xl backdrop-blur-xl dark:bg-[#1E1E20]/90 ${MENU_BORDER}`}
           >
             {units.map((unit) => (
               <UnitRow

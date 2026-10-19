@@ -370,14 +370,14 @@ img, svg, video, a {
   .promo-ambient {
     display: block;
     position: absolute;
-    inset: -6px;
+    inset: -4px;
     z-index: -10;
     pointer-events: none;
-    width: calc(100% + 12px);
-    height: calc(100% + 12px);
+    width: calc(100% + 8px);
+    height: calc(100% + 8px);
     object-fit: cover;
     border-radius: 20px;
-    filter: blur(28px) saturate(1.6);
+    filter: blur(20px) saturate(1.5);
     visibility: hidden;
     opacity: 0;
     transition: opacity 320ms ease, visibility 0s linear 320ms;
@@ -385,12 +385,12 @@ img, svg, video, a {
   .promo-item:hover .promo-ambient,
   .promo-item:focus-within .promo-ambient {
     visibility: visible;
-    opacity: 0.42;
+    opacity: 0.30;
     transition-delay: 0s;
   }
   .dark .promo-item:hover .promo-ambient,
   .dark .promo-item:focus-within .promo-ambient {
-    opacity: 0.62;
+    opacity: 0.44;
   }
   /* Loja fechada ou promoção já usada: card em cinza → sem luz. */
   .promo-item-quiet .promo-ambient {

@@ -186,7 +186,7 @@ export function MenuHeader({ tenant, location, onBack, locations, onSelectLocati
 
         {/* Desktop: a faixa "Informações" fecha o hero em vidro escuro, de borda a borda. */}
         <div className="relative md:pointer-events-auto md:-mx-8 md:px-8 md:pb-4">
-          <GlassFade className="hidden md:block" fadeRem={2.5} />
+          <GlassFade className="hidden md:block" topRem={1} fadeRem={2} />
           <RestaurantInfoPanel tenant={tenant} location={location} />
         </div>
       </div>
