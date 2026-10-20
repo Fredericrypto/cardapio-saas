@@ -391,6 +391,7 @@ export const en: Record<TranslationKey, string> = {
   'cartPage.seu_carrinho_esta_vazio': 'Your cart is empty',
   'cartPage.adicione_itens_do_cardapio': 'Add items from the menu to place your order.',
   'cartPage.ver_cardapio': 'See menu',
+  'cartPage.bons_sabores_te_esperam': 'Good flavors await you',
   'cartPage.estabelecimento_fechado': 'Establishment closed',
   'cartPage.confirmar_pedido': 'Confirm order',
   'cartPage.calcule_a_taxa_de': 'Calculate the delivery fee',

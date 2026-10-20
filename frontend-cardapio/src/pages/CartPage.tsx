@@ -8,7 +8,7 @@ import { useAccentColor } from '../hooks/useAccentColor';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Banknote, Check, Coins, CreditCard, MapPin, AlertTriangle, Tag, X, ShoppingBag, BookOpen, QrCode } from 'lucide-react';
+import { ArrowLeft, Banknote, Check, Coins, CreditCard, MapPin, AlertTriangle, Tag, X, QrCode } from 'lucide-react';
 import { createOrder, quoteDeliveryFee, callWaiter, cancelWaiterCall, getWaiterCallStatus, cancelOrder, flagOrderForAttention, fetchLocationById, fetchActivePromotions } from '../lib/menu-api';
 import { computePromotionEligibility, computeSelectedPromotionsEligibility } from '../lib/promotionEligibility';
 import type { Location, DeliveryQuote, CreatedOrder, Promotion } from '../types';
@@ -46,6 +46,7 @@ import {
     CART_TEXT_SUCCESS,
 } from '../lib/cartTheme';
 import { CartShell } from '../components/cart/CartShell';
+import { EmptyCartState } from '../components/cart/EmptyCartState';
 import { PROMO_SUCCESS_TEXT, PROMO_SERIF, PROMO_INK, PROMO_SAGE } from '../lib/promotionTheme';
 import { CartItemRow, type CartLinePromotionTag } from '../components/cart/CartItemRow';
 import { CartReviewItems } from '../components/cart/CartReviewItems';
@@ -744,23 +745,7 @@ export function CartPage() {
   if (items.length === 0) {
     return (
       <CartShell {...shellProps}>
-        <div className="min-h-[55vh] flex flex-col items-center justify-center px-4 text-center">
-          <div className={`w-16 h-16 rounded-2xl border flex items-center justify-center ${MENU_SURFACE_SUBTLE} ${MENU_BORDER}`}>
-            <ShoppingBag size={26} strokeWidth={1.5} className={CART_TEXT_MUTED} aria-hidden="true" />
-          </div>
-          <p className={`mt-5 text-base font-semibold ${CART_TEXT}`}>{t('cartPage.seu_carrinho_esta_vazio')}</p>
-          <p className={`mt-1 text-sm ${CART_TEXT_BODY}`}>{t('cartPage.adicione_itens_do_cardapio')}</p>
-          {/* Mesmo visual do botão "Chamar garçom". */}
-          <button
-            type="button"
-            onClick={goToMenu}
-            className="mt-6 w-full max-w-[220px] rounded-xl py-2.5 flex items-center justify-center gap-1.5 text-xs font-semibold text-white ring-1 ring-black/5 dark:ring-white/15"
-            style={{ backgroundColor: tenant.primaryColor }}
-          >
-            <BookOpen size={14} strokeWidth={1.5} aria-hidden="true" />
-            {t('cartPage.ver_cardapio')}
-          </button>
-        </div>
+        <EmptyCartState tenantColor={tenant.primaryColor} onBrowse={goToMenu} />
       </CartShell>
     );
   }
