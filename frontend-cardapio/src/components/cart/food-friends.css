@@ -1,0 +1,58 @@
+/* Comidinhas do carrinho vazio (prefixo .fx-). Só transform/opacity, CSS puro, ciclo de 5s por
+   personagem (0% = 100%, sem salto). Cada um tem o próprio movimento, atraso de piscada e de olhar. */
+.ec-friends{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:clamp(6px,2vw,14px) clamp(4px,1.2vw,10px);width:min(92vw,360px);padding-top:14px;margin:0 auto}
+@media (min-width:768px){.ec-friends{grid-template-columns:repeat(10,minmax(0,1fr));width:min(92vw,880px)}}
+.fx{display:block;width:100%;height:auto;overflow:visible;--dur:5s}
+.fx-body,.fx-blink,.fx-arm{transform-box:fill-box}
+.fx-body{transform-origin:50% 100%}
+.fx-blink{transform-origin:50% 50%}
+.fx-arm{transform-origin:50% 10%}
+.fx-arm--l{transform:rotate(14deg)}
+.fx-arm--r{transform:rotate(-14deg)}
+
+@media (prefers-reduced-motion:no-preference){
+  .fx-row:not(.fx-static) .fx-body,
+  .fx-row:not(.fx-static) .fx-arm{animation-duration:var(--dur);animation-timing-function:ease-in-out;animation-delay:var(--bd);animation-iteration-count:infinite}
+  .fx-row:not(.fx-static) .fx-blink{animation-duration:var(--dur);animation-timing-function:ease-in-out;animation-delay:var(--ed);animation-iteration-count:infinite}
+  .fx-row:not(.fx-static) .fx-look{animation-duration:var(--dur);animation-timing-function:ease-in-out;animation-delay:var(--ld);animation-iteration-count:infinite}
+  .fx-b1 .fx-body{animation-name:fx-b1}
+  .fx-b2 .fx-body{animation-name:fx-b2}
+  .fx-b3 .fx-body{animation-name:fx-b3}
+  .fx-b4 .fx-body{animation-name:fx-b4}
+  .fx-b5 .fx-body{animation-name:fx-b5}
+  .fx-b6 .fx-body{animation-name:fx-b6}
+  .fx-b7 .fx-body{animation-name:fx-b7}
+  .fx-b8 .fx-body{animation-name:fx-b8}
+  .fx-b9 .fx-body{animation-name:fx-b9}
+  .fx-b10 .fx-body{animation-name:fx-b10}
+  .fx-blink-a .fx-blink{animation-name:fx-blink-a}
+  .fx-blink-b .fx-blink{animation-name:fx-blink-b}
+  .fx-look-a .fx-look{animation-name:fx-look-a}
+  .fx-look-b .fx-look{animation-name:fx-look-b}
+  .fx-arm--l{animation-name:fx-arm-l}
+  .fx-arm--r{animation-name:fx-arm-r}
+}
+
+/* Personalidades: sanduíche = dois pulinhos · burger = um pulo gordinho · pizza = pulinho e balanço
+   · cupcake = sobe e desce suave e ginga · bubble tea = flutua e pula · sorvete = inclina
+   · taco = pulo com giro leve · batatas = pulinhos rápidos e tremidinha · pancakes = gelatina · torrada = pula e acena */
+@keyframes fx-b1{0%,12%{transform:none}18%{transform:translateY(-9px) scale(.98,1.04)}24%{transform:scale(1.05,.93)}28%{transform:none}32%{transform:translateY(-9px) scale(.98,1.04)}38%{transform:scale(1.05,.93)}43%,100%{transform:none}}
+@keyframes fx-b2{0%,34%{transform:none}39%{transform:scale(1.06,.92)}48%{transform:translateY(-12px) scale(.96,1.07)}58%{transform:scale(1.07,.91)}65%{transform:scale(.98,1.02)}72%,100%{transform:none}}
+@keyframes fx-b3{0%,16%{transform:none}21%{transform:translateY(-7px)}26%{transform:none}44%{transform:none}50%{transform:rotate(-7deg)}56%{transform:rotate(7deg)}62%{transform:rotate(-5deg)}68%{transform:rotate(3deg)}74%,100%{transform:none}}
+@keyframes fx-b4{0%{transform:none}15%{transform:translateY(-5px) scale(.99,1.03)}28%{transform:none}50%{transform:rotate(-4deg)}70%{transform:rotate(4deg)}85%,100%{transform:none}}
+@keyframes fx-b5{0%{transform:none}20%{transform:translateY(-3px)}40%{transform:none}60%{transform:none}66%{transform:scale(1.05,.94)}74%{transform:translateY(-11px) scale(.97,1.05)}82%{transform:scale(1.05,.94)}88%,100%{transform:none}}
+@keyframes fx-b6{0%,25%{transform:none}33%,44%{transform:rotate(-7deg)}52%{transform:rotate(5deg) translateY(-6px)}60%{transform:none}80%{transform:none}85%{transform:translateY(-8px)}91%,100%{transform:none}}
+@keyframes fx-b7{0%,50%{transform:none}55%{transform:scale(1.06,.92)}62%{transform:translateY(-11px) rotate(5deg)}70%{transform:scale(1.06,.92)}76%{transform:rotate(-3deg)}83%,100%{transform:none}}
+@keyframes fx-b8{0%{transform:none}10%{transform:translateY(-8px)}14%{transform:none}18%{transform:translateY(-6px)}22%{transform:none}36%{transform:rotate(-2.5deg)}40%{transform:rotate(2.5deg)}44%{transform:rotate(-2.5deg)}48%,100%{transform:none}}
+@keyframes fx-b9{0%,30%{transform:none}36%{transform:scale(1.07,.89)}44%{transform:translateY(-6px) scale(.96,1.09)}52%{transform:scale(1.04,.96)}60%{transform:scale(.99,1.01)}68%,100%{transform:none}}
+@keyframes fx-b10{0%,38%{transform:none}44%{transform:scale(1.04,.95)}52%{transform:translateY(-9px) scale(.97,1.04)}60%{transform:scale(1.03,.96)}66%,100%{transform:none}}
+
+/* Piscar (dupla ou simples) e olhar de lado (direção em --look: +1 direita, -1 esquerda). */
+@keyframes fx-blink-a{0%,18%{transform:scaleY(1)}20%{transform:scaleY(.08)}22.5%,66%{transform:scaleY(1)}68%{transform:scaleY(.08)}70%{transform:scaleY(1)}72%{transform:scaleY(.08)}74.5%,100%{transform:scaleY(1)}}
+@keyframes fx-blink-b{0%,44%{transform:scaleY(1)}46.5%{transform:scaleY(.08)}49%,100%{transform:scaleY(1)}}
+@keyframes fx-look-a{0%,28%{transform:translateX(0)}33%,47%{transform:translateX(calc(var(--look) * 3.2px))}53%,100%{transform:translateX(0)}}
+@keyframes fx-look-b{0%,10%{transform:translateX(0)}13%,17%{transform:translateX(calc(var(--look) * -2.4px))}21%,60%{transform:translateX(0)}65%,80%{transform:translateX(calc(var(--look) * 3.2px))}86%,100%{transform:translateX(0)}}
+
+/* Bracinhos da torrada: o esquerdo acena quase no meio do ciclo, o direito dá um tchauzinho curto no fim. */
+@keyframes fx-arm-l{0%,48%{transform:rotate(14deg)}52%{transform:rotate(150deg)}58%{transform:rotate(170deg)}64%{transform:rotate(144deg)}70%{transform:rotate(170deg)}76%{transform:rotate(150deg)}82%,100%{transform:rotate(14deg)}}
+@keyframes fx-arm-r{0%,78%{transform:rotate(-14deg)}82%{transform:rotate(-150deg)}86%{transform:rotate(-172deg)}90%{transform:rotate(-146deg)}94%,100%{transform:rotate(-14deg)}}

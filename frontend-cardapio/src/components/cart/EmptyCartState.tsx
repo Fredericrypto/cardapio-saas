@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react';
 import { BookOpen, Leaf } from 'lucide-react';
 import { useI18n } from '../../i18n/I18nContext';
 import { PROMO_INK, PROMO_SERIF } from '../../lib/promotionTheme';
-import { HungryBowlMascot } from './HungryBowlMascot';
+import { FoodFriends } from './FoodFriends';
 import './empty-cart.css';
 
 interface EmptyCartStateProps {
@@ -13,7 +13,7 @@ interface EmptyCartStateProps {
 
 const stagger = (s: number): CSSProperties => ({ '--d': `${s}s` } as CSSProperties);
 
-// Estado "carrinho vazio": mascote animado "Hungry Little Bowl" (SVG inline, ver HungryBowlMascot), título serifado, botão em pílula e filete ornamental. O wallpaper
+// Estado "carrinho vazio": fileira de comidinhas animadas (SVG inline, ver FoodFriends), título serifado, botão em pílula e filete ornamental. O wallpaper
 // de comida e a navbar continuam vindo do CartShell (não são desenhados aqui).
 // Duas versões da arte (public/): ramos em marfim no escuro, ramos escuros no claro.
 export function EmptyCartState({ tenantColor, onBrowse }: EmptyCartStateProps) {
@@ -24,8 +24,8 @@ export function EmptyCartState({ tenantColor, onBrowse }: EmptyCartStateProps) {
       className="ec flex flex-col items-center justify-center px-4 text-center min-h-[calc(100svh-8.5rem)] md:min-h-[calc(100svh-9.5rem)]"
       style={{ '--ec-brand': tenantColor } as CSSProperties}
     >
-      <div className="ec-mascot ec-in" style={stagger(0)}>
-        <HungryBowlMascot size="100%" />
+      <div className="ec-friends-wrap ec-in" style={stagger(0)}>
+        <FoodFriends />
       </div>
 
       <h1 className={`ec-in ec-title ${PROMO_INK}`} style={{ fontFamily: PROMO_SERIF, ...stagger(0.12) }}>

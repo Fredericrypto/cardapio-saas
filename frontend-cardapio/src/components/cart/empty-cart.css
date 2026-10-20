@@ -1,6 +1,6 @@
 .ec-in{animation:ec-in .8s cubic-bezier(.2,.7,.2,1) var(--d,0s) both}
 @keyframes ec-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-.ec-mascot{width:clamp(132px,36vw,184px);aspect-ratio:1/1;margin-bottom:clamp(6px,1.4vw,16px)}
+.ec-friends-wrap{width:100%;display:flex;justify-content:center;margin-bottom:clamp(10px,2vw,22px)}
 .ec-hero{position:relative;width:min(88vw,520px);aspect-ratio:3/2}
 .ec-glow{position:absolute;inset:-8% -4% -12%;display:none;pointer-events:none;background:radial-gradient(ellipse 55% 50% at 50% 52%,rgba(243,236,221,.09),transparent 70%)}
 .dark .ec-glow{display:block}
