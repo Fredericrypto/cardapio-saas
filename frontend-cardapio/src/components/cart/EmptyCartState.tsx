@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import { ArrowRight, BookOpen, Leaf } from 'lucide-react';
+import { BookOpen, Leaf } from 'lucide-react';
 import { useI18n } from '../../i18n/I18nContext';
 import { PROMO_INK, PROMO_SERIF } from '../../lib/promotionTheme';
 import './empty-cart.css';
@@ -21,7 +21,7 @@ export function EmptyCartState({ tenantColor, onBrowse }: EmptyCartStateProps) {
 
   return (
     <section
-      className="ec min-h-[62vh] flex flex-col items-center justify-center px-4 pb-10 text-center"
+      className="ec flex flex-col items-center justify-center px-4 text-center min-h-[calc(100svh-8.5rem)] md:min-h-[calc(100svh-9.5rem)]"
       style={{ '--ec-brand': tenantColor } as CSSProperties}
     >
       <div className="ec-hero ec-in" style={stagger(0)}>
@@ -55,10 +55,14 @@ export function EmptyCartState({ tenantColor, onBrowse }: EmptyCartStateProps) {
         {t('cartPage.adicione_itens_do_cardapio')}
       </p>
 
-      <button type="button" onClick={onBrowse} className="ec-in ec-btn" style={stagger(0.28)}>
+      <button
+        type="button"
+        onClick={onBrowse}
+        className="ec-in ec-btn loc-dist"
+        style={{ ...stagger(0.28), '--glow': tenantColor } as CSSProperties}
+      >
         <BookOpen size={17} strokeWidth={1.5} aria-hidden="true" />
         <span>{t('cartPage.ver_cardapio')}</span>
-        <ArrowRight size={17} strokeWidth={1.5} aria-hidden="true" />
       </button>
 
       <div className="ec-in ec-sep" style={stagger(0.36)} aria-hidden="true">
