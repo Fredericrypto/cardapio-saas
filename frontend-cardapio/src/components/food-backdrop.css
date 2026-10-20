@@ -40,10 +40,11 @@
   -webkit-mask-image: radial-gradient(ellipse at center, #000 28%, rgba(0, 0, 0, 0.4) 68%, rgba(0, 0, 0, 0.06) 100%);
   mask-image: radial-gradient(ellipse at center, #000 28%, rgba(0, 0, 0, 0.4) 68%, rgba(0, 0, 0, 0.06) 100%);
 }
+/* Escuro: icones sutis que se dissolvem (fading) em direcao as bordas, sem vinheta. */
 .dark .fb-pattern {
-  color: rgba(194, 192, 182, 0.12);
-  -webkit-mask-image: none;
-  mask-image: none;
+  color: rgba(194, 192, 182, 0.1);
+  -webkit-mask-image: radial-gradient(ellipse at center, #000 18%, rgba(0, 0, 0, 0.35) 55%, rgba(0, 0, 0, 0) 92%);
+  mask-image: radial-gradient(ellipse at center, #000 18%, rgba(0, 0, 0, 0.35) 55%, rgba(0, 0, 0, 0) 92%);
 }
 .fb-vignette {
   display: none;
