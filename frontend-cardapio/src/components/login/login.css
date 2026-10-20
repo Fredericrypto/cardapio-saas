@@ -38,7 +38,7 @@
   justify-content: center;
   padding: 24px;
   overflow: hidden;
-  background: var(--lg-bg-deep);
+  background: #101010;
   color: var(--lg-text);
   color-scheme: dark;
   font-family: Inter, system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -50,10 +50,7 @@
   inset: 0;
   z-index: -4;
   pointer-events: none;
-  background:
-    radial-gradient(60% 50% at 16% 10%, rgba(217, 119, 87, 0.16), transparent 70%),
-    radial-gradient(55% 45% at 88% 92%, rgba(240, 238, 230, 0.07), transparent 70%),
-    radial-gradient(90% 80% at 50% 50%, #2a2927, #1b1a19);
+  background: #101010;
 }
 
 .lg-pattern {
@@ -63,9 +60,11 @@
   z-index: -3;
   display: grid;
   transform: translate(-50%, -50%);
-  color: rgba(194, 192, 182, 0.12);
+  color: rgba(194, 192, 182, 0.055);
   pointer-events: none;
   user-select: none;
+  -webkit-mask-image: radial-gradient(ellipse at center, #000 18%, rgba(0, 0, 0, 0.35) 55%, rgba(0, 0, 0, 0) 92%);
+  mask-image: radial-gradient(ellipse at center, #000 18%, rgba(0, 0, 0, 0.35) 55%, rgba(0, 0, 0, 0) 92%);
 }
 .lg-cell {
   display: grid;
@@ -85,6 +84,7 @@
   z-index: -2;
   pointer-events: none;
   background: radial-gradient(ellipse at center, rgba(27, 26, 25, 0) 28%, rgba(27, 26, 25, 0.6) 68%, rgba(27, 26, 25, 0.94) 100%);
+  display: none;
 }
 
 /* ---------- Cartão de vidro ---------- */
