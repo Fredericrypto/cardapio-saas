@@ -1,47 +1,54 @@
-import { useEffect, useMemo, useState, type FormEvent, type KeyboardEvent } from 'react';
+import { useEffect, useId, useMemo, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   ArrowBigUpDash,
-  ArrowRight,
+  Check,
   CircleAlert,
   Eye,
   EyeOff,
   LoaderCircle,
   Lock,
+  LogIn,
   Mail,
   Phone,
   User,
+  UserPlus,
 } from 'lucide-react';
 import { useI18n } from '../i18n/I18nContext';
 import { useTenant } from '../contexts/TenantContext';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { AppSplashScreen } from '../components/AppSplashScreen';
 import { formatBrazilPhone, isValidBrazilPhone } from '../lib/phone';
-import { GlowCard } from '../components/login/GlowCard';
-import { LoginShell } from '../components/login/LoginShell';
-import { LoginTip } from '../components/login/LoginTip';
+import { LoginSplit, LoginStateScreen } from '../components/login/LoginSplit';
+
+type AuthMode = 'login' | 'register';
 
 // Cadastro/login do CLIENTE FINAL — única porta de entrada do app
 // (cardápio inteiro atrás de login, ver RequireCustomerAuth). Conta é
 // DESTE restaurante (:slug), nunca cruzando vários.
 //
-// Visual: o MESMO da tela de login do admin (components/login/*) — cartão de
-// vidro com glow que segue o mouse e vira dois pontos de luz na borda, campos
-// em pílula, botão com borda de luz, fundo escuro com ícones de comida.
-// A identidade do restaurante aparece na caixinha do logo e no nome acima do título.
+// Visual premium (components/login/LoginSplit): editorial à esquerda (foto/nome do restaurante),
+// painel de vidro à direita com abas Entrar/Cadastrar, campos em pílula e botão de vidro.
+//
+// "Lembrar de mim": só vale no LOGIN. Marcado (padrão, igual ao comportamento anterior) o token fica no
+// localStorage; desmarcado, só no sessionStorage (some ao fechar a aba). A regra vive em
+// lib/customerSession + CustomerAuthContext; esta tela apenas informa a escolha. O CADASTRO sempre
+// persiste (não há checkbox lá, é o comportamento de antes).
 export function CustomerAuthPage() {
   const { t } = useI18n();
+  const uid = useId();
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { tenant, error: tenantError, retry: retryTenant } = useTenant();
   const { login, register, customer, isLoading: isLoadingAuth } = useCustomerAuth();
 
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [mode, setMode] = useState<AuthMode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [remember, setRemember] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [capsOn, setCapsOn] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -72,21 +79,34 @@ export function CustomerAuthPage() {
     }
   }, [isLoadingAuth, customer, redirectTo, navigate, justAuthenticated]);
 
+  function switchMode(next: AuthMode) {
+    if (next === mode) return;
+    setError(null);
+    setShowGoogleSoon(false);
+    setMode(next);
+  }
+
+  function handleTabKey(e: KeyboardEvent<HTMLDivElement>) {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    e.preventDefault();
+    const next: AuthMode = mode === 'login' ? 'register' : 'login';
+    switchMode(next);
+    requestAnimationFrame(() => document.getElementById(`${uid}-tab-${next}`)?.focus());
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
     setIsSubmitting(true);
     try {
       if (mode === 'login') {
-        await login(email, password);
+        await login(email, password, { remember });
       } else {
-        await register({ email, password, name, phone: phone || undefined });
+        await register({ email, password, name, phone: phone || undefined }, { remember: true });
       }
       setJustAuthenticated(true);
     } catch (err: any) {
-      setError(
-        err?.response?.data?.message || t('auth.submitError'),
-      );
+      setError(err?.response?.data?.message || t('auth.submitError'));
     } finally {
       setIsSubmitting(false);
     }
@@ -102,85 +122,126 @@ export function CustomerAuthPage() {
 
   if (tenantError) {
     return (
-      <LoginShell>
-        <div className="lg-state">
-          <p className="lg-sub">{tenantError}</p>
-          <button type="button" onClick={retryTenant} className="lg-link">
-            {t('optionalCustomerAuth.tentar_de_novo')}
-          </button>
-        </div>
-      </LoginShell>
+      <LoginStateScreen>
+        <p>{tenantError}</p>
+        <button type="button" onClick={retryTenant} className="lp-link">
+          {t('optionalCustomerAuth.tentar_de_novo')}
+        </button>
+      </LoginStateScreen>
     );
   }
 
   if (!tenant) {
     return (
-      <LoginShell>
-        <LoaderCircle className="lg-spin lg-state-spinner" size={28} strokeWidth={1.5} aria-hidden="true" />
-      </LoginShell>
+      <LoginStateScreen>
+        <LoaderCircle className="lp-spin" size={28} strokeWidth={1.5} aria-hidden="true" />
+      </LoginStateScreen>
     );
   }
 
   const isRegister = mode === 'register';
   const phoneInvalid = phone.length > 0 && !isValidBrazilPhone(phone);
+  const passwordToggleLabel = showPassword ? t('auth.hidePassword') : t('auth.showPassword');
 
   return (
-    <LoginShell>
-      <GlowCard>
-        <div className="lg-logo lg-logo--tenant">
-          {tenant.logoUrl ? (
-            <img src={tenant.logoUrl} alt={tenant.name} />
-          ) : (
-            <span className="lg-logo__letter">{tenant.name.charAt(0)}</span>
-          )}
-        </div>
-        <p className="lg-eyebrow">{tenant.name}</p>
-        <h1 className="lg-title">{isRegister ? t('auth.createTitle') : t('auth.welcomeBack')}</h1>
-        <p className="lg-sub">{isRegister ? t('auth.registerSubtitle') : t('auth.loginSubtitle')}</p>
+    <LoginSplit
+      tenant={tenant}
+      eyebrow={t('auth.editorialEyebrow')}
+      title={isRegister ? t('auth.createTitle') : t('auth.welcomeBack')}
+      subtitle={isRegister ? t('auth.registerSubtitle') : t('auth.loginHeroSubtitle')}
+    >
+      <div className="lp-tabs" role="tablist" onKeyDown={handleTabKey}>
+        <button
+          type="button"
+          role="tab"
+          id={`${uid}-tab-login`}
+          aria-selected={!isRegister}
+          aria-controls={`${uid}-panel`}
+          tabIndex={isRegister ? -1 : 0}
+          className="lp-tab"
+          onClick={() => switchMode('login')}
+        >
+          {t('common.enter')}
+        </button>
+        <button
+          type="button"
+          role="tab"
+          id={`${uid}-tab-register`}
+          aria-selected={isRegister}
+          aria-controls={`${uid}-panel`}
+          tabIndex={isRegister ? 0 : -1}
+          className="lp-tab"
+          onClick={() => switchMode('register')}
+        >
+          {t('auth.tabRegister')}
+        </button>
+        <span className="lp-tabs__bar" data-pos={mode} aria-hidden="true" />
+      </div>
 
-        <form onSubmit={handleSubmit} className="lg-form" noValidate>
+      <form
+        id={`${uid}-panel`}
+        role="tabpanel"
+        aria-labelledby={`${uid}-tab-${mode}`}
+        onSubmit={handleSubmit}
+        className="lp-form"
+        noValidate
+      >
+        <div className="lp-fields" key={mode}>
           {isRegister && (
-            <div className="lg-field">
-              <User className="lg-field__icon" size={18} strokeWidth={1.5} aria-hidden="true" />
-              <input
-                className="lg-input"
-                type="text"
-                name="name"
-                autoComplete="name"
-                aria-label={t('auth.namePlaceholder')}
-                placeholder={t('auth.namePlaceholder')}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
+            <div className="lp-group">
+              <label className="lp-label" htmlFor={`${uid}-name`}>
+                {t('auth.nameLabel')}
+              </label>
+              <div className="lp-field">
+                <User className="lp-field__icon" size={18} strokeWidth={1.5} aria-hidden="true" />
+                <input
+                  id={`${uid}-name`}
+                  className="lp-input"
+                  type="text"
+                  name="name"
+                  autoComplete="name"
+                  placeholder={t('auth.namePlaceholder')}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+              </div>
             </div>
           )}
 
-          <div className="lg-field">
-            <Mail className="lg-field__icon" size={18} strokeWidth={1.5} aria-hidden="true" />
-            <input
-              className="lg-input"
-              type="email"
-              name="email"
-              autoComplete={isRegister ? 'email' : 'username'}
-              autoFocus={autoFocusEmail}
-              aria-label={t('auth.emailPlaceholder')}
-              placeholder={t('auth.emailPlaceholder')}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
+          <div className="lp-group">
+            <label className="lp-label" htmlFor={`${uid}-email`}>
+              {t('auth.emailLabel')}
+            </label>
+            <div className="lp-field">
+              <Mail className="lp-field__icon" size={18} strokeWidth={1.5} aria-hidden="true" />
+              <input
+                id={`${uid}-email`}
+                className="lp-input"
+                type="email"
+                name="email"
+                autoComplete={isRegister ? 'email' : 'username'}
+                autoFocus={autoFocusEmail}
+                placeholder={t('auth.emailExample')}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
           </div>
 
           {isRegister && (
-            <>
-              <div className="lg-field">
-                <Phone className="lg-field__icon" size={18} strokeWidth={1.5} aria-hidden="true" />
+            <div className="lp-group">
+              <label className="lp-label" htmlFor={`${uid}-phone`}>
+                {t('auth.phoneLabel')}
+              </label>
+              <div className="lp-field" data-invalid={phoneInvalid || undefined}>
+                <Phone className="lp-field__icon" size={18} strokeWidth={1.5} aria-hidden="true" />
                 <input
-                  className="lg-input"
+                  id={`${uid}-phone`}
+                  className="lp-input"
                   type="tel"
                   name="phone"
                   inputMode="numeric"
                   autoComplete="tel"
-                  aria-label="(48) 99999-9999"
                   aria-invalid={phoneInvalid || undefined}
                   placeholder="(48) 99999-9999"
                   value={phone}
@@ -188,39 +249,41 @@ export function CustomerAuthPage() {
                 />
               </div>
               {phoneInvalid && (
-                <p className="lg-hint lg-hint--error">{t('phoneInput.telefone_incompleto_confira_o')}</p>
+                <p className="lp-hint lp-hint--error">{t('phoneInput.telefone_incompleto_confira_o')}</p>
               )}
-            </>
+            </div>
           )}
 
-          <div className="lg-field">
-            <Lock className="lg-field__icon" size={18} strokeWidth={1.5} aria-hidden="true" />
-            <input
-              className="lg-input"
-              type={showPassword ? 'text' : 'password'}
-              name="password"
-              autoComplete={isRegister ? 'new-password' : 'current-password'}
-              aria-label={t('auth.passwordPlaceholder')}
-              placeholder={t('auth.passwordPlaceholder')}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={handlePasswordKey}
-              onKeyUp={handlePasswordKey}
-              onBlur={() => setCapsOn(false)}
-            />
-            {capsOn && (
-              <LoginTip label={t('auth.capsOn')}>
-                <span className="lg-caps">
+          <div className="lp-group">
+            <label className="lp-label" htmlFor={`${uid}-password`}>
+              {t('auth.passwordLabel')}
+            </label>
+            <div className="lp-field">
+              <Lock className="lp-field__icon" size={18} strokeWidth={1.5} aria-hidden="true" />
+              <input
+                id={`${uid}-password`}
+                className="lp-input"
+                type={showPassword ? 'text' : 'password'}
+                name="password"
+                autoComplete={isRegister ? 'new-password' : 'current-password'}
+                placeholder={t('auth.passwordPlaceholder')}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={handlePasswordKey}
+                onKeyUp={handlePasswordKey}
+                onBlur={() => setCapsOn(false)}
+              />
+              {capsOn && (
+                <span className="lp-caps" role="status" title={t('auth.capsOn')}>
                   <ArrowBigUpDash size={18} strokeWidth={1.5} aria-label={t('auth.capsOn')} />
                 </span>
-              </LoginTip>
-            )}
-            <LoginTip label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')} align="end">
+              )}
               <button
                 type="button"
-                className="lg-iconbtn"
+                className="lp-iconbtn"
                 onClick={() => setShowPassword((v) => !v)}
-                aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
+                aria-label={passwordToggleLabel}
+                title={passwordToggleLabel}
                 aria-pressed={showPassword}
               >
                 {showPassword ? (
@@ -229,67 +292,77 @@ export function CustomerAuthPage() {
                   <Eye size={18} strokeWidth={1.5} aria-hidden="true" />
                 )}
               </button>
-            </LoginTip>
+            </div>
           </div>
 
-          {error && (
-            <p className="lg-error" role="alert">
-              <CircleAlert size={16} strokeWidth={1.5} aria-hidden="true" />
-              {error}
-            </p>
+          {!isRegister && (
+            <div className="lp-row">
+              <label className="lp-check">
+                <input
+                  type="checkbox"
+                  className="lp-check__input"
+                  name="remember"
+                  checked={remember}
+                  onChange={(e) => setRemember(e.target.checked)}
+                />
+                <span className="lp-check__box" aria-hidden="true">
+                  <Check size={12} strokeWidth={2.5} />
+                </span>
+                <span>{t('auth.remember')}</span>
+              </label>
+            </div>
           )}
+        </div>
 
-          <button
-            type="submit"
-            disabled={
-              isSubmitting ||
-              !email ||
-              !password ||
-              (isRegister && (!name || !isValidBrazilPhone(phone)))
-            }
-            className={isSubmitting ? 'lg-btn is-busy' : 'lg-btn'}
-          >
-            <span className="lg-btn__ring" aria-hidden="true" />
-            <span className="lg-btn__halo" aria-hidden="true" />
-            <span className="lg-btn__fill">
-              {isSubmitting ? (
-                <>
-                  <LoaderCircle className="lg-spin" size={18} strokeWidth={1.75} aria-hidden="true" />
-                  {t('auth.wait')}
-                </>
+        {error && (
+          <p className="lp-error" role="alert">
+            <CircleAlert size={16} strokeWidth={1.5} aria-hidden="true" />
+            {error}
+          </p>
+        )}
+
+        <button
+          type="submit"
+          disabled={
+            isSubmitting ||
+            !email ||
+            !password ||
+            (isRegister && (!name || !isValidBrazilPhone(phone)))
+          }
+          className={isSubmitting ? 'lp-btn is-busy' : 'lp-btn'}
+        >
+          {isSubmitting ? (
+            <>
+              <LoaderCircle className="lp-spin" size={18} strokeWidth={1.75} aria-hidden="true" />
+              {t('auth.wait')}
+            </>
+          ) : (
+            <>
+              {isRegister ? (
+                <UserPlus size={18} strokeWidth={1.5} aria-hidden="true" />
               ) : (
-                <>
-                  {isRegister ? t('auth.createAccount') : t('common.enter')}
-                  <ArrowRight size={18} strokeWidth={1.75} aria-hidden="true" />
-                </>
+                <LogIn size={18} strokeWidth={1.5} aria-hidden="true" />
               )}
-            </span>
-          </button>
+              {isRegister ? t('auth.createAccount') : t('common.enter')}
+            </>
+          )}
+        </button>
 
-          <div className="lg-or" aria-hidden="true">
-            {t('auth.or')}
-          </div>
+        <div className="lp-or" aria-hidden="true">
+          {t('auth.or')}
+        </div>
 
-          <button type="button" className="lg-social" onClick={() => setShowGoogleSoon(true)}>
-            <GoogleIcon />
-            {t('auth.google')}
-          </button>
-          {showGoogleSoon && <p className="lg-hint">{t('auth.googleSoon')}</p>}
+        <button type="button" className="lp-social" onClick={() => setShowGoogleSoon(true)}>
+          <GoogleIcon />
+          {t('auth.google')}
+        </button>
+        {showGoogleSoon && <p className="lp-hint">{t('auth.googleSoon')}</p>}
 
-          <button
-            type="button"
-            className="lg-link"
-            onClick={() => {
-              setError(null);
-              setShowGoogleSoon(false);
-              setMode((m) => (m === 'login' ? 'register' : 'login'));
-            }}
-          >
-            {isRegister ? t('auth.haveAccount') : t('auth.noAccount')}
-          </button>
-        </form>
-      </GlowCard>
-    </LoginShell>
+        <button type="button" className="lp-link" onClick={() => switchMode(isRegister ? 'login' : 'register')}>
+          {isRegister ? t('auth.haveAccount') : t('auth.noAccount')}
+        </button>
+      </form>
+    </LoginSplit>
   );
 }
 

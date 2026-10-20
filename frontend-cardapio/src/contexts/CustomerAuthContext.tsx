@@ -7,11 +7,26 @@ import {
 } from '../lib/customer-api';
 import { useCart } from './CartContext';
 import { useTenant } from './TenantContext';
+import {
+  clearStoredTokenIfMatches,
+  clearStoredTokens,
+  persistToken,
+  readStoredToken,
+  type SessionOptions,
+} from '../lib/customerSession';
 
 // Cliente é POR RESTAURANTE (decisão de produto: cada restaurante é uma
 // ilha isolada, sem conta cruzando vários estabelecimentos).
-function storageKeyFor(tenantId: string): string {
-  return `cardapio_customer_token_${tenantId}`;
+// Token que nenhum storage aceitou (modo privado restrito, cota cheia): vale so ate recarregar a pagina.
+// Sem isso o resync leria `null` do storage e deslogaria o cliente logo apos o login.
+type MemoryToken = { tenantId: string; token: string } | null;
+
+// Token atual: storage (lib/customerSession) primeiro; memoria so como ultimo recurso.
+function resolveToken(tenantId: string, memory: { current: MemoryToken }): string | null {
+  const stored = readStoredToken(tenantId);
+  if (stored) return stored;
+  const m = memory.current;
+  return m && m.tenantId === tenantId ? m.token : null;
 }
 
 // Evento pra sincronizar ENTRE ABAS (o `storage` event do browser não
@@ -35,8 +50,11 @@ interface CustomerAuthContextValue {
   // rede) — sinal pra quem consome o hook: "não bounce pro login, isso
   // não significa deslogado, só não deu pra confirmar agora".
   authError: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (data: { email: string; password: string; name: string; phone?: string }) => Promise<void>;
+  login: (email: string, password: string, options?: SessionOptions) => Promise<void>;
+  register: (
+    data: { email: string; password: string; name: string; phone?: string },
+    options?: SessionOptions,
+  ) => Promise<void>;
   logout: () => void;
   retry: () => void;
   setCustomer: (customer: CustomerProfile) => void;
@@ -66,9 +84,10 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   const { clearCart, setCartOwner } = useCart();
   const clearCartRef = useRef(clearCart);
   clearCartRef.current = clearCart;
+  const memoryTokenRef = useRef<MemoryToken>(null);
 
   const [token, setToken] = useState<string | null>(() =>
-    tenantId ? localStorage.getItem(storageKeyFor(tenantId)) : null,
+    tenantId ? resolveToken(tenantId, memoryTokenRef) : null,
   );
   const [customer, setCustomer] = useState<CustomerProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -77,7 +96,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     function resync() {
-      setToken(tenantId ? localStorage.getItem(storageKeyFor(tenantId)) : null);
+      setToken(tenantId ? resolveToken(tenantId, memoryTokenRef) : null);
     }
     resync();
     window.addEventListener(AUTH_CHANGED_EVENT, resync);
@@ -119,7 +138,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     // (o resync roda no mesmo commit, mas este efeito ve o token antigo = null). Se existe
     // token salvo, NAO declarar "deslogado": manter carregando ate o token ser lido, senao
     // o RequireCustomerAuth manda pro login por ~1s antes de confirmar a sessao.
-    if (tenantId && !token && localStorage.getItem(storageKeyFor(tenantId))) {
+    if (tenantId && !token && resolveToken(tenantId, memoryTokenRef)) {
       setIsLoading(true);
       return;
     }
@@ -146,8 +165,10 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
         const status = err?.response?.status;
         if (status === 401) {
           clearCartRef.current();
-          localStorage.removeItem(storageKeyFor(tenantId));
-          setToken(null);
+          // Compare-and-delete: so apaga o token que o servidor rejeitou (nunca um mais novo de outra aba).
+          clearStoredTokenIfMatches(tenantId, token);
+          if (memoryTokenRef.current?.token === token) memoryTokenRef.current = null;
+          setToken(resolveToken(tenantId, memoryTokenRef));
           setCustomer(null);
           broadcastAuthChanged(tenantId);
         } else {
@@ -163,8 +184,15 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tenantId, token, retryTick, isTenantLoading]);
 
-  async function login(email: string, password: string) {
+  // Guarda a sessao conforme "Lembrar de mim" (ver lib/customerSession). Padrao true = comportamento anterior.
+  function storeSession(id: string, accessToken: string, remember: boolean) {
+    const target = persistToken(id, accessToken, remember);
+    memoryTokenRef.current = target === 'memory' ? { tenantId: id, token: accessToken } : null;
+  }
+
+  async function login(email: string, password: string, options?: SessionOptions) {
     if (!tenantId) return;
+    const remember = options?.remember ?? true;
     const result = await loginCustomer(tenantId, { email, password });
     // NUNCA limpar o carrinho aqui — ver o comentário grande em
     // CartContext.setCartOwner. Um convidado que já tinha item no
@@ -172,17 +200,21 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     // dele; só quem troca de identidade ativamente (logout) precisa
     // dessa limpeza, pra não vazar carrinho entre contas no mesmo
     // aparelho.
-    localStorage.setItem(storageKeyFor(tenantId), result.accessToken);
+    storeSession(tenantId, result.accessToken, remember);
     setToken(result.accessToken);
     setCustomer(result.customer);
     broadcastAuthChanged(tenantId);
   }
 
-  async function register(data: { email: string; password: string; name: string; phone?: string }) {
+  async function register(
+    data: { email: string; password: string; name: string; phone?: string },
+    options?: SessionOptions,
+  ) {
     if (!tenantId) return;
+    const remember = options?.remember ?? true;
     const result = await registerCustomer(tenantId, data);
     // Mesmo raciocínio de `login` acima — nunca limpar aqui.
-    localStorage.setItem(storageKeyFor(tenantId), result.accessToken);
+    storeSession(tenantId, result.accessToken, remember);
     setToken(result.accessToken);
     setCustomer(result.customer);
     broadcastAuthChanged(tenantId);
@@ -191,7 +223,8 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   function logout() {
     if (!tenantId) return;
     clearCart();
-    localStorage.removeItem(storageKeyFor(tenantId));
+    clearStoredTokens(tenantId);
+    memoryTokenRef.current = null;
     setToken(null);
     setCustomer(null);
     broadcastAuthChanged(tenantId);

@@ -1,0 +1,646 @@
+/* Login do cliente — redesign premium (prefixo .lp-). Sempre escuro. */
+.lp-root {
+  --lp-brand: #4f7a56;
+  --lp-ink: #f3eee4;
+  --lp-soft: rgba(243, 238, 228, 0.78);
+  --lp-muted: #a9a69e;
+  --lp-line: rgba(243, 236, 221, 0.12);
+  --lp-serif: 'Newsreader', Georgia, 'Times New Roman', serif;
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: #101010;
+  color: var(--lp-ink);
+  color-scheme: dark;
+  font-family: Inter, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  overflow-x: clip;
+}
+@media (min-width: 768px) {
+  .lp-root {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(380px, 460px);
+  }
+}
+@media (min-width: 1100px) {
+  .lp-root {
+    grid-template-columns: minmax(0, 3fr) minmax(440px, 2fr);
+  }
+}
+
+/* ---------- Fundo: brilho quente + foto ---------- */
+.lp-glow {
+  position: absolute;
+  inset: 0;
+  z-index: -6;
+  pointer-events: none;
+  background: radial-gradient(60% 70% at 22% 48%, rgba(120, 86, 52, 0.16), transparent 70%);
+}
+.lp-photo {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: min(72dvh, 620px);
+  z-index: -5;
+  pointer-events: none;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(180deg, #000 0, #000 30%, transparent 80%);
+  mask-image: linear-gradient(180deg, #000 0, #000 30%, transparent 80%);
+}
+@media (min-width: 768px) {
+  .lp-photo {
+    inset: 0;
+    height: auto;
+    -webkit-mask-image: linear-gradient(90deg, #000 0, #000 48%, transparent 88%);
+    mask-image: linear-gradient(90deg, #000 0, #000 48%, transparent 88%);
+  }
+}
+.lp-photo__img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  filter: saturate(0.88) brightness(0.62);
+  animation: lp-photo-in 1.4s ease both;
+}
+.lp-photo::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(16, 16, 16, 0.55), rgba(16, 16, 16, 0.08) 35%, rgba(16, 16, 16, 0.78) 100%),
+    linear-gradient(90deg, rgba(16, 16, 16, 0.5), rgba(16, 16, 16, 0.2) 60%, rgba(16, 16, 16, 0));
+}
+
+/* ---------- Lado editorial ---------- */
+.lp-hero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: clamp(20px, 3vw, 40px) clamp(20px, 4vw, 56px) 8px;
+}
+.lp-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  animation: lp-fade 0.9s ease both;
+}
+.lp-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f3ecdd;
+  color: #1d1b19;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+.lp-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.lp-logo__letter {
+  font-family: var(--lp-serif);
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1;
+}
+.lp-logo--lg {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+}
+.lp-logo--lg .lp-logo__letter {
+  font-size: 28px;
+}
+.lp-brand__name {
+  font-family: var(--lp-serif);
+  font-size: clamp(18px, 1.7vw, 24px);
+  letter-spacing: 0.005em;
+}
+.lp-editorial {
+  margin-top: clamp(28px, 6vh, 56px);
+  max-width: 34rem;
+}
+@media (min-width: 768px) {
+  .lp-editorial {
+    margin-top: clamp(48px, 15vh, 170px);
+  }
+}
+.lp-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0;
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--lp-soft);
+  animation: lp-rise 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) 0.15s both;
+}
+.lp-eyebrow__rule {
+  width: 28px;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(243, 236, 221, 0.15), rgba(243, 236, 221, 0.55));
+}
+.lp-title {
+  margin: 14px 0 0;
+  font-family: var(--lp-serif);
+  font-weight: 400;
+  font-size: clamp(34px, 4.2vw, 68px);
+  line-height: 1.04;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+  animation: lp-rise 0.95s cubic-bezier(0.2, 0.7, 0.2, 1) 0.25s both;
+}
+.lp-sub {
+  margin: 14px 0 0;
+  max-width: 30rem;
+  font-size: clamp(14px, 1.2vw, 17px);
+  line-height: 1.55;
+  color: var(--lp-soft);
+  animation: lp-rise 0.95s cubic-bezier(0.2, 0.7, 0.2, 1) 0.4s both;
+}
+
+/* ---------- Painel de vidro fumê ---------- */
+.lp-panel-wrap {
+  display: flex;
+  padding: 8px 16px 24px;
+}
+@media (min-width: 768px) {
+  .lp-panel-wrap {
+    padding: 12px 12px 12px 0;
+  }
+}
+.lp-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: 100%;
+  overflow: hidden;
+  padding: clamp(26px, 4vw, 52px) clamp(22px, 3.4vw, 48px);
+  border-radius: 28px;
+  border: 1px solid rgba(243, 236, 221, 0.1);
+  background: linear-gradient(180deg, rgba(28, 28, 27, 0.7), rgba(16, 16, 16, 0.82));
+  -webkit-backdrop-filter: blur(22px) saturate(1.15);
+  backdrop-filter: blur(22px) saturate(1.15);
+  box-shadow:
+    0 30px 80px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(243, 236, 221, 0.07);
+  animation: lp-rise 0.85s cubic-bezier(0.2, 0.7, 0.2, 1) 0.1s both;
+}
+@media (min-width: 768px) {
+  .lp-panel {
+    min-height: calc(100dvh - 24px);
+  }
+}
+.lp-panel__inner {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 440px;
+  margin: 0 auto;
+}
+.lp-panel-brand {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 26px;
+  text-align: center;
+}
+@media (min-width: 768px) {
+  .lp-panel-brand {
+    display: flex;
+  }
+}
+.lp-panel-brand__name {
+  font-family: var(--lp-serif);
+  font-size: 23px;
+  line-height: 1.15;
+}
+.lp-botanical {
+  position: absolute;
+  z-index: 0;
+  width: clamp(130px, 14vw, 190px);
+  color: rgba(243, 236, 221, 0.2);
+  pointer-events: none;
+}
+.lp-botanical--tr {
+  top: -6px;
+  right: -22px;
+  transform: rotate(-90deg);
+}
+.lp-botanical--bl {
+  bottom: -6px;
+  left: -22px;
+  transform: rotate(90deg);
+}
+
+/* ---------- Abas Entrar / Cadastrar ---------- */
+.lp-tabs {
+  position: relative;
+  display: flex;
+  margin-bottom: 26px;
+  border-bottom: 1px solid var(--lp-line);
+}
+.lp-tab {
+  flex: 1;
+  padding: 12px 8px 14px;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font: 500 15px/1 Inter, system-ui, sans-serif;
+  color: var(--lp-muted);
+  transition: color 0.25s ease;
+}
+.lp-tab:hover {
+  color: var(--lp-soft);
+}
+.lp-tab[aria-selected='true'] {
+  color: var(--lp-ink);
+}
+.lp-tab:focus-visible {
+  outline: 2px solid #9dc59a;
+  outline-offset: -2px;
+  border-radius: 8px;
+}
+.lp-tabs__bar {
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 50%;
+  height: 1px;
+  background: var(--lp-ink);
+  transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.lp-tabs__bar[data-pos='register'] {
+  transform: translateX(100%);
+}
+
+/* ---------- Campos ---------- */
+.lp-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.lp-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: lp-fade 0.45s ease both;
+}
+.lp-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.lp-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--lp-soft);
+}
+.lp-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 0 16px;
+  border-radius: 9999px;
+  border: 1px solid var(--lp-line);
+  background: rgba(255, 255, 255, 0.035);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background-color 0.2s ease;
+}
+.lp-field:focus-within {
+  border-color: rgba(243, 236, 221, 0.38);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 0 0 3px rgba(243, 236, 221, 0.06);
+}
+.lp-field[data-invalid='true'] {
+  border-color: rgba(240, 168, 160, 0.55);
+}
+.lp-field__icon {
+  flex: none;
+  color: var(--lp-muted);
+}
+.lp-input {
+  flex: 1;
+  min-width: 0;
+  height: 50px;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  color: var(--lp-ink);
+  font: 400 16px/1 Inter, system-ui, sans-serif;
+}
+.lp-input::placeholder {
+  color: rgba(169, 166, 158, 0.7);
+}
+.lp-input:-webkit-autofill {
+  -webkit-text-fill-color: var(--lp-ink);
+  caret-color: var(--lp-ink);
+  box-shadow: 0 0 0 1000px #1b1b1a inset;
+  transition: background-color 9999s ease 0s;
+}
+.lp-iconbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--lp-muted);
+  cursor: pointer;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease;
+}
+.lp-iconbtn:hover {
+  color: var(--lp-ink);
+  background: rgba(255, 255, 255, 0.06);
+}
+.lp-iconbtn:focus-visible {
+  outline: 2px solid #9dc59a;
+  outline-offset: 1px;
+}
+.lp-caps {
+  display: inline-flex;
+  flex: none;
+  color: #d9b56f;
+}
+
+/* ---------- Lembrar de mim ---------- */
+.lp-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 24px;
+}
+.lp-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 13.5px;
+  color: var(--lp-soft);
+}
+.lp-check__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+.lp-check__box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  border: 1px solid rgba(243, 236, 221, 0.3);
+  background: rgba(255, 255, 255, 0.03);
+  color: transparent;
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+.lp-check:hover .lp-check__box {
+  border-color: rgba(243, 236, 221, 0.5);
+}
+.lp-check__input:checked + .lp-check__box {
+  background: color-mix(in srgb, var(--lp-brand) 55%, rgba(255, 255, 255, 0.08));
+  border-color: color-mix(in srgb, var(--lp-brand) 70%, rgba(243, 236, 221, 0.4));
+  color: var(--lp-ink);
+}
+.lp-check__input:focus-visible + .lp-check__box {
+  box-shadow: 0 0 0 2px #101010, 0 0 0 4px #9dc59a;
+}
+
+/* ---------- Botão principal (vidro) ---------- */
+.lp-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 54px;
+  margin-top: 4px;
+  padding: 0 24px;
+  border-radius: 9999px;
+  cursor: pointer;
+  font: 500 15.5px/1 Inter, system-ui, sans-serif;
+  color: var(--lp-ink);
+  background: rgba(255, 255, 255, 0.07);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--lp-brand) 34%, rgba(255, 255, 255, 0.09)),
+    color-mix(in srgb, var(--lp-brand) 20%, rgba(255, 255, 255, 0.03))
+  );
+  border: 1px solid rgba(243, 236, 221, 0.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  backdrop-filter: blur(14px) saturate(1.3);
+  box-shadow:
+    inset 0 1px 0 rgba(243, 236, 221, 0.2),
+    0 12px 30px rgba(0, 0, 0, 0.4);
+  transition:
+    transform 0.2s ease,
+    filter 0.2s ease,
+    box-shadow 0.2s ease;
+}
+.lp-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.12);
+}
+.lp-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+.lp-btn:focus-visible {
+  outline: 2px solid #9dc59a;
+  outline-offset: 3px;
+}
+.lp-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.lp-btn.is-busy {
+  cursor: progress;
+}
+
+/* ---------- ou / Google / links / mensagens ---------- */
+.lp-or {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 12.5px;
+  color: var(--lp-muted);
+}
+.lp-or::before,
+.lp-or::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--lp-line);
+}
+.lp-social {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 52px;
+  padding: 0 24px;
+  border-radius: 9999px;
+  cursor: pointer;
+  font: 500 15px/1 Inter, system-ui, sans-serif;
+  color: var(--lp-ink);
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--lp-line);
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
+}
+.lp-social:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(243, 236, 221, 0.24);
+}
+.lp-social:focus-visible {
+  outline: 2px solid #9dc59a;
+  outline-offset: 3px;
+}
+.lp-hint {
+  margin: 0;
+  text-align: center;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--lp-muted);
+}
+.lp-hint--error {
+  text-align: left;
+  padding-left: 16px;
+  color: #f0a8a0;
+}
+.lp-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(240, 168, 160, 0.28);
+  background: rgba(220, 80, 70, 0.08);
+  font-size: 13.5px;
+  line-height: 1.4;
+  color: #f4b9b2;
+}
+.lp-error svg {
+  flex: none;
+  margin-top: 1px;
+}
+.lp-link {
+  align-self: center;
+  margin-top: 4px;
+  padding: 6px 8px;
+  background: none;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  font: 400 13px/1.3 Inter, system-ui, sans-serif;
+  color: var(--lp-soft);
+  transition: color 0.2s ease;
+}
+.lp-link:hover {
+  color: var(--lp-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.lp-link:focus-visible {
+  outline: 2px solid #9dc59a;
+  outline-offset: 2px;
+}
+
+/* ---------- Estados (carregando / erro) ---------- */
+.lp-root--state {
+  align-items: center;
+  justify-content: center;
+}
+.lp-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 24px;
+  text-align: center;
+  color: var(--lp-soft);
+}
+.lp-spin {
+  animation: lp-spin 1s linear infinite;
+}
+
+@keyframes lp-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes lp-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes lp-photo-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes lp-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lp-root *,
+  .lp-root *::before,
+  .lp-root *::after {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+  }
+}
