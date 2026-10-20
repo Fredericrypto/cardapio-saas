@@ -22,7 +22,6 @@ import { MenuHeader } from '../components/MenuHeader';
 import { TableMenuHeader } from '../components/TableMenuHeader';
 import { PromoCards } from '../components/PromoCards';
 import { FoodBackdrop } from '../components/FoodBackdrop';
-import { MenuBotanical } from '../components/MenuBotanical';
 import { StickyCategoryBar } from '../components/StickyCategoryBar';
 import { SearchBar } from '../components/SearchBar';
 import { CategoryChips } from '../components/CategoryChips';
@@ -391,8 +390,6 @@ export function MenuPage() {
             botões de adicionar/pedir ficam travados (ver ProductCard e telas de
             detalhe). */}
         <div className="relative">
-          {/* Ramo botânico decorativo ao lado da grade (só em telas largas; não intercepta toque e fica atrás dos cards). */}
-          <MenuBotanical className="pointer-events-none absolute right-0 top-[44rem] z-0 hidden w-44 text-[#111827]/20 xl:-right-10 xl:block 2xl:w-52 dark:text-[#C2C0B6]/25" />
           <div className="pt-1 pb-5">
             {/* Mesmo cabeçalho das categorias da aba "Todos": ícone à
                 esquerda + nome + seta de recolher (decisão do Felipe, 30/09). */}
