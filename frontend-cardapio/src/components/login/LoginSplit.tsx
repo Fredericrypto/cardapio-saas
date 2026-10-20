@@ -1,6 +1,5 @@
 import { useState, type CSSProperties, type ReactNode } from 'react';
 import { FoodBackdrop } from '../FoodBackdrop';
-import { MenuBotanical } from '../MenuBotanical';
 import type { Tenant } from '../../types';
 import './login-premium.css';
 
@@ -17,6 +16,20 @@ interface LoginSplitProps {
   title: string;
   subtitle: string;
   children: ReactNode;
+}
+
+// Ramo botânico (public/login/botanical-branch.webp). A orientação de cada canto é feita em CSS
+// (.lp-botanical--tr gira 180°; .lp-botanical--bl usa o desenho original).
+const BRANCH_SRC = '/login/botanical-branch.webp';
+
+function Branch({ className }: { className: string }) {
+  return <img src={BRANCH_SRC} alt="" aria-hidden="true" draggable={false} decoding="async" className={className} />;
+}
+
+// Primeira palavra em destaque normal; o restante vai em itálico na linha de baixo.
+function splitTitle(title: string): [string, string] {
+  const i = title.indexOf(' ');
+  return i < 0 ? [title, ''] : [title.slice(0, i), title.slice(i + 1)];
 }
 
 function TenantLogo({ tenant, className }: { tenant: Tenant; className: string }) {
@@ -38,6 +51,7 @@ function TenantLogo({ tenant, className }: { tenant: Tenant; className: string }
 export function LoginSplit({ tenant, eyebrow, title, subtitle, children }: LoginSplitProps) {
   const [coverFailed, setCoverFailed] = useState(false);
   const showCover = Boolean(tenant.coverImageUrl) && !coverFailed;
+  const [titleMain, titleRest] = splitTitle(title);
 
   return (
     <div className="lp-root dark" style={{ '--lp-brand': tenant.primaryColor } as CSSProperties}>
@@ -65,15 +79,27 @@ export function LoginSplit({ tenant, eyebrow, title, subtitle, children }: Login
             <span className="lp-eyebrow__rule" aria-hidden="true" />
             {eyebrow}
           </p>
-          <h1 className="lp-title">{title}</h1>
+          <h1 className="lp-title" aria-label={title}>
+            <span className="lp-title__a" aria-hidden="true">
+              {titleMain}
+            </span>
+            {titleRest && (
+              <em className="lp-title__b" aria-hidden="true">
+                {titleRest}
+              </em>
+            )}
+          </h1>
+          <span className="lp-ornament" aria-hidden="true">
+            <i />
+          </span>
           <p className="lp-sub">{subtitle}</p>
         </div>
       </section>
 
       <main className="lp-panel-wrap">
         <div className="lp-panel">
-          <MenuBotanical className="lp-botanical lp-botanical--tr" />
-          <MenuBotanical className="lp-botanical lp-botanical--bl" />
+          <Branch className="lp-botanical lp-botanical--tr" />
+          <Branch className="lp-botanical lp-botanical--bl" />
           <div className="lp-panel__inner">
             <div className="lp-panel-brand">
               <TenantLogo tenant={tenant} className="lp-logo lp-logo--lg" />

@@ -184,6 +184,13 @@ function App() {
               }
             />
 
+            {/* Conta do cliente final — SEMPRE dentro do restaurante
+                (:slug). Cliente é por restaurante, não uma conta cruzando
+                vários. A tela de entrar/criar conta é a ÚNICA rota que
+                nunca exige login (senão ninguém conseguiria logar).
+                FORA do NavLayout de propósito: login/cadastro é tela cheia, sem navbar. */}
+            <Route path="conta-cliente/entrar" element={<CustomerAuthPage />} />
+
             {/* Rotas SEM navbar própria: NavLayout põe a navbar global (DesktopNav no desktop,
                 BottomNav no celular). Busca só na página principal do cardápio. */}
             <Route element={<NavLayout />}>
@@ -280,11 +287,6 @@ function App() {
                   </RequireCustomerAuth>
                 }
               />
-              {/* Conta do cliente final — SEMPRE dentro do restaurante
-                  (:slug). Cliente é por restaurante, não uma conta cruzando
-                  vários. A tela de entrar/criar conta é a ÚNICA rota que
-                  nunca exige login (senão ninguém conseguiria logar). */}
-              <Route path="conta-cliente/entrar" element={<CustomerAuthPage />} />
             </Route>
           </Route>
 
