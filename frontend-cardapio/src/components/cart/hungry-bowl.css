@@ -1,0 +1,120 @@
+/* Mascote "Hungry Little Bowl" (prefixo .hb-). Só transform/opacity; loop de 4s sem salto
+   (0% = 100%). Sem animação: pose neutra (base abaixo). */
+.hb { --hb-d: 4s; display: block; overflow: visible; }
+.hb-body, .hb-open, .hb-look, .hb-blink, .hb-arm, .hb-cheeks, .hb-shadow { transform-box: fill-box; }
+.hb-body { transform-origin: 50% 100%; }
+.hb-open, .hb-look, .hb-blink, .hb-cheeks, .hb-shadow { transform-origin: 50% 50%; }
+.hb-arm { transform-origin: 50% 12%; }
+.hb-arm--l { transform: rotate(8deg); }
+.hb-arm--r { transform: rotate(-8deg); }
+.hb-cheeks { opacity: 0.5; }
+.hb-m1 { opacity: 1; }
+.hb-m2, .hb-m3 { opacity: 0; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .hb:not(.hb--static) .hb-body   { animation: hb-body var(--hb-d) ease-in-out infinite; }
+  .hb:not(.hb--static) .hb-shadow { animation: hb-shadow var(--hb-d) ease-in-out infinite; }
+  .hb:not(.hb--static) .hb-open   { animation: hb-open var(--hb-d) ease-in-out infinite; }
+  .hb:not(.hb--static) .hb-face   { animation: hb-face var(--hb-d) ease-in-out infinite; }
+  .hb:not(.hb--static) .hb-look   { animation: hb-look var(--hb-d) ease-in-out infinite; }
+  .hb:not(.hb--static) .hb-blink  { animation: hb-blink var(--hb-d) ease-in-out infinite; }
+  .hb:not(.hb--static) .hb-cheeks { animation: hb-cheeks var(--hb-d) ease-in-out infinite; }
+  .hb:not(.hb--static) .hb-m1     { animation: hb-m1 var(--hb-d) ease-in-out infinite; }
+  .hb:not(.hb--static) .hb-m2     { animation: hb-m2 var(--hb-d) ease-in-out infinite; }
+  .hb:not(.hb--static) .hb-m3     { animation: hb-m3 var(--hb-d) ease-in-out infinite; }
+  .hb:not(.hb--static) .hb-arm--l { animation: hb-arm-l var(--hb-d) ease-in-out infinite; }
+  .hb:not(.hb--static) .hb-arm--r { animation: hb-arm-r var(--hb-d) ease-in-out infinite; }
+}
+
+/* A: respira (0-20%) · B: olha dentro (20-42%) · C: pede ajuda (42-65%)
+   D: gesto da barriga (65-87%) · E: volta à pose inicial (87-100%) */
+@keyframes hb-body {
+  0%   { transform: translateY(0) scale(1, 1); }
+  8%   { transform: translateY(-1px) scale(1.008, 1.014); }
+  16%  { transform: translateY(0) scale(1, 1); }
+  19%  { transform: translateY(1px) scale(1.01, 0.985); }
+  30%  { transform: translateY(2px) scale(1.015, 0.97); }
+  40%  { transform: translateY(2px) scale(1.015, 0.97); }
+  50%  { transform: translateY(-1.5px) scale(0.995, 1.02); }
+  62%  { transform: translateY(-1px) scale(1, 1.012); }
+  70%  { transform: translateY(1px) scale(1.01, 0.985); }
+  76%  { transform: translateY(-2px) scale(0.99, 1.02); }
+  82%  { transform: translateY(0) scale(1, 1); }
+  94%  { transform: translateY(-1px) scale(1.006, 1.012); }
+  100% { transform: translateY(0) scale(1, 1); }
+}
+@keyframes hb-shadow {
+  0%, 19%, 82%, 100% { transform: scaleX(1); opacity: 1; }
+  35% { transform: scaleX(1.04); opacity: 1; }
+  50% { transform: scaleX(0.97); opacity: 0.9; }
+  76% { transform: scaleX(0.96); opacity: 0.88; }
+}
+@keyframes hb-open {
+  0%, 20% { transform: scaleY(1); }
+  30%, 40% { transform: scaleY(1.5); }
+  52% { transform: scaleY(1.08); }
+  62%, 100% { transform: scaleY(1); }
+}
+@keyframes hb-face {
+  0%, 20% { transform: translateY(0); }
+  30%, 40% { transform: translateY(3px); }
+  50%, 100% { transform: translateY(0); }
+}
+@keyframes hb-look {
+  0%, 20% { transform: translate(0, 0) scale(1); }
+  30%, 40% { transform: translate(0, 2.6px) scale(1); }
+  50%, 62% { transform: translate(0, 0) scale(1.06); }
+  70% { transform: translate(0, 0) scale(1.03); }
+  80%, 100% { transform: translate(0, 0) scale(1); }
+}
+@keyframes hb-blink {
+  0%, 5.5% { transform: scaleY(1); }
+  8% { transform: scaleY(0.08); }
+  10.5%, 72% { transform: scaleY(1); }
+  74.5% { transform: scaleY(0.08); }
+  77%, 100% { transform: scaleY(1); }
+}
+@keyframes hb-cheeks {
+  0%, 44% { opacity: 0.5; transform: scale(1); }
+  52%, 84% { opacity: 0.78; transform: scale(1.08); }
+  96%, 100% { opacity: 0.5; transform: scale(1); }
+}
+@keyframes hb-m1 {
+  0%, 18% { opacity: 1; }
+  24%, 88% { opacity: 0; }
+  96%, 100% { opacity: 1; }
+}
+@keyframes hb-m2 {
+  0%, 20% { opacity: 0; }
+  26%, 42% { opacity: 1; }
+  48%, 100% { opacity: 0; }
+}
+@keyframes hb-m3 {
+  0%, 44% { opacity: 0; }
+  50%, 86% { opacity: 1; }
+  94%, 100% { opacity: 0; }
+}
+@keyframes hb-arm-l {
+  0%, 17% { transform: rotate(8deg); }
+  26%, 40% { transform: rotate(-4deg); }
+  52%, 62% { transform: rotate(20deg); }
+  66% { transform: rotate(20deg); }
+  71% { transform: rotate(-40deg); }
+  75% { transform: rotate(-47deg); }
+  79% { transform: rotate(-39deg); }
+  83% { transform: rotate(-46deg); }
+  87.5% { transform: rotate(-41deg); }
+  96% { transform: rotate(10deg); }
+  100% { transform: rotate(8deg); }
+}
+@keyframes hb-arm-r {
+  0%, 17% { transform: rotate(-8deg); }
+  26%, 40% { transform: rotate(4deg); }
+  52%, 62% { transform: rotate(-20deg); }
+  66% { transform: rotate(-20deg); }
+  71% { transform: rotate(-40deg); }
+  79% { transform: rotate(-34deg); }
+  87.5% { transform: rotate(-38deg); }
+  96% { transform: rotate(-10deg); }
+  100% { transform: rotate(-8deg); }
+}
