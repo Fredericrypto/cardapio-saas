@@ -24,6 +24,7 @@ import { useActiveMenuLocation } from '../hooks/useActiveMenuLocation';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { buildProductQuantityMap, findProductCartLine } from '../lib/cartLines';
 import { fetchActivePromotions, fetchCategories, fetchProducts } from '../lib/menu-api';
+import { isTransientError } from '../lib/api';
 import {
   computeMinOrderProgress,
   computeSelectedPromotionsEligibility,
@@ -104,6 +105,7 @@ export function PromotionExplorePage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   const paths = useMemo(
     () => buildPromotionModePaths(slug ?? '', promotionId ?? '', qrCodeToken),
@@ -115,6 +117,7 @@ export function PromotionExplorePage() {
   useEffect(() => {
     if (!tenantId || !promotionId || !isReady) return;
     let stale = false;
+    let retryTimer: number | undefined;
     Promise.all([
       fetchActivePromotions(tenantId, customerToken, locationId),
       fetchCategories(tenantId),
@@ -128,15 +131,21 @@ export function PromotionExplorePage() {
         setLoadFailed(false);
         setIsLoading(false);
       })
-      .catch(() => {
+      .catch((err) => {
         if (stale) return;
+        if (isTransientError(err)) {
+          // Servidor dormindo/instável: continua no esqueleto e busca de novo sozinho.
+          retryTimer = window.setTimeout(() => setReloadKey((k) => k + 1), 6000);
+          return;
+        }
         setLoadFailed(true);
         setIsLoading(false);
       });
     return () => {
       stale = true;
+      window.clearTimeout(retryTimer);
     };
-  }, [tenantId, promotionId, customerToken, isReady, locationId]);
+  }, [tenantId, promotionId, customerToken, isReady, locationId, reloadKey]);
 
   // Mesma atualização silenciosa do cardápio: item que ficar indisponível sai
   // da lista (e da contagem) sem F5.

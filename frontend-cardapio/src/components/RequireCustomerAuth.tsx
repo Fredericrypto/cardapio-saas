@@ -3,6 +3,7 @@ import { type ReactNode } from 'react';
 import { useParams, useLocation, Navigate } from 'react-router-dom';
 import { useTenant } from '../contexts/TenantContext';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
+import { BrandLoader } from './BrandLoader';
 
 // Trava o app inteiro atrás de login — decisão de produto explícita
 // (igual Instagram: sem navegação anônima). Toda rota do cardápio
@@ -21,24 +22,39 @@ export function RequireCustomerAuth({ children }: { children: ReactNode }) {
   const { t } = useI18n();
   const { slug } = useParams<{ slug: string }>();
   const location = useLocation();
-  const { tenant, isLoading: isLoadingTenant, error: tenantError, retry: retryTenant } = useTenant();
-  const { customer, isLoading: isLoadingAuth, authError, token, retry: retryAuth } = useCustomerAuth();
+  const {
+    tenant,
+    isLoading: isLoadingTenant,
+    error: tenantError,
+    errorTransient: tenantErrorTransient,
+    retry: retryTenant,
+  } = useTenant();
+  const {
+    customer,
+    isLoading: isLoadingAuth,
+    authError,
+    authErrorTransient,
+    token,
+    retry: retryAuth,
+  } = useCustomerAuth();
 
   if (tenantError) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen gap-3 px-6 text-center">
-        <p className="text-sm text-gray-500">{tenantError}</p>
-        <button onClick={retryTenant} className="text-sm font-semibold text-gray-900 underline">
-          {t('optionalCustomerAuth.tentar_de_novo')}
-        </button>
-      </div>
+      <BrandLoader
+        forceDark
+        delayMs={700}
+        unavailable={!tenantErrorTransient}
+        onAutoRetry={tenantErrorTransient ? retryTenant : undefined}
+      />
     );
   }
 
   if (!tenant || isLoadingTenant || isLoadingAuth) {
     // Mesmo fundo do primeiro quadro da splash (#131314, z-50): quando o MenuPage monta a
     // splash logo em seguida a troca e invisivel (sem spinner claro piscando antes).
-    return <div role="status" aria-label={t('common.loading')} className="fixed inset-0 z-50 bg-[#131314]" />;
+    // Nos primeiros 700ms continua só o fundo (igual antes); se o servidor estiver
+    // acordando, o BrandLoader aparece e some sozinho quando os dados chegam.
+    return <BrandLoader forceDark delayMs={700} />;
   }
 
   // CRÍTICO — bug real que isso corrige: antes, `!customer` sozinho já
@@ -50,6 +66,12 @@ export function RequireCustomerAuth({ children }: { children: ReactNode }) {
   // como 401 dentro do CustomerAuthContext — que aí sim limpa o token).
   // Erro passageiro com token presente mostra "tentar de novo" bem
   // aqui, sem sair da página.
+  // Falha passageira ao confirmar a sessão: loader + nova tentativa sozinha (sem botão).
+  if (authError && token && authErrorTransient) {
+    return <BrandLoader forceDark delayMs={700} onAutoRetry={retryAuth} />;
+  }
+
+  // Falha definitiva (não é 401 nem servidor instável): mantém a tela com a mensagem amigável.
   if (authError && token) {
     return (
       <div className="flex flex-col items-center justify-center h-screen gap-3 px-6 text-center">

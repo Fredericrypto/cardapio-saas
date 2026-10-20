@@ -16,6 +16,7 @@ import { PromotionBenefitCard } from '../components/promotion/PromotionBenefitCa
 import { PromotionSkeleton, PromotionUnavailable } from '../components/promotion/PromotionStates';
 import { buildShareUrl } from '../lib/shareLinks';
 import { fetchActivePromotions, fetchCategories, fetchProducts } from '../lib/menu-api';
+import { isTransientError } from '../lib/api';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { useTenant } from '../contexts/TenantContext';
 import { useCart } from '../contexts/CartContext';
@@ -91,6 +92,7 @@ export function PromotionDetailPage() {
   useEffect(() => {
     if (!slug || !promotionId || !tenantId || !isLocationReady) return;
     let stale = false;
+    let retryTimer: number | undefined;
     Promise.all([
       fetchActivePromotions(tenantId, customerToken, locationId),
       fetchCategories(tenantId),
@@ -104,14 +106,20 @@ export function PromotionDetailPage() {
         setLoadFailed(false);
         setIsLoading(false);
       })
-      .catch(() => {
-        // Falha de rede não é "promoção indisponível": mostra erro com nova tentativa.
+      .catch((err) => {
+        // Falha de rede não é "promoção indisponível". Servidor dormindo/instável: continua no
+        // esqueleto e busca de novo sozinho; só um erro definitivo cai na tela com botão.
         if (stale) return;
+        if (isTransientError(err)) {
+          retryTimer = window.setTimeout(() => setReloadKey((k) => k + 1), 6000);
+          return;
+        }
         setLoadFailed(true);
         setIsLoading(false);
       });
     return () => {
       stale = true;
+      window.clearTimeout(retryTimer);
     };
   }, [slug, promotionId, tenantId, customerToken, isLocationReady, locationId, reloadKey]);
 

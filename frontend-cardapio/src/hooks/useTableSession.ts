@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getCurrentTableSession, scanTableQrCode, fetchTableInfo } from '../lib/menu-api';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { useTenant } from '../contexts/TenantContext';
+import { isTransientError } from '../lib/api';
 import { presetSelectedLocationId } from './useSelectedLocation';
 import type { TableSession } from '../types';
 import {
@@ -124,6 +125,11 @@ export function useTableSession(slug: string | undefined, qrCodeToken: string | 
   // token != null = essa mesa tem sessão ativa que ainda não é "minha"
   // nessa aba — pede confirmação antes de entrar.
   const [pendingJoinToken, setPendingJoinToken] = useState<string | null>(null);
+  // true = o servidor não respondeu (dormindo/instável) ao consultar a mesa: a tela mostra o loader e
+  // reconsulta sozinha. `pendingFreshRef` guarda se aquilo era um scan novo, para a nova tentativa
+  // não ser confundida com um refresh (que nunca abre sessão).
+  const [isWaking, setIsWaking] = useState(false);
+  const pendingFreshRef = useRef<{ token: string; value: boolean } | null>(null);
 
   const doJoin = useCallback(
     async (token: string, confirmed = false) => {
@@ -159,9 +165,14 @@ export function useTableSession(slug: string | undefined, qrCodeToken: string | 
     setPendingJoinToken(null);
     setSessionEnded(false);
     setLeftTable(false);
+    setIsWaking(false);
     // Decidido de forma SÍNCRONA, antes de qualquer await — ver a REGRA
-    // ABSOLUTA no topo do arquivo.
-    const isNewOpening = takeFreshLoadDecision(qrCodeToken);
+    // ABSOLUTA no topo do arquivo. Numa nova tentativa automática (servidor que não
+    // respondeu) reaproveita a decisão original em vez de consumir outra.
+    const kept = pendingFreshRef.current;
+    pendingFreshRef.current = null;
+    const isNewOpening =
+      kept && kept.token === qrCodeToken ? kept.value : takeFreshLoadDecision(qrCodeToken);
     // Visitante que acabou de fazer login leva a seção dele pra conta; o que
     // é de OUTRA conta nunca é herdado (ver lib/seat.ts).
     adoptGuestSession(customerToken, slug, qrCodeToken);
@@ -185,11 +196,22 @@ export function useTableSession(slug: string | undefined, qrCodeToken: string | 
     const neverHadSeat =
       getSeatByTable(customerToken, qrCodeToken) === null && !wasLeftLocally(customerToken, qrCodeToken);
 
+    let keepLoading = false;
     try {
-      const { session: current, recentlyEnded, seat } = await getCurrentTableSession(
-        qrCodeToken,
-        customerToken,
-      );
+      let result: Awaited<ReturnType<typeof getCurrentTableSession>>;
+      try {
+        result = await getCurrentTableSession(qrCodeToken, customerToken);
+      } catch (err) {
+        if (isTransientError(err)) {
+          // Servidor dormindo/instável: continua carregando e a tela reconsulta sozinha.
+          pendingFreshRef.current = { token: qrCodeToken, value: isNewOpening };
+          keepLoading = true;
+          setIsWaking(true);
+          return;
+        }
+        throw err;
+      }
+      const { session: current, recentlyEnded, seat } = result;
       if (current) {
         if (seat === 'active') {
           // O SERVIDOR confirma que o assento é meu e está vivo: retomar.
@@ -223,7 +245,7 @@ export function useTableSession(slug: string | undefined, qrCodeToken: string | 
       const backendMessage = extractBackendMessage(err);
       setError(backendMessage ?? FRIENDLY_FALLBACK_MESSAGE);
     } finally {
-      setIsLoading(false);
+      if (!keepLoading) setIsLoading(false);
     }
   }, [qrCodeToken, doJoin, slug, customerToken, navigate]);
 
@@ -348,6 +370,8 @@ export function useTableSession(slug: string | undefined, qrCodeToken: string | 
     confirmJoinExisting,
     declineJoinExisting,
     recheckExpiry,
+    isWaking,
+    retryCheck: checkCurrent,
   };
 }
 

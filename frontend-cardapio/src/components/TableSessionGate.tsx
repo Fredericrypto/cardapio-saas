@@ -11,6 +11,7 @@ import { fetchTableInfo } from '../lib/menu-api';
 import { presetSelectedLocationId } from '../hooks/useSelectedLocation';
 import { QrCode, Users } from 'lucide-react';
 import { BUILD_VERSION } from '../buildInfo';
+import { BrandLoader } from './BrandLoader';
 
 // Rodapezinho discreto só nas telas de estado do próprio gate (loading,
 // confirmação, mesa livre, erro) — pedido do Felipe (sessão G) pra bater
@@ -51,6 +52,8 @@ export function TableSessionGate({ children }: { children: ReactNode }) {
     confirmJoinExisting,
     declineJoinExisting,
     recheckExpiry,
+    isWaking,
+    retryCheck,
   } = useTableSession(slug, qrCodeToken);
 
   // Pedido do Felipe (18/09): antes de mandar pro cardápio genérico,
@@ -73,11 +76,8 @@ export function TableSessionGate({ children }: { children: ReactNode }) {
   }
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-gray-50">
-        <div className="w-8 h-8 border-2 border-gray-200 border-t-gray-500 rounded-full animate-spin" />
-      </div>
-    );
+    // `isWaking`: o servidor não respondeu ao consultar a mesa; o loader reconsulta sozinho.
+    return <BrandLoader delayMs={400} onAutoRetry={isWaking ? retryCheck : undefined} />;
   }
 
   if (error) {

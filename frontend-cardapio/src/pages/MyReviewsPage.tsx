@@ -1,3 +1,5 @@
+import { BrandLoader } from '../components/BrandLoader';
+import { isTransientError } from '../lib/api';
 import { useI18n } from '../i18n/I18nContext';
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
@@ -9,7 +11,7 @@ import { ReviewDisplay } from '../components/ReviewDisplay';
 import { ItemReviewDisplay } from '../components/ItemReviewDisplay';
 import { ProfileSubpageShell } from '../components/ProfileSubpageShell';
 import { Tooltip } from '../components/Tooltip';
-import { MENU_PAGE_BG, MENU_TEXT, MENU_TEXT_BODY, MENU_TEXT_MUTED } from '../lib/menuTheme';
+import { MENU_TEXT, MENU_TEXT_BODY, MENU_TEXT_MUTED } from '../lib/menuTheme';
 
 // Pedido explícito do Felipe: separado por categoria — Restaurante e
 // Pedido (itens) — cada avaliação mostrando a data e os detalhes do que
@@ -21,26 +23,38 @@ export function MyReviewsPage() {
   const [restaurantReview, setRestaurantReview] = useState<PublicReview | null | undefined>(undefined);
   const [itemReviews, setItemReviews] = useState<MyItemReview[] | null>(null);
   const [loadError, setLoadError] = useState(false);
+  const [reviewsReloadKey, setReviewsReloadKey] = useState(0);
 
   const { customer, token, isLoading } = useCustomerAuth();
 
   useEffect(() => {
     if (!tenant || !token) return;
+    let stale = false;
+    let retryTimer: number | undefined;
     setLoadError(false);
     fetchMyReviews(tenant.id, token)
       .then(({ restaurant, items }) => {
+        if (stale) return;
         setRestaurantReview(restaurant);
         setItemReviews(items);
       })
-      .catch(() => setLoadError(true));
-  }, [tenant, token]);
+      .catch((err) => {
+        if (stale) return;
+        // Servidor dormindo/instável: continua em "carregando" e busca de novo sozinho.
+        if (isTransientError(err)) {
+          retryTimer = window.setTimeout(() => setReviewsReloadKey((k) => k + 1), 6000);
+          return;
+        }
+        setLoadError(true);
+      });
+    return () => {
+      stale = true;
+      window.clearTimeout(retryTimer);
+    };
+  }, [tenant, token, reviewsReloadKey]);
 
   if (!tenant || isLoading || !customer) {
-    return (
-      <div className={`flex items-center justify-center h-screen ${MENU_PAGE_BG}`}>
-        <div className="w-8 h-8 border-2 border-gray-200 dark:border-white/10 border-t-gray-500 dark:border-t-gray-300 rounded-full animate-spin" />
-      </div>
-    );
+    return <BrandLoader delayMs={400} />;
   }
 
   const isLoadingReviews = restaurantReview === undefined || itemReviews === null;

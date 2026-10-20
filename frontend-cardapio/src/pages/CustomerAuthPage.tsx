@@ -19,7 +19,8 @@ import { useTenant } from '../contexts/TenantContext';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { AppSplashScreen } from '../components/AppSplashScreen';
 import { formatBrazilPhone, isValidBrazilPhone } from '../lib/phone';
-import { LoginSplit, LoginStateScreen } from '../components/login/LoginSplit';
+import { LoginSplit } from '../components/login/LoginSplit';
+import { BrandLoader } from '../components/BrandLoader';
 
 type AuthMode = 'login' | 'register';
 
@@ -40,7 +41,7 @@ export function CustomerAuthPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { tenant, error: tenantError, retry: retryTenant } = useTenant();
+  const { tenant, error: tenantError, errorTransient: tenantErrorTransient, retry: retryTenant } = useTenant();
   const { login, register, customer, isLoading: isLoadingAuth } = useCustomerAuth();
 
   const [mode, setMode] = useState<AuthMode>('login');
@@ -120,23 +121,19 @@ export function CustomerAuthPage() {
     return <AppSplashScreen onFinish={() => navigate(redirectTo, { replace: true })} />;
   }
 
+  // Tela cheia centralizada (fixed inset-0), fora da coluna esquerda do LoginSplit.
   if (tenantError) {
     return (
-      <LoginStateScreen>
-        <p>{tenantError}</p>
-        <button type="button" onClick={retryTenant} className="lp-link">
-          {t('optionalCustomerAuth.tentar_de_novo')}
-        </button>
-      </LoginStateScreen>
+      <BrandLoader
+        delayMs={400}
+        unavailable={!tenantErrorTransient}
+        onAutoRetry={tenantErrorTransient ? retryTenant : undefined}
+      />
     );
   }
 
   if (!tenant) {
-    return (
-      <LoginStateScreen>
-        <LoaderCircle className="lp-spin" size={28} strokeWidth={1.5} aria-hidden="true" />
-      </LoginStateScreen>
-    );
+    return <BrandLoader delayMs={400} />;
   }
 
   const isRegister = mode === 'register';

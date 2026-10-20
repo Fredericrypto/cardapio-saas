@@ -1,3 +1,4 @@
+import { BrandLoader } from '../components/BrandLoader';
 import { useI18n } from '../i18n/I18nContext';
 import { Tooltip } from '../components/Tooltip';
 import { useEffect, useState } from 'react';
@@ -8,7 +9,7 @@ import { useTenant } from '../contexts/TenantContext';
 import { confirmMyCustomerAddress, removeMyCustomerAddress } from '../lib/customer-api';
 import { ProfileSubpageShell } from '../components/ProfileSubpageShell';
 import { ProfileField, ProfileSectionHeader } from '../components/ProfileField';
-import { MENU_PAGE_BG, MENU_TEXT, MENU_TEXT_BODY, MENU_TEXT_MUTED } from '../lib/menuTheme';
+import { MENU_TEXT, MENU_TEXT_BODY, MENU_TEXT_MUTED } from '../lib/menuTheme';
 import {
   PROFILE_CARD,
   PROFILE_CARD_GLASS,
@@ -109,11 +110,7 @@ export function SavedAddressPage() {
   }
 
   if (!tenant || isLoading || !customer) {
-    return (
-      <div className={`flex items-center justify-center h-screen ${MENU_PAGE_BG}`}>
-        <div className="w-8 h-8 border-2 border-gray-200 dark:border-white/10 border-t-gray-500 dark:border-t-gray-300 rounded-full animate-spin" />
-      </div>
-    );
+    return <BrandLoader delayMs={400} />;
   }
 
   const showForm = isEditing || !customer.address;

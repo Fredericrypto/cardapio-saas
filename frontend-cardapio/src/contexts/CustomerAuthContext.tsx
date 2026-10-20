@@ -7,6 +7,7 @@ import {
 } from '../lib/customer-api';
 import { useCart } from './CartContext';
 import { useTenant } from './TenantContext';
+import { isTransientError } from '../lib/api';
 import {
   clearStoredTokenIfMatches,
   clearStoredTokens,
@@ -50,6 +51,8 @@ interface CustomerAuthContextValue {
   // rede) — sinal pra quem consome o hook: "não bounce pro login, isso
   // não significa deslogado, só não deu pra confirmar agora".
   authError: boolean;
+  // true = a falha ao confirmar a sessão foi passageira (servidor dormindo/instável).
+  authErrorTransient: boolean;
   login: (email: string, password: string, options?: SessionOptions) => Promise<void>;
   register: (
     data: { email: string; password: string; name: string; phone?: string },
@@ -92,6 +95,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   const [customer, setCustomer] = useState<CustomerProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [authError, setAuthError] = useState(false);
+  const [authErrorTransient, setAuthErrorTransient] = useState(true);
   const [retryTick, setRetryTick] = useState(0);
 
   useEffect(() => {
@@ -172,6 +176,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
           setCustomer(null);
           broadcastAuthChanged(tenantId);
         } else {
+          setAuthErrorTransient(isTransientError(err));
           setAuthError(true);
         }
       })
@@ -236,7 +241,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <CustomerAuthContext.Provider
-      value={{ customer, token, isLoading, authError, login, register, logout, retry, setCustomer }}
+      value={{ customer, token, isLoading, authError, authErrorTransient, login, register, logout, retry, setCustomer }}
     >
       {children}
     </CustomerAuthContext.Provider>

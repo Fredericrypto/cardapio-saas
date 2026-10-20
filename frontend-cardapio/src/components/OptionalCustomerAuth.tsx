@@ -1,6 +1,6 @@
-import { useI18n } from '../i18n/I18nContext';
 import { type ReactNode } from 'react';
 import { useTenant } from '../contexts/TenantContext';
+import { BrandLoader } from './BrandLoader';
 
 // Irmã do RequireCustomerAuth, mas SEM a trava de login — usada só nas
 // rotas do fluxo de mesa (escanear QR físico e pedir). Decisão de
@@ -20,26 +20,30 @@ import { useTenant } from '../contexts/TenantContext';
 // aparecem normalmente pra quem já está logado — isso aqui só para de
 // FORÇAR quem não está.
 export function OptionalCustomerAuth({ children }: { children: ReactNode }) {
-  const { t } = useI18n();
-  const { tenant, isLoading: isLoadingTenant, error: tenantError, retry: retryTenant } = useTenant();
+  const {
+    tenant,
+    isLoading: isLoadingTenant,
+    error: tenantError,
+    errorTransient: tenantErrorTransient,
+    retry: retryTenant,
+  } = useTenant();
 
+  // Servidor acordando (Render) = estado normal de carregamento, nunca erro técnico:
+  // o GET é refeito em lib/api.ts e este loader some sozinho quando o tenant chega.
+  // Falha passageira: o loader continua igual e dispara a nova tentativa sozinho.
+  // Erro definitivo (restaurante inexistente): tela simples, sem botão e sem texto técnico.
   if (tenantError) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen gap-3 px-6 text-center">
-        <p className="text-sm text-gray-500">{tenantError}</p>
-        <button onClick={retryTenant} className="text-sm font-semibold text-gray-900 underline">
-          {t('optionalCustomerAuth.tentar_de_novo')}
-        </button>
-      </div>
+      <BrandLoader
+        delayMs={400}
+        unavailable={!tenantErrorTransient}
+        onAutoRetry={tenantErrorTransient ? retryTenant : undefined}
+      />
     );
   }
 
   if (!tenant || isLoadingTenant) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="w-8 h-8 border-2 border-gray-200 border-t-gray-500 rounded-full animate-spin" />
-      </div>
-    );
+    return <BrandLoader delayMs={400} />;
   }
 
   return <>{children}</>;

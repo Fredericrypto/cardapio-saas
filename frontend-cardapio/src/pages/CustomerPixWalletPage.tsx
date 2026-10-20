@@ -1,3 +1,4 @@
+import { BrandLoader } from '../components/BrandLoader';
 import { pixKeyTypeLabel } from '../i18n/labels';
 import { useI18n } from '../i18n/I18nContext';
 import { Tooltip } from '../components/Tooltip';
@@ -15,7 +16,7 @@ import {
   isValidPixKey,
   toCanonicalPixKey,
 } from '../lib/pixKey';
-import { MENU_PAGE_BG, MENU_TEXT, MENU_TEXT_BODY } from '../lib/menuTheme';
+import { MENU_TEXT, MENU_TEXT_BODY } from '../lib/menuTheme';
 import {
   PROFILE_CARD,
   PROFILE_INPUT,
@@ -105,11 +106,7 @@ export function CustomerPixWalletPage() {
   }
 
   if (!tenant || isLoading || !customer) {
-    return (
-      <div className={`flex items-center justify-center h-screen ${MENU_PAGE_BG}`}>
-        <div className="w-8 h-8 border-2 border-gray-200 dark:border-white/10 border-t-gray-500 dark:border-t-gray-300 rounded-full animate-spin" />
-      </div>
-    );
+    return <BrandLoader delayMs={400} />;
   }
 
   const showForm = isEditing || !customer.pixKey;

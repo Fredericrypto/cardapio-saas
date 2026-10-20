@@ -2,12 +2,16 @@ import { useI18n } from '../i18n/I18nContext';
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
 import { fetchTenantBySlug } from '../lib/menu-api';
+import { isTransientError } from '../lib/api';
 import type { Tenant } from '../types';
 
 interface TenantContextValue {
   tenant: Tenant | null;
   isLoading: boolean;
   error: string | null;
+  // true = falha passageira (servidor dormindo/instável): a UI mostra o loader e tenta de novo sozinha.
+  // false = erro definitivo (ex.: restaurante inexistente).
+  errorTransient: boolean;
   retry: () => void;
 }
 
@@ -33,6 +37,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [errorTransient, setErrorTransient] = useState(true);
   const [retryTick, setRetryTick] = useState(0);
 
   useEffect(() => {
@@ -46,6 +51,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       })
       .catch((err) => {
         if (cancelled) return;
+        setErrorTransient(isTransientError(err));
         setError(
           err?.response?.data?.message || err?.message || t('tenantContext.nao_foi_possivel_carregar'),
         );
@@ -61,7 +67,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   const retry = useCallback(() => setRetryTick((t) => t + 1), []);
 
   return (
-    <TenantContext.Provider value={{ tenant, isLoading, error, retry }}>
+    <TenantContext.Provider value={{ tenant, isLoading, error, errorTransient, retry }}>
       {children}
     </TenantContext.Provider>
   );

@@ -14,6 +14,7 @@ import { useAccentColor } from '../hooks/useAccentColor';
 import { useActiveMenuLocation } from '../hooks/useActiveMenuLocation';
 import { useItemPromotions } from '../hooks/useItemPromotions';
 import { fetchActivePromotions, fetchCategories, fetchProducts } from '../lib/menu-api';
+import { isTransientError } from '../lib/api';
 import { buildCategoryPath, buildMenuPath } from '../lib/categoryRoutes';
 import { buildShareUrl } from '../lib/shareLinks';
 import { MENU_BORDER, MENU_PAGE_BG, MENU_TEXT, MENU_TEXT_BODY, MENU_TEXT_MUTED } from '../lib/menuTheme';
@@ -98,6 +99,7 @@ export function CategoryProductsPage() {
   useEffect(() => {
     if (!tenantId || !isReady) return;
     let stale = false;
+    let retryTimer: number | undefined;
     Promise.all([
       fetchCategories(tenantId),
       fetchProducts(tenantId),
@@ -112,13 +114,19 @@ export function CategoryProductsPage() {
         setLoadFailed(false);
         setIsLoading(false);
       })
-      .catch(() => {
+      .catch((err) => {
         if (stale) return;
+        if (isTransientError(err)) {
+          // Servidor dormindo/instável: continua no esqueleto e busca de novo sozinho.
+          retryTimer = window.setTimeout(() => setReloadKey((k) => k + 1), 6000);
+          return;
+        }
         setLoadFailed(true);
         setIsLoading(false);
       });
     return () => {
       stale = true;
+      window.clearTimeout(retryTimer);
     };
   }, [tenantId, customerToken, isReady, locationId, reloadKey]);
 

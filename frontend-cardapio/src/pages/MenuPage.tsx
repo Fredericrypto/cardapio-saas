@@ -13,6 +13,8 @@ import {
   getWaiterCallStatus,
 } from '../lib/menu-api';
 import type { Location, Category, Product, Promotion } from '../types';
+import { isTransientError } from '../lib/api';
+import { BrandLoader } from '../components/BrandLoader';
 import { useTableSessionContext } from '../contexts/TableSessionContext';
 import { useSelectedLocation, readSelectedLocationId } from '../hooks/useSelectedLocation';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
@@ -65,6 +67,7 @@ export function MenuPage() {
   const [showSplash, setShowSplash] = useState(true);
   const [isLoadingMenu, setIsLoadingMenu] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [menuReloadKey, setMenuReloadKey] = useState(0);
 
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
   // Seções recolhidas dentro da aba "Todos" (só vale nessa aba).
@@ -127,8 +130,11 @@ export function MenuPage() {
 
   useEffect(() => {
     if (!tenant) return;
+    let stale = false;
+    let retryTimer: number | undefined;
 
     async function loadMenu() {
+      let willRetry = false;
       try {
         setIsLoadingMenu(true);
 
@@ -143,17 +149,30 @@ export function MenuPage() {
           fetchCategories(tenant!.id),
           fetchProducts(tenant!.id),
         ]);
+        if (stale) return;
         setCategories(categoriesData);
         setProducts(productsData);
-      } catch {
-        setLoadError(t('menuPage.nao_foi_possivel_carregar'));
+        setLoadError(null);
+      } catch (err) {
+        if (stale) return;
+        if (isTransientError(err)) {
+          // Servidor dormindo/instável: continua no loader e busca de novo sozinho.
+          willRetry = true;
+          retryTimer = window.setTimeout(() => setMenuReloadKey((k) => k + 1), 6000);
+        } else {
+          setLoadError(t('menuPage.nao_foi_possivel_carregar'));
+        }
       } finally {
-        setIsLoadingMenu(false);
+        if (!willRetry && !stale) setIsLoadingMenu(false);
       }
     }
 
     loadMenu();
-  }, [tenant]);
+    return () => {
+      stale = true;
+      window.clearTimeout(retryTimer);
+    };
+  }, [tenant, menuReloadKey]);
 
   // Mais de uma unidade e nenhuma escolhida ainda (fluxo geral): seleciona a primeira.
   // A troca depois é feita pelo dropdown de unidades do header.
@@ -310,11 +329,7 @@ export function MenuPage() {
     (!isTableFlow && isLoadingLocations) ||
     isWaitingForLocationChoice
   ) {
-    return (
-      <div className={`flex items-center justify-center h-screen ${MENU_PAGE_BG}`}>
-        <div className="w-8 h-8 border-2 border-[#E5E7EB] border-t-[#6B7280] dark:border-white/10 dark:border-t-[#C4C7C5] rounded-full animate-spin" />
-      </div>
-    );
+    return <BrandLoader delayMs={400} />;
   }
 
   const isOpenNow = activeLocation?.isOpenNow ?? true;
