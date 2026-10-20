@@ -23,12 +23,9 @@
     radial-gradient(60% 50% at 16% 10%, rgba(217, 119, 87, 0.16), transparent 70%),
     radial-gradient(55% 45% at 88% 92%, rgba(240, 238, 230, 0.07), transparent 70%);
 }
-/* Escuro: cor de fundo da splash (#131314) + fumace creme UNIFORME: veu simetrico que sobe
-   igualmente em todas as bordas (centro limpo). Sem terracota. */
+/* Escuro: cor EXATA do fundo da referencia da promocao (#101010), chapada, sem fumace. */
 .dark .fb-ambient {
-  background:
-    radial-gradient(ellipse 85% 80% at 50% 50%, transparent 55%, rgba(240, 238, 230, 0.035) 100%),
-    #131314;
+  background: #101010;
 }
 .fb-pattern {
   position: absolute;
@@ -43,7 +40,7 @@
 }
 /* Escuro: icones sutis que se dissolvem (fading) em direcao as bordas, sem vinheta. */
 .dark .fb-pattern {
-  color: rgba(194, 192, 182, 0.1);
+  color: rgba(194, 192, 182, 0.055);
   -webkit-mask-image: radial-gradient(ellipse at center, #000 18%, rgba(0, 0, 0, 0.35) 55%, rgba(0, 0, 0, 0) 92%);
   mask-image: radial-gradient(ellipse at center, #000 18%, rgba(0, 0, 0, 0.35) 55%, rgba(0, 0, 0, 0) 92%);
 }
