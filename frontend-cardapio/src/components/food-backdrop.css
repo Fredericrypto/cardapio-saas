@@ -23,10 +23,11 @@
     radial-gradient(60% 50% at 16% 10%, rgba(217, 119, 87, 0.16), transparent 70%),
     radial-gradient(55% 45% at 88% 92%, rgba(240, 238, 230, 0.07), transparent 70%);
 }
-/* Escuro: cor de fundo da splash (#131314) + SO o fumace creme (canto inferior direito). Sem terracota. */
+/* Escuro: cor de fundo da splash (#131314) + fumace creme UNIFORME: veu simetrico que sobe
+   igualmente em todas as bordas (centro limpo). Sem terracota. */
 .dark .fb-ambient {
   background:
-    radial-gradient(55% 45% at 88% 92%, rgba(240, 238, 230, 0.07), transparent 70%),
+    radial-gradient(ellipse 85% 80% at 50% 50%, transparent 55%, rgba(240, 238, 230, 0.035) 100%),
     #131314;
 }
 .fb-pattern {
