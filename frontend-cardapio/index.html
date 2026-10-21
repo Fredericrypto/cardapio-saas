@@ -21,6 +21,15 @@
           var r = document.documentElement;
           if (dark) r.classList.add('dark');
           r.style.colorScheme = dark ? 'dark' : 'light';
+          // Efeitos visuais: ?fx=lite|full|auto (salvo em localStorage). auto = lite em aparelho fraco.
+          var q = new URLSearchParams(location.search).get('fx');
+          if (q === 'lite' || q === 'full' || q === 'auto') localStorage.setItem('cardapio-fx', q);
+          var pref = localStorage.getItem('cardapio-fx') || 'auto';
+          var c = navigator.connection || {};
+          var weak = (navigator.deviceMemory && navigator.deviceMemory <= 2) ||
+                     (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4 && window.matchMedia('(pointer: coarse)').matches) ||
+                     c.saveData === true;
+          r.setAttribute('data-fx', pref === 'auto' ? (weak ? 'lite' : 'full') : pref);
         } catch (e) {}
       })();
     </script>

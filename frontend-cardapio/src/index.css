@@ -846,3 +846,49 @@ img, svg, video, a {
   .dark .glass-btn:hover:not(:disabled) { background-color: rgba(255, 255, 255, 0.14) !important; }
 }
 .glass-btn:disabled { opacity: 0.6; }
+
+
+/* ============================================================
+   FX LITE — aparelho fraco (html[data-fx="lite"], ver index.html)
+   Remove o que pinta caro: backdrop-filter, blur de luz ambiente,
+   glow animado e giro da borda. Mesma tipografia, cores e layout.
+   Forca manual: ?fx=lite | ?fx=full | ?fx=auto
+   ============================================================ */
+html[data-fx="lite"] *,
+html[data-fx="lite"] *::before,
+html[data-fx="lite"] *::after {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+/* vidro sem blur: preenchimento translucido no lugar */
+html[data-fx="lite"] [class*="backdrop-blur"].bg-transparent,
+html[data-fx="lite"] .glass-hover:hover {
+  background-color: rgb(255 255 255 / 0.72);
+}
+html[data-fx="lite"].dark [class*="backdrop-blur"].bg-transparent,
+html[data-fx="lite"].dark .glass-hover:hover {
+  background-color: rgb(30 30 32 / 0.78);
+}
+html[data-fx="lite"] .atm-glass.atm-stuck {
+  background-color: rgb(255 255 255 / 0.9);
+}
+html[data-fx="lite"].dark .atm-glass.atm-stuck {
+  background-color: rgb(19 19 20 / 0.92);
+}
+/* luz ambiente (foto desfocada) */
+html[data-fx="lite"] .amb-header,
+html[data-fx="lite"] .promo-ambient {
+  display: none !important;
+}
+/* animacoes de glow / borda giratoria */
+html[data-fx="lite"] .cta-border__ring {
+  animation: none !important;
+  will-change: auto !important;
+}
+html[data-fx="lite"] .loc-dist.is-glow {
+  animation: none !important;
+}
+html[data-fx="lite"] .loc-card,
+html[data-fx="lite"] .loc-dist {
+  transition: none !important;
+}
