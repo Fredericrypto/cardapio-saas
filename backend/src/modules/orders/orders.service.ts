@@ -185,15 +185,66 @@ export class OrdersService {
     canceledByUserId?: string | null,
   ): Promise<void> {
     if (order.status === 'cancelado') return;
-    order.status = 'cancelado';
     // Análise de cancelamento (aba Análise): motivo, instante e operador.
-    order.cancelReason = reason?.trim() ? reason.trim().slice(0, 300) : null;
-    order.canceledAt = new Date();
-    order.canceledByUserId = canceledByUserId ?? null;
+    const cancelReason = reason?.trim() ? reason.trim().slice(0, 300) : null;
+    const canceledAt = new Date();
     const promotionIds = order.promotionIds ?? (order.promotionId ? [order.promotionId] : []);
-    await Promise.all(
-      promotionIds.map((id) => this.promotionsService.releaseRedemption(this.orderRepo.manager, id)),
-    );
+    // CLAIM ATÔMICO (auditoria P-03). Poll do cliente, poll do painel e webhook
+    // podem cancelar o MESMO pedido ao mesmo tempo, cada um com a sua cópia em
+    // memória ainda 'aguardando_pagamento'. A guarda acima não vê isso. O UPDATE
+    // condicional abaixo só dá certo para UM concorrente (os outros esperam o
+    // commit e veem affected=0); só quem ganha devolve promoção e cashback, tudo
+    // na MESMA transação: se algo falhar, o pedido continua não cancelado e o
+    // próximo caminho tenta de novo (mesmo comportamento de antes). Estorno no
+    // gateway (rede) fica fora da transação, como sempre.
+    const claimed = await this.dataSource.transaction(async (manager) => {
+      const result = await manager
+        .createQueryBuilder()
+        .update(Order)
+        .set({
+          status: 'cancelado',
+          cancelReason,
+          canceledAt,
+          canceledByUserId: canceledByUserId ?? null,
+        })
+        .where('id = :id AND tenant_id = :tenantId AND status <> :cancelled', {
+          id: order.id,
+          tenantId: order.tenantId,
+          cancelled: 'cancelado',
+        })
+        .execute();
+      if ((result.affected ?? 0) !== 1) return false;
+      // ORDEM DE LOCKS = a de create(): cashback (ledger) antes da linha da
+      // promoção. Inverter isso criaria deadlock entre criar e cancelar pedidos.
+      // Cashback: se o pedido tinha usado saldo (cashbackUsed > 0), devolve; se já
+      // tinha GERADO cashback (cashbackEarned > 0), zera o que sobrou. Só se
+      // `cashbackLocked` ainda for false (ver comentário abaixo).
+      if (!order.cashbackLocked) {
+        await this.cashbackService.reverseConsumptionForOrder(manager, order.tenantId, order.id);
+        await this.cashbackService.reverseCreditForOrder(manager, order.tenantId, order.id);
+      }
+      // Promoções em ordem fixa (ids ordenados).
+      for (const promotionId of [...promotionIds].sort()) {
+        await this.promotionsService.releaseRedemption(manager, promotionId);
+      }
+      return true;
+    });
+    if (!claimed) {
+      // Outro caminho já cancelou e cuidou das devoluções. Só alinha a cópia em
+      // memória para o save() do chamador não regredir o estado.
+      const fresh = await this.orderRepo.findOne({ where: { id: order.id, tenantId: order.tenantId } });
+      if (fresh?.status === 'cancelado') {
+        order.status = fresh.status;
+        order.cancelReason = fresh.cancelReason;
+        order.canceledAt = fresh.canceledAt;
+        order.canceledByUserId = fresh.canceledByUserId;
+      }
+      return;
+    }
+    order.status = 'cancelado';
+    order.cancelReason = cancelReason;
+    order.canceledAt = canceledAt;
+    order.canceledByUserId = canceledByUserId ?? null;
     // Mesma centralização vale pra cashback: se esse pedido tinha usado
     // saldo (cashbackUsed > 0), devolve; se já tinha GERADO cashback pro
     // cliente (cashbackEarned > 0, ou seja, foi cancelado depois de já
@@ -209,10 +260,7 @@ export class OrdersService {
     // pra recuperar o cashback usado"). Cancelar ainda funciona
     // normalmente pra tudo o resto (status, liberar vaga de promoção) —
     // só o cashback fica intocado.
-    if (!order.cashbackLocked) {
-      await this.cashbackService.reverseConsumptionForOrder(this.orderRepo.manager, order.tenantId, order.id);
-      await this.cashbackService.reverseCreditForOrder(this.orderRepo.manager, order.tenantId, order.id);
-    }
+    // (devolução de cashback feita dentro da transação do claim, acima)
     // Estorno AUTOMÁTICO (Fase C): pedido pago online (Pix/cartão pelo Mercado
     // Pago) que é cancelado devolve o dinheiro ao cliente. Se o estorno falhar
     // (token revogado, MP fora do ar), fica `estorno_pendente` para o admin
@@ -1252,9 +1300,11 @@ export class OrdersService {
       }
 
       if (appliedDiscounts.length > 0) {
-        await Promise.all(
-          appliedDiscounts.map((d) => this.promotionsService.recordRedemption(manager, d.promotionId)),
-        );
+        // Ordem fixa por id (auditoria P-17): [A,B] e [B,A] concorrentes travavam as
+        // linhas das promoções em ordem oposta e davam deadlock (40P01).
+        for (const promotionId of [...new Set(appliedDiscounts.map((d) => d.promotionId))].sort()) {
+          await this.promotionsService.recordRedemption(manager, promotionId);
+        }
         await this.promotionsService.recordPerPromoDiscounts(
           manager,
           tenantId,

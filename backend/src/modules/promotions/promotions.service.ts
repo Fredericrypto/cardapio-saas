@@ -1,5 +1,5 @@
 import { sanitizeTranslations, type ContentTranslations } from '../../common/i18n/content-translations';
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In, EntityManager } from 'typeorm';
 import { Promotion } from './promotion.entity';
@@ -693,6 +693,10 @@ export class PromotionsService {
     const ids = [...new Set(promotionIds ?? [])]; // dedupe — clicar 2x no mesmo cupom não conta 2x
     if (ids.length === 0) return [];
 
+    // Serializa pedidos concorrentes que disputam o MESMO limite (auditoria P-02).
+    // Tem que vir ANTES de qualquer leitura de uso/contador abaixo.
+    await this.lockPromotionsForOrder(manager, tenantId, customerId, ids);
+
     // Cópia de trabalho — cada promoção reduz `remainingQty` das linhas
     // que reivindica, então a próxima só vê o que sobrou. `cartLines`
     // original (do chamador) nunca é mutado.
@@ -774,6 +778,45 @@ export class PromotionsService {
     }
 
     return applied;
+  }
+
+  // CONCORRÊNCIA (auditoria P-02). O limite por cliente e o teto global são
+  // "conte e depois grave": sem trava, dois pedidos simultâneos do mesmo cliente
+  // (duas abas, retry de rede, replay) leem a mesma contagem e os dois passam.
+  // Locks consultivos DE TRANSAÇÃO (liberados no commit/rollback do pedido; valem
+  // atrás de pooler em modo transação), só para promoções que TÊM limite:
+  //  - usageLimitPerCustomer: chave (promoção, cliente) — clientes diferentes
+  //    não se bloqueiam;
+  //  - maxRedemptions: chave da promoção (teto global).
+  // Promoção sem limite não trava nada. É TRY-lock: se outro pedido do mesmo
+  // cliente/promoção está em andamento, responde 409 na hora em vez de esperar
+  // (esperar seguraria uma conexão do pool; o cliente tenta de novo e vê o
+  // resultado certo). Chaves ordenadas: ordem determinística entre pedidos.
+  // Só pode ser chamado DENTRO da transação de criação do pedido.
+  private async lockPromotionsForOrder(
+    manager: EntityManager,
+    tenantId: string,
+    customerId: string | null,
+    ids: string[],
+  ): Promise<void> {
+    const limited = await manager.find(Promotion, {
+      where: { id: In(ids), tenantId },
+      select: { id: true, maxRedemptions: true, usageLimitPerCustomer: true },
+    });
+    const keys: string[] = [];
+    for (const p of limited) {
+      if (p.usageLimitPerCustomer != null && customerId) keys.push(`promotion-customer:${p.id}:${customerId}`);
+      if (p.maxRedemptions != null) keys.push(`promotion:${p.id}`);
+    }
+    keys.sort();
+    for (const key of keys) {
+      const rows = await manager.query('SELECT pg_try_advisory_xact_lock(hashtextextended($1::text, 0)) AS ok', [key]);
+      if (!rows?.[0]?.ok) {
+        throw new ConflictException(
+          'Estamos processando seu pedido anterior. Aguarde alguns segundos e tente de novo.',
+        );
+      }
+    }
   }
 
   // Wrapper de compatibilidade pra qualquer chamador antigo que ainda
