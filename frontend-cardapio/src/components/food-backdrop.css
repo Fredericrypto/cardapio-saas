@@ -1,67 +1,18 @@
-/* Fundo de ícones de comida (prefixo .fb-). Fica ATRÁS de todo o conteúdo da página e
-   ABAIXO das navbars (que têm fundo próprio e z-40). Claro/escuro seguem a classe `.dark`.
-   Os ícones somem suavemente em direção às bordas da tela. */
+/* Fundo da página: cor chapada. Claro = cor da página (transparente); escuro = #101010.
+   Fica ATRÁS de todo o conteúdo e ABAIXO das navbars. */
 .fb-layer {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100vh;
-  height: 100lvh; /* altura fixa: não acompanha a barra de endereço do celular */
+  height: 100lvh;
   z-index: -10;
-  overflow: hidden;
   pointer-events: none;
-  contain: layout paint style;
+  background: transparent;
 }
-/* TEMA ESCURO = cópia exata do fundo da tela de login do admin (.lg-ambient + .lg-pattern +
-   .lg-vignette): degradê base quente, fumacê terracota/creme, ícones e escurecimento das
-   bordas com os mesmos valores. TEMA CLARO: só o fumacê + ícones escuros que somem nas bordas. */
-.fb-ambient {
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(60% 50% at 16% 10%, rgba(217, 119, 87, 0.16), transparent 70%),
-    radial-gradient(55% 45% at 88% 92%, rgba(240, 238, 230, 0.07), transparent 70%);
-}
-/* Escuro: cor EXATA do fundo da referencia da promocao (#101010), chapada, sem fumace. */
-.dark .fb-ambient {
+.dark .fb-layer {
   background: #101010;
-}
-.fb-pattern {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  display: grid;
-  transform: translate(-50%, -50%);
-  color: rgba(17, 24, 39, 0.11);
-  user-select: none;
-  -webkit-mask-image: radial-gradient(ellipse at center, #000 28%, rgba(0, 0, 0, 0.4) 68%, rgba(0, 0, 0, 0.06) 100%);
-  mask-image: radial-gradient(ellipse at center, #000 28%, rgba(0, 0, 0, 0.4) 68%, rgba(0, 0, 0, 0.06) 100%);
-}
-/* Escuro: icones sutis que se dissolvem (fading) em direcao as bordas, sem vinheta. */
-.dark .fb-pattern {
-  color: rgba(194, 192, 182, 0.055);
-  -webkit-mask-image: radial-gradient(ellipse at center, #000 18%, rgba(0, 0, 0, 0.35) 55%, rgba(0, 0, 0, 0) 92%);
-  mask-image: radial-gradient(ellipse at center, #000 18%, rgba(0, 0, 0, 0.35) 55%, rgba(0, 0, 0, 0) 92%);
-}
-.fb-vignette {
-  display: none;
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse at center, rgba(27, 26, 25, 0) 28%, rgba(27, 26, 25, 0.6) 68%, rgba(27, 26, 25, 0.94) 100%);
-}
-.dark .fb-vignette {
-  display: none;
-}
-.fb-cell {
-  display: grid;
-  place-items: center;
-}
-.fb-cell--up {
-  transform: translateY(-14px);
-}
-.fb-cell--down {
-  transform: translateY(14px);
 }
 @media print {
   .fb-layer {
