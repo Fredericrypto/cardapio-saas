@@ -27,6 +27,7 @@ import { ConcludeOrderDto } from './dto/conclude-order.dto';
 import { PayCardDto } from './dto/pay-card.dto';
 import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { applyRevalidationHeaders } from '../tenant-cache/http-cache';
+import { requireOrderAccount } from '../../common/utils/require-account';
 
 @Controller('orders')
 export class OrdersController {
@@ -36,12 +37,12 @@ export class OrdersController {
     private readonly tablesService: TablesService,
   ) {}
 
-  // Rota PÚBLICA: cliente final finalizando o pedido no cardápio, sem
-  // exigir login (guest checkout continua funcionando). Se vier um
-  // header Authorization com um token de cliente VÁLIDO **desse mesmo
-  // restaurante**, o pedido fica vinculado à conta (pro histórico); se
-  // não vier, vier inválido, ou for de outro restaurante, o pedido segue
-  // normal como convidado — nunca rejeita a criação por causa disso.
+  // Rota PÚBLICA de entrada, mas o pedido EXIGE conta: precisa vir um
+  // Authorization com token de cliente VÁLIDO **desse mesmo restaurante**.
+  // Sem token, com token inválido ou de outro restaurante → 401
+  // LOGIN_REQUIRED (decisão 24/10: convidado navega, monta carrinho e
+  // entra na mesa, mas não pede). Todo pedido fica ligado a uma conta
+  // identificável (sem pedido órfão em assento de visitante).
   @Post('public/:tenantId')
   async createPublic(
     @Param('tenantId') tenantId: string,
@@ -51,12 +52,8 @@ export class OrdersController {
   ) {
     const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
     const customer = token ? this.customersAuthService.verifyToken(tenantId, token) : null;
-    return this.ordersService.create(
-      tenantId,
-      dto,
-      customer?.customerId ?? null,
-      seatToken ?? null,
-    );
+    const customerId = requireOrderAccount(customer?.customerId);
+    return this.ordersService.create(tenantId, dto, customerId, seatToken ?? null);
   }
 
   @RequirePermission('orders:view')
