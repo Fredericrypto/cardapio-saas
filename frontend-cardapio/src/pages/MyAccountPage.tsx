@@ -284,7 +284,7 @@ export function MyAccountPage() {
 
   return (
     <div
-      className="min-h-screen bg-white md:bg-gray-50 pb-[calc(var(--account-bar-h,8rem)+1rem)] md:pb-12"
+      className="min-h-screen bg-white md:bg-gray-50 pb-[calc(var(--account-bar-h,8rem)+1.75rem)] md:pb-12"
       style={barHeight > 0 ? ({ '--account-bar-h': `${barHeight}px` } as CSSProperties) : undefined}
     >
      <div className="max-w-md mx-auto md:max-w-5xl md:px-6">
@@ -424,7 +424,7 @@ export function MyAccountPage() {
 
       </div>
 
-      <div ref={barRef} className="fixed bottom-[var(--bottom-nav-h,0px)] left-0 right-0 max-w-md mx-auto p-4 bg-white border-t border-gray-100 flex flex-col gap-3 md:sticky md:top-24 md:bottom-auto md:left-auto md:right-auto md:max-w-none md:mx-0 md:rounded-2xl md:border md:shadow-sm md:p-5">
+      <div ref={barRef} className="fixed z-30 bottom-[calc(var(--bottom-nav-h,0px)+0.75rem)] left-3 right-3 max-w-md mx-auto p-4 bg-white rounded-2xl border border-gray-100 shadow-xl flex flex-col gap-3 md:sticky md:top-24 md:bottom-auto md:left-auto md:right-auto md:max-w-none md:mx-0 md:rounded-2xl md:border md:shadow-sm md:p-5">
         {!closingRequested && summary.orders.length > 0 && (
           <div>
             <p className="text-xs font-semibold text-gray-500 mb-1.5">
