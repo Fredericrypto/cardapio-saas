@@ -122,3 +122,11 @@ Nada foi executado. Arquivos que faltam: `main.ts`, `analytics.range.ts`, `custo
 | P-16 | Ausência de Idempotency-Key: a mesma requisição repetida cria pedidos duplicados (só promoções com limite barram). | POST /orders | Média | Documentado no teste (nota). Exige decisão de API (cabeçalho + tabela de chaves). Fora do Patch 1. |
 | P-17 | Deadlock potencial: `recordRedemption` em `Promise.all` na ordem escolhida pelo cliente; [A,B] e [B,A] concorrentes travam linhas em ordem oposta. | orders.service.ts ~1256 | Média | Reproduzido no teste (P-17). Corrigido no Patch 1 v2 (ordenar por promotionId em recordRedemption e release). |
 | P-18 | Corrida com `cashbackLocked`: `markCancelled` decide a devolução de cashback com cópia em memória do pedido; se o pagamento travou o cashback no meio, devolve cashback de pedido já pago. | orders.service.ts markCancelled | Média | Caracterizado no teste (ABERTO). Fora do Patch 1 (patch próprio: reler `cashback_locked` no claim). |
+
+
+## Divida registrada durante o P-01
+
+| ID | Achado | Tratamento |
+|---|---|---|
+| P-19 | Itens do carrinho sao compartilhados entre Mesa e Geral (um unico CartProvider; o P-01 separa so as promocoes). | DIVIDA FUTURA. Decisao do Felipe: nao separar itens agora. |
+| P-20 | Convidado com itens que loga sobrescreve o carrinho salvo da conta (e agora tambem as lembradas). | Pre-existente, fora do P-01. |

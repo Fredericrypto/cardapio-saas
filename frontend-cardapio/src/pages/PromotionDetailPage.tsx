@@ -1,3 +1,4 @@
+import { useCartPromotionContext } from '../hooks/useCartPromotionContext';
 import { localizedField } from '../i18n/contentText';
 import { activeDateLocale } from '../i18n/languages';
 import { categoryLabel } from '../i18n/categoryLabel';
@@ -67,7 +68,7 @@ export function PromotionDetailPage() {
   }>();
   const navigate = useNavigate();
   const routerLocation = useLocation();
-  const { items, totalPrice, selectedPromotionIds, togglePromotion } = useCart();
+  const { items, totalPrice, selectedPromotionIds, togglePromotion, selectPromotion } = useCart();
   const isTableFlow = Boolean(qrCodeToken);
 
   const { tenant } = useTenant();
@@ -86,6 +87,7 @@ export function PromotionDetailPage() {
   // esta tela mostraria "não está mais disponível" mesmo existindo. `isLocationReady`
   // evita um primeiro fetch sem locationId (que piscaria "indisponível").
   const { location: activeLocation, isReady: isLocationReady } = useActiveMenuLocation(isTableFlow);
+  useCartPromotionContext(isTableFlow, activeLocation?.id);
   const tenantId = tenant?.id;
   const locationId = activeLocation?.id;
 
@@ -190,7 +192,8 @@ export function PromotionDetailPage() {
 
   function handleApply() {
     if (isStoreClosed) return;
-    togglePromotion(promotion!.id);
+    // Ativar e idempotente (P-01): nunca desliga uma promocao ja ativa por engano.
+    selectPromotion(promotion!.id);
     navigate(items.length > 0 ? cartHref : backHref);
   }
 

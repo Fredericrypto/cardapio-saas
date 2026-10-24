@@ -3,10 +3,27 @@ import type { CartItem, Product, SelectedCartOption } from '../types';
 // A chave da linha (produto + adicionais) mora em lib/cartLines.ts: o Modo
 // Promoção precisa calcular a MESMA chave para achar a linha no carrinho.
 import { buildLineKey } from '../lib/cartLines';
+import {
+  EMPTY_PROMO_STATE,
+  parsePersistedCart,
+  promoActivate,
+  promoApplyContext,
+  promoClearActive,
+  promoClearAll,
+  promoHydrate,
+  promoPrune,
+  promoSelectedIds,
+  promoToggle,
+  serializeCart,
+  type PromoContext,
+  type PromoEntry,
+  type PromoState,
+} from '../lib/cartPromotions';
 
 interface PersistedCart {
   items: CartItem[];
-  selectedPromotionIds: string[];
+  remembered: PromoEntry[];
+  legacy: string[];
 }
 
 // Chave do localStorage é SEMPRE tenant+cliente juntos, nunca um sozinho
@@ -19,13 +36,13 @@ function cartStorageKey(tenantId: string, customerId: string): string {
   return `cardapio_cart_${tenantId}_${customerId}`;
 }
 
+// Lê o carrinho salvo (formato v2 ou o antigo). Promoções NUNCA voltam como
+// ativas daqui: só como `remembered`/`legacy` (intenção), ver lib/cartPromotions.
 function loadPersistedCart(key: string): PersistedCart | null {
   try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as PersistedCart;
-    if (!Array.isArray(parsed.items) || !Array.isArray(parsed.selectedPromotionIds)) return null;
-    return parsed;
+    const parsed = parsePersistedCart(localStorage.getItem(key));
+    if (!parsed) return null;
+    return { items: parsed.items as CartItem[], remembered: parsed.remembered, legacy: parsed.legacy };
   } catch {
     return null;
   }
@@ -41,7 +58,9 @@ interface CartContextValue {
   totalItems: number;
   totalPrice: number;
   // Promoções que o CLIENTE escolheu usar (igual iFood: cupom é
-  // aplicado por escolha, nunca sozinho) — pode ser MAIS DE UMA ao
+  // aplicado por escolha, nunca sozinho) — DERIVADO das entradas ativas
+  // (memória) que casam com o contexto atual {scope, locationId}; nunca
+  // lido do disco (P-01). Pode ser MAIS DE UMA ao
   // mesmo tempo (ex: um cupom pro burger + outro pra coca-cola), desde
   // que não disputem os mesmos itens (ver lib/promotionEligibility.ts,
   // que reparte o carrinho entre elas na mesma ordem da seleção — igual
@@ -54,6 +73,18 @@ interface CartContextValue {
   // uma promoção já ativa só por reabrir a tela.
   selectPromotion: (id: string) => void;
   clearSelectedPromotions: () => void;
+  // Só INTENÇÃO (disco, até 10): alimenta o aviso "Promoção disponível" do
+  // Carrinho. Nunca ativa nada sozinha; reativar exige selectPromotion.
+  rememberedPromotions: PromoEntry[];
+  // Contexto atual publicado pelas telas ({scope: 'mesa'|'geral', locationId}).
+  promoContext: PromoContext | null;
+  // Cada tela que conhece a unidade ativa publica o contexto (hook
+  // useCartPromotionContext). Contexto diferente do anterior => ativas
+  // descartadas da memória, lembradas permanecem.
+  setPromoContext: (ctx: PromoContext) => void;
+  // Poda lembradas/ativas inválidas DO CONTEXTO da lista carregada. Passe null
+  // quando a busca falhou: nunca poda.
+  prunePromotions: (ctx: PromoContext, validPromotionIds: string[] | null) => void;
   // Chamado de dentro de CustomerAuthContext toda vez que tenant/cliente
   // logado mudam (login, logout, troca de conta, troca de restaurante).
   // NUNCA chamar isso de qualquer outro lugar — é o que garante que
@@ -74,7 +105,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     itemsRef.current = items;
   }, [items]);
-  const [selectedPromotionIds, setSelectedPromotionIds] = useState<string[]>([]);
+  // Estado das promoções (ver lib/cartPromotions): ativas só em memória,
+  // lembradas em disco. `selectedPromotionIds` é derivado, não é fonte da verdade.
+  const [promo, setPromo] = useState<PromoState>(EMPTY_PROMO_STATE);
+  const selectedPromotionIds = useMemo(() => promoSelectedIds(promo), [promo.ctx, promo.active]); // eslint-disable-line react-hooks/exhaustive-deps
   // Dono atual do carrinho (chave de storage já montada, ou null se
   // ninguém logado ainda) — em ref porque só é lido dentro de
   // callbacks/efeitos, nunca precisa disparar re-render sozinho.
@@ -136,7 +170,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const clearCart = useCallback(() => {
     setItems([]);
-    setSelectedPromotionIds([]);
+    setPromo((s) => promoClearAll(s));
     // Limpa também o que estava salvo pro dono ATUAL (antes de trocar
     // de identidade) — sem isso, deslogar e logar com OUTRA conta no
     // mesmo aparelho reidratraria o carrinho da conta anterior, que é
@@ -183,7 +217,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     if (!nextKey) {
       setItems([]);
-      setSelectedPromotionIds([]);
+      setPromo((s) => promoHydrate(s, null));
       return;
     }
 
@@ -191,9 +225,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    // P-01: o que estava salvo volta como INTENÇÃO (lembradas), nunca como
+    // promoção ativa. `active` começa vazia depois de reload/login/reabertura.
     const persisted = loadPersistedCart(nextKey);
     setItems(persisted?.items ?? []);
-    setSelectedPromotionIds(persisted?.selectedPromotionIds ?? []);
+    setPromo((s) => promoHydrate(s, persisted));
   }, []);
 
   // Salva a cada mudança, só enquanto existe um dono definido (tenant +
@@ -202,32 +238,35 @@ export function CartProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!ownerKeyRef.current) return;
     try {
-      localStorage.setItem(
-        ownerKeyRef.current,
-        JSON.stringify({ items, selectedPromotionIds } satisfies PersistedCart),
-      );
+      localStorage.setItem(ownerKeyRef.current, serializeCart(items, promo));
     } catch {
       // Sem espaço/localStorage bloqueado — carrinho continua
       // funcionando normalmente, só não sobrevive a um reload.
     }
-  }, [items, selectedPromotionIds]);
+  }, [items, promo.remembered, promo.legacy]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Liga/desliga uma promoção na seleção — várias podem estar ligadas
   // ao mesmo tempo. A validação de verdade (se elas realmente cabem sem
   // brigar pelos mesmos itens) acontece no backend na hora de criar o
   // pedido; aqui é só a escolha do cliente.
   const togglePromotion = useCallback((id: string) => {
-    setSelectedPromotionIds((prev) =>
-      prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id],
-    );
+    setPromo((s) => promoToggle(s, id));
   }, []);
 
   const selectPromotion = useCallback((id: string) => {
-    setSelectedPromotionIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+    setPromo((s) => promoActivate(s, id));
   }, []);
 
   const clearSelectedPromotions = useCallback(() => {
-    setSelectedPromotionIds([]);
+    setPromo((s) => promoClearActive(s));
+  }, []);
+
+  const setPromoContext = useCallback((ctx: PromoContext) => {
+    setPromo((s) => promoApplyContext(s, ctx));
+  }, []);
+
+  const prunePromotions = useCallback((ctx: PromoContext, validPromotionIds: string[] | null) => {
+    setPromo((s) => promoPrune(s, ctx, validPromotionIds));
   }, []);
 
   const totalItems = useMemo(() => items.reduce((sum, item) => sum + item.quantity, 0), [items]);
@@ -261,6 +300,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
       togglePromotion,
       selectPromotion,
       clearSelectedPromotions,
+      rememberedPromotions: promo.remembered,
+      promoContext: promo.ctx,
+      setPromoContext,
+      prunePromotions,
       setCartOwner,
     }),
     [
@@ -276,6 +319,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
       togglePromotion,
       selectPromotion,
       clearSelectedPromotions,
+      promo.remembered,
+      promo.ctx,
+      setPromoContext,
+      prunePromotions,
       setCartOwner,
     ],
   );

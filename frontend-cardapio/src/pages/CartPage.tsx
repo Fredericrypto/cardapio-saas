@@ -1,3 +1,5 @@
+import { useCartPromotionContext } from '../hooks/useCartPromotionContext';
+import { promoSuggestionIds } from '../lib/cartPromotions';
 import { localizedField } from '../i18n/contentText';
 import { paymentMethodLabel, promotionReasonLabel } from '../i18n/labels';
 import { useI18n } from '../i18n/I18nContext';
@@ -91,6 +93,10 @@ export function CartPage() {
     clearCart,
     selectedPromotionIds,
     togglePromotion,
+    selectPromotion,
+    rememberedPromotions,
+    promoContext,
+    prunePromotions,
   } = useCart();
   const tableSessionCtx = useTableSessionContext();
   const session = tableSessionCtx?.session ?? null;
@@ -112,6 +118,7 @@ export function CartPage() {
     fetchLocationById(tenant.id, session.table.locationId).then(setTableLocation);
   }, [isTableFlow, tenant, session?.table?.locationId]);
   const activeLocation = isTableFlow ? tableLocation : selectedLocation;
+  useCartPromotionContext(isTableFlow, activeLocation?.id);
   // Aberto/fechado no momento exato (virada de minuto, fuso de Brasília).
   const storeIsOpen = useStoreStatus(activeLocation).isOpen;
 
@@ -237,7 +244,16 @@ export function CartPage() {
     let isStale = false;
     fetchActivePromotions(tenant.id, customerToken, activeLocation?.id)
       .then((result) => {
-        if (!isStale) setPromotions(result);
+        if (isStale) return;
+        setPromotions(result);
+        // P-01 (D4): poda lembradas invalidas SO com a lista carregada com sucesso e a
+        // unidade resolvida; falha de carregamento (catch abaixo) nunca poda.
+        if (activeLocation?.id) {
+          prunePromotions(
+            { scope: isTableFlow ? 'mesa' : 'geral', locationId: activeLocation.id },
+            result.map((p) => p.id),
+          );
+        }
       })
       .catch(() => {
         if (!isStale) setPromotions([]);
@@ -773,6 +789,12 @@ export function CartPage() {
   // final e quais unidades ficam isoladas no carrinho.
   const multiEligibility = computeSelectedPromotionsEligibility(selectedPromotions, items, totalPrice);
   const appliedDiscountAmount = multiEligibility.totalDiscountAmount;
+  // P-01 (D3): sugestao SO aqui no Carrinho. Lembradas do contexto atual que ainda
+  // existem, nao estao ativas e cabem no carrinho de agora. Nunca ativam sozinhas.
+  const promotionSuggestions = promoSuggestionIds({ ctx: promoContext, remembered: rememberedPromotions }, promotions)
+    .filter((id) => !selectedPromotionIds.includes(id))
+    .map((id) => promotions.find((p) => p.id === id))
+    .filter((p): p is Promotion => p != null && computePromotionEligibility(p, items, totalPrice).isEligible);
 
   // Quantas unidades de uma linha do carrinho têm cupom aplicado — usado
   // pra ISOLAR visualmente essas unidades das demais (ver requisito: "o
@@ -991,6 +1013,33 @@ export function CartPage() {
               </section>
 
               <div className={CART_CARD}>
+                {promotionSuggestions.length > 0 && (
+                  <div className="flex flex-col gap-1.5 mb-3" role="status">
+                    {promotionSuggestions.map((promo) => (
+                      <div
+                        key={promo.id}
+                        className={`flex items-center justify-between gap-2 rounded-xl border px-3.5 py-2.5 ${MENU_SURFACE_SUBTLE} ${MENU_BORDER}`}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Tag size={15} strokeWidth={1.5} style={{ color: accent }} className="shrink-0" aria-hidden="true" />
+                          <div className="min-w-0">
+                            <p className={`text-xs ${CART_TEXT_MUTED}`}>{t('cartPage.promoAvailable')}</p>
+                            <p className={`text-sm font-semibold truncate ${CART_TEXT_SOFT}`}>{localizedField(promo, 'title')}</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => selectPromotion(promo.id)}
+                          aria-label={t('cartPage.promoReactivateAria', { title: localizedField(promo, 'title') })}
+                          className="shrink-0 rounded-lg border bg-transparent px-3 py-1.5 text-xs font-semibold active:scale-95"
+                          style={{ color: accent, borderColor: accent }}
+                        >
+                          {t('cartPage.promoReactivate')}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 {selectedPromotions.length > 0 && (
                   <div className="flex flex-col gap-1.5 mb-3">
                     {selectedPromotions.map((promo) => {

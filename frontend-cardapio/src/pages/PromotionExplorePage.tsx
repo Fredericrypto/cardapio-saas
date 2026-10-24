@@ -1,3 +1,4 @@
+import { useCartPromotionContext } from '../hooks/useCartPromotionContext';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { ArrowLeft } from 'lucide-react';
@@ -79,9 +80,9 @@ interface PanelHistoryState {
 //
 // Estado do modo = a própria URL, inclusive o item aberto no painel
 // (`?item=<produto>`): recarregar ou compartilhar a aba mantém tudo. Sair NÃO
-// desativa nada: a promoção fica em `selectedPromotionIds` do CartContext
-// (persistido por tenant+cliente), então o cardápio e o carrinho seguem
-// aplicando o desconto.
+// desativa nada: a promoção que o CLIENTE ativou segue ativa nesta sessão, no
+// mesmo contexto (mesa/geral + unidade), então o cardápio e o carrinho seguem
+// aplicando o desconto. Entrar aqui NUNCA ativa nada (P-01).
 export function PromotionExplorePage() {
   const { t } = useI18n();
   const { slug, promotionId, qrCodeToken } = useParams<{
@@ -98,6 +99,7 @@ export function PromotionExplorePage() {
   const { items, totalPrice, addItem, increaseItem, decreaseItem, selectedPromotionIds, selectPromotion } = useCart();
   const accent = useAccentColor(tenant?.primaryColor ?? '#111827');
   const { location, isReady } = useActiveMenuLocation(isTableFlow);
+  useCartPromotionContext(isTableFlow, location?.id);
   const isSplit = useMediaQuery(SPLIT_QUERY);
 
   const [activePromotions, setActivePromotions] = useState<Promotion[]>([]);
@@ -169,16 +171,8 @@ export function PromotionExplorePage() {
   const isUsedUp = Boolean(promotion?.alreadyUsedUp);
   const isActive = promotion != null && selectedPromotionIds.includes(promotion.id);
 
-  // Entrar no modo ativa a promoção (idempotente, uma vez por promoção). Sair e
-  // voltar pelo histórico reativa; remover depois, no carrinho, continua valendo
-  // até a próxima entrada.
-  const autoSelectedFor = useRef<string | null>(null);
-  useEffect(() => {
-    if (!promotion || isUsedUp || isStoreClosed) return;
-    if (autoSelectedFor.current === promotion.id) return;
-    autoSelectedFor.current = promotion.id;
-    selectPromotion(promotion.id);
-  }, [promotion, isUsedUp, isStoreClosed, selectPromotion]);
+  // P-01: entrar no modo NUNCA ativa a promoção. Só o botão "Ativar" do banner
+  // (ação explícita do cliente) ativa.
 
   const catalog = useMemo(
     () =>

@@ -1,3 +1,4 @@
+import { useCartPromotionContext } from '../hooks/useCartPromotionContext';
 import { localizedField } from '../i18n/contentText';
 import { useI18n } from '../i18n/I18nContext';
 import { useStoreStatus } from '../hooks/useStoreStatus';
@@ -87,6 +88,7 @@ export function ProductDetailPage() {
   const [zoomOpen, setZoomOpen] = useState(false);
   // Loja fechada: a tela abre normalmente para ler o item, mas não deixa adicionar.
   const activeLocation = useActiveLocation(tenant?.id, Boolean(qrCodeToken));
+  useCartPromotionContext(Boolean(qrCodeToken), activeLocation?.id);
   const storeStatus = useStoreStatus(activeLocation);
   const isStoreClosed = !storeStatus.isOpen && Boolean(activeLocation);
   const [product, setProduct] = useState<Product | null>(null);

@@ -1,3 +1,4 @@
+import { useCartPromotionContext } from '../hooks/useCartPromotionContext';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -86,6 +87,7 @@ export function CategoryProductsPage() {
   const { token: customerToken } = useCustomerAuth();
   const accent = useAccentColor(tenant?.primaryColor ?? '#111827');
   const { location, isReady } = useActiveMenuLocation(isTableFlow);
+  useCartPromotionContext(isTableFlow, location?.id);
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);

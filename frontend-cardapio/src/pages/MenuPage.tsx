@@ -1,3 +1,4 @@
+import { useCartPromotionContext } from '../hooks/useCartPromotionContext';
 import { localizedField } from '../i18n/contentText';
 import { categoryLabel } from '../i18n/categoryLabel';
 import { useI18n } from '../i18n/I18nContext';
@@ -95,6 +96,7 @@ export function MenuPage() {
   }, [isTableFlow, tenant, session?.table?.locationId]);
 
   const activeLocation = isTableFlow ? tableLocation : selectedLocation;
+  useCartPromotionContext(isTableFlow, activeLocation?.id);
 
   // Passa o token do cliente logado (se houver) — pra promoção com
   // limite por cliente já voltar marcada como "já usada" — e a loja
