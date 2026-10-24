@@ -28,17 +28,18 @@ export function ReceiptContent({ tenant, summary }: ReceiptContentProps) {
     .reduce((sum, o) => sum + Number(o.cashbackEarned ?? 0), 0);
 
   return (
-    <div className="font-mono text-xs text-gray-800 flex flex-col gap-2 w-full max-w-[280px] mx-auto">
+    <div className="w-full dark:bg-[#FFFFFF] dark:rounded-xl dark:p-4 [color-scheme:light]">
+    <div className="font-mono text-xs text-[#1F2937] flex flex-col gap-2 w-full max-w-[280px] mx-auto">
       <div className="text-center flex flex-col gap-0.5">
         <p className="font-bold text-sm">{tenant.name}</p>
       </div>
 
-      <div className="border-t border-dashed border-gray-300 my-1" />
+      <div className="border-t border-dashed border-[#D1D5DB] my-1" />
 
       <p className="text-center">*** SIMPLES CONFERÊNCIA DA CONTA ***</p>
       <p className="text-center">*** NÃO É DOCUMENTO FISCAL ***</p>
 
-      <div className="border-t border-dashed border-gray-300 my-1" />
+      <div className="border-t border-dashed border-[#D1D5DB] my-1" />
 
       <div className="flex justify-between">
         <span>{session.table?.number ?? 'Mesa'}</span>
@@ -54,7 +55,7 @@ export function ReceiptContent({ tenant, summary }: ReceiptContentProps) {
           {participants.map((p, idx) => (
             <div key={idx} className="flex justify-between pl-2">
               <ReceiptPerson name={p.name} avatarUrl={(p as { avatarUrl?: string | null }).avatarUrl ?? null} verified={Boolean((p as { isVerified?: boolean }).isVerified)} />
-              <span className="text-[10px] text-gray-400">{p.isOpener ? 'abriu a mesa' : ''}</span>
+              <span className="text-[10px] text-[#9CA3AF]">{p.isOpener ? 'abriu a mesa' : ''}</span>
             </div>
           ))}
         </div>
@@ -91,7 +92,7 @@ export function ReceiptContent({ tenant, summary }: ReceiptContentProps) {
         </div>
       )}
 
-      <div className="border-t border-dashed border-gray-300 my-1" />
+      <div className="border-t border-dashed border-[#D1D5DB] my-1" />
 
       {orders.map((order) => {
         const cancelled = order.status === 'cancelado';
@@ -100,19 +101,19 @@ export function ReceiptContent({ tenant, summary }: ReceiptContentProps) {
         return (
           <div key={order.id} className="flex flex-col gap-0.5">
             {/* Só hora e data — sem nome/foto do cliente na listagem. */}
-            <p className="text-[10px] text-gray-400 flex justify-between">
+            <p className="text-[10px] text-[#9CA3AF] flex justify-between">
               <span>
                 {createdAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                {cancelled && <span className="ml-1.5 font-bold text-red-600">CANCELADO</span>}
+                {cancelled && <span className="ml-1.5 font-bold text-[#DC2626]">CANCELADO</span>}
               </span>
               <span>{createdAt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
             </p>
             {(order.items ?? []).map((item, idx) => (
-              <div key={idx} className={`flex justify-between${cancelled ? ' line-through text-gray-400' : ''}`}>
+              <div key={idx} className={`flex justify-between${cancelled ? ' line-through text-[#9CA3AF]' : ''}`}>
                 <span>
                   {item.quantity}x {item.productName}
                   {item.selectedOptions && item.selectedOptions.length > 0 && (
-                    <span className="block text-[10px] text-gray-400">
+                    <span className="block text-[10px] text-[#9CA3AF]">
                       {item.selectedOptions.map((o) => o.label).join(', ')}
                     </span>
                   )}
@@ -123,7 +124,7 @@ export function ReceiptContent({ tenant, summary }: ReceiptContentProps) {
               </div>
             ))}
             {orderCashback > 0 && (
-              <p className="text-[10px] text-green-600 text-right">
+              <p className="text-[10px] text-[#16A34A] text-right">
                 + R$ {orderCashback.toFixed(2).replace('.', ',')} de cashback
               </p>
             )}
@@ -131,14 +132,14 @@ export function ReceiptContent({ tenant, summary }: ReceiptContentProps) {
         );
       })}
 
-      <div className="border-t border-dashed border-gray-300 my-1" />
+      <div className="border-t border-dashed border-[#D1D5DB] my-1" />
 
       <div className="flex justify-between">
         <span>Subtotal</span>
         <span className="whitespace-nowrap pl-3 shrink-0">R$ {grossSubtotal.toFixed(2).replace('.', ',')}</span>
       </div>
       {discountTotal > 0 && (
-        <div className="flex justify-between text-red-600">
+        <div className="flex justify-between text-[#DC2626]">
           <span>
             Desconto aplicado{promotionTitles.length > 0 ? ` (${promotionTitles.join(', ')})` : ''}
           </span>
@@ -146,7 +147,7 @@ export function ReceiptContent({ tenant, summary }: ReceiptContentProps) {
         </div>
       )}
       {cashbackUsedTotal > 0 && (
-        <div className="flex justify-between text-red-600">
+        <div className="flex justify-between text-[#DC2626]">
           <span>Cashback usado</span>
           <span className="whitespace-nowrap pl-3 shrink-0">- R$ {cashbackUsedTotal.toFixed(2).replace('.', ',')}</span>
         </div>
@@ -158,7 +159,7 @@ export function ReceiptContent({ tenant, summary }: ReceiptContentProps) {
         </div>
       )}
       {cashbackApplied > 0 && (
-        <div className="flex justify-between text-red-600">
+        <div className="flex justify-between text-[#DC2626]">
           <span>Cashback usado no fechamento</span>
           <span className="whitespace-nowrap pl-3 shrink-0">- R$ {cashbackApplied.toFixed(2).replace('.', ',')}</span>
         </div>
@@ -168,7 +169,7 @@ export function ReceiptContent({ tenant, summary }: ReceiptContentProps) {
         <span className="whitespace-nowrap pl-3 shrink-0">R$ {grandTotal.toFixed(2).replace('.', ',')}</span>
       </div>
       {cashbackEarnedTotal > 0 && (
-        <div className="flex justify-between text-green-600 text-[11px]">
+        <div className="flex justify-between text-[#16A34A] text-[11px]">
           <span>Cashback recebido nesse pedido</span>
           <span>+ R$ {cashbackEarnedTotal.toFixed(2).replace('.', ',')}</span>
         </div>
@@ -176,7 +177,7 @@ export function ReceiptContent({ tenant, summary }: ReceiptContentProps) {
 
       {isClosed && session.paymentMethod && (
         <>
-          <div className="border-t border-dashed border-gray-300 my-1" />
+          <div className="border-t border-dashed border-[#D1D5DB] my-1" />
           <div className="flex justify-between">
             <span>Pagamento</span>
             <span className="capitalize">{session.paymentMethod}</span>
@@ -200,10 +201,11 @@ export function ReceiptContent({ tenant, summary }: ReceiptContentProps) {
         </>
       )}
 
-      <div className="border-t border-dashed border-gray-300 my-1" />
+      <div className="border-t border-dashed border-[#D1D5DB] my-1" />
 
       <p className="text-center pt-1">Obrigado pela preferência!</p>
       <p className="text-center">Volte sempre</p>
+    </div>
     </div>
   );
 }
@@ -213,7 +215,7 @@ function ReceiptPerson({ name, avatarUrl, verified }: { name: string; avatarUrl:
   return (
     <span className="flex min-w-0 items-center gap-1.5">
       <span className="relative inline-flex shrink-0">
-        <span className="flex h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-gray-200 text-[10px] font-bold text-gray-500">
+        <span className="flex h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-[#E5E7EB] text-[10px] font-bold text-[#6B7280]">
           {avatarUrl ? <img src={avatarUrl} alt="" className="h-full w-full object-cover" /> : name.trim().charAt(0).toUpperCase()}
         </span>
         {verified && (

@@ -19,6 +19,7 @@ import { MercadoPagoService } from '../payments/mercadopago.service';
 import { decryptSecret } from '../../common/utils/encryption';
 import { toCents, fromCents } from '../../common/utils/money';
 import { summarizeSessionOrders } from '../../common/utils/session-totals';
+import { absolutizeAvatarUrl } from '../../common/utils/avatar-url';
 import { isPixOnlineActive } from '../payments/mp-activation';
 import { computeIsOpenNow } from '../../common/utils/schedule';
 import { signReceipt, verifyReceiptSignature, formatVerificationCode, parseVerificationCode } from '../../common/utils/receipt-signature';
@@ -889,7 +890,7 @@ export class TablesService {
       if (account) {
         participants.push({
           name: account.name,
-          avatarUrl: account.avatarUrl ?? null,
+          avatarUrl: absolutizeAvatarUrl(account.avatarUrl),
           isOpener: p.customerId === session.openedByCustomerId,
         });
       }
@@ -898,7 +899,7 @@ export class TablesService {
     if (participants.length === 0 && !anySeatRow && session.openedByCustomerId) {
       const account = participantById.get(session.openedByCustomerId);
       if (account) {
-        participants.push({ name: account.name, avatarUrl: account.avatarUrl ?? null, isOpener: true });
+        participants.push({ name: account.name, avatarUrl: absolutizeAvatarUrl(account.avatarUrl), isOpener: true });
       }
     }
 
@@ -918,7 +919,12 @@ export class TablesService {
 
     return {
       session,
-      orders,
+      // O avatar do cliente de cada pedido também sai absoluto (cópia: o cache de pedidos não é alterado).
+      orders: orders.map((o) =>
+        o.customer?.avatarUrl
+          ? { ...o, customer: { ...o.customer, avatarUrl: absolutizeAvatarUrl(o.customer.avatarUrl) } }
+          : o,
+      ),
       total,
       // Subtotal bruto, desconto, cashback de pedido e contagem de cancelados.
       // Campo aditivo: nada que já lê `total`/`grandTotal` muda.
@@ -986,7 +992,7 @@ export class TablesService {
       return {
         id: seat.id,
         name: account?.name ?? guestLabels.get(seat.id) ?? 'Visitante',
-        avatarUrl: account?.avatarUrl ?? null,
+        avatarUrl: absolutizeAvatarUrl(account?.avatarUrl),
         isOpener: seat.customerId
           ? seat.customerId === session.openedByCustomerId
           : !session.openedByCustomerId && seat.id === earliestSeatId,
