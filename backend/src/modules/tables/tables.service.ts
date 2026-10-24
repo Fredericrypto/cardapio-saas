@@ -18,6 +18,7 @@ import { PushService } from '../push/push.service';
 import { MercadoPagoService } from '../payments/mercadopago.service';
 import { decryptSecret } from '../../common/utils/encryption';
 import { toCents, fromCents } from '../../common/utils/money';
+import { summarizeSessionOrders } from '../../common/utils/session-totals';
 import { isPixOnlineActive } from '../payments/mp-activation';
 import { computeIsOpenNow } from '../../common/utils/schedule';
 import { signReceipt, verifyReceiptSignature, formatVerificationCode, parseVerificationCode } from '../../common/utils/receipt-signature';
@@ -833,10 +834,11 @@ export class TablesService {
     // BUG CORRIGIDO: pedidos cancelados estavam entrando na soma do total.
     // Continuam aparecendo na lista (transparência pro cliente/garçom ver
     // que foi cancelado), mas não contam pra conta final.
-    const totalCents = orders
-      .filter((order) => order.status !== 'cancelado')
-      .reduce((sum, order) => sum + toCents(order.total), 0);
-    const total = fromCents(totalCents);
+    // Totais em centavos numa função só (testada em test/session-receipt-audit.ts);
+    // o mesmo `breakdown` abastece o cupom do cliente e o do admin.
+    const breakdown = summarizeSessionOrders(orders);
+    const total = breakdown.total;
+    const totalCents = toCents(total);
     const tipAmount = Number(session.tipAmount) || 0;
     const totalPlusTipCents = totalCents + toCents(tipAmount);
 
@@ -918,6 +920,9 @@ export class TablesService {
       session,
       orders,
       total,
+      // Subtotal bruto, desconto, cashback de pedido e contagem de cancelados.
+      // Campo aditivo: nada que já lê `total`/`grandTotal` muda.
+      breakdown,
       tipAmount,
       grandTotal,
       customerName,
