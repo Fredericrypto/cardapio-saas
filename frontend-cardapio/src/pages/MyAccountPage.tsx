@@ -3,7 +3,8 @@ import { activeDateLocale } from '../i18n/languages';
 import { useI18n } from '../i18n/I18nContext';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { PeopleOrders } from '../components/PeopleOrders';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, Bell, LogOut } from 'lucide-react';
 import { fetchSessionSummary, requestSessionClosing, leaveTable } from '../lib/menu-api';
@@ -80,6 +81,20 @@ export function MyAccountPage() {
   const [requestError, setRequestError] = useState<string | null>(null);
   const [tipPercent, setTipPercent] = useState<number | 'custom' | null>(null);
   const [customTip, setCustomTip] = useState('');
+  // Altura real da barra fixa de fechamento (muda com gorjeta personalizada,
+  // erros, cashback...). O conteúdo reserva exatamente esse espaço no mobile;
+  // um padding fixo deixava pedidos escondidos atrás da barra.
+  const [barHeight, setBarHeight] = useState(0);
+  const barObserver = useRef<ResizeObserver | null>(null);
+  const barRef = useCallback((el: HTMLDivElement | null) => {
+    barObserver.current?.disconnect();
+    barObserver.current = null;
+    if (!el) return;
+    const update = () => setBarHeight(Math.ceil(el.getBoundingClientRect().height));
+    update();
+    barObserver.current = new ResizeObserver(update);
+    barObserver.current.observe(el);
+  }, []);
   const [statusNotification, setStatusNotification] = useState<string | null>(null);
   // Folha de pagamento (forma de pagamento + cashback) aberta ao tocar
   // em "Solicitar fechamento" — pedido do Felipe, 28/09.
@@ -268,7 +283,10 @@ export function MyAccountPage() {
     summary.session.status === 'aberta';
 
   return (
-    <div className="min-h-screen bg-white md:bg-gray-50 pb-32 md:pb-12">
+    <div
+      className="min-h-screen bg-white md:bg-gray-50 pb-[calc(var(--account-bar-h,8rem)+1rem)] md:pb-12"
+      style={barHeight > 0 ? ({ '--account-bar-h': `${barHeight}px` } as CSSProperties) : undefined}
+    >
      <div className="max-w-md mx-auto md:max-w-5xl md:px-6">
       <div className="flex items-center gap-3 px-4 py-4 border-b border-gray-100 md:px-0 md:pt-8 md:pb-5 md:border-b-0">
         <button onClick={() => navigate(-1)} aria-label={t('common.back')} className="md:w-10 md:h-10 md:rounded-full md:bg-white md:border md:border-gray-100 md:flex md:items-center md:justify-center md:hover:bg-gray-50">
@@ -406,7 +424,7 @@ export function MyAccountPage() {
 
       </div>
 
-      <div className="fixed bottom-[var(--bottom-nav-h,0px)] left-0 right-0 max-w-md mx-auto p-4 bg-white border-t border-gray-100 flex flex-col gap-3 md:sticky md:top-24 md:bottom-auto md:left-auto md:right-auto md:max-w-none md:mx-0 md:rounded-2xl md:border md:shadow-sm md:p-5">
+      <div ref={barRef} className="fixed bottom-[var(--bottom-nav-h,0px)] left-0 right-0 max-w-md mx-auto p-4 bg-white border-t border-gray-100 flex flex-col gap-3 md:sticky md:top-24 md:bottom-auto md:left-auto md:right-auto md:max-w-none md:mx-0 md:rounded-2xl md:border md:shadow-sm md:p-5">
         {!closingRequested && summary.orders.length > 0 && (
           <div>
             <p className="text-xs font-semibold text-gray-500 mb-1.5">
