@@ -300,7 +300,7 @@ export const ptBR = {
   'receiptContent.fechado_em': 'Fechado em',
   'receiptContent.sem_pedidos': 'Sem pedidos',
   'receiptContent.desconto_aplicado': 'Desconto aplicado',
-  'receiptContent.ja_refletido_no_subtotal': 'já refletido no subtotal',
+  'receiptContent.cancelado': 'CANCELADO',
   'receiptContent.cashback_usado': 'Cashback usado',
   'receiptContent.cashback_usado_no_fechamento': 'Cashback usado no fechamento',
   'receiptContent.total': 'TOTAL',

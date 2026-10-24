@@ -1,5 +1,6 @@
 import { Check } from 'lucide-react';
 import type { Tenant, SessionSummary } from '../types';
+import { resolveReceiptBreakdown } from '../lib/receiptBreakdown';
 
 interface ReceiptContentProps {
   tenant: Tenant;
@@ -11,37 +12,20 @@ interface ReceiptContentProps {
 // totais e mensagem final. Pensado pra ficar bom tanto na tela quanto
 // impresso (a impressão usa esse mesmo conteúdo via window.print()).
 export function ReceiptContent({ tenant, summary }: ReceiptContentProps) {
-  const { session, orders, total, tipAmount, grandTotal, cashbackApplied, customerName, participants } = summary;
+  const { session, orders, total, tipAmount, grandTotal, cashbackApplied, customerName, participants, breakdown: serverBreakdown } = summary;
   const isClosed = session.status === 'fechada';
 
-  // Soma o desconto de todos os pedidos não cancelados dessa sessão —
-  // só informativo aqui (o valor já vem líquido de desconto dentro de
-  // cada order.total, que é o que compõe `total`/`grandTotal` acima).
-  const discountTotal = orders
-    .filter((o) => o.status !== 'cancelado')
-    .reduce((sum, o) => sum + Number(o.discountAmount ?? 0), 0);
-  const cashbackUsedTotal = orders
-    .filter((o) => o.status !== 'cancelado')
-    .reduce((sum, o) => sum + Number(o.cashbackUsed ?? 0), 0);
+  // Totais vindos do backend (centavos, cancelados já fora das somas);
+  // backend antigo ou histórico → fallback local em centavos. `total` segue
+  // líquido de desconto; o subtotal exibido é o bruto (itens antes do desconto).
+  const { discountTotal, cashbackUsedTotal, grossSubtotal, promotionTitles } = resolveReceiptBreakdown({
+    orders,
+    total,
+    breakdown: serverBreakdown,
+  });
   const cashbackEarnedTotal = orders
     .filter((o) => o.status !== 'cancelado')
     .reduce((sum, o) => sum + Number(o.cashbackEarned ?? 0), 0);
-  // `promotionTitlesSnapshot` cobre pedidos que usaram MAIS DE UM cupom
-  // ao mesmo tempo — cai pro singular só em pedidos bem antigos, de
-  // antes dessa coluna existir.
-  const promotionTitles = Array.from(
-    new Set(
-      orders
-        .filter((o) => o.status !== 'cancelado')
-        .flatMap((o) =>
-          o.promotionTitlesSnapshot?.length
-            ? o.promotionTitlesSnapshot
-            : o.promotionTitleSnapshot
-              ? [o.promotionTitleSnapshot]
-              : [],
-        ),
-    ),
-  );
 
   return (
     <div className="font-mono text-xs text-gray-800 flex flex-col gap-2 w-full max-w-[280px] mx-auto">
@@ -110,17 +94,21 @@ export function ReceiptContent({ tenant, summary }: ReceiptContentProps) {
       <div className="border-t border-dashed border-gray-300 my-1" />
 
       {orders.map((order) => {
-        const orderCashback = Number(order.cashbackEarned ?? 0);
+        const cancelled = order.status === 'cancelado';
+        const orderCashback = cancelled ? 0 : Number(order.cashbackEarned ?? 0);
         const createdAt = new Date(order.createdAt);
         return (
           <div key={order.id} className="flex flex-col gap-0.5">
             {/* Só hora e data — sem nome/foto do cliente na listagem. */}
             <p className="text-[10px] text-gray-400 flex justify-between">
-              <span>{createdAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+              <span>
+                {createdAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                {cancelled && <span className="ml-1.5 font-bold text-red-600">CANCELADO</span>}
+              </span>
               <span>{createdAt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
             </p>
             {(order.items ?? []).map((item, idx) => (
-              <div key={idx} className="flex justify-between">
+              <div key={idx} className={`flex justify-between${cancelled ? ' line-through text-gray-400' : ''}`}>
                 <span>
                   {item.quantity}x {item.productName}
                   {item.selectedOptions && item.selectedOptions.length > 0 && (
@@ -147,13 +135,12 @@ export function ReceiptContent({ tenant, summary }: ReceiptContentProps) {
 
       <div className="flex justify-between">
         <span>Subtotal</span>
-        <span className="whitespace-nowrap pl-3 shrink-0">R$ {total.toFixed(2).replace('.', ',')}</span>
+        <span className="whitespace-nowrap pl-3 shrink-0">R$ {grossSubtotal.toFixed(2).replace('.', ',')}</span>
       </div>
       {discountTotal > 0 && (
         <div className="flex justify-between text-red-600">
           <span>
             Desconto aplicado{promotionTitles.length > 0 ? ` (${promotionTitles.join(', ')})` : ''}
-            <span className="block text-[10px] text-gray-400">já refletido no subtotal</span>
           </span>
           <span className="whitespace-nowrap pl-3 shrink-0">- R$ {discountTotal.toFixed(2).replace('.', ',')}</span>
         </div>

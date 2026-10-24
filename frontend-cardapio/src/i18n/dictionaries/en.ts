@@ -289,7 +289,7 @@ export const en: Record<TranslationKey, string> = {
   'receiptContent.fechado_em': 'Closed at',
   'receiptContent.sem_pedidos': 'No orders',
   'receiptContent.desconto_aplicado': 'Discount applied',
-  'receiptContent.ja_refletido_no_subtotal': 'already reflected in the subtotal',
+  'receiptContent.cancelado': 'CANCELED',
   'receiptContent.cashback_usado': 'Cashback used',
   'receiptContent.cashback_usado_no_fechamento': 'Cashback used at closing',
   'receiptContent.total': 'TOTAL',

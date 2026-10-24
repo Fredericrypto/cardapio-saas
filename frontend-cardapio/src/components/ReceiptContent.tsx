@@ -3,6 +3,7 @@ import { useI18n } from '../i18n/I18nContext';
 import { PersonHeader } from './PeopleOrders';
 import { VerifiedBadge } from './VerifiedBadge';
 import type { Tenant, SessionSummary } from '../types';
+import { resolveReceiptBreakdown } from '../lib/receiptBreakdown';
 import { ReceiptAuthenticityCode } from './ReceiptAuthenticityCode';
 
 // Mesmo layout do cupom usado no painel do admin (ReceiptContent) — de
@@ -10,7 +11,7 @@ import { ReceiptAuthenticityCode } from './ReceiptAuthenticityCode';
 // o restaurante precisarem comparar recibos, os dois batam exatamente.
 export function ReceiptContent({ tenant, summary }: { tenant: Tenant; summary: SessionSummary }) {
   const { t } = useI18n();
-  const { session, orders, total, tipAmount, grandTotal, cashbackApplied, customerName, participants, people: rawPeople, receiptVerificationCode } = summary;
+  const { session, orders, total, tipAmount, grandTotal, cashbackApplied, customerName, participants, people: rawPeople, receiptVerificationCode, breakdown: serverBreakdown } = summary;
   // UM avatar por cliente em "Mesa compartilhada por": o mesmo cliente podia
   // vir duas vezes (assento de convidado + conta) — dedupe por id e por nome.
   const people = rawPeople
@@ -21,34 +22,20 @@ export function ReceiptContent({ tenant, summary }: { tenant: Tenant; summary: S
     : rawPeople;
   const isClosed = session.status === 'fechada';
 
-  const discountTotal = orders
-    .filter((o) => o.status !== 'cancelado')
-    .reduce((sum, o) => sum + Number(o.discountAmount ?? 0), 0);
-  const cashbackUsedTotal = orders
-    .filter((o) => o.status !== 'cancelado')
-    .reduce((sum, o) => sum + Number(o.cashbackUsed ?? 0), 0);
+  // Totais vindos do backend (centavos, cancelados já fora das somas);
+  // backend antigo ou histórico → fallback local em centavos.
+  const { discountTotal, cashbackUsedTotal, grossSubtotal, promotionTitles } = resolveReceiptBreakdown({
+    orders,
+    total,
+    breakdown: serverBreakdown,
+  });
   const cashbackEarnedTotal = orders
     .filter((o) => o.status !== 'cancelado')
     .reduce((sum, o) => sum + Number(o.cashbackEarned ?? 0), 0);
-  // `promotionTitlesSnapshot` cobre pedidos que usaram MAIS DE UM cupom
-  // ao mesmo tempo — cai pro singular só em pedidos bem antigos, de
-  // antes dessa coluna existir.
-  const promotionTitles = Array.from(
-    new Set(
-      orders
-        .filter((o) => o.status !== 'cancelado')
-        .flatMap((o) =>
-          o.promotionTitlesSnapshot?.length
-            ? o.promotionTitlesSnapshot
-            : o.promotionTitleSnapshot
-              ? [o.promotionTitleSnapshot]
-              : [],
-        ),
-    ),
-  );
 
   const renderOrder = (order: (typeof orders)[number]) => {
-        const orderCashback = Number(order.cashbackEarned ?? 0);
+        const cancelled = order.status === 'cancelado';
+        const orderCashback = cancelled ? 0 : Number(order.cashbackEarned ?? 0);
         const createdAt = new Date(order.createdAt);
         return (
           <div className="flex flex-col gap-0.5">
@@ -56,11 +43,14 @@ export function ReceiptContent({ tenant, summary }: { tenant: Tenant; summary: S
                 nome do cliente (quem é quem já está em "Mesa compartilhada
                 por"). */}
             <p className="text-[10px] text-[#9CA3AF] flex justify-between">
-              <span>{createdAt.toLocaleTimeString(activeDateLocale(), { hour: '2-digit', minute: '2-digit' })}</span>
+              <span>
+                {createdAt.toLocaleTimeString(activeDateLocale(), { hour: '2-digit', minute: '2-digit' })}
+                {cancelled && <span className="ml-1.5 font-bold text-[#DC2626]">{t('receiptContent.cancelado')}</span>}
+              </span>
               <span>{createdAt.toLocaleDateString(activeDateLocale(), { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
             </p>
             {(order.items ?? []).map((item, idx) => (
-              <div key={idx} className="flex justify-between">
+              <div key={idx} className={`flex justify-between${cancelled ? ' line-through text-[#9CA3AF]' : ''}`}>
                 <span>
                   {item.quantity}x {item.productName}
                   {item.selectedOptions && item.selectedOptions.length > 0 && (
@@ -172,13 +162,12 @@ export function ReceiptContent({ tenant, summary }: { tenant: Tenant; summary: S
 
         <div className="flex justify-between">
           <span>{t('closingPaymentSheet.subtotal')}</span>
-          <span className="whitespace-nowrap pl-3 shrink-0">R$ {total.toFixed(2).replace('.', ',')}</span>
+          <span className="whitespace-nowrap pl-3 shrink-0">R$ {grossSubtotal.toFixed(2).replace('.', ',')}</span>
         </div>
         {discountTotal > 0 && (
           <div className="flex justify-between text-[#DC2626]">
             <span>
               {t('receiptContent.desconto_aplicado')}{promotionTitles.length > 0 ? ` (${promotionTitles.join(', ')})` : ''}
-              <span className="block text-[10px] text-[#9CA3AF]">{t('receiptContent.ja_refletido_no_subtotal')}</span>
             </span>
             <span className="whitespace-nowrap pl-3 shrink-0">- R$ {discountTotal.toFixed(2).replace('.', ',')}</span>
           </div>

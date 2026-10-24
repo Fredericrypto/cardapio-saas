@@ -302,6 +302,17 @@ export interface SessionPerson {
   orderIds: string[];
 }
 
+// Totais da conta calculados no backend em centavos (cancelados fora das somas).
+// Ausente em backend antigo e no histórico: lib/receiptBreakdown.ts faz o fallback.
+export interface ReceiptBreakdown {
+  total: number;
+  discountTotal: number;
+  cashbackUsedTotal: number;
+  grossSubtotal: number;
+  cancelledCount: number;
+  promotionTitles: string[];
+}
+
 export interface SessionSummary {
   session: TableSession;
   // Situação de quem está olhando (assento): `active` = ainda vale;
@@ -350,4 +361,6 @@ export interface SessionSummary {
   // (o total pode mudar); só existe depois que a sessão fecha de
   // verdade. Ver TablesService.getSessionSummary.
   receiptVerificationCode: string | null;
+  // Subtotal bruto, desconto, cashback de pedido e cancelados (backend novo).
+  breakdown?: ReceiptBreakdown;
 }

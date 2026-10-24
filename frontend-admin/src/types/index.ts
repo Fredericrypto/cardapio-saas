@@ -300,6 +300,17 @@ export interface TableSession {
   };
 }
 
+// Totais da conta calculados no backend em centavos (cancelados fora das somas).
+// Ausente em backend antigo e no histórico: lib/receiptBreakdown.ts faz o fallback.
+export interface ReceiptBreakdown {
+  total: number;
+  discountTotal: number;
+  cashbackUsedTotal: number;
+  grossSubtotal: number;
+  cancelledCount: number;
+  promotionTitles: string[];
+}
+
 export interface SessionSummary {
   session: TableSession;
   orders: Order[];
@@ -317,6 +328,8 @@ export interface SessionSummary {
   // na mesa (não só quem fez pedido) — pra mostrar no cupom que a conta
   // foi compartilhada e quem abriu.
   participants: Array<{ name: string; avatarUrl: string | null; isOpener: boolean }>;
+  // Subtotal bruto, desconto, cashback de pedido e cancelados (backend novo).
+  breakdown?: ReceiptBreakdown;
 }
 
 // ---------- Histórico (expiração de 7 dias) ----------
