@@ -21,6 +21,7 @@ import { AppSplashScreen } from '../components/AppSplashScreen';
 import { formatBrazilPhone, isValidBrazilPhone } from '../lib/phone';
 import { LoginSplit } from '../components/login/LoginSplit';
 import { BrandLoader } from '../components/BrandLoader';
+import { safeRedirectPath } from '../lib/safeRedirect';
 
 type AuthMode = 'login' | 'register';
 
@@ -68,7 +69,7 @@ export function CustomerAuthPage() {
     [],
   );
 
-  const redirectTo = searchParams.get('redirect') || `/${slug}`;
+  const redirectTo = safeRedirectPath(searchParams.get('redirect'), slug);
 
   // Sessão já válida pra esse restaurante? Nunca mostra o formulário
   // por cima dela — redireciona direto. `justAuthenticated` fica de

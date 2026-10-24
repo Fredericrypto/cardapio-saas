@@ -3,6 +3,8 @@ import type { CartItem, Product, SelectedCartOption } from '../types';
 // A chave da linha (produto + adicionais) mora em lib/cartLines.ts: o Modo
 // Promoção precisa calcular a MESMA chave para achar a linha no carrinho.
 import { buildLineKey } from '../lib/cartLines';
+import { clearGuestCart, getGuestStorage, readGuestCart, writeGuestCart } from '../lib/guestCart';
+import { resolveCartOwner, resolveOwnerTransition, sameCartOwner, type CartOwner } from '../lib/cartOwner';
 import {
   EMPTY_PROMO_STATE,
   parsePersistedCart,
@@ -48,6 +50,12 @@ function loadPersistedCart(key: string): PersistedCart | null {
   }
 }
 
+// Por que a ação precisa de conta: o app confirma com a pessoa e a leva ao login, com retorno.
+export type LoginIntentReason = 'order' | 'promotion';
+export interface LoginIntent {
+  reason: LoginIntentReason;
+}
+
 interface CartContextValue {
   items: CartItem[];
   addItem: (product: Product, selectedOptions?: SelectedCartOption[], quantity?: number) => void;
@@ -91,6 +99,11 @@ interface CartContextValue {
   // persistência de carrinho nunca cruza fronteira de identidade. Ver
   // comentário grande logo abaixo, dentro do Provider.
   setCartOwner: (tenantId: string | null, customerId: string | null) => void;
+  // Ação que exige conta (fazer o pedido, usar promoção) tentada por um CONVIDADO.
+  // O modal de login (fase 3) lê isso, confirma e leva ao login com retorno.
+  loginIntent: LoginIntent | null;
+  requestLogin: (reason: LoginIntentReason) => void;
+  dismissLoginIntent: () => void;
 }
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -113,6 +126,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
   // ninguém logado ainda) — em ref porque só é lido dentro de
   // callbacks/efeitos, nunca precisa disparar re-render sozinho.
   const ownerKeyRef = useRef<string | null>(null);
+  // Dono atual de forma estruturada (nenhum / convidado de um restaurante / conta).
+  // `ownerKeyRef` continua sendo a chave do localStorage da CONTA (null para convidado).
+  const ownerRef = useRef<CartOwner>({ kind: 'none' });
+  const [loginIntent, setLoginIntent] = useState<LoginIntent | null>(null);
 
   // IMPORTANTE: todas as funções aqui embaixo são `useCallback` com
   // array de dependências vazio de propósito — nunca tirar isso.
@@ -183,6 +200,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         // problema, não tinha nada persistido mesmo.
       }
     }
+    // Convidado: apaga também o carrinho guardado na aba (sessionStorage).
+    if (ownerRef.current.kind === 'guest') clearGuestCart(getGuestStorage(), ownerRef.current.tenantId);
   }, []);
 
   // Único ponto de entrada pra dizer "o carrinho agora pertence a ESSE
@@ -191,51 +210,44 @@ export function CartProvider({ children }: { children: ReactNode }) {
   // reload, troca de restaurante). Nunca lido/escrito em resposta a
   // nada além disso.
   //
-  // Efeito de trocar de dono: primeiro esquece o carrinho em memória
-  // (nunca deixa o carrinho de UM dono aparecer, nem por um instante,
-  // associado a outro), depois — só se o novo dono é uma identidade
-  // completa (tenant E cliente, os dois) — carrega o que esse dono
-  // específico tinha salvo antes (ex: o cliente recarregou a página com
-  // conexão ruim, ou fechou e abriu o navegador de novo, mas continua
-  // logado como ele mesmo).
+  // Efeito de trocar de dono (toda a decisão mora em lib/cartOwner.resolveOwnerTransition,
+  // coberta por teste):
+  //  - conta → outra conta/convidado/nenhum: o carrinho em memória NUNCA passa adiante;
+  //  - convidado → conta (login ou cadastro no meio da visita): os itens montados como
+  //    convidado são SOMADOS ao que a conta já tinha salvo (P-20: nunca sobrescreve) e o
+  //    carrinho de convidado da aba é apagado;
+  //  - o que a conta tinha salvo volta como itens + INTENÇÃO de promoção (P-01), nunca
+  //    como promoção ativa.
   const setCartOwner = useCallback((tenantId: string | null, customerId: string | null) => {
-    const nextKey = tenantId && customerId ? cartStorageKey(tenantId, customerId) : null;
-    if (nextKey === ownerKeyRef.current) return;
+    const prev = ownerRef.current;
+    const next = resolveCartOwner(tenantId, customerId);
+    if (sameCartOwner(prev, next)) return;
 
-    // Cliente estava pedindo como CONVIDADO (sem dono definido ainda) e
-    // já tinha item no carrinho quando decidiu logar/criar conta no meio
-    // da visita — bug real que isso corrige: sem essa checagem, o app
-    // sempre substituía o carrinho atual pelo que já estava salvo pra
-    // essa conta (geralmente nada, no primeiro login) e o cliente
-    // perdia o pedido bem na hora que mais se engajou com o app. O
-    // carrinho que ele já montou é dele — continua com ele, só passa a
-    // ser salvo sob a identidade nova a partir de agora (o efeito de
-    // persistência abaixo cuida disso sozinho).
-    const wasGuestWithItems = ownerKeyRef.current === null && itemsRef.current.length > 0;
+    ownerRef.current = next;
+    ownerKeyRef.current = next.kind === 'account' ? cartStorageKey(next.tenantId, next.customerId) : null;
 
-    ownerKeyRef.current = nextKey;
-
-    if (!nextKey) {
-      setItems([]);
-      setPromo((s) => promoHydrate(s, null));
-      return;
-    }
-
-    if (wasGuestWithItems) {
-      return;
-    }
-
-    // P-01: o que estava salvo volta como INTENÇÃO (lembradas), nunca como
-    // promoção ativa. `active` começa vazia depois de reload/login/reabertura.
-    const persisted = loadPersistedCart(nextKey);
-    setItems(persisted?.items ?? []);
+    const storage = getGuestStorage();
+    const persisted = ownerKeyRef.current ? loadPersistedCart(ownerKeyRef.current) : null;
+    const transition = resolveOwnerTransition(prev, next, {
+      memoryItems: itemsRef.current,
+      loadAccountItems: () => persisted?.items ?? [],
+      loadGuestItems: (guestTenantId) => readGuestCart(storage, guestTenantId),
+    });
+    if (transition.discardGuestCartOf) clearGuestCart(storage, transition.discardGuestCartOf);
+    setItems(transition.items);
+    // P-01: promoções voltam só como intenção (lembradas); convidado/nenhum zera.
     setPromo((s) => promoHydrate(s, persisted));
   }, []);
 
-  // Salva a cada mudança, só enquanto existe um dono definido (tenant +
-  // cliente logado, os dois). Sem dono — ex: enquanto o login ainda
-  // está resolvendo — carrinho fica só em memória, nunca grava nada.
+  // Salva a cada mudança. Conta: localStorage (itens + promoções lembradas, formato v2).
+  // Convidado: sessionStorage, SÓ itens (promoção nunca é guardada para convidado).
+  // Sem dono (ex.: ainda resolvendo o restaurante) nada é gravado.
   useEffect(() => {
+    const owner = ownerRef.current;
+    if (owner.kind === 'guest') {
+      writeGuestCart(getGuestStorage(), owner.tenantId, items);
+      return;
+    }
     if (!ownerKeyRef.current) return;
     try {
       localStorage.setItem(ownerKeyRef.current, serializeCart(items, promo));
@@ -249,12 +261,31 @@ export function CartProvider({ children }: { children: ReactNode }) {
   // ao mesmo tempo. A validação de verdade (se elas realmente cabem sem
   // brigar pelos mesmos itens) acontece no backend na hora de criar o
   // pedido; aqui é só a escolha do cliente.
+  // Promoção é só para conta (decisão B): o convidado vê a vitrine, mas ativar/alternar vira
+  // pedido de login e o estado NÃO muda. Garante também o D3: nenhum preço com desconto que
+  // a pessoa não conseguiria obter.
   const togglePromotion = useCallback((id: string) => {
+    if (ownerRef.current.kind !== 'account') {
+      setLoginIntent({ reason: 'promotion' });
+      return;
+    }
     setPromo((s) => promoToggle(s, id));
   }, []);
 
   const selectPromotion = useCallback((id: string) => {
+    if (ownerRef.current.kind !== 'account') {
+      setLoginIntent({ reason: 'promotion' });
+      return;
+    }
     setPromo((s) => promoActivate(s, id));
+  }, []);
+
+  const requestLogin = useCallback((reason: LoginIntentReason) => {
+    setLoginIntent({ reason });
+  }, []);
+
+  const dismissLoginIntent = useCallback(() => {
+    setLoginIntent(null);
   }, []);
 
   const clearSelectedPromotions = useCallback(() => {
@@ -305,6 +336,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setPromoContext,
       prunePromotions,
       setCartOwner,
+      loginIntent,
+      requestLogin,
+      dismissLoginIntent,
     }),
     [
       items,
@@ -324,6 +358,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setPromoContext,
       prunePromotions,
       setCartOwner,
+      loginIntent,
+      requestLogin,
+      dismissLoginIntent,
     ],
   );
 
