@@ -918,6 +918,8 @@ export const ptBR = {
   'categoryPage.loadErrorTitle': 'Não foi possível carregar os itens',
   'categoryPage.loadErrorHint': 'Verifique sua conexão e tente de novo.',
   'categoryPage.retry': 'Tentar de novo',
+  'orderSuccess.eyebrow': 'Pedido recebido',
+  'orderSuccess.eyebrowPaid': 'Pagamento aprovado',
 } as const;
 
 export type TranslationKey = keyof typeof ptBR;

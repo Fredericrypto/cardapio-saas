@@ -906,4 +906,6 @@ export const en: Record<TranslationKey, string> = {
   'categoryPage.loadErrorTitle': 'We could not load the items',
   'categoryPage.loadErrorHint': 'Check your connection and try again.',
   'categoryPage.retry': 'Try again',
+  'orderSuccess.eyebrow': 'Order received',
+  'orderSuccess.eyebrowPaid': 'Payment approved',
 };
