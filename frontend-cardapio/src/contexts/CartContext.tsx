@@ -5,6 +5,7 @@ import type { CartItem, Product, SelectedCartOption } from '../types';
 import { buildLineKey } from '../lib/cartLines';
 import { clearGuestCart, getGuestStorage, readGuestCart, writeGuestCart } from '../lib/guestCart';
 import { resolveCartOwner, resolveOwnerTransition, sameCartOwner, type CartOwner } from '../lib/cartOwner';
+import type { LoginPromptReason } from '../lib/loginPrompt';
 import {
   EMPTY_PROMO_STATE,
   parsePersistedCart,
@@ -51,7 +52,7 @@ function loadPersistedCart(key: string): PersistedCart | null {
 }
 
 // Por que a ação precisa de conta: o app confirma com a pessoa e a leva ao login, com retorno.
-export type LoginIntentReason = 'order' | 'promotion';
+export type LoginIntentReason = LoginPromptReason;
 export interface LoginIntent {
   reason: LoginIntentReason;
 }
@@ -75,11 +76,13 @@ interface CartContextValue {
   // o backend faz de verdade em PromotionsService.validateSelectedPromotions).
   // Array vazio = nenhuma escolhida.
   selectedPromotionIds: string[];
-  togglePromotion: (id: string) => void;
+  // Devolve false quando NÃO aplicou (convidado: abriu o pedido de login) — a tela não deve navegar.
+  togglePromotion: (id: string) => boolean;
   // Idempotente (ao contrário do toggle): garante que a promoção está
   // selecionada. Usado pelo Modo Promoção, que não pode desligar sem querer
   // uma promoção já ativa só por reabrir a tela.
-  selectPromotion: (id: string) => void;
+  // Também devolve false quando bloqueado por falta de conta (ver togglePromotion).
+  selectPromotion: (id: string) => boolean;
   clearSelectedPromotions: () => void;
   // Só INTENÇÃO (disco, até 10): alimenta o aviso "Promoção disponível" do
   // Carrinho. Nunca ativa nada sozinha; reativar exige selectPromotion.
@@ -267,17 +270,19 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const togglePromotion = useCallback((id: string) => {
     if (ownerRef.current.kind !== 'account') {
       setLoginIntent({ reason: 'promotion' });
-      return;
+      return false;
     }
     setPromo((s) => promoToggle(s, id));
+    return true;
   }, []);
 
   const selectPromotion = useCallback((id: string) => {
     if (ownerRef.current.kind !== 'account') {
       setLoginIntent({ reason: 'promotion' });
-      return;
+      return false;
     }
     setPromo((s) => promoActivate(s, id));
+    return true;
   }, []);
 
   const requestLogin = useCallback((reason: LoginIntentReason) => {

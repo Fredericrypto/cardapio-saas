@@ -193,7 +193,8 @@ export function PromotionDetailPage() {
   function handleApply() {
     if (isStoreClosed) return;
     // Ativar e idempotente (P-01): nunca desliga uma promocao ja ativa por engano.
-    selectPromotion(promotion!.id);
+    // Convidado: selectPromotion devolve false e abre o pedido de login — não navega.
+    if (!selectPromotion(promotion!.id)) return;
     navigate(items.length > 0 ? cartHref : backHref);
   }
 

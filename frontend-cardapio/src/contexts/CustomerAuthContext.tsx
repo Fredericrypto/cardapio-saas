@@ -8,6 +8,7 @@ import {
 import { useCart } from './CartContext';
 import { useTenant } from './TenantContext';
 import { isTransientError } from '../lib/api';
+import { planSessionExpiry } from '../lib/sessionExpiry';
 import {
   clearStoredTokenIfMatches,
   clearStoredTokens,
@@ -59,6 +60,9 @@ interface CustomerAuthContextValue {
     options?: SessionOptions,
   ) => Promise<void>;
   logout: () => void;
+  // Sessão RECUSADA pelo servidor no meio de uma ação (ex.: 401 ao criar pedido). Encerra só o
+  // token rejeitado, sem limpar o carrinho (ver a implementação).
+  expireSession: (rejectedToken: string) => void;
   retry: () => void;
   setCustomer: (customer: CustomerProfile) => void;
 }
@@ -235,13 +239,32 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     broadcastAuthChanged(tenantId);
   }
 
+  // Sessão RECUSADA pelo servidor no meio de uma ação (ex.: 401 ao criar pedido com token vencido).
+  // Diferente do logout, NÃO limpa o carrinho: o carrinho salvo da conta continua neste aparelho e
+  // volta quando a mesma conta entrar de novo (merge do CartContext), sem passar para outra conta.
+  // Compare-and-delete: só remove o token que o servidor rejeitou. Se outra aba/login já trouxe um
+  // token mais novo, adota esse e não desloga ninguém (ver lib/sessionExpiry).
+  function expireSession(rejectedToken: string) {
+    if (!tenantId) return;
+    clearStoredTokenIfMatches(tenantId, rejectedToken);
+    if (memoryTokenRef.current?.token === rejectedToken) memoryTokenRef.current = null;
+    const plan = planSessionExpiry(rejectedToken, resolveToken(tenantId, memoryTokenRef));
+    if (plan.kind === 'adopt') {
+      setToken(plan.token);
+    } else {
+      setToken(null);
+      setCustomer(null);
+    }
+    broadcastAuthChanged(tenantId);
+  }
+
   function retry() {
     setRetryTick((t) => t + 1);
   }
 
   return (
     <CustomerAuthContext.Provider
-      value={{ customer, token, isLoading, authError, authErrorTransient, login, register, logout, retry, setCustomer }}
+      value={{ customer, token, isLoading, authError, authErrorTransient, login, register, logout, expireSession, retry, setCustomer }}
     >
       {children}
     </CustomerAuthContext.Provider>

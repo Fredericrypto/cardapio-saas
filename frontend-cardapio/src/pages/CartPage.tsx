@@ -22,7 +22,8 @@ import { useSelectedLocation } from '../hooks/useSelectedLocation';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { fetchMyCashbackBalance, fetchActiveCashbackSettings } from '../lib/customer-api';
 import { CashbackLoginNotice } from '../components/CashbackLoginNotice';
-import { GUEST_NAME_MAX, validateGuestName } from '../lib/guestName';
+import { GUEST_NAME_MAX } from '../lib/guestName';
+import { classifyOrderError } from '../lib/orderErrors';
 import type { ActiveCashbackSettings } from '../lib/customer-api';
 import { CurrencyInput } from '../components/CurrencyInput';
 import { PhoneInput } from '../components/PhoneInput';
@@ -97,6 +98,7 @@ export function CartPage() {
     rememberedPromotions,
     promoContext,
     prunePromotions,
+    requestLogin,
   } = useCart();
   const tableSessionCtx = useTableSessionContext();
   const session = tableSessionCtx?.session ?? null;
@@ -122,7 +124,7 @@ export function CartPage() {
   // Aberto/fechado no momento exato (virada de minuto, fuso de Brasília).
   const storeIsOpen = useStoreStatus(activeLocation).isOpen;
 
-  const { token: customerToken, customer } = useCustomerAuth();
+  const { token: customerToken, customer, isLoading: isAuthLoading, expireSession } = useCustomerAuth();
   const [customerName, setCustomerName] = useState('');
   // Feedback mínimo de "nome obrigatório" no fluxo de mesa sem conta —
   // só liga depois de uma tentativa real de continuar sem nome (nunca
@@ -148,9 +150,9 @@ export function CartPage() {
   }, [customer]);
 
   const hasSavedName = Boolean(customer?.name);
-  // Visitante (sem conta): o nome segue a regra de 01/10 (4–16, começa com
-  // letra, sem especiais, 4 = só letras). Logado usa o nome da conta.
-  const guestNameError = !customerToken && !hasSavedName ? validateGuestName(customerName) : null;
+  // Convidado não pede (decisão B, 24/10): o app confirma e leva ao login, e traz de volta com o
+  // carrinho. Enquanto a sessão ainda está sendo confirmada NÃO é convidado (evita o modal falso).
+  const needsLogin = !customerToken && !isAuthLoading;
   const hasSavedPhone = Boolean(customer?.phone);
 
   // Saldo de cashback do cliente — só existe pra quem está logado.
@@ -360,6 +362,8 @@ export function CartPage() {
 
   async function handleSubmit() {
     if (!tenant) return;
+    // Defesa extra: sem conta o servidor recusa (401); o botão já leva ao login antes de chegar aqui.
+    if (!customerToken) return;
     if (!activeLocation || !storeIsOpen) return; // botão já deveria estar desabilitado, defesa extra
     if (orderType === 'entrega' && !quote) return; // botão já deveria estar desabilitado, defesa extra
 
@@ -460,13 +464,17 @@ export function CartPage() {
       // inesperado (5xx) pro cliente — só confia na mensagem do backend
       // quando é um erro 4xx de propósito (as que eu mesmo escrevo em
       // português simples, tipo "você tem Mesa 1 em aberto...").
-      const response =
-        err && typeof err === 'object' && 'response' in err
-          ? (err as { response?: { status?: number; data?: { message?: string } } }).response
-          : undefined;
-      const status = response?.status;
-      const backendMessage =
-        status && status >= 400 && status < 500 ? response?.data?.message : undefined;
+      // Classificação do erro (lib/orderErrors): SÓ 401 manda para o login. Timeout, queda de rede e
+      // 5xx nunca viram "faça login" e este código NUNCA reenvia o pedido sozinho (o POST não é
+      // refeito por nenhuma camada e o P-16 — sem Idempotency-Key — segue aberto).
+      const failure = classifyOrderError(err);
+      if (failure.kind === 'login_required') {
+        // Com token: o servidor recusou a sessão. Encerra só esse token (sem limpar o carrinho) para
+        // a tela de login não devolver o cliente para cá. Sem token: convidado.
+        if (customerToken) expireSession(customerToken);
+        requestLogin(customerToken ? 'session' : 'order');
+        return;
+      }
       // BUG CORRIGIDO: quando o pedido falha porque a mesa já foi
       // fechada (garçom fechou a conta, ou expirou) pelo lado de lá
       // enquanto o cliente ainda estava com a página aberta, o header
@@ -480,7 +488,13 @@ export function CartPage() {
         tableSessionCtx?.recheckExpiry();
       }
       setErrorMessage(
-        backendMessage ?? t('cartPage.nao_foi_possivel_enviar'),
+        failure.kind === 'rate_limited'
+          ? t('cartPage.muitas_tentativas')
+          : failure.kind === 'unconfirmed'
+            ? t('cartPage.pedido_nao_confirmado')
+            : failure.kind === 'rejected' && failure.message
+              ? failure.message
+              : t('cartPage.nao_foi_possivel_enviar'),
       );
     } finally {
       setIsSubmitting(false);
@@ -586,21 +600,22 @@ export function CartPage() {
     Boolean(activeLocation) &&
     storeIsOpen &&
     customerName.trim().length > 0 &&
-    !guestNameError &&
     isValidBrazilPhone(customerPhone) &&
     (orderType !== 'entrega' || Boolean(quote));
 
-  // Pedido do Felipe: fluxo de convidado (sem conta) na mesa continua
-  // sem exigir NADA além disso — mas o nome passa a ser obrigatório
-  // (facilita o garçom chamar quem pediu, já que várias pessoas podem
-  // estar na mesma mesa sem conta nenhuma). Telefone continua não
-  // pedido na mesa — só faz sentido pra balcão/entrega, onde pode ser
-  // usado pra contato.
-  const canProceedMesa = hasSavedName || (customerName.trim().length > 0 && !guestNameError);
+  // Mesa: telefone não é pedido (só faz sentido para balcão/entrega). O nome vem da conta; só
+  // quem está logado e ainda não tem nome salvo precisa digitá-lo (convidado não pede mais).
+  const canProceedMesa = hasSavedName || customerName.trim().length > 0;
 
   // Mesa não tem etapa de pagamento/revisão — vai direto pro envio, igual
   // sempre foi (o pagamento acontece depois, em pessoa, com o admin).
   function handlePrimaryAction() {
+    // Decisão B: convidado navega e monta o carrinho, mas só pede logado. Sem token, o aviso de
+    // login abre (e leva ao login com retorno); com a sessão ainda sendo confirmada, não faz nada.
+    if (!customerToken) {
+      if (!isAuthLoading) requestLogin('order');
+      return;
+    }
     if (orderType === 'mesa') {
       if (!canProceedMesa) {
         setShowNameRequired(true);
@@ -896,7 +911,9 @@ export function CartPage() {
       ? t('common.loading')
       : !storeIsOpen
         ? t('cartPage.estabelecimento_fechado')
-        : orderType === 'mesa'
+        : needsLogin
+          ? t('cartPage.entrar_para_pedir')
+          : orderType === 'mesa'
           ? t('cartPage.confirmar_pedido')
           : checkoutStep === 'form'
             ? orderType === 'entrega' && !quote
@@ -911,6 +928,7 @@ export function CartPage() {
       onClick={handlePrimaryAction}
       disabled={
         isSubmitting ||
+        (!customerToken && isAuthLoading) ||
         !activeLocation || !storeIsOpen ||
         (checkoutStep === 'form' && orderType !== 'mesa' && !canProceedFromForm) ||
         (checkoutStep === 'review' && !canSubmit)
@@ -953,7 +971,7 @@ export function CartPage() {
         ? t('receiptContent.mesa')
         : t('receiptContentStandalone.entrega');
 
-  const nameInvalid = (showNameRequired || nameTouched) && Boolean(guestNameError);
+  const nameInvalid = (showNameRequired || nameTouched) && customerName.trim().length === 0;
   const phoneInvalid = customerPhone.length > 0 && !isValidBrazilPhone(customerPhone);
   const paymentOptions = [
     { method: 'dinheiro', Icon: Banknote },
@@ -1188,7 +1206,7 @@ export function CartPage() {
                   )}
                 </div>
 
-                {!hasSavedName && (
+                {customerToken && !hasSavedName && (
                   <div className="flex flex-col gap-1">
                     <CartTextField
                       label={t('auth.namePlaceholder')}
@@ -1203,7 +1221,6 @@ export function CartPage() {
                       maxLength={GUEST_NAME_MAX}
                       autoComplete="off"
                     />
-                    {nameInvalid && <p className={`text-xs px-0.5 ${CART_TEXT_ERROR}`}>{guestNameError}</p>}
                   </div>
                 )}
                 {orderType !== 'mesa' && !hasSavedPhone && (
