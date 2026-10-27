@@ -618,9 +618,22 @@ function OrderRow({
       )}
 
       {order.paymentMethod && (
-        <p className={`text-xs mb-1.5 ${dark ? 'text-gray-500' : 'text-gray-400'}`}>
-          Pagamento: {PAYMENT_METHOD_LABELS[order.paymentMethod] ?? order.paymentMethod}
-        </p>
+        order.paymentStatus === 'pago' ? (
+          <p
+            className={`mb-1.5 inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs font-semibold ${
+              dark
+                ? 'bg-green-500/10 border-green-500/25 text-green-300'
+                : 'bg-green-50 border-green-200 text-green-700'
+            }`}
+          >
+            <Check size={13} />
+            Pago · {PAYMENT_METHOD_LABELS[order.paymentMethod] ?? order.paymentMethod}
+          </p>
+        ) : (
+          <p className={`text-xs mb-1.5 ${dark ? 'text-gray-500' : 'text-gray-400'}`}>
+            Pagamento: {PAYMENT_METHOD_LABELS[order.paymentMethod] ?? order.paymentMethod}
+          </p>
+        )
       )}
 
       {order.paymentStatus === 'estorno_pendente' && (
