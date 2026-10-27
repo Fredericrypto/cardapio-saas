@@ -130,7 +130,7 @@ export function ProductBadgesEditor({ value, onChange, autoBadges = [] }: Produc
                 <label
                   key={code}
                   title={locked ? `Limite de ${MAX_DECLARED_CHIP_BADGES} badges. Desmarque outro para escolher este.` : undefined}
-                  className={`group flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 transition ${
+                  className={`group relative flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 transition ${
                     checked
                       ? 'border-[#111827] bg-[#F3F4F6] dark:border-[#E3E2E6] dark:bg-[#282A2C]'
                       : 'border-gray-200 hover:border-gray-300'

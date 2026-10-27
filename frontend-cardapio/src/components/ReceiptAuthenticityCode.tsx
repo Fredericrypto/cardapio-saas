@@ -1,5 +1,5 @@
 import { useI18n } from '../i18n/I18nContext';
-import { QRCodeSVG } from 'qrcode.react';
+import { QrCodeBox } from './QrCodeBox';
 
 // Bloco de autenticidade do cupom — QR + código em texto, os dois
 // SEMPRE visíveis. Antes o texto ficava escondido atrás de um botão
@@ -14,7 +14,7 @@ export function ReceiptAuthenticityCode({ code }: { code: string }) {
   const { t } = useI18n();
   return (
     <div className="flex flex-col items-center gap-1.5 pt-1">
-      <QRCodeSVG value={code} size={72} level="M" />
+      <QrCodeBox value={code} size={72} level="M" />
       <p className="text-center text-[9px] text-[#9CA3AF] break-all leading-tight px-4">{code}</p>
       <p className="text-center text-[9px] text-[#9CA3AF]">{t('receiptAuthenticityCode.codigo_de_autenticidade')}</p>
     </div>

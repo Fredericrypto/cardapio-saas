@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Coins } from 'lucide-react';
-import { QRCodeSVG } from 'qrcode.react';
+import { QrCodeBox } from './QrCodeBox';
 import { concludeOrderWithPayment } from '../lib/admin-api';
 import { useAuth } from '../contexts/AuthContext';
 import { generatePixPayload } from '../lib/pix';
@@ -185,7 +185,7 @@ export function ConcludeOrderModal({ order, onClose, onConcluded }: ConcludeOrde
           <div>
             {tenant?.pixKey ? (
               <div className="flex flex-col items-center gap-2 bg-gray-50 rounded-lg p-4">
-                <QRCodeSVG
+                <QrCodeBox
                   value={generatePixPayload({
                     pixKey: tenant.pixKey,
                     merchantName: tenant.name,

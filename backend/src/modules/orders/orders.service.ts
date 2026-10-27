@@ -1924,7 +1924,11 @@ export class OrdersService {
       );
     }
 
-    if (paymentMethod === 'dinheiro') {
+    // Pedido já PAGO (Pix/cartão online pelo Mercado Pago, ou Pix confirmado)
+    // não exige valor recebido e não pode ter a forma de pagamento sobrescrita
+    // por quem conclui no painel.
+    const alreadyPaid = order.paymentStatus === 'pago';
+    if (paymentMethod === 'dinheiro' && !alreadyPaid) {
       const totalDueCents = toCents(order.total) + toCents(order.tipAmount);
       if (amountReceived == null || toCents(amountReceived) < totalDueCents) {
         throw new BadRequestException(
@@ -1935,13 +1939,15 @@ export class OrdersService {
 
     stampOrderLifecycle(order, 'entregue');
     order.status = 'entregue';
-    order.paymentMethod = paymentMethod;
-    order.paymentStatus = 'pago';
-    order.amountReceived = paymentMethod === 'dinheiro' ? amountReceived! : null;
+    if (!alreadyPaid) {
+      order.paymentMethod = paymentMethod;
+      order.paymentStatus = 'pago';
+      order.amountReceived = paymentMethod === 'dinheiro' ? amountReceived! : null;
+    }
     await this.creditCashbackForPaidOrder(order);
     const saved = await this.orderRepo.save(order);
     await this.siodEngine.finalizeOnDelivered(saved);
-    await this.notifyPaymentCompleted(saved);
+    if (!alreadyPaid) await this.notifyPaymentCompleted(saved);
     // Esse método É o "pedido terminou" pra esse fluxo (só pedido
     // avulso passa por aqui — mesa fecha pela sessão, ver comentário
     // acima) — status já virou 'entregue' bem ali em cima, então é o

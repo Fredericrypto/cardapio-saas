@@ -1,6 +1,6 @@
 import { useI18n } from '../i18n/I18nContext';
 import { useEffect, useState } from 'react';
-import { QRCodeSVG } from 'qrcode.react';
+import { QrCodeBox } from './QrCodeBox';
 import { Copy, Check } from 'lucide-react';
 import type { Tenant, TableSession } from '../types';
 import { checkSessionPixStatus } from '../lib/menu-api';
@@ -100,7 +100,7 @@ export function TableSessionPixWaitingPanel({
         </p>
       </div>
 
-      <QRCodeSVG value={session.pixPayload} size={180} />
+      <QrCodeBox value={session.pixPayload} size={180} />
 
       <button
         onClick={handleCopy}

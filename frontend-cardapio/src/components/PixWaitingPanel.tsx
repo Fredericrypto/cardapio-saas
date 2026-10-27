@@ -2,7 +2,7 @@ import { translate } from '../i18n/translate';
 import { readStoredLanguage } from '../i18n/languages';
 import { useI18n } from '../i18n/I18nContext';
 import { useEffect, useRef, useState } from 'react';
-import { QRCodeSVG } from 'qrcode.react';
+import { QrCodeBox } from './QrCodeBox';
 import { Copy, Check } from 'lucide-react';
 import type { Tenant, CreatedOrder } from '../types';
 import { checkPixStatus } from '../lib/menu-api';
@@ -174,7 +174,7 @@ export function PixWaitingPanel({
         </p>
       </div>
 
-      <QRCodeSVG value={order.pixPayload} size={180} />
+      <QrCodeBox value={order.pixPayload} size={180} />
 
       <button
         onClick={handleCopy}

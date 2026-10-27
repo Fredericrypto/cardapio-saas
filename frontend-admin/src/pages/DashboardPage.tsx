@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import { AlertTriangle, Bell, Clock, Table2, Store, DoorOpen, Receipt, Check, X, ShoppingBag, Bike, Copy, MessageSquare, Tag, Coins, Wallet, ArrowRight } from 'lucide-react';
-import { QRCodeSVG } from 'qrcode.react';
+import { QrCodeBox } from '../components/QrCodeBox';
 import {
   attendWaiterCall,
   updateOrderStatus,
@@ -681,13 +681,23 @@ function OrderRow({
                 sem texto — fácil de não perceber que ALI é onde se
                 confirma o pagamento de um pedido avulso. */}
             {order.status === 'pronto' && order.orderType !== 'mesa' ? (
-              <button
-                onClick={() => actions.onConclude(order)}
-                className="whitespace-nowrap px-3 py-1.5 rounded-lg bg-green-500 text-white text-xs font-semibold flex items-center gap-1"
-              >
-                <Wallet size={13} />
-                Receber pagamento
-              </button>
+              order.paymentStatus === 'pago' ? (
+                <button
+                  onClick={() => actions.onStatusChange(order, 'entregue')}
+                  className="whitespace-nowrap px-3 py-1.5 rounded-lg bg-green-500 text-white text-xs font-semibold flex items-center gap-1"
+                >
+                  <Check size={13} />
+                  Pago · Entregar
+                </button>
+              ) : (
+                <button
+                  onClick={() => actions.onConclude(order)}
+                  className="whitespace-nowrap px-3 py-1.5 rounded-lg bg-green-500 text-white text-xs font-semibold flex items-center gap-1"
+                >
+                  <Wallet size={13} />
+                  Receber pagamento
+                </button>
+              )
             ) : (
               nextOrderStatus(order.status) && (
                 <button
@@ -770,7 +780,7 @@ function PixWaitingPanel({ order, actions }: { order: Order; actions: OrderActio
 
       <div className="flex items-center gap-3">
         <div className="shrink-0">
-          <QRCodeSVG value={order.pixPayload!} size={72} />
+          <QrCodeBox value={order.pixPayload!} size={72} />
         </div>
         <div className="flex flex-col gap-1.5 flex-1 min-w-0">
           <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">

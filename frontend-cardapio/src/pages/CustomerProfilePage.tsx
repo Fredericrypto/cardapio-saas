@@ -33,6 +33,7 @@ import { MENU_PAGE_BG, MENU_TEXT, MENU_TEXT_BODY, MENU_TEXT_MUTED, MENU_SURFACE,
 import { PROMO_SERIF, PROMO_INK, PROMO_MUTED, PROMO_SAGE, PROMO_EYEBROW } from '../lib/promotionTheme';
 import { BottomNav, DesktopNav } from '../components/BottomNav';
 import { FoodBackdrop } from '../components/FoodBackdrop';
+import { BotanicalSprig } from '../components/BotanicalSprig';
 import { Tooltip } from '../components/Tooltip';
 import { VerifiedBadge } from '../components/VerifiedBadge';
 import { VerificationExplainerModal } from '../components/VerificationExplainerModal';
@@ -55,42 +56,6 @@ const SANS = { fontFamily: "'Inter', system-ui, sans-serif" } as const;
 const PANEL =
   'rounded-2xl border border-[#E5E7EB] bg-[#FFFFFF]/70 dark:border-white/10 dark:bg-[#161617]/70';
 const HAIRLINE = 'border-[#E5E7EB] dark:border-white/10';
-
-// Ramo botânico em traço fino (decorativo). Folhas em pares ao longo de um caule curvo.
-const LEAVES = [
-  { x: 215, y: 237, r: -163, s: 1.05 },
-  { x: 215, y: 237, r: -73, s: 1.0 },
-  { x: 187, y: 185, r: -163, s: 1.0 },
-  { x: 187, y: 185, r: -73, s: 0.95 },
-  { x: 157, y: 132, r: -165, s: 0.95 },
-  { x: 157, y: 132, r: -75, s: 0.9 },
-  { x: 125, y: 78, r: -165, s: 0.85 },
-  { x: 125, y: 78, r: -75, s: 0.8 },
-  { x: 90, y: 20, r: -118, s: 0.8 },
-];
-
-function BotanicalBranch({ className = '' }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 260 300"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="0.9"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      className={className}
-    >
-      <path d="M240 290C200 200 150 120 90 20" />
-      {LEAVES.map((leaf, i) => (
-        <g key={i} transform={`translate(${leaf.x} ${leaf.y}) rotate(${leaf.r}) scale(${leaf.s})`}>
-          <path d="M0 0C8-11 26-15 42 0C26 15 8 11 0 0Z" />
-          <path d="M0 0L38 0" />
-        </g>
-      ))}
-    </svg>
-  );
-}
 
 export function CustomerProfilePage() {
   const { slug } = useParams<{ slug: string }>();
@@ -225,7 +190,7 @@ export function CustomerProfilePage() {
   const showRating = statsLoading || avgRating !== null;
   const hasStats = showOrders || showRating;
   const bothStats = showOrders && showRating;
-  const dash = <span aria-hidden="true" className="inline-block animate-pulse text-[#9CA3AF] dark:text-[#8E918F]">&mdash;</span>;
+  const dash = <span aria-hidden="true" className="inline-block motion-safe:animate-pulse text-[#9CA3AF] dark:text-[#8E918F]">&mdash;</span>;
 
   const verifyRow = !customer.isVerified
     ? {
@@ -256,7 +221,7 @@ export function CustomerProfilePage() {
         {/* ============ Coluna esquerda: editorial ============ */}
         <section className="min-w-0" style={SERIF}>
           <div className="relative pb-8 pt-2">
-            <BotanicalBranch className="pointer-events-none absolute -top-2 right-0 z-0 w-28 text-[#111827]/25 sm:w-44 lg:w-52 dark:text-[#C2C0B6]/30" />
+            <BotanicalSprig className="pointer-events-none absolute -top-2 right-0 z-0 w-28 bg-[#111827]/30 sm:w-44 lg:w-52 dark:bg-[#C2C0B6]/35" />
             <div className="relative z-10">
               <p className={`${PROMO_EYEBROW} ${PROMO_SAGE}`}>{t('profilePage.eyebrow')}</p>
               <p
@@ -279,7 +244,7 @@ export function CustomerProfilePage() {
                   style={{ backgroundColor: tenant.primaryColor }}
                 >
                   {customer.avatarUrl ? (
-                    <img src={customer.avatarUrl} alt={customer.name} className="h-full w-full object-cover" />
+                    <img src={customer.avatarUrl} alt={customer.name} width={128} height={128} decoding="async" className="h-full w-full object-cover" />
                   ) : (
                     customer.name[0]?.toUpperCase()
                   )}
@@ -313,25 +278,25 @@ export function CustomerProfilePage() {
             {hasStats && (
               <div className={`grid border-t ${HAIRLINE} ${bothStats ? 'grid-cols-2 divide-x divide-[#E5E7EB] dark:divide-white/10' : 'grid-cols-1'}`}>
                 {showOrders && (
-                  <div className="flex items-center justify-center gap-3 px-4 py-5 sm:gap-4 sm:px-6">
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#E5E7EB] bg-black/[0.03] text-[#9CA3AF] dark:border-white/10 dark:bg-white/[0.04] dark:text-[#8E918F]">
-                      <ShoppingBag size={20} strokeWidth={1.25} aria-hidden="true" />
-                    </span>
+                  <div className="flex flex-col items-center justify-center gap-3 px-4 py-6 text-center sm:px-6">
                     <div className="min-w-0 text-center">
                       <p className={`text-3xl font-light leading-none tabular-nums ${PROMO_INK}`}>{statsLoading || orderCount === null ? dash : orderCount}</p>
                       <p className={`mt-1 text-sm ${PROMO_MUTED}`}>{t('profilePage.ordersDone')}</p>
                     </div>
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#E5E7EB] bg-black/[0.03] text-[#9CA3AF] dark:border-white/10 dark:bg-white/[0.04] dark:text-[#8E918F]">
+                      <ShoppingBag size={20} strokeWidth={1.25} aria-hidden="true" />
+                    </span>
                   </div>
                 )}
                 {showRating && (
-                  <div className="flex items-center justify-center gap-3 px-4 py-5 sm:gap-4 sm:px-6">
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#E5E7EB] bg-black/[0.03] text-[#9CA3AF] dark:border-white/10 dark:bg-white/[0.04] dark:text-[#8E918F]">
-                      <Star size={20} strokeWidth={1.25} aria-hidden="true" />
-                    </span>
+                  <div className="flex flex-col items-center justify-center gap-3 px-4 py-6 text-center sm:px-6">
                     <div className="min-w-0 text-center">
                       <p className={`text-3xl font-light leading-none tabular-nums ${PROMO_INK}`}>{statsLoading || ratingText === null ? dash : ratingText}</p>
                       <p className={`mt-1 text-sm ${PROMO_MUTED}`}>{t('profilePage.avgRating')}</p>
                     </div>
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#E5E7EB] bg-black/[0.03] text-[#9CA3AF] dark:border-white/10 dark:bg-white/[0.04] dark:text-[#8E918F]">
+                      <Star size={20} strokeWidth={1.25} aria-hidden="true" />
+                    </span>
                   </div>
                 )}
               </div>
