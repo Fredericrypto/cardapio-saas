@@ -1,6 +1,7 @@
 import { useI18n } from '../i18n/I18nContext';
 import { useEffect, useState } from 'react';
 import { QrCodeBox } from './QrCodeBox';
+import { PaymentPushPrompt } from './PaymentPushPrompt';
 import { Copy, Check } from 'lucide-react';
 import type { Tenant, TableSession } from '../types';
 import { checkSessionPixStatus } from '../lib/menu-api';
@@ -109,6 +110,8 @@ export function TableSessionPixWaitingPanel({
         {copied ? <Check size={15} /> : <Copy size={15} />}
         {copied ? t('pixWaitingPanel.codigo_copiado') : t('pixWaitingPanel.copiar_codigo_pix')}
       </button>
+
+      <PaymentPushPrompt tenantId={tenant.id} />
 
       <p className="text-xs text-gray-400 text-center">
         {t('tableSessionPixWaitingPanel.abra_o_app_do')} {tenant.name} {t('tableSessionPixWaitingPanel.receber_o_pagamento_nao')}

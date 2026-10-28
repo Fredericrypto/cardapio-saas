@@ -16,6 +16,19 @@ function urlBase64ToUint8Array(base64String: string): BufferSource {
   return outputArray.buffer;
 }
 
+// Inscrição criada com OUTRA chave VAPID (ex.: chave trocada no servidor depois) continua
+// "ativa" para o navegador, mas o serviço de push recusa os envios do servidor (401/403) e o
+// pushManager.subscribe() com a chave nova lança InvalidStateError. Compara para poder refazer.
+function sameApplicationServerKey(subscription: PushSubscription, key: BufferSource): boolean {
+  const current = subscription.options?.applicationServerKey;
+  if (!current) return true; // não dá para comparar: mantém
+  const a = new Uint8Array(current);
+  const b = new Uint8Array(key as ArrayBuffer);
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+}
+
 export type PushPermissionState = 'unsupported' | 'default' | 'granted' | 'denied';
 
 // Gerencia todo o ciclo de Web Push pro cliente logado: registra o
@@ -28,6 +41,8 @@ export function usePushNotifications(tenantId: string | undefined, token: string
   const [permission, setPermission] = useState<PushPermissionState>('default');
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  // true depois de conferir se já existe inscrição neste navegador (evita piscar o estado errado na tela).
+  const [isChecked, setIsChecked] = useState(false);
 
   const isSupported =
     typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window;
@@ -44,11 +59,18 @@ export function usePushNotifications(tenantId: string | undefined, token: string
   // já ativou antes, numa visita anterior) — pra UI já nascer mostrando
   // o estado certo, sem precisar o cliente clicar de novo.
   useEffect(() => {
-    if (!isSupported || Notification.permission !== 'granted') return;
-    navigator.serviceWorker.register('/sw.js').then(async (registration) => {
-      const existing = await registration.pushManager.getSubscription();
-      setIsSubscribed(Boolean(existing));
-    });
+    if (!isSupported || Notification.permission !== 'granted') {
+      setIsChecked(true);
+      return;
+    }
+    navigator.serviceWorker
+      .register('/sw.js')
+      .then(async (registration) => {
+        const existing = await registration.pushManager.getSubscription();
+        setIsSubscribed(Boolean(existing));
+      })
+      .catch(() => undefined)
+      .finally(() => setIsChecked(true));
   }, [isSupported]);
 
   const subscribe = useCallback(async () => {
@@ -66,9 +88,15 @@ export function usePushNotifications(tenantId: string | undefined, token: string
       setPermission(permissionResult as PushPermissionState);
       if (permissionResult !== 'granted') return false;
 
+      const serverKey = urlBase64ToUint8Array(publicKey);
+      const existing = await registration.pushManager.getSubscription();
+      if (existing && !sameApplicationServerKey(existing, serverKey)) {
+        await unsubscribeFromPush(tenantId, token, existing.endpoint).catch(() => undefined);
+        await existing.unsubscribe();
+      }
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey),
+        applicationServerKey: serverKey,
       });
       await subscribeToPush(tenantId, token, subscription.toJSON() as PushSubscriptionJSON);
       setIsSubscribed(true);
@@ -94,5 +122,5 @@ export function usePushNotifications(tenantId: string | undefined, token: string
     }
   }, [isSupported, tenantId, token]);
 
-  return { permission, isSupported, isSubscribed, isLoading, subscribe, unsubscribe };
+  return { permission, isSupported, isSubscribed, isChecked, isLoading, subscribe, unsubscribe };
 }

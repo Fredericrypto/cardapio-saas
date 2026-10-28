@@ -12,6 +12,8 @@ import { DEFAULT_LANGUAGE, type AppLanguage } from './languages';
 export type PushMessageKey =
   | 'payment_confirmed_table'
   | 'payment_confirmed_order'
+  | 'payment_pending_order'
+  | 'payment_pending_table'
   | 'cashback_earned'
   | 'review_prompt'
   | 'verification_approved'
@@ -47,6 +49,16 @@ const MESSAGES: Record<PushMessageKey, Record<AppLanguage, Copy>> = {
     'pt-BR': { title: 'Pagamento confirmado', body: 'Recebemos o pagamento de {amount} do seu pedido.' },
     en: { title: 'Payment confirmed', body: 'We received your payment of {amount} for your order.' },
     es: { title: 'Pago confirmado', body: 'Recibimos el pago de {amount} de tu pedido.' },
+  },
+  payment_pending_order: {
+    'pt-BR': { title: 'Aguardando pagamento', body: 'Pague {amount} via Pix até {time} para confirmar seu pedido.' },
+    en: { title: 'Awaiting payment', body: 'Pay {amount} via Pix by {time} to confirm your order.' },
+    es: { title: 'Esperando el pago', body: 'Paga {amount} por Pix hasta las {time} para confirmar tu pedido.' },
+  },
+  payment_pending_table: {
+    'pt-BR': { title: 'Aguardando pagamento', body: 'Pague {amount} via Pix até {time} para fechar sua conta.' },
+    en: { title: 'Awaiting payment', body: 'Pay {amount} via Pix by {time} to close your tab.' },
+    es: { title: 'Esperando el pago', body: 'Paga {amount} por Pix hasta las {time} para cerrar tu cuenta.' },
   },
   cashback_earned: {
     'pt-BR': {

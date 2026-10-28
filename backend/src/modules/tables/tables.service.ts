@@ -22,6 +22,11 @@ import { summarizeSessionOrders } from '../../common/utils/session-totals';
 import { absolutizeAvatarUrl } from '../../common/utils/avatar-url';
 import { isPixOnlineActive } from '../payments/mp-activation';
 import { computeIsOpenNow } from '../../common/utils/schedule';
+import {
+  buildPaymentPendingPush,
+  PAYMENT_CONFIRMED_FLAGS,
+  tablePaymentGroupTag,
+} from '../../common/utils/payment-push';
 import { signReceipt, verifyReceiptSignature, formatVerificationCode, parseVerificationCode } from '../../common/utils/receipt-signature';
 import { TenantCacheService } from '../tenant-cache/tenant-cache.service';
 import { InvalidatesTenantCache } from '../tenant-cache/invalidates-tenant-cache.decorator';
@@ -1184,6 +1189,9 @@ export class TablesService {
       session.cashDeliveryPreference = dto.paymentMethod === 'dinheiro' ? dto.cashDeliveryPreference! : null;
     }
 
+    // Dados do push "Pague até HH:MM" (preenchido só quando uma cobrança Pix nasce logo abaixo).
+    let pixPendingPush: { amountCents: number; expiresAt: Date; slug: string; logoUrl: string | null } | null = null;
+
     // Pix de VERDADE (Mercado Pago) — só quando sobra algo a pagar de
     // fato depois do cashback (senão não existe cobrança nenhuma a
     // criar: é o caso 'cashback' acima). Sem Mercado Pago configurado
@@ -1231,6 +1239,12 @@ export class TablesService {
         session.pixPayload = payment.qrCode;
         session.pixExpiresAt = pixExpiresAt;
         session.paymentStatus = 'pendente';
+        pixPendingPush = {
+          amountCents: remainingCents,
+          expiresAt: pixExpiresAt,
+          slug: tenant.slug,
+          logoUrl: tenant.logoUrl ?? null,
+        };
       } else {
         // Sem gateway configurado (ou cashback já cobre o resto, caso
         // raro de corrida) — limpa qualquer cobrança antiga de uma
@@ -1248,7 +1262,32 @@ export class TablesService {
     }
 
     session.status = 'fechamento_solicitado';
-    return this.sessionRepo.save(session);
+    const savedSession = await this.sessionRepo.save(session);
+
+    // Push "Aguardando pagamento · Pague até HH:MM" para quem pediu o fechamento (depois de salvar).
+    // Mesmo groupTag do push de "confirmado" dessa pessoa: ele SUBSTITUI este. Melhor esforço, em
+    // segundo plano (PushService já registra falhas de envio; aqui só se ignora erro de leitura).
+    // NOTA PARA O APP NATIVO (pedido explícito do Felipe): quando o app nativo estiver pronto, ele quer o
+    // COUNTDOWN em tempo real no próprio push (como o iFood). Em PWA isso é impossível com o app
+    // fechado; por isso o push traz o horário-limite fixo e a contagem fica dentro do app.
+    if (pixPendingPush && customerId) {
+      const info = pixPendingPush;
+      void this.pushService
+        .sendToCustomer(
+          tenantId,
+          customerId,
+          buildPaymentPendingPush({
+            kind: 'table',
+            amountCents: info.amountCents,
+            expiresAt: info.expiresAt,
+            url: `/${info.slug}/conta-cliente/pedidos/mesa/${sessionId}`,
+            groupTag: tablePaymentGroupTag(sessionId, customerId),
+            icon: info.logoUrl ?? undefined,
+          }),
+        )
+        .catch(() => undefined);
+    }
+    return savedSession;
   }
 
   // Total dos itens da mesa (pedidos não cancelados), em centavos — a
@@ -1946,7 +1985,8 @@ export class TablesService {
             },
             url: `/${tenantForNotify.slug}/conta-cliente/pedidos/mesa/${sessionId}`,
             tag: 'payment_completed',
-            groupTag: `payment-session-${sessionId}-${customerId}`,
+            groupTag: tablePaymentGroupTag(sessionId, customerId),
+            ...PAYMENT_CONFIRMED_FLAGS,
             icon: tenantForNotify.logoUrl ?? undefined,
           });
         }

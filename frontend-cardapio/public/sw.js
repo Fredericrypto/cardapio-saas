@@ -48,7 +48,11 @@ async function handlePush(payload) {
     // pedidos diferentes, ambos "order_delivered") não devem se
     // substituir uma pela outra só por serem do mesmo tipo.
     tag: payload.groupTag || undefined,
-    data: { url: payload.url || '/' },
+    // renotify só é válido COM tag (sem tag o navegador lança TypeError). Quando uma notificação
+    // substitui outra (ex.: "aguardando pagamento" -> "pagamento confirmado"), sem isso a troca
+    // é silenciosa em vários Androids.
+    renotify: Boolean(payload.renotify && payload.groupTag),
+    data: { url: payload.url || '/', focusOnly: payload.focusOnly === true },
   };
   await self.registration.showNotification(title, options);
 }
@@ -87,6 +91,7 @@ self.addEventListener('notificationclick', (event) => {
   // — sem isso, comparar caminho relativo com URL absoluta nunca bate
   // certo de propósito, só por sorte de substring.
   const targetAbsolute = new URL(targetUrl, self.location.origin).href;
+  const focusOnly = event.notification.data?.focusOnly === true;
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
@@ -99,6 +104,13 @@ self.addEventListener('notificationclick', (event) => {
       // nunca mudava de página, então nada específico daquele pedido
       // aparecia, e qualquer estado (como o modal de avaliação de outro
       // pedido) que já estivesse ali continuava do jeito que estava.
+      // "Aguardando pagamento": só volta para o app que já está aberto, SEM navegar — navegar
+      // recarregaria a tela do Pix e o cliente perderia o QR. Sem app aberto, cai no fluxo normal
+      // abaixo (abre o pedido).
+      if (focusOnly) {
+        const anyClient = clientList.find((client) => client.url.startsWith(self.location.origin));
+        if (anyClient && 'focus' in anyClient) return anyClient.focus();
+      }
       const exactMatch = clientList.find((client) => client.url === targetAbsolute);
       if (exactMatch && 'focus' in exactMatch) {
         return exactMatch.focus();

@@ -28,6 +28,11 @@ import { signReceipt, verifyReceiptSignature, formatVerificationCode, parseVerif
 import { decryptSecret } from '../../common/utils/encryption';
 import { MercadoPagoService, MercadoPagoRequestError } from '../payments/mercadopago.service';
 import { chargeCents } from '../payments/mp-money';
+import {
+  buildPaymentPendingPush,
+  orderPaymentGroupTag,
+  PAYMENT_CONFIRMED_FLAGS,
+} from '../../common/utils/payment-push';
 import { classifyMpStatus, classifyRejection, rejectionMessage } from '../payments/mp-status';
 import type { CardRejectionCode } from '../payments/mp-status';
 import { cardIdempotencyKey, pixOrderIdempotencyKey, refundIdempotencyKey } from '../payments/mp-idempotency';
@@ -414,18 +419,51 @@ export class OrdersService {
     if (!order.customerId) return;
     const tenant = await this.getTenantForNotify(order.tenantId);
     if (!tenant) return;
+    // Valor realmente cobrado: total + gorjeta (o mesmo que o Pix cobrou), não só o total.
+    const paidCents = chargeCents(toCents(Number(order.total)), toCents(Number(order.tipAmount ?? 0)));
+    const amount = `R$ ${(paidCents / 100).toFixed(2).replace('.', ',')}`;
     await this.pushService.sendToCustomer(order.tenantId, order.customerId, {
       title: 'Pagamento confirmado',
-      body: `Recebemos o pagamento de R$ ${Number(order.total).toFixed(2).replace('.', ',')} do seu pedido.`,
+      body: `Recebemos o pagamento de ${amount} do seu pedido.`,
       i18n: {
         key: 'payment_confirmed_order',
-        params: { amount: `R$ ${Number(order.total).toFixed(2).replace('.', ',')}` },
+        params: { amount },
       },
       url: `/${tenant.slug}/conta-cliente/pedidos/avulso/${order.id}`,
       tag: 'payment_completed',
-      groupTag: `payment-${order.id}`,
+      // MESMO groupTag do push de "aguardando pagamento" (notifyPaymentPending): este SUBSTITUI aquele.
+      groupTag: orderPaymentGroupTag(order.id),
+      ...PAYMENT_CONFIRMED_FLAGS,
       icon: tenant.logoUrl ?? undefined,
     });
+  }
+
+  // Push "Aguardando pagamento · Pague até HH:MM", enviado pelo SERVIDOR ao criar o pedido Pix
+  // (funciona com o app fechado, ao contrário da antiga notificação local com contagem, que o
+  // navegador congelava em segundo plano). Horário-limite FIXO: a contagem regressiva em tempo
+  // real continua dentro do app (PixWaitingPanel). Quando o pagamento é confirmado,
+  // notifyPaymentCompleted usa o mesmo groupTag e substitui esta notificação.
+  //
+  // NOTA PARA O APP NATIVO (pedido explícito do Felipe): quando o app nativo estiver pronto, ele quer
+  // o COUNTDOWN em tempo real no próprio push (como o iFood). Em PWA isso é impossível com o app
+  // fechado: a notificação web não se atualiza sozinha. Por isso hoje o push traz o horário-limite
+  // fixo e a contagem fica dentro do app.
+  private async notifyPaymentPending(order: Order): Promise<void> {
+    if (!order.customerId || !order.pixExpiresAt) return;
+    const tenant = await this.getTenantForNotify(order.tenantId);
+    if (!tenant) return;
+    await this.pushService.sendToCustomer(
+      order.tenantId,
+      order.customerId,
+      buildPaymentPendingPush({
+        kind: 'order',
+        amountCents: chargeCents(toCents(Number(order.total)), toCents(Number(order.tipAmount ?? 0))),
+        expiresAt: order.pixExpiresAt,
+        url: `/${tenant.slug}/conta-cliente/pedidos/avulso/${order.id}`,
+        groupTag: orderPaymentGroupTag(order.id),
+        icon: tenant.logoUrl ?? undefined,
+      }),
+    );
   }
 
   // Chamado de dentro de creditCashbackForPaidOrder, só quando algo foi
@@ -838,7 +876,7 @@ export class OrdersService {
       ? (await this.customerRepo.findOne({ where: { id: customerId } }))?.email
       : null;
 
-    return this.dataSource.transaction(async (manager) => {
+    const created = await this.dataSource.transaction(async (manager) => {
       const tenant = await manager.findOne(Tenant, { where: { id: tenantId } });
       if (!tenant) {
         throw new NotFoundException('Estabelecimento não encontrado.');
@@ -1315,6 +1353,16 @@ export class OrdersService {
 
       return savedOrder;
     });
+
+    // Push "Pague até HH:MM" só DEPOIS do commit: com o Pix criado dentro da transação (P-15),
+    // um rollback deixaria o cliente com um aviso de pagamento de um pedido que não existe.
+    // Segundo plano de propósito (não atrasa a resposta com o QR); falha nunca derruba o pedido.
+    if (created.status === 'aguardando_pagamento' && created.paymentMethod === 'pix' && created.pixPayload) {
+      void this.notifyPaymentPending(created).catch((err) =>
+        this.logger.warn(`Falha ao avisar pagamento pendente do pedido ${created.id}: ${err}`),
+      );
+    }
+    return created;
   }
 
   // Histórico do cliente logado NESTE restaurante — cliente é por

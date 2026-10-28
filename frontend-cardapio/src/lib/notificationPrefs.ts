@@ -13,7 +13,7 @@
 export const NOTIFICATION_TYPES = [
   { tag: 'review_prompt', label: 'Avaliação de pedido', description: 'Quando você pode avaliar um pedido concluído.' },
   { tag: 'order_delivered', label: 'Pedido entregue', description: 'Quando seu pedido chega ou fica pronto pra retirar.' },
-  { tag: 'payment_completed', label: 'Pagamento concluído', description: 'Confirmação de que seu pagamento foi processado.' },
+  { tag: 'payment_completed', label: 'Pagamento concluído', description: 'Aviso de pagamento Pix pendente e confirmação de que seu pagamento foi processado.' },
   { tag: 'cashback', label: 'Cashback', description: 'Quando você ganha ou está prestes a perder cashback.' },
   { tag: 'promotion', label: 'Promoções', description: 'Novas promoções e cupons do restaurante.' },
   { tag: 'loyalty', label: 'Fidelidade', description: 'Progresso no cartão fidelidade e prêmios liberados.' },

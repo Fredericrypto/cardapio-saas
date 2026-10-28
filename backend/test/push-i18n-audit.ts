@@ -9,7 +9,7 @@ ok(SUPPORTED_LANGUAGES.length === 3 && normalizeLanguage('xx') === 'pt-BR' && no
 ok(normalizeLanguage('en') === 'en' && normalizeLanguage('es') === 'es', 'en e es são aceitos');
 
 for (const key of PUSH_MESSAGE_KEYS) {
-  const copies = SUPPORTED_LANGUAGES.map((l) => renderPushMessage(key, l, { amount: 'R$ 1,00', reason: 'x', text: 't', count: 1, required: 2 }));
+  const copies = SUPPORTED_LANGUAGES.map((l) => renderPushMessage(key, l, { amount: 'R$ 1,00', reason: 'x', text: 't', count: 1, required: 2, time: '14:30' }));
   ok(copies.every((c) => c.title.length > 0 && c.body.length > 0 && !/\{\w+\}/.test(c.title + c.body)), `${key}: 3 idiomas completos, sem placeholder sobrando`);
 }
 const en = renderPushMessage('cashback_earned', 'en', { amount: 'R$ 12,50' });

@@ -1,8 +1,7 @@
-import { translate } from '../i18n/translate';
-import { readStoredLanguage } from '../i18n/languages';
 import { useI18n } from '../i18n/I18nContext';
 import { useEffect, useRef, useState } from 'react';
 import { QrCodeBox } from './QrCodeBox';
+import { PaymentPushPrompt } from './PaymentPushPrompt';
 import { Copy, Check } from 'lucide-react';
 import type { Tenant, CreatedOrder } from '../types';
 import { checkPixStatus } from '../lib/menu-api';
@@ -16,31 +15,14 @@ function formatCountdown(msRemaining: number): string {
   return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 }
 
-// Notificação LOCAL (Web Notification API) — não é push de verdade: só
-// aparece enquanto essa aba/app tá aberto (em primeiro ou segundo plano),
-// nunca com o navegador fechado. Pra isso funcionar com o app fechado de
-// verdade (igual notificação nativa do iFood) precisaria de push com
-// service worker + VAPID + backend disparando, que é uma peça de infra
-// separada — ver aviso no chat. Usa `tag` fixo pra ATUALIZAR a mesma
-// notificação (tempo restante) em vez de empilhar uma nova a cada minuto.
-function updateLocalNotification(tenant: Tenant, msRemaining: number) {
-  if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
-  const minutes = Math.floor(msRemaining / 60000);
-  const seconds = Math.floor((msRemaining % 60000) / 1000);
-  try {
-    new Notification(tenant.name, {
-      body: translate(readStoredLanguage(), 'pix.countdownNotification', { minutes, seconds: seconds.toString().padStart(2, '0') }),
-      icon: tenant.logoUrl ?? undefined,
-      badge: tenant.logoUrl ?? undefined,
-      tag: 'pix-countdown',
-      silent: true,
-    });
-  } catch {
-    // Alguns navegadores (principalmente mobile) restringem `new
-    // Notification()` fora de um service worker — falha silenciosa aqui
-    // é intencional, o contador na tela continua funcionando normal.
-  }
-}
+// Aviso FORA do app = push de verdade, enviado pelo servidor (ver OrdersService.notifyPaymentPending e
+// PaymentPushPrompt, que cria a inscrição de push). A antiga notificação LOCAL com contagem foi removida:
+// o navegador suspende a página em segundo plano e ela congelava (ex.: parada em 5:56).
+//
+// NOTA PARA O APP NATIVO (pedido explícito do Felipe): quando o app nativo estiver pronto, ele quer o
+// COUNTDOWN em tempo real no próprio push (como o iFood). Em PWA isso é impossível com o app fechado:
+// a notificação web não se atualiza sozinha. Por isso hoje o push traz o horário-limite fixo
+// ("Pague até HH:MM") e a contagem regressiva em tempo real fica aqui dentro, na tela do Pix.
 
 export function PixWaitingPanel({
   tenant,
@@ -63,35 +45,14 @@ export function PixWaitingPanel({
   });
   const settledRef = useRef(false);
 
-  // Pede permissão de notificação uma vez, só quando essa tela abre — não
-  // no carregamento do app inteiro, pra não assustar quem só tá olhando
-  // o cardápio.
-  useEffect(() => {
-    if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
-  }, []);
-
-  // Contador de 1 em 1 segundo, igual o iFood — e atualiza a notificação
-  // local a cada minuto cheio (não toda hora, senão vira spam).
+  // Contador de 1 em 1 segundo, igual o iFood — dentro do app. Fora do app o aviso é o push do
+  // servidor com horário-limite fixo (ver comentário no topo deste arquivo).
   useEffect(() => {
     if (!order.pixExpiresAt) return;
     const expiresAtMs = new Date(order.pixExpiresAt).getTime();
-    let lastNotifiedMinute = -1;
-
-    const interval = setInterval(() => {
-      const remaining = expiresAtMs - Date.now();
-      setMsRemaining(remaining);
-
-      const currentMinute = Math.floor(remaining / 60000);
-      if (currentMinute !== lastNotifiedMinute && remaining > 0) {
-        lastNotifiedMinute = currentMinute;
-        updateLocalNotification(tenant, remaining);
-      }
-    }, 1000);
-
+    const interval = setInterval(() => setMsRemaining(expiresAtMs - Date.now()), 1000);
     return () => clearInterval(interval);
-  }, [order.pixExpiresAt, tenant]);
+  }, [order.pixExpiresAt]);
 
   // Polling do status — pergunta pro backend a cada poucos segundos se o
   // admin já confirmou (ou cancelou), ou se expirou sozinho lá, caso a
@@ -183,6 +144,8 @@ export function PixWaitingPanel({
         {copied ? <Check size={15} /> : <Copy size={15} />}
         {copied ? t('pixWaitingPanel.codigo_copiado') : t('pixWaitingPanel.copiar_codigo_pix')}
       </button>
+
+      <PaymentPushPrompt tenantId={tenant.id} />
 
       <p className="text-xs text-gray-400 text-center">
         {t('pixWaitingPanel.abra_o_app_do')}{' '}

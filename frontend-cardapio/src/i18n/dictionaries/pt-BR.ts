@@ -158,7 +158,7 @@ export const ptBR = {
   'notifications.type.order_delivered.label': 'Pedido entregue',
   'notifications.type.order_delivered.description': 'Quando seu pedido chega ou fica pronto pra retirar.',
   'notifications.type.payment_completed.label': 'Pagamento concluído',
-  'notifications.type.payment_completed.description': 'Confirmação de que seu pagamento foi processado.',
+  'notifications.type.payment_completed.description': 'Aviso de pagamento Pix pendente e confirmação de que seu pagamento foi processado.',
   'notifications.type.cashback.label': 'Cashback',
   'notifications.type.cashback.description': 'Quando você ganha ou está prestes a perder cashback.',
   'notifications.type.promotion.label': 'Promoções',
@@ -277,6 +277,9 @@ export const ptBR = {
   'pixWaitingPanel.copiar_codigo_pix': 'Copiar código Pix',
   'pixWaitingPanel.abra_o_app_do': 'Abra o app do seu banco, escaneie o QR ou cole o código, e pague em até',
   'pixWaitingPanel.receber_o_pagamento': 'receber o pagamento.',
+  'pixWaitingPanel.avisar_pagamento': 'Receber aviso quando o pagamento for confirmado',
+  'pixWaitingPanel.avisos_ativados': 'Você será avisado quando o pagamento for confirmado.',
+  'pixWaitingPanel.avisos_bloqueados': 'Notificações bloqueadas neste navegador. Libere nas configurações do site para receber o aviso.',
   'productCard.sem_foto': 'Sem foto',
   'productCard.novo': 'Novo',
   'productCard.indisponivel': 'Indisponível',
@@ -856,7 +859,6 @@ export const ptBR = {
   'cart.payOnDelivery': '{method} na entrega',
   'cart.payOnPickup': '{method} na retirada',
   'closing.availableBalance': 'Saldo disponível: R$ {amount}',
-  'pix.countdownNotification': 'Pedido aguardando pagamento Pix • faltam {minutes}:{seconds}',
 
   // Erros genéricos
   'error.generic': 'Ops, algo deu errado ao carregar essa tela.',

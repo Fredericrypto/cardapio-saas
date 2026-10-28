@@ -46,6 +46,12 @@ export interface PushPayload {
   // pedido B só porque são da mesma CATEGORIA — bug real que isso evita
   // antes de existir.
   groupTag?: string;
+  // Tocar na notificação só FOCA o app já aberto (sem navegar). Usado no "aguardando
+  // pagamento": navegar recarregaria a tela do Pix e o cliente perderia o QR.
+  focusOnly?: boolean;
+  // Quando a notificação SUBSTITUI outra (mesmo groupTag), avisa de novo (som/vibração).
+  // Sem isso a substituição é silenciosa em vários Androids.
+  renotify?: boolean;
   // Logo do restaurante — aparece na notificação (ícone), pra sempre
   // ficar claro de qual restaurante veio mesmo com várias notificações
   // de apps diferentes na central do sistema operacional.
