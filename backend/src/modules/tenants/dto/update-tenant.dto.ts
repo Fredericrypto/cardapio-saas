@@ -11,6 +11,7 @@ import {
   IsIn,
   MaxLength,
   ValidateIf,
+  IsObject,
 } from 'class-validator';
 
 export class UpdateTenantDto {
@@ -140,4 +141,10 @@ export class UpdateTenantDto {
   @Min(0)
   @Max(100)
   taxPercent?: number;
+
+  // Modo Vitrine: só referências às imagens (ver vitrine-settings.ts). A FORMA é validada
+  // no TenantsService (400 se inválida); `null` volta ao padrão.
+  @IsOptional()
+  @IsObject()
+  vitrineSettings?: Record<string, unknown> | null;
 }

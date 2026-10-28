@@ -48,13 +48,14 @@ function toSafeTenant(tenant: Tenant) {
 // financeiros da aba Análise (CMV estimado, taxas de pagamento, imposto) e a
 // preferência de alertas internos — são dados de gestão do dono, nunca do cliente final.
 function toPublicTenant(tenant: Tenant) {
-  const { defaultCmvPercent, cardFeePercent, pixFeePercent, taxPercent, internalNotificationTarget, siodSettings, ...rest } = toSafeTenant(tenant);
+  const { defaultCmvPercent, cardFeePercent, pixFeePercent, taxPercent, internalNotificationTarget, siodSettings, vitrineSettings, ...rest } = toSafeTenant(tenant);
   void defaultCmvPercent;
   void cardFeePercent;
   void pixFeePercent;
   void taxPercent;
   void internalNotificationTarget;
   void siodSettings;
+  void vitrineSettings;
   return rest;
 }
 
@@ -97,6 +98,17 @@ export class TenantsController {
   async findMe(@CurrentTenant() tenantId: string) {
     const tenant = await this.tenantsService.findById(tenantId);
     return toSafeTenant(tenant);
+  }
+
+  // Modo Vitrine: devolve as imagens JÁ RESOLVIDAS (a configuração guarda só referências).
+  // Qualquer usuário autenticado do restaurante lê (a vitrine roda no monitor da operação,
+  // não só no do dono). Existe em vez de reaproveitar GET /products porque aqui vão só ≤ 12
+  // itens enxutos (sem opções/traduções) e as regras de disponibilidade ficam num lugar só.
+  @UseGuards(JwtAuthGuard)
+  @Get('me/vitrine')
+  @Header('Cache-Control', 'no-store')
+  async findMyVitrine(@CurrentTenant() tenantId: string) {
+    return this.tenantsService.resolveVitrine(tenantId);
   }
 
   // Rota PROTEGIDA: o dono editando nome, logo, cores, pagamento, etc.

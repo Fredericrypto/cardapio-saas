@@ -46,6 +46,30 @@ export function tablePaymentGroupTag(sessionId: string, customerId: string): str
 // substituição é SILENCIOSA em vários Androids (sem som/vibração) e o cliente não percebe.
 export const PAYMENT_CONFIRMED_FLAGS = { renotify: true } as const;
 
+// Pix NÃO pago dentro do prazo: SUBSTITUI o "Pague até HH:MM" (mesmo groupTag) e o cliente fica sabendo
+// que não dá mais para pagar. Só quem GANHOU a expiração atômica no banco envia isto: um Pix pago
+// nunca chega aqui (a expiração só acontece se o pedido/cobrança ainda está aguardando).
+export function buildPaymentExpiredPush(params: {
+  kind: 'order' | 'table';
+  url: string;
+  groupTag: string;
+  icon?: string;
+}): PushPayload {
+  const isTable = params.kind === 'table';
+  return {
+    title: 'Pix expirado',
+    body: isTable
+      ? 'O prazo para pagar a sua conta terminou. Escolha a forma de pagamento de novo.'
+      : 'O prazo para pagar o seu pedido terminou. Faça um novo pedido.',
+    i18n: { key: isTable ? 'payment_expired_table' : 'payment_expired_order' },
+    url: params.url,
+    tag: 'payment_completed',
+    groupTag: params.groupTag,
+    icon: params.icon,
+    ...PAYMENT_CONFIRMED_FLAGS,
+  };
+}
+
 export function buildPaymentPendingPush(params: {
   kind: 'order' | 'table';
   amountCents: number;

@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, ConflictException, ForbiddenException, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull, Not, In, MoreThan, FindOptionsWhere } from 'typeorm';
+import { Repository, IsNull, Not, In, MoreThan, LessThan, FindOptionsWhere } from 'typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { randomBytes } from 'crypto';
 import { RestaurantTable } from './restaurant-table.entity';
@@ -23,6 +23,7 @@ import { absolutizeAvatarUrl } from '../../common/utils/avatar-url';
 import { isPixOnlineActive } from '../payments/mp-activation';
 import { computeIsOpenNow } from '../../common/utils/schedule';
 import {
+  buildPaymentExpiredPush,
   buildPaymentPendingPush,
   PAYMENT_CONFIRMED_FLAGS,
   tablePaymentGroupTag,
@@ -774,6 +775,42 @@ export class TablesService {
     for (const session of openSessions) {
       await this.expireIfStale(session);
     }
+  }
+
+  // Varredura por minuto do Pix de MESA vencido (mesma razão do pedido avulso: com o cliente no app do
+  // banco ninguém consulta, e o aviso de "Pix expirado" não sairia). checkSessionPixStatus confere o
+  // Mercado Pago antes de expirar e faz a expiração com claim atômico.
+  @Cron(CronExpression.EVERY_MINUTE)
+  async sweepExpiredSessionPix(): Promise<void> {
+    const overdue = await this.sessionRepo.find({
+      where: { status: 'fechamento_solicitado', paymentStatus: 'pendente', pixExpiresAt: LessThan(new Date()) },
+      select: { id: true, tenantId: true },
+      take: 50,
+    });
+    for (const session of overdue) {
+      try {
+        await this.checkSessionPixStatus(session.tenantId, session.id);
+      } catch {
+        // Tenta de novo na próxima varredura.
+      }
+    }
+  }
+
+  private async notifyPixExpired(tenantId: string, sessionId: string, customerId: string): Promise<void> {
+    const tenant = await this.orderRepo.manager
+      .getRepository(Tenant)
+      .findOne({ where: { id: tenantId }, select: { slug: true, logoUrl: true } });
+    if (!tenant) return;
+    await this.pushService.sendToCustomer(
+      tenantId,
+      customerId,
+      buildPaymentExpiredPush({
+        kind: 'table',
+        url: `/${tenant.slug}/conta-cliente/pedidos/mesa/${sessionId}`,
+        groupTag: tablePaymentGroupTag(sessionId, customerId),
+        icon: tenant.logoUrl ?? undefined,
+      }),
+    );
   }
 
   async findSession(tenantId: string, sessionId: string): Promise<TableSession> {
@@ -1705,15 +1742,29 @@ export class TablesService {
       // (nunca volta sozinha pra 'aberta'), o cliente só perde o QR e
       // precisa escolher a forma de pagamento de novo.
       const expiredMpPaymentId = session.mpPaymentId;
-      session.paymentStatus = 'falhou';
-      session.requestedPaymentMethod = null;
-      session.mpPaymentId = null;
-      session.pixPayload = null;
-      await this.sessionRepo.save(session);
+      // CLAIM ATÔMICO: só expira se a cobrança ainda está pendente. Se o pagamento foi aprovado um
+      // instante antes (poll/webhook), affected=0: nada é desfeito e nenhum "Pix expirado" sai.
+      const claim = await this.sessionRepo.update(
+        { id: session.id, tenantId, paymentStatus: 'pendente' },
+        { paymentStatus: 'falhou', requestedPaymentMethod: null, mpPaymentId: null, pixPayload: null },
+      );
+      const expiredNow = (claim.affected ?? 0) === 1;
+      if (expiredNow) {
+        session.paymentStatus = 'falhou';
+        session.requestedPaymentMethod = null;
+        session.mpPaymentId = null;
+        session.pixPayload = null;
+      } else {
+        const fresh = await this.sessionRepo.findOne({ where: { id: session.id, tenantId } });
+        if (fresh) {
+          session.status = fresh.status;
+          session.paymentStatus = fresh.paymentStatus;
+        }
+      }
       // O gateway aceita pagar por mais alguns minutos além do prazo do
       // app (mínimo de 30 min do Mercado Pago) — cancela pra não entrar
       // dinheiro que o sistema já esqueceu. Best-effort.
-      if (expiredMpPaymentId) {
+      if (expiredNow && expiredMpPaymentId) {
         try {
           const tenant = await this.orderRepo.manager
             .getRepository(Tenant)
@@ -1727,6 +1778,12 @@ export class TablesService {
         } catch {
           // Segue sem cancelar — o pior caso é o de antes.
         }
+      }
+      // Avisa quem pediu o fechamento. Mesmo groupTag do "Pague até": substitui aquela notificação.
+      if (expiredNow && session.closingRequestedByCustomerId) {
+        void this.notifyPixExpired(tenantId, session.id, session.closingRequestedByCustomerId).catch(
+          () => undefined,
+        );
       }
     }
 

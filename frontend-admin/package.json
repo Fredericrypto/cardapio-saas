@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "test:logic": "npx --yes tsx test/historyFilters.test.ts && npx --yes tsx test/noteLayout.test.ts && npx --yes tsx test/couponQr.test.ts && npx --yes tsx test/analyticsPdf.test.ts && npx --yes tsx test/siodSettings.test.ts"
+    "test:logic": "npx --yes tsx test/historyFilters.test.ts && npx --yes tsx test/noteLayout.test.ts && npx --yes tsx test/couponQr.test.ts && npx --yes tsx test/analyticsPdf.test.ts && npx --yes tsx test/siodSettings.test.ts && npx --yes tsx test/vitrine.test.ts"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.2",

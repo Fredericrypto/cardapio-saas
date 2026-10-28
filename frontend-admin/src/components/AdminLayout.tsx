@@ -10,6 +10,7 @@ import { InternalNotificationsProvider } from '../contexts/InternalNotifications
 import { ManagerCalculatorProvider } from '../contexts/ManagerCalculatorContext';
 import { NotificationBell } from './notifications/NotificationBell';
 import { ThemeToggle } from './ThemeToggle';
+import { VitrineHost } from './vitrine/VitrineHost';
 import { MAIN_SCROLL_ID } from '../lib/layout';
 import { disableDevicePush, enableDevicePush, getPermission, registerPanelServiceWorker, wantsDevicePush } from '../lib/internalPush';
 
@@ -122,6 +123,7 @@ function AdminLayoutContent() {
 
   return (
     // Altura EXATA da tela e sem scroll global: a sidebar fica parada e só o <main> rola.
+    <>
     <div className="h-dvh overflow-hidden flex bg-gray-50">
       {/* Celular: o menu lateral vira uma gaveta (botão no topo); a partir de
           md (768px) continua fixo na lateral, como sempre foi. */}
@@ -157,5 +159,8 @@ function AdminLayoutContent() {
         </main>
       </div>
     </div>
+    {/* Modo Vitrine: irmão do container raiz (nada do layout muda); só decide quando abre. */}
+    <VitrineHost />
+    </>
   );
 }

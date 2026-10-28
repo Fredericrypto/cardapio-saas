@@ -37,6 +37,7 @@
     "test:product-images": "ts-node --transpile-only test/product-images-pure-audit.ts && ts-node --transpile-only test/product-images-db-audit.ts",
     "test:backup": "ts-node --transpile-only test/backup-pure-audit.ts && ts-node --transpile-only test/backup-db-audit.ts",
     "test:siod": "ts-node --transpile-only test/siod-audit.ts",
+    "test:vitrine": "ts-node --transpile-only test/vitrine-pure-audit.ts",
     "test:siod-insights": "ts-node --transpile-only test/siod-insights-audit.ts",
     "test:promotions": "ts-node --transpile-only test/promotions-audit.ts",
     "test:receipt": "ts-node --transpile-only test/session-receipt-audit.ts",

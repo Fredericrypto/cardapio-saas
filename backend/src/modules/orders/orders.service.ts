@@ -8,7 +8,8 @@ import {
   Optional,
 } from '@nestjs/common';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
-import { Repository, DataSource, EntityManager, In } from 'typeorm';
+import { Repository, DataSource, EntityManager, In, LessThan } from 'typeorm';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { Order } from './order.entity';
 import { validateGuestName } from '../../common/utils/guest-name';
 import { OrderItem } from './order-item.entity';
@@ -29,6 +30,7 @@ import { decryptSecret } from '../../common/utils/encryption';
 import { MercadoPagoService, MercadoPagoRequestError } from '../payments/mercadopago.service';
 import { chargeCents } from '../payments/mp-money';
 import {
+  buildPaymentExpiredPush,
   buildPaymentPendingPush,
   orderPaymentGroupTag,
   PAYMENT_CONFIRMED_FLAGS,
@@ -184,12 +186,16 @@ export class OrdersService {
     return seat;
   }
 
+  // Devolve true só para quem GANHOU o cancelamento. `onlyIfAwaitingPayment` (expiração do Pix) restringe o
+  // claim a pedidos AINDA aguardando pagamento: se o pagamento foi confirmado um instante antes, o pedido
+  // pago NÃO é cancelado (antes, `status <> cancelado` deixava a expiração cancelar um pedido recém-pago).
   private async markCancelled(
     order: Order,
     reason?: string | null,
     canceledByUserId?: string | null,
-  ): Promise<void> {
-    if (order.status === 'cancelado') return;
+    opts?: { onlyIfAwaitingPayment?: boolean },
+  ): Promise<boolean> {
+    if (order.status === 'cancelado') return false;
     // Análise de cancelamento (aba Análise): motivo, instante e operador.
     const cancelReason = reason?.trim() ? reason.trim().slice(0, 300) : null;
     const canceledAt = new Date();
@@ -212,11 +218,14 @@ export class OrdersService {
           canceledAt,
           canceledByUserId: canceledByUserId ?? null,
         })
-        .where('id = :id AND tenant_id = :tenantId AND status <> :cancelled', {
-          id: order.id,
-          tenantId: order.tenantId,
-          cancelled: 'cancelado',
-        })
+        .where(
+          opts?.onlyIfAwaitingPayment
+            ? 'id = :id AND tenant_id = :tenantId AND status = :awaiting'
+            : 'id = :id AND tenant_id = :tenantId AND status <> :cancelled',
+          opts?.onlyIfAwaitingPayment
+            ? { id: order.id, tenantId: order.tenantId, awaiting: 'aguardando_pagamento' }
+            : { id: order.id, tenantId: order.tenantId, cancelled: 'cancelado' },
+        )
         .execute();
       if ((result.affected ?? 0) !== 1) return false;
       // ORDEM DE LOCKS = a de create(): cashback (ledger) antes da linha da
@@ -243,8 +252,13 @@ export class OrdersService {
         order.cancelReason = fresh.cancelReason;
         order.canceledAt = fresh.canceledAt;
         order.canceledByUserId = fresh.canceledByUserId;
+      } else if (fresh && opts?.onlyIfAwaitingPayment) {
+        // Perdeu a corrida para o pagamento: alinha a cópia em memória à verdade do banco
+        // (senão um save() do chamador regrediria o pedido pago).
+        order.status = fresh.status;
+        order.paymentStatus = fresh.paymentStatus;
       }
-      return;
+      return false;
     }
     order.status = 'cancelado';
     order.cancelReason = cancelReason;
@@ -277,6 +291,62 @@ export class OrdersService {
         `pedido ${order.id} cancelado`,
       );
       order.paymentStatus = refunded ? 'estornado' : 'estorno_pendente';
+    }
+    return true;
+  }
+
+  // ÚNICO caminho de expiração de pedido online (polling do cliente, polling do painel e a varredura por
+  // minuto). Expira SÓ se o pedido ainda aguarda pagamento (claim atômico) e, se ganhou, avisa o cliente:
+  // pagamento confirmado antes => nada é cancelado e nenhum "Pix expirado" sai.
+  private async expireOverdueOrder(order: Order): Promise<boolean> {
+    const expired = await this.markCancelled(order, this.expiryReason(order), null, {
+      onlyIfAwaitingPayment: true,
+    });
+    if (!expired) return false;
+    order.paymentStatus = 'falhou';
+    await this.orderRepo.update({ id: order.id, tenantId: order.tenantId }, { paymentStatus: 'falhou' });
+    await this.cancelGatewayPaymentQuietly(order.tenantId, order.mpPaymentId);
+    if (order.paymentMethod === 'pix') {
+      void this.notifyPaymentExpired(order).catch((err) =>
+        this.logger.warn(`Falha ao avisar Pix expirado do pedido ${order.id}: ${err}`),
+      );
+    }
+    return true;
+  }
+
+  private async notifyPaymentExpired(order: Order): Promise<void> {
+    if (!order.customerId) return;
+    const tenant = await this.getTenantForNotify(order.tenantId);
+    if (!tenant) return;
+    await this.pushService.sendToCustomer(
+      order.tenantId,
+      order.customerId,
+      buildPaymentExpiredPush({
+        kind: 'order',
+        url: `/${tenant.slug}/conta-cliente/pedidos/avulso/${order.id}`,
+        groupTag: orderPaymentGroupTag(order.id),
+        icon: tenant.logoUrl ?? undefined,
+      }),
+    );
+  }
+
+  // Varredura por minuto: antes a expiração só era percebida quando alguém consultava (app do cliente ou
+  // painel aberto). Com o cliente no app do banco, ninguém consulta, e o aviso de "Pix expirado" não sairia.
+  // Reaproveita checkPixStatus, que antes de expirar CONFERE o Mercado Pago (se pagou, confirma em vez de
+  // expirar). Obs.: no plano grátis do Render o processo dorme sem requisições e o cron não roda.
+  @Cron(CronExpression.EVERY_MINUTE)
+  async sweepExpiredOnlineOrders(): Promise<void> {
+    const overdue = await this.orderRepo.find({
+      where: { status: 'aguardando_pagamento', pixExpiresAt: LessThan(new Date()) },
+      select: { id: true, tenantId: true },
+      take: 50,
+    });
+    for (const order of overdue) {
+      try {
+        await this.checkPixStatus(order.tenantId, order.id);
+      } catch (err) {
+        this.logger.warn(`Falha ao expirar o pedido ${order.id} na varredura: ${err}`);
+      }
     }
   }
 
@@ -676,12 +746,8 @@ export class OrdersService {
     );
     if (expiredOrders.length > 0) {
       for (const order of expiredOrders) {
-        await this.markCancelled(order, this.expiryReason(order));
-        order.paymentStatus = 'falhou';
-        await this.cancelGatewayPaymentQuietly(tenantId, order.mpPaymentId);
+        if (await this.expireOverdueOrder(order)) changed = true;
       }
-      await this.orderRepo.save(expiredOrders);
-      changed = true;
     }
 
     return changed;
@@ -1541,10 +1607,7 @@ export class OrdersService {
       // Antes, quando era o polling do CLIENTE que percebia o prazo
       // estourado primeiro, isso não era devolvido e o painel nunca mais
       // via o pedido como "aguardando" pra corrigir.
-      await this.markCancelled(order, this.expiryReason(order));
-      order.paymentStatus = 'falhou';
-      await this.orderRepo.save(order);
-      await this.cancelGatewayPaymentQuietly(tenantId, order.mpPaymentId);
+      await this.expireOverdueOrder(order);
     }
 
     if (stateBefore !== `${order.status}|${order.paymentStatus}|${order.mpPaymentId ?? ''}`) {

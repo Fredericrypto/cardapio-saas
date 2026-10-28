@@ -14,6 +14,8 @@ export type PushMessageKey =
   | 'payment_confirmed_order'
   | 'payment_pending_order'
   | 'payment_pending_table'
+  | 'payment_expired_order'
+  | 'payment_expired_table'
   | 'cashback_earned'
   | 'review_prompt'
   | 'verification_approved'
@@ -59,6 +61,16 @@ const MESSAGES: Record<PushMessageKey, Record<AppLanguage, Copy>> = {
     'pt-BR': { title: 'Aguardando pagamento', body: 'Pague {amount} via Pix até {time} para fechar sua conta.' },
     en: { title: 'Awaiting payment', body: 'Pay {amount} via Pix by {time} to close your tab.' },
     es: { title: 'Esperando el pago', body: 'Paga {amount} por Pix hasta las {time} para cerrar tu cuenta.' },
+  },
+  payment_expired_order: {
+    'pt-BR': { title: 'Pix expirado', body: 'O prazo para pagar o seu pedido terminou. Faça um novo pedido.' },
+    en: { title: 'Pix expired', body: 'The time to pay for your order has run out. Place a new order.' },
+    es: { title: 'Pix vencido', body: 'Se acabó el plazo para pagar tu pedido. Haz un nuevo pedido.' },
+  },
+  payment_expired_table: {
+    'pt-BR': { title: 'Pix expirado', body: 'O prazo para pagar a sua conta terminou. Escolha a forma de pagamento de novo.' },
+    en: { title: 'Pix expired', body: 'The time to pay your tab has run out. Choose a payment method again.' },
+    es: { title: 'Pix vencido', body: 'Se acabó el plazo para pagar tu cuenta. Elige la forma de pago otra vez.' },
   },
   cashback_earned: {
     'pt-BR': {

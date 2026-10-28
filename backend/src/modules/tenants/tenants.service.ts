@@ -1,10 +1,18 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, IsNull, Not, Repository } from 'typeorm';
 import { Tenant } from './tenant.entity';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { encryptSecret } from '../../common/utils/encryption';
 import { mpConfigError } from '../payments/mp-activation';
+import { Product } from '../products/product.entity';
+import {
+  VITRINE_FALLBACK_PRODUCTS,
+  buildVitrineSlides,
+  parseStoredVitrine,
+  validateVitrineSettings,
+} from './vitrine-settings';
+import type { VitrineProductRow, VitrineSettings, VitrineSlide } from './vitrine-settings';
 
 @Injectable()
 export class TenantsService {
@@ -38,7 +46,7 @@ export class TenantsService {
     // Esses dois nunca passam pelo Object.assign genérico — precisam ser
     // criptografados antes de ir pro banco, e nomes de coluna diferentes
     // do nome no DTO (accessToken vs accessTokenEncrypted).
-    const { mercadoPagoAccessToken, mercadoPagoWebhookSecret, mercadoPagoPublicKey, ...rest } = dto;
+    const { mercadoPagoAccessToken, mercadoPagoWebhookSecret, mercadoPagoPublicKey, vitrineSettings, ...rest } = dto;
     Object.assign(tenant, rest);
 
     if (mercadoPagoAccessToken !== undefined) {
@@ -53,6 +61,19 @@ export class TenantsService {
     }
     if (mercadoPagoPublicKey !== undefined) {
       tenant.mercadoPagoPublicKey = mercadoPagoPublicKey.trim() || null;
+    }
+
+    // Modo Vitrine: nunca passa pelo Object.assign genérico — a forma é validada aqui
+    // (400 se inválida) e lista vazia volta ao padrão (null).
+    if (vitrineSettings !== undefined) {
+      if (vitrineSettings === null) {
+        tenant.vitrineSettings = null;
+      } else {
+        const checked = validateVitrineSettings(vitrineSettings);
+        if (!checked.ok) throw new BadRequestException(checked.error);
+        tenant.vitrineSettings =
+          checked.value.items.length > 0 ? (checked.value as unknown as Record<string, unknown>) : null;
+      }
     }
 
     // Consistência da configuração do Mercado Pago: só valida quando ESTA
@@ -72,6 +93,35 @@ export class TenantsService {
     }
 
     return this.tenantRepo.save(tenant);
+  }
+
+  // Modo Vitrine: resolve as REFERÊNCIAS salvas em slides prontos (nome/foto atuais).
+  // Sempre filtrado pelo tenant do token: id de outro restaurante nunca resolve.
+  // Produto removido (soft delete), indisponível ou sem foto some sozinho.
+  async resolveVitrine(tenantId: string): Promise<{ name: string; logoUrl: string | null; slides: VitrineSlide[] }> {
+    const tenant = await this.findById(tenantId);
+    const settings: VitrineSettings | null = parseStoredVitrine(tenant.vitrineSettings);
+    const products = this.tenantRepo.manager.getRepository(Product);
+    const select = { id: true, name: true, imageUrl: true, images: true, isAvailable: true } as const;
+    let rows: VitrineProductRow[] = [];
+    if (settings) {
+      const ids = settings.items.flatMap((i) => (i.k === 'product' ? [i.id] : []));
+      if (ids.length > 0) {
+        rows = await products.find({ where: { tenantId, id: In(ids), isAvailable: true }, select });
+      }
+    } else {
+      rows = await products.find({
+        where: { tenantId, isAvailable: true, imageUrl: Not(IsNull()) },
+        order: { displayOrder: 'ASC', name: 'ASC' },
+        take: VITRINE_FALLBACK_PRODUCTS,
+        select,
+      });
+    }
+    return {
+      name: tenant.name,
+      logoUrl: tenant.logoUrl,
+      slides: buildVitrineSlides(settings, tenant.coverImageUrl, rows),
+    };
   }
 
   async setLogo(tenantId: string, logoUrl: string): Promise<Tenant> {

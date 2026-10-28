@@ -155,6 +155,13 @@ export class Tenant {
   @Column({ name: 'siod_settings', type: 'jsonb', nullable: true })
   siodSettings: Record<string, unknown> | null;
 
+  // Modo Vitrine (exibição passiva no monitor do painel): só REFERÊNCIAS às imagens
+  // ({ v: 1, items: [{ k: 'banner' } | { k: 'product', id }] }), nunca cópias de dados.
+  // null = padrão (banner + primeiras fotos do cardápio). Validação/resolução em
+  // vitrine-settings.ts. Dado interno do painel: nunca vai pro cliente final.
+  @Column({ name: 'vitrine_settings', type: 'jsonb', nullable: true })
+  vitrineSettings: Record<string, unknown> | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 

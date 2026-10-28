@@ -158,7 +158,7 @@ export const ptBR = {
   'notifications.type.order_delivered.label': 'Pedido entregue',
   'notifications.type.order_delivered.description': 'Quando seu pedido chega ou fica pronto pra retirar.',
   'notifications.type.payment_completed.label': 'Pagamento concluído',
-  'notifications.type.payment_completed.description': 'Aviso de pagamento Pix pendente e confirmação de que seu pagamento foi processado.',
+  'notifications.type.payment_completed.description': 'Avisos do pagamento Pix: aguardando, confirmado e expirado.',
   'notifications.type.cashback.label': 'Cashback',
   'notifications.type.cashback.description': 'Quando você ganha ou está prestes a perder cashback.',
   'notifications.type.promotion.label': 'Promoções',

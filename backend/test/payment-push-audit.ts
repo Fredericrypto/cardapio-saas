@@ -6,6 +6,7 @@ import {
   orderPaymentGroupTag,
   tablePaymentGroupTag,
   buildPaymentPendingPush,
+  buildPaymentExpiredPush,
   PAYMENT_CONFIRMED_FLAGS,
 } from '../src/common/utils/payment-push';
 import { renderPushMessage } from '../src/common/i18n/push-messages';
@@ -52,4 +53,20 @@ ok(pendingTable.i18n?.key === 'payment_pending_table' && pendingTable.i18n?.para
 // 5) Confirmado: renotify (senão a substituição é silenciosa no Android).
 ok(PAYMENT_CONFIRMED_FLAGS.renotify === true, 'confirmado substitui E avisa (renotify)');
 
+// 6) Expirado: só chega se o Pix NÃO foi pago (a trava é atômica no banco); aqui se garante o
+// payload: substitui o "Pague até" (mesmo groupTag) e avisa de novo (renotify).
+for (const key of ['payment_expired_order', 'payment_expired_table'] as const) {
+  for (const lang of SUPPORTED_LANGUAGES) {
+    const copy = renderPushMessage(key, lang, {});
+    ok(copy.title.length > 0 && copy.body.length > 0 && !/\{\w+\}/.test(copy.title + copy.body), `${key}/${lang}: completo, sem placeholder`);
+  }
+}
+const expired = buildPaymentExpiredPush({ kind: 'order', url: '/loja/conta-cliente/pedidos/avulso/abc', groupTag: orderPaymentGroupTag('abc') });
+ok(expired.groupTag === pending.groupTag, 'expirado usa o MESMO groupTag do aguardando (substitui, não empilha)');
+ok(expired.tag === 'payment_completed' && expired.renotify === true && !expired.focusOnly, 'expirado: mesma categoria, avisa de novo, toque abre o pedido');
+ok(expired.i18n?.key === 'payment_expired_order', 'chave de pedido');
+const expiredTable = buildPaymentExpiredPush({ kind: 'table', url: '/loja/x', groupTag: tablePaymentGroupTag('s1', 'c1') });
+ok(expiredTable.groupTag === pendingTable.groupTag && expiredTable.i18n?.key === 'payment_expired_table', 'mesa: mesmo groupTag do aguardando e chave de mesa');
+
 process.exit(finish());
+

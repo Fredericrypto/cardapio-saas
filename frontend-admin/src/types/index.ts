@@ -1,5 +1,6 @@
 import type { ContentTranslations } from './translations';
 import type { AutoBadge, DeclaredBadgeCode } from './productBadges';
+import type { VitrineSettings } from './vitrine';
 export interface Admin {
   id: string;
   email: string;
@@ -45,6 +46,8 @@ export interface Tenant {
   cardFeePercent?: number;
   pixFeePercent?: number;
   taxPercent?: number;
+  // Modo Vitrine: só referências às imagens (null/ausente = padrão).
+  vitrineSettings?: VitrineSettings | null;
 }
 
 // Uma loja física (filial) — endereço/horário/entrega são por Location

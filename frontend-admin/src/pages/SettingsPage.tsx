@@ -8,6 +8,7 @@ import {
   ChevronRight,
   CreditCard,
   ImagePlus,
+  MonitorPlay,
   Palette,
   Share2,
   Store,
@@ -16,6 +17,8 @@ import {
 import { updateMyTenant, uploadTenantLogo, uploadTenantCoverImage } from '../lib/admin-api';
 import { useAuth } from '../contexts/AuthContext';
 import { NotificationPreferences } from '../components/notifications/NotificationPreferences';
+import { VitrineSettingsSection } from '../components/vitrine/VitrineSettingsSection';
+import type { VitrineSettings } from '../types/vitrine';
 
 // Configurações da MARCA, organizadas por contexto (sub-abas). Endereço,
 // horário, entrega, WhatsApp e telefone são por LOJA (ver
@@ -33,7 +36,7 @@ function clampPercent(raw: string): number {
   return Number.isFinite(n) ? Math.min(100, Math.max(0, Math.round(n * 100) / 100)) : 0;
 }
 
-type SectionId = 'visual' | 'contatos' | 'pagamentos' | 'financeiro' | 'atendimento' | 'notificacoes';
+type SectionId = 'visual' | 'vitrine' | 'contatos' | 'pagamentos' | 'financeiro' | 'atendimento' | 'notificacoes';
 
 interface SectionDef {
   id: SectionId;
@@ -45,6 +48,7 @@ interface SectionDef {
 
 const SECTIONS: readonly SectionDef[] = [
   { id: 'visual', label: 'Visual', icon: Palette, savable: true },
+  { id: 'vitrine', label: 'Modo Vitrine', icon: MonitorPlay, savable: true },
   { id: 'contatos', label: 'Redes sociais & contatos', icon: Share2, savable: true },
   { id: 'pagamentos', label: 'Pagamentos & pedidos', icon: CreditCard, savable: true },
   { id: 'financeiro', label: 'Análise & financeiro', icon: TrendingUp, savable: true },
@@ -105,6 +109,9 @@ export function SettingsPage() {
   // esses padrões por cima dos reais. Agora todos os campos acompanham o tenant
   // até a primeira edição; depois disso o que foi digitado nunca é sobrescrito.
   const dirtyRef = useRef(false);
+  // Modo Vitrine: só vai no PATCH se o editor da vitrine foi mexido (nunca sobrescreve o servidor à toa).
+  const vitrineDirtyRef = useRef(false);
+  const [vitrineDraft, setVitrineDraft] = useState<VitrineSettings | null>(tenant?.vitrineSettings ?? null);
   useEffect(() => {
     if (!tenant || dirtyRef.current) return;
     setName(tenant.name ?? '');
@@ -129,6 +136,7 @@ export function SettingsPage() {
     setPixFeePercent(String(tenant.pixFeePercent ?? 0));
     setTaxPercent(String(tenant.taxPercent ?? 0));
     setTableSessionTimeoutMinutes(tenant.tableSessionTimeoutMinutes ?? null);
+    if (!vitrineDirtyRef.current) setVitrineDraft(tenant.vitrineSettings ?? null);
   }, [tenant]);
 
   // Qualquer edição de campo (exceto escolher arquivo, que sobe na hora) marca
@@ -226,6 +234,7 @@ export function SettingsPage() {
         cardFeePercent: clampPercent(cardFeePercent),
         pixFeePercent: clampPercent(pixFeePercent),
         taxPercent: clampPercent(taxPercent),
+        vitrineSettings: vitrineDirtyRef.current ? vitrineDraft : undefined,
       });
       setMercadoPagoAccessToken('');
       setShowMercadoPagoField(!updated.mercadoPagoConfigured);
@@ -233,6 +242,7 @@ export function SettingsPage() {
       setShowWebhookSecretField(!updated.mercadoPagoWebhookSecretConfigured);
       // Salvo = o servidor é a verdade de novo: libera a hidratação.
       dirtyRef.current = false;
+      vitrineDirtyRef.current = false;
       updateTenant(updated);
       setSavedMessage(true);
       setTimeout(() => setSavedMessage(false), 3000);
@@ -386,6 +396,16 @@ export function SettingsPage() {
               </div>
             </Card>
           </>
+        )}
+
+        {section.id === 'vitrine' && (
+          <VitrineSettingsSection
+            value={vitrineDraft}
+            onChange={(next) => {
+              vitrineDirtyRef.current = true;
+              setVitrineDraft(next);
+            }}
+          />
         )}
 
         {section.id === 'contatos' && (

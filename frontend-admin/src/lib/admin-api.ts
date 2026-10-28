@@ -1,6 +1,7 @@
 import type { ContentTranslations, TranslatableField } from '../types/translations';
 import type { DeclaredBadgeCode } from '../types/productBadges';
 import { api } from './api';
+import type { VitrineData } from '../types/vitrine';
 import type { Analytics, AnalyticsPeriod } from '../types/analytics';
 import type {
   SiodOrdersPage,
@@ -78,6 +79,12 @@ export async function uploadTenantCoverImage(file: File): Promise<Tenant> {
   const { data } = await api.post<Tenant>('/tenants/me/cover', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
+  return data;
+}
+
+// Modo Vitrine: slides já resolvidos pelo servidor (nome/foto atuais; só itens utilizáveis).
+export async function fetchVitrine(): Promise<VitrineData> {
+  const { data } = await api.get<VitrineData>('/tenants/me/vitrine');
   return data;
 }
 

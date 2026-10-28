@@ -147,7 +147,7 @@ export const es: Record<TranslationKey, string> = {
   'notifications.type.order_delivered.label': 'Pedido entregado',
   'notifications.type.order_delivered.description': 'Cuando tu pedido llega o está listo para recoger.',
   'notifications.type.payment_completed.label': 'Pago completado',
-  'notifications.type.payment_completed.description': 'Aviso de pago Pix pendiente y confirmación de que tu pago fue procesado.',
+  'notifications.type.payment_completed.description': 'Avisos del pago Pix: pendiente, confirmado y vencido.',
   'notifications.type.cashback.label': 'Cashback',
   'notifications.type.cashback.description': 'Cuando ganas cashback o estás por perderlo.',
   'notifications.type.promotion.label': 'Promociones',
