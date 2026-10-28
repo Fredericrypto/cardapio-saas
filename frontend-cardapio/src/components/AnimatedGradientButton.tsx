@@ -16,6 +16,10 @@ import { ctaBorderColors } from '../lib/ctaBorder';
 // - `animation="always"` (padrão): gira sempre. Use nos poucos CTAs de cada tela.
 // - `animation="hover"`: borda e giro só com mouse/foco. Para botões repetidos
 //   em grade (o "+" dos cards), onde dezenas girando juntos seriam ruído e custo.
+// - `animation="burst"`: sem anel em repouso. Cada vez que `burstKey` muda (e é > 0), UM ponto
+//   de luz gira por ~4 s e some com fade (animação finita: depois disso o navegador não
+//   compõe mais nenhum quadro por causa do botão). Usado no carrinho ao adicionar item.
+// - `animation="none"`: sem anel e sem animação (o "+" dos cards).
 // - disabled / `animated={false}`: sem giro e sem borda.
 // - prefers-reduced-motion: borda estática (sem giro).
 export interface AnimatedGradientButtonProps
@@ -29,9 +33,11 @@ export interface AnimatedGradientButtonProps
   contentClassName?: string;
   /** Troca as cores do preenchimento (ex.: estado "adicionado" em verde). */
   fillClassName?: string;
-  animation?: 'always' | 'hover';
+  animation?: 'always' | 'hover' | 'burst' | 'none';
   /** false = desliga giro e brilho (ex.: estado de sucesso). */
   animated?: boolean;
+  /** Só com `animation="burst"`: mude (incremente) para tocar a animação de novo; 0 = nunca tocou. */
+  burstKey?: number;
   style?: CSSProperties;
 }
 
@@ -46,6 +52,7 @@ export function AnimatedGradientButton({
   fillClassName = DEFAULT_FILL,
   animation = 'always',
   animated = true,
+  burstKey = 0,
   disabled,
   style,
   ...rest
@@ -62,14 +69,23 @@ export function AnimatedGradientButton({
   } as CSSProperties;
 
   const off = disabled || !animated;
-  const cls = ['cta-border', animation === 'hover' && 'cta-border--hover', off && 'cta-border--off', className]
+  const showRing = animation === 'burst' ? burstKey > 0 : animation !== 'none';
+  const cls = [
+    'cta-border',
+    animation === 'hover' && 'cta-border--hover',
+    animation === 'burst' && 'cta-border--burst',
+    animation === 'none' && 'cta-border--static',
+    off && 'cta-border--off',
+    className,
+  ]
     .filter(Boolean)
     .join(' ');
   const fillCls = ['cta-border__fill', fillClassName, contentClassName].filter(Boolean).join(' ');
 
   const inner = (
     <>
-      <span className="cta-border__ring" aria-hidden="true" />
+      {/* key = burstKey: remonta o anel e reinicia a animação a cada novo disparo */}
+      {showRing && <span key={burstKey} className="cta-border__ring" aria-hidden="true" />}
       <span className={fillCls}>{children}</span>
     </>
   );

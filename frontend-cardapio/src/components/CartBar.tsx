@@ -1,6 +1,6 @@
 import { useI18n } from '../i18n/I18nContext';
 import { useCart } from '../contexts/CartContext';
-import type { CSSProperties } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { ArrowRight, ShoppingBag } from 'lucide-react';
 import { Tooltip } from './Tooltip';
 import { AnimatedGradientButton } from './AnimatedGradientButton';
@@ -22,6 +22,16 @@ export function CartBar({ primaryColor, onClick }: CartBarProps) {
   const { t } = useI18n();
   const { totalItems, totalPrice } = useCart();
 
+  // Ponto de luz na borda só quando o cliente ADICIONA itens (total sobe): toca ~4 s e some.
+  // Remover item, abrir a página já com itens no carrinho ou o carrinho esvaziar não tocam.
+  // Estado derivado durante a renderização (padrão do React; sem useEffect).
+  const [seenItems, setSeenItems] = useState(totalItems);
+  const [burstKey, setBurstKey] = useState(0);
+  if (totalItems !== seenItems) {
+    setSeenItems(totalItems);
+    if (totalItems > seenItems) setBurstKey((k) => k + 1);
+  }
+
   if (totalItems === 0) return null;
 
   // "3 items in your cart" / "1 item in your cart": um texto completo por
@@ -34,6 +44,8 @@ export function CartBar({ primaryColor, onClick }: CartBarProps) {
     <Tooltip label={t('tooltip.viewCart')} className="contents">
       <AnimatedGradientButton
         onClick={onClick}
+        animation="burst"
+        burstKey={burstKey}
         aria-label={`${itemsLabel} · ${t('tooltip.viewCart')}`}
         className="fixed bottom-20 left-4 right-4 max-w-md mx-auto md:bottom-8 md:left-auto md:right-8 md:mx-0 md:w-[22rem] md:max-w-none rounded-2xl shadow-[0_10px_28px_rgba(0,0,0,0.22)] z-50"
         fillClassName="bg-[var(--brand)] text-white"

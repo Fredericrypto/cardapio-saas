@@ -530,6 +530,62 @@ img, svg, video, a {
       transform: translate(-50%, -50%) rotate(1turn);
     }
   }
+  /* "+" dos cards: sem anel nem animação. O fundo na cor da marca ocupa a folga de 2px
+     (mesmo tamanho visual do modo hover em repouso). */
+  .cta-border--static {
+    background: var(--brand);
+  }
+
+  /* Modo burst (carrinho): anel só existe depois de um disparo e a animação é FINITA
+     (1 iteração, ~4,2 s): gira 1,6 volta (mesma velocidade de antes, 2,6 s/volta) enquanto o
+     opacity sobe, segura e desce suave. Terminou = nenhuma animação ativa, o navegador volta
+     a não compor quadros com a página parada. UM ponto de luz (cor --cta-a), cauda longa. */
+  .cta-border--burst {
+    --cta-burst: 4.2s;
+  }
+  .cta-border--burst .cta-border__ring {
+    opacity: 0;
+    will-change: auto;
+    background: conic-gradient(
+      from 0deg,
+      transparent 0deg,
+      var(--cta-a) 300deg,
+      color-mix(in srgb, #ffffff 60%, var(--cta-a)) 306deg,
+      transparent 306deg 360deg
+    );
+    animation:
+      cta-border-spin-burst var(--cta-burst) linear 1,
+      cta-border-fade var(--cta-burst) ease-in-out 1;
+  }
+  @keyframes cta-border-spin-burst {
+    from {
+      transform: translate(-50%, -50%) rotate(0turn);
+    }
+    to {
+      transform: translate(-50%, -50%) rotate(1.6turn);
+    }
+  }
+  @keyframes cta-border-fade {
+    0% {
+      opacity: 0;
+    }
+    12% {
+      opacity: 1;
+    }
+    68% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+  /* Movimento reduzido: sem giro, só o ponto aparece e some (opacity). */
+  @media (prefers-reduced-motion: reduce) {
+    .cta-border--burst .cta-border__ring {
+      animation: cta-border-fade var(--cta-burst) ease-in-out 1;
+    }
+  }
+
   .cta-border:focus-visible {
     outline: 2px solid var(--cta-a);
     outline-offset: 3px;
