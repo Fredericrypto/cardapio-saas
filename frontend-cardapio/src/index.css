@@ -905,6 +905,40 @@ img, svg, video, a {
 
 
 /* ============================================================
+   SEM BACKDROP-FILTER — TODOS os aparelhos (CSS estatico, sem JS)
+   O backdrop-filter cria uma superficie de render separada por elemento
+   e, somado, deixava a composicao presa na GPU em celulares fracos.
+   A regra abaixo vence classes do Tailwind (backdrop-blur-*), CSS de
+   componentes e style inline. Onde o blur so suavizava um fundo liso,
+   o elemento fica como estava (transparente). So recebem preenchimento
+   as barras que ficam sobre conteudo que rola por baixo.
+   ============================================================ */
+*,
+*::before,
+*::after {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+/* faixa de categorias presa no topo (e a camada que a estende) */
+.atm-glass.atm-stuck,
+.atm-glass.atm-stuck > [aria-hidden="true"] {
+  background-color: rgb(255 255 255 / 0.9);
+}
+.dark .atm-glass.atm-stuck,
+.dark .atm-glass.atm-stuck > [aria-hidden="true"] {
+  background-color: rgb(19 19 20 / 0.92);
+}
+/* barras fixas / sticky que cobrem conteudo rolando (menu inferior, barra do produto, navbar desktop) */
+.fixed[class*="backdrop-blur"]:not(.inset-0),
+.sticky.bg-transparent[class*="backdrop-blur"] {
+  background-color: rgb(255 255 255 / 0.94);
+}
+.dark .fixed[class*="backdrop-blur"]:not(.inset-0),
+.dark .sticky.bg-transparent[class*="backdrop-blur"] {
+  background-color: rgb(19 19 20 / 0.94);
+}
+
+/* ============================================================
    FX LITE — aparelho fraco (html[data-fx="lite"], ver index.html)
    Remove o que pinta caro: backdrop-filter, blur de luz ambiente,
    glow animado e giro da borda. Mesma tipografia, cores e layout.
